@@ -28,6 +28,7 @@ data class LightSubjectInfo(
 )
 
 val LightSubjectInfo.displayName get() = nameCn.takeIf { it.isNotBlank() } ?: name
+val LightSubjectInfo.nameOrNameCn get() = name.ifBlank { nameCn }
 
 data class LightEpisodeInfo(
     val episodeId: Int,
@@ -40,3 +41,4 @@ data class LightEpisodeInfo(
 )
 
 val LightEpisodeInfo.displayName get() = nameCn.takeIf { it.isNotBlank() } ?: name
+val LightEpisodeInfo.nameOrNameCn get() = name.ifBlank { nameCn }

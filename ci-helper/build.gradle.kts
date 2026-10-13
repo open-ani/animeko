@@ -59,6 +59,12 @@ tasks.register("uploadAndroidApk", UploadAndroidApksTask::class) {
     apkDirectory.set(project(":app:android").layout.buildDirectory.dir("outputs/apk/default/release"))
 }
 
+tasks.register("uploadAndroidTvApk", UploadAndroidApksTask::class) {
+    configureReleaseUploadInputs()
+    apkDirectory.set(project(":app:android").layout.buildDirectory.dir("outputs/apk/tv/release"))
+    flavor.set("tv") // 资产命名 ani-tv-<ver>-<arch>.apk
+}
+
 val uploadAndroidApkGithubQr = tasks.register("uploadAndroidApkGithubQr", UploadReleaseAssetTask::class) {
     configureReleaseUploadInputs()
     artifactFile.set(rootProject.layout.projectDirectory.file("apk-qrcode-github.png"))
@@ -122,22 +128,32 @@ val zipDesktopDistribution = tasks.register("zipDesktopDistribution", Zip::class
     archiveExtension.set("zip")
 }
 
+val generateDesktopDistributionManifest =
+    tasks.register("generateDesktopDistributionManifest", GenerateDesktopPackageManifestTask::class) {
+        packageFile.set(zipDesktopDistribution.flatMap { it.archiveFile })
+        manifestFile.set(
+            zipDesktopDistribution.flatMap { zip ->
+                zip.destinationDirectory.file(zip.archiveFileName.map { it + DESKTOP_PACKAGE_MANIFEST_SUFFIX })
+            },
+        )
+    }
+
 tasks.register("uploadDesktopInstallers", UploadDesktopInstallersTask::class) {
     configureReleaseUploadInputs()
+    fun uploadZipDistributionWithManifest() {
+        dependsOn(zipDesktopDistribution, generateDesktopDistributionManifest)
+        zipDistribution.set(zipDesktopDistribution.flatMap { it.archiveFile })
+        zipDistributionManifest.set(generateDesktopDistributionManifest.flatMap { it.manifestFile })
+    }
     when (currentReleaseHostOs()) {
-        ReleaseHostOs.WINDOWS -> {
-            dependsOn(zipDesktopDistribution)
-            zipDistribution.set(zipDesktopDistribution.flatMap { it.archiveFile })
-        }
+        ReleaseHostOs.WINDOWS -> uploadZipDistributionWithManifest()
 
         ReleaseHostOs.MACOS -> {
             if (currentReleaseHostArch() == "aarch64") {
                 dependsOn(":app:desktop:packageReleaseDistributionForCurrentOS")
                 binaryDirectory.set(project(":app:desktop").layout.buildDirectory.dir("compose/binaries/main-release"))
-            } else {
-                dependsOn(zipDesktopDistribution)
-                zipDistribution.set(zipDesktopDistribution.flatMap { it.archiveFile })
             }
+            uploadZipDistributionWithManifest()
         }
 
         ReleaseHostOs.LINUX -> {
@@ -178,6 +194,7 @@ tasks.register("prepareArtifactsForManualUpload") {
         ":app:desktop:createReleaseDistributable",
         ":app:desktop:packageReleaseDistributionForCurrentOS",
         zipDesktopDistribution,
+        generateDesktopDistributionManifest,
     )
 
     doLast {
@@ -235,13 +252,18 @@ tasks.register("prepareArtifactsForManualUpload") {
             )
         }
 
+        val zipName = ReleaseArtifactNames.desktopDistributionFile(
+            releaseVersion,
+            osName = currentReleaseHostOs().name.lowercase(),
+            extension = "zip",
+        )
         copyToDistribution(
-            name = ReleaseArtifactNames.desktopDistributionFile(
-                releaseVersion,
-                osName = currentReleaseHostOs().name.lowercase(),
-                extension = "zip",
-            ),
+            name = zipName,
             file = zipDesktopDistribution.get().archiveFile.get().asFile,
+        )
+        copyToDistribution(
+            name = ReleaseArtifactNames.desktopPackageManifest(zipName),
+            file = generateDesktopDistributionManifest.get().manifestFile.get().asFile,
         )
     }
 }

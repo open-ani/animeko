@@ -163,9 +163,6 @@ class UserCollectionsViewModelTest {
         override fun getSubjectDisplayInfoOffline(subjectId: Int): Flow<OfflineSubjectDisplayInfo?> =
             throw UnsupportedOperationException()
 
-        override suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>> =
-            throw UnsupportedOperationException()
-
         override suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>> =
             throw UnsupportedOperationException()
 
@@ -247,6 +244,7 @@ class UserCollectionsViewModelTest {
         val episodeCollectionRepository = EpisodeCollectionRepository(
             subjectDao = database.subjectCollection(),
             episodeCollectionDao = database.episodeCollection(),
+            pendingOpDao = database.episodeCollectionPendingOpDao(),
             episodeService = EpisodeServiceImpl(UnusedSubjectsApi),
             animeScheduleRepository = animeScheduleRepository,
             subjectCollectionRepository = lazy { repository },

@@ -62,3 +62,4 @@ enum class AniWatchTogetherRoomStatus(val value: kotlin.String) {
 
 
 // @formatter:on
+

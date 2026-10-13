@@ -101,7 +101,7 @@ data class BuildInfo(
             gitCommitTime = buildConfig.gitCommitTime,
             distroChannel = buildConfig.distroChannel,
             isDebug = buildConfig.isDebug,
-            platform = platform.nameAndArch,
+            platform = platform.toString(),
         )
     }
 }

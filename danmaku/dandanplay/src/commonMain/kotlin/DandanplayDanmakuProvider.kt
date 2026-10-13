@@ -22,6 +22,7 @@ import me.him188.ani.danmaku.api.provider.DanmakuMatchInfo
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.api.provider.DanmakuMatchers
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
+import me.him188.ani.danmaku.api.provider.DanmakuSplitSeasonMatcher
 import me.him188.ani.danmaku.api.provider.DanmakuSubject
 import me.him188.ani.danmaku.api.provider.MatchingDanmakuProvider
 import me.him188.ani.danmaku.dandanplay.data.SearchEpisodesAnime
@@ -108,15 +109,19 @@ class DandanplayDanmakuProvider(
         // 获取剧集流程:
         //
         // 1. 用 Bangumi subject id 请求弹弹 Play 的 Bangumi.tv 映射接口
-        // 2. 若失败, 获取该番剧所属季度的所有番的名字, 匹配 bangumi 条目所有别名
-        // 3. 若失败, 用番剧名字搜索, 匹配 bangumi 条目所有别名
-        // 4. 如果按别名精准匹配到了, 那就获取该番的所有剧集
-        // 5. 如果没有, 那就提交条目名字给弹弹直接让弹弹获取相关剧集 (很不准)
+        // 2. 若失败且当前条目是拆分季的后半, 用前面各段的 subject id 请求映射接口
+        // 3. 若失败, 获取该番剧所属季度的所有番的名字, 匹配 bangumi 条目所有别名
+        // 4. 若失败, 用番剧名字搜索, 匹配 bangumi 条目所有别名
+        // 5. 如果按别名精准匹配到了, 那就获取该番的所有剧集
+        // 6. 如果没有, 那就提交条目名字给弹弹直接让弹弹获取相关剧集 (很不准)
         //
         // 匹配剧集流程:
-        // 1. 用剧集在系列中的序号 (sort) 匹配
-        // 2. 用剧集在当前季度中的序号 (ep) 匹配
-        // 3. 用剧集名字模糊匹配
+        // 1. 用剧集标题精确匹配
+        // 2. 用剧集在系列中的序号 (sort) 匹配
+        // 3. 用剧集在当前季度中的序号 (ep) 匹配
+        // 4. 用剧集名字模糊匹配
+        //
+        // 拆分季的后半不用 2-4, 按季内序号匹配, 见 [tryMatchSplitSeasonEpisodes].
 
         val prefixedExpectedEpisodeName =
             "第${(request.episodeEp ?: request.episodeSort).toString().removePrefix("0")}话 " + request.episodeName
@@ -125,12 +130,14 @@ class DandanplayDanmakuProvider(
             prefixedExpectedEpisodeName,
         )
 
-        val bgmtvEpisodes = runCatching { getEpisodesByBgmtvSubjectId(request) }
-            .onFailure {
-                if (it is CancellationException) throw it
-                logger.warn(it) { "Failed to fetch episodes by Bangumi subject id: ${request.subjectId}" }
-            }.getOrNull()
-        tryMatchEpisodes(request, bgmtvEpisodes, prefixedExpectedEpisodeName, matcher)?.let { return it }
+        val bgmtvEpisodes = getEpisodesByBgmtvSubjectIdOrNull(request.subjectId, request.subjectPrimaryName)
+        tryMatchEpisodes(request, bgmtvEpisodes, matcher, mappedToSelf = true)?.let { return it }
+
+        // 弹弹常把拆分季合成一部番剧, 只关联到第一段的条目
+        request.splitSeason?.previousPartSubjectIds?.forEach { subjectId ->
+            val episodes = getEpisodesByBgmtvSubjectIdOrNull(subjectId, fallbackSubjectName = null)
+            tryMatchEpisodes(request, episodes, matcher)?.let { return it }
+        }
 
         val episodes: List<DanmakuEpisodeWithSubject>? =
             runCatching { getEpisodesByExactSubjectMatch(request) }
@@ -144,7 +151,7 @@ class DandanplayDanmakuProvider(
                     if (it is CancellationException) throw it
                     logger.error(it) { "Failed to fetch episodes by fuzzy search" }
                 }.getOrNull()
-        tryMatchEpisodes(request, episodes, prefixedExpectedEpisodeName, matcher)?.let { return it }
+        tryMatchEpisodes(request, episodes, matcher)?.let { return it }
 
         // 都不行, 那就用最不准的方法
 
@@ -155,39 +162,61 @@ class DandanplayDanmakuProvider(
                 fileSize = request.fileSize,
                 videoDuration = request.videoDuration,
             )
+            if (!resp.success) {
+                logger.warn {
+                    "Dandanplay file match failed for '$filename', " +
+                            "errorCode=${resp.errorCode}, errorMessage=${resp.errorMessage}"
+                }
+                return DanmakuFetchResult.noMatch(providerId, DanmakuServiceId.Dandanplay)
+            }
+            val matches = resp.matches.orEmpty()
             val match = if (resp.isMatched) {
-                resp.matches.firstOrNull() ?: return DanmakuFetchResult.noMatch(providerId, DanmakuServiceId.Dandanplay)
+                matches.firstOrNull() ?: return DanmakuFetchResult.noMatch(providerId, DanmakuServiceId.Dandanplay)
+            } else if (request.splitSeason != null) {
+                // 拆分季的后半按集名模糊匹配会选到合并番剧上前半的同号集
+                return DanmakuFetchResult.noMatch(providerId, DanmakuServiceId.Dandanplay)
             } else {
                 matcher.match(
-                    resp.matches.map {
+                    matches.map {
                         DanmakuEpisodeWithSubject(
                             it.episodeId.toString(),
-                            it.animeTitle,
-                            it.episodeTitle,
+                            it.animeTitle.orEmpty(),
+                            it.episodeTitle.orEmpty(),
                             null,
                         )
                     },
                 )?.let { match ->
-                    resp.matches.first { it.episodeId.toString() == match.id }
+                    matches.first { it.episodeId.toString() == match.id }
                 } ?: return DanmakuFetchResult.noMatch(providerId, DanmakuServiceId.Dandanplay)
             }
             logger.info { "Best match by file match: ${match.animeTitle} - ${match.episodeTitle}" }
             val episodeId = match.episodeId
             return createResult(
                 episodeId,
-                DanmakuMatchMethod.Fuzzy(match.animeTitle, match.episodeTitle),
+                DanmakuMatchMethod.Fuzzy(match.animeTitle.orEmpty(), match.episodeTitle.orEmpty()),
             )
         }
         return DanmakuFetchResult.noMatch(providerId, DanmakuServiceId.Dandanplay)
     }
 
+    /**
+     * @param mappedToSelf 弹弹把 [episodes] 所在的番剧关联到了当前条目.
+     */
     private suspend fun tryMatchEpisodes(
         request: DanmakuFetchRequest,
         episodes: List<DanmakuEpisodeWithSubject>?,
-        prefixedExpectedEpisodeName: String,
         matcher: DanmakuMatcher,
+        mappedToSelf: Boolean = false,
     ): DanmakuFetchResult? {
         if (episodes == null) return null
+        request.splitSeason?.let { return tryMatchSplitSeasonEpisodes(request, it, episodes, mappedToSelf) }
+
+        // 先用标题精确匹配. 弹弹 play 会把 Bangumi 拆成多个条目的分段放送合并为一个番剧并连续编号,
+        // 此时 Bangumi 的 ep 与弹弹的集数对不上, 只有标题是可靠的.
+        matchEpisodeByTitle(request, episodes)?.let {
+            logger.info { "Matched episode by exact title: ${it.subjectName} - ${it.episodeName}" }
+            return createResult(it.id.toLong(), DanmakuMatchMethod.Exact(it.subjectName, it.episodeName))
+        }
 
         // 用剧集编号匹配. 先用系列的, 因为系列的更大.
         episodes.firstOrNull { it.epOrSort != null && it.epOrSort == request.episodeSort }?.let {
@@ -197,20 +226,6 @@ class DandanplayDanmakuProvider(
         episodes.firstOrNull { it.epOrSort != null && it.epOrSort == request.episodeEp }?.let {
             logger.info { "Matched episode by exact episodeEp: ${it.subjectName} - ${it.episodeName}" }
             return createResult(it.id.toLong(), DanmakuMatchMethod.Exact(it.subjectName, it.episodeName))
-        }
-
-        // 用名称精确匹配, 标记为 Exact.
-        if (request.episodeName.isNotBlank()) {
-            val match =
-                episodes.firstOrNull { it.episodeName == request.episodeName }
-                    ?: episodes.firstOrNull { it.episodeName == prefixedExpectedEpisodeName }
-            match?.let { episode ->
-                logger.info { "Matched episode by exact episodeName: ${episode.subjectName} - ${episode.episodeName}" }
-                return createResult(
-                    episode.id.toLong(),
-                    DanmakuMatchMethod.Exact(episode.subjectName, episode.episodeName),
-                )
-            }
         }
 
         // 用名字不精确匹配.
@@ -227,16 +242,90 @@ class DandanplayDanmakuProvider(
         return null
     }
 
-    private suspend fun getEpisodesByBgmtvSubjectId(
-        request: DanmakuFetchRequest
-    ): List<DanmakuEpisodeWithSubject>? {
-        if (request.subjectId <= 0) return null
+    /**
+     * 拆分季的后半: 先按标题精确匹配, 再按 [splitSeason] 的规则用集号匹配, 都在本季的番剧里找.
+     *
+     * 不按 sort, ep 和集名模糊匹配: 合并番剧上的集号是季内序号, 按 ep 或带集号的集名会选到前半的同号集.
+     * 宁可匹配不到, 让用户手动选.
+     */
+    private suspend fun tryMatchSplitSeasonEpisodes(
+        request: DanmakuFetchRequest,
+        splitSeason: DanmakuSplitSeasonMatcher,
+        episodes: List<DanmakuEpisodeWithSubject>,
+        mappedToSelf: Boolean,
+    ): DanmakuFetchResult? {
+        val seasonEpisodes = episodes.filterNot { splitSeason.isOtherSeason(it.subjectName) }
 
-        val response = dandanplayClient.getBangumiEpisodesByBgmtvSubjectId(request.subjectId)
+        // 标题相同的不止一集时交给集号规则
+        findEpisodesByTitle(request, seasonEpisodes).singleOrNull()?.let {
+            logger.info { "Matched split season episode by exact title: ${it.subjectName} - ${it.episodeName}" }
+            return createResult(it.id.toLong(), DanmakuMatchMethod.Exact(it.subjectName, it.episodeName))
+        }
+
+        for ((subjectName, subjectEpisodes) in seasonEpisodes.groupBy { it.subjectName }) {
+            val numbered = subjectEpisodes.mapNotNull { episode -> episode.mainEpisodeNumber()?.let { it to episode } }
+            val numbers = numbered.mapTo(HashSet()) { it.first }
+            val match = numbered.firstOrNull { (number, _) ->
+                splitSeason.isCurrentEpisode(subjectName, numbers, number, mappedToSelf)
+            }?.second ?: continue
+            logger.info { "Matched split season episode by season number: ${match.subjectName} - ${match.episodeName}" }
+            return createResult(match.id.toLong(), DanmakuMatchMethod.Exact(match.subjectName, match.episodeName))
+        }
+        return null
+    }
+
+    /**
+     * 按标题精确匹配. 多个候选标题相同时, 用集数消歧; 仍无法确定则返回 `null`, 交给后续的集数匹配.
+     */
+    private fun matchEpisodeByTitle(
+        request: DanmakuFetchRequest,
+        episodes: List<DanmakuEpisodeWithSubject>,
+    ): DanmakuEpisodeWithSubject? {
+        val candidates = findEpisodesByTitle(request, episodes)
+        return candidates.singleOrNull()
+            ?: candidates.firstOrNull { it.epOrSort != null && it.epOrSort == request.episodeSort }
+            ?: candidates.firstOrNull { it.epOrSort != null && it.epOrSort == request.episodeEp }
+    }
+
+    /**
+     * 标题与当前集相同的剧集. 标题去掉 "第x话" 前缀并归一化后比较, 同时接受 [DanmakuFetchRequest.episodeNames] 中的任一名称.
+     */
+    private fun findEpisodesByTitle(
+        request: DanmakuFetchRequest,
+        episodes: List<DanmakuEpisodeWithSubject>,
+    ): List<DanmakuEpisodeWithSubject> {
+        val expectedTitles = (request.episodeNames + request.episodeName)
+            .map { normalizeEpisodeTitle(it) }
+            .filterTo(HashSet()) { it.isNotEmpty() }
+        if (expectedTitles.isEmpty()) return emptyList()
+        return episodes.filter { normalizeEpisodeTitle(it.episodeName) in expectedTitles }
+    }
+
+    /**
+     * 没有关联或请求失败时返回 `null`.
+     *
+     * @param fallbackSubjectName 弹弹没有给出番剧名时使用的名字. 为 `null` 时不使用没有名字的番剧.
+     */
+    private suspend fun getEpisodesByBgmtvSubjectIdOrNull(
+        subjectId: Int,
+        fallbackSubjectName: String?,
+    ): List<DanmakuEpisodeWithSubject>? = runCatching { getEpisodesByBgmtvSubjectId(subjectId, fallbackSubjectName) }
+        .onFailure {
+            if (it is CancellationException) throw it
+            logger.warn(it) { "Failed to fetch episodes by Bangumi subject id: $subjectId" }
+        }.getOrNull()
+
+    private suspend fun getEpisodesByBgmtvSubjectId(
+        subjectId: Int,
+        fallbackSubjectName: String?,
+    ): List<DanmakuEpisodeWithSubject>? {
+        if (subjectId <= 0) return null
+
+        val response = dandanplayClient.getBangumiEpisodesByBgmtvSubjectId(subjectId)
         val bangumi = response.bangumi
         if (!response.success || bangumi == null) {
             logger.info {
-                "No Dandanplay Bangumi mapping found for Bangumi subject id: ${request.subjectId}, " +
+                "No Dandanplay Bangumi mapping found for Bangumi subject id: $subjectId, " +
                         "errorCode=${response.errorCode}, errorMessage=${response.errorMessage}"
             }
             return null
@@ -244,14 +333,15 @@ class DandanplayDanmakuProvider(
 
         val episodes = bangumi.episodes.orEmpty()
         if (episodes.isEmpty()) return null
+        val subjectName = bangumi.animeTitle ?: fallbackSubjectName ?: return null
 
         logger.info {
-            "Matched Dandanplay Bangumi by Bangumi subject id: ${request.subjectId} ${bangumi.animeTitle}"
+            "Matched Dandanplay Bangumi by Bangumi subject id: $subjectId ${bangumi.animeTitle}"
         }
         return episodes.map { episode ->
             DanmakuEpisodeWithSubject(
                 id = episode.episodeId.toString(),
-                subjectName = bangumi.animeTitle ?: request.subjectPrimaryName,
+                subjectName = subjectName,
                 episodeName = episode.episodeTitle ?: "",
                 epOrSort = episode.episodeNumber?.let { EpisodeSort(it) },
             )
@@ -292,7 +382,8 @@ class DandanplayDanmakuProvider(
             }.getOrNull() ?: emptySet()
         }
         logger.info { "Ep search result: ${searchEpisodeResponse}}" }
-        return searchEpisodeResponse.flatMap { anime ->
+        // 按条目的各个名字搜索常返回同一部番剧, 重复的剧集会让标题匹配以为有多个候选
+        return searchEpisodeResponse.distinctBy { it.animeId }.flatMap { anime ->
             anime.episodes.map { ep ->
                 DanmakuEpisodeWithSubject(
                     id = ep.episodeId.toString(),
@@ -403,6 +494,32 @@ class DandanplayDanmakuProvider(
                     list = list,
                 ),
             )
+        }
+    }
+}
+
+private val episodeNumberPrefixRegex = Regex("""^第\s*(\d+)\s*[话話集]""")
+
+/**
+ * 正片的整数集号: 弹弹的 episodeNumber, 剧集搜索结果没有它时取标题的 "第x话" 前缀. 特别篇 (S1, C1) 为 `null`.
+ */
+private fun DanmakuEpisodeWithSubject.mainEpisodeNumber(): Int? {
+    val sort = epOrSort ?: return episodeNumberPrefixRegex.find(episodeName.trim())?.groupValues?.get(1)?.toIntOrNull()
+    val number = (sort as? EpisodeSort.Normal)?.number ?: return null
+    return if (number % 1f == 0f) number.toInt() else null
+}
+
+/**
+ * 去掉 "第x话" 前缀, 全角 ASCII 转半角, 去除所有空白并转小写.
+ * 弹弹 play 的标题形如 "第18话 ラム", Bangumi 的原名则是 "ラム"; 标点也可能在 "／" 与 " / " 之间变化.
+ */
+internal fun normalizeEpisodeTitle(title: String): String {
+    val stripped = episodeNumberPrefixRegex.replace(title.trim(), "")
+    return buildString(stripped.length) {
+        for (c in stripped) {
+            val half = if (c in '\uFF01'..'\uFF5E') (c - 0xFEE0) else c
+            if (half.isWhitespace()) continue
+            append(half.lowercaseChar())
         }
     }
 }

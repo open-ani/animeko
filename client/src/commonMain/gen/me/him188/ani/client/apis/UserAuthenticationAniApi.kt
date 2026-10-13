@@ -215,6 +215,38 @@ open class UserAuthenticationAniApi : ApiClient {
 
 
 
+    /**
+     * 解绑邮箱
+     * 解绑邮箱
+     * @return AniUserAuthRoutingAuthenticationResponse
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun unbindEmail(): HttpResponse<AniUserAuthRoutingAuthenticationResponse> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.DELETE,
+            "/v2/users/auth/email",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
 }
 
 // @formatter:on

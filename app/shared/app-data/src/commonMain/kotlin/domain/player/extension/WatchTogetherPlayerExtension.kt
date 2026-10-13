@@ -72,6 +72,7 @@ class WatchTogetherPlayerExtension(
                     positionAtMillis = manager.serverNowMillis(),
                     durationMillis = 0L,
                     paused = true,
+                    buffering = false,
                     loading = true,
                     playbackRate = 1f,
                 ),

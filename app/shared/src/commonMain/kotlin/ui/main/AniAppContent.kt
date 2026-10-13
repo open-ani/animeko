@@ -38,6 +38,7 @@ import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDe
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
@@ -52,7 +53,7 @@ import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
-import me.him188.ani.app.shared.Res
+import me.him188.ani.app.shared.loadOpenSourceLibrariesJsons
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.bangumi.merge.BangumiMergeScreen
 import me.him188.ani.app.ui.bangumi.merge.BangumiMergeViewModel
@@ -66,6 +67,8 @@ import me.him188.ani.app.ui.download.details.MediaDetailsLazyGrid
 import me.him188.ani.app.ui.download.subject.SubjectDownloadsScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
+import me.him188.ani.app.ui.exploration.trends.TrendingRankingScreen
+import me.him188.ani.app.ui.exploration.trends.TrendingRankingViewModel
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -84,6 +87,10 @@ import me.him188.ani.app.ui.playback.PlaybackHistoryScreen
 import me.him188.ani.app.ui.playback.PlaybackHistorySyncStatusScreen
 import me.him188.ani.app.ui.playback.PlaybackHistoryViewModel
 import me.him188.ani.app.ui.profile.auth.AniContactList
+import me.him188.ani.app.ui.qrlogin.QrLoginConfirmScreen
+import me.him188.ani.app.ui.qrlogin.QrLoginConfirmViewModel
+import me.him188.ani.app.ui.qrlogin.QrLoginScanScreen
+import me.him188.ani.app.ui.qrlogin.isQrCodeScannerSupported
 import me.him188.ani.app.ui.search.SearchScreen
 import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
@@ -109,6 +116,9 @@ import me.him188.ani.app.ui.watchtogether.WatchTogetherOverlayHost
 import me.him188.ani.app.ui.watchtogether.WatchTogetherPlayerController
 import me.him188.ani.app.ui.watchtogether.WatchTogetherViewModel
 import me.him188.ani.datasources.api.source.FactoryId
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.recordEvent
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -151,6 +161,7 @@ fun AniAppContent(aniNavigator: AniNavigator) {
                     viewModel = watchTogetherViewModel,
                     aniNavigator = aniNavigator,
                 )
+                PikPakNotEnoughSpaceDialogHost(aniAppViewModel.pikPakNotEnoughSpace)
             }
         }
     }
@@ -242,6 +253,29 @@ private fun AniAppContentImpl(
                         aniNavigator.popBackStack(route, true)
                         aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
                         aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
+                    },
+                )
+            }
+            entry<NavRoutes.QrLoginScan> { route ->
+                QrLoginScanScreen(
+                    onScanned = { requestId ->
+                        // 确认页取代扫码页: 从确认页返回时不再回到相机
+                        aniNavigator.popBackStack(route, true)
+                        aniNavigator.navigateQrLoginConfirm(requestId)
+                    },
+                    onNavigateBack = { aniNavigator.popBackStack(route, true) },
+                )
+            }
+            entry<NavRoutes.QrLoginConfirm> { route ->
+                val vm = viewModel<QrLoginConfirmViewModel>(key = route.requestId) {
+                    QrLoginConfirmViewModel.create(route.requestId)
+                }
+                QrLoginConfirmScreen(
+                    vm,
+                    onNavigateBack = { aniNavigator.popBackStack(route, true) },
+                    onNavigateLogin = {
+                        aniNavigator.popBackStack(route, true)
+                        aniNavigator.navigateLogin()
                     },
                 )
             }
@@ -357,14 +391,12 @@ private fun AniAppContentImpl(
                     },
                     onNavigateToEmailLogin = { aniNavigator.navigateEmailLoginStart() },
                     onNavigateToOAuth = { aniNavigator.navigateOAuthAuthorize(it.id) },
-                    loadOpenSourceLibrariesJsons = {
-                        listOf(
-                            Res.readBytes("files/aboutlibraries.json"),
-                            Res.readBytes("files/additional_libraries.json"),
-                        )
-                    },
+                    loadOpenSourceLibrariesJsons = ::loadOpenSourceLibrariesJsons,
                     Modifier.fillMaxSize(),
                     route.tab,
+                    onNavigateToQrLogin = if (isQrCodeScannerSupported) {
+                        { aniNavigator.navigateQrLoginScan() }
+                    } else null,
                     navigationIcon = {
                         BackNavigationIconButton(
                             {
@@ -594,6 +626,7 @@ private fun AniAppContentImpl(
                             it.subjectId,
                             placeholder = SubjectDetailPlaceholder(
                                 id = it.subjectId,
+                                name = it.subjectOriginalTitle,
                                 nameCN = it.subjectTitle,
                                 coverUrl = it.imageUrl,
                             ),
@@ -609,6 +642,36 @@ private fun AniAppContentImpl(
                         )
                     },
                     state = vm.pageState,
+                )
+            }
+            entry<NavRoutes.TrendingRanking> { route ->
+                val vm = viewModel { TrendingRankingViewModel() }
+                TrendingRankingScreen(
+                    vm.items.collectAsLazyPagingItemsWithLifecycle(),
+                    onClickItem = {
+                        Analytics.recordEvent(SubjectEnter) {
+                            put("source", "trending_ranking")
+                            put("subject_id", it.subject.subjectId)
+                        }
+                        aniNavigator.navigateSubjectDetails(
+                            it.subject.subjectId,
+                            placeholder = SubjectDetailPlaceholder(
+                                id = it.subject.subjectId,
+                                name = it.subject.originalTitle,
+                                nameCN = it.subject.title,
+                                coverUrl = it.subject.imageUrl,
+                            ),
+                        )
+                    },
+                    Modifier.fillMaxSize(),
+                    windowInsets = windowInsets,
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack(route, inclusive = true)
+                            },
+                        )
+                    },
                 )
             }
         },

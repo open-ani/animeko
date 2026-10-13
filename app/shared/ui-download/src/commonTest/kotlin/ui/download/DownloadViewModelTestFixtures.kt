@@ -47,11 +47,14 @@ import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.preference.WatchTogetherSettings
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.createTestSubjectCollection
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
+import me.him188.ani.app.data.repository.media.ManualBrowseMemory
+import me.him188.ani.app.data.repository.media.ManualBrowseMemoryRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.player.PlaybackHistoryPendingOp
 import me.him188.ani.app.data.repository.subject.CollectionsFilterQuery
@@ -219,9 +222,6 @@ internal class FakeSubjectCollectionRepository : SubjectCollectionRepository() {
     override suspend fun setSubjectCollectionTypeOrDelete(subjectId: Int, type: UnifiedCollectionType?) =
         throw UnsupportedOperationException()
 
-    override suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>> =
-        throw UnsupportedOperationException()
-
     override suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>> =
         throw UnsupportedOperationException()
 
@@ -250,6 +250,8 @@ internal class FakeEpisodePlayHistoryRepository : EpisodePlayHistoryRepository {
     override val allHistoriesFlow: Flow<List<EpisodeHistory>> get() = flow
     override fun flowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>> =
         flow.map { histories -> histories.filter { it.episodeId in episodeIds } }
+    override fun allHistoriesFlowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>> =
+        flowByEpisodeIds(episodeIds)
     override val pendingOpsFlow: Flow<List<PlaybackHistoryPendingOp>> get() = throw UnsupportedOperationException()
     override val lastSyncAtMillisFlow: Flow<Long> get() = throw UnsupportedOperationException()
     override suspend fun clear() = throw UnsupportedOperationException()
@@ -270,7 +272,9 @@ internal class FakeEpisodePlayHistoryRepository : EpisodePlayHistoryRepository {
         throw UnsupportedOperationException()
 
     override suspend fun deletePendingOps(ids: Collection<Long>) = throw UnsupportedOperationException()
-    override suspend fun getPositionMillisByEpisodeId(episodeId: Int): Long? = throw UnsupportedOperationException()
+    override suspend fun getResumePositionMillisByEpisodeId(episodeId: Int): Long? = throw UnsupportedOperationException()
+    override suspend fun countAllRecords(): Int = throw UnsupportedOperationException()
+    override suspend fun getEarliestRecordTimeMillis(): Long? = throw UnsupportedOperationException()
 }
 
 /**
@@ -342,10 +346,11 @@ internal class FakeMediaFetcher : MediaFetcher {
 }
 
 /**
- * 只提供 [mediaFetcher] 的数据源管理器.
+ * 只提供 [mediaFetcher] 与 [instances] 的数据源管理器.
  */
 internal class FakeMediaSourceManager(val fetcher: FakeMediaFetcher = FakeMediaFetcher()) : MediaSourceManager {
-    override val allInstances: Flow<List<MediaSourceInstance>> = flowOf(emptyList())
+    val instances = MutableStateFlow<List<MediaSourceInstance>>(emptyList())
+    override val allInstances: Flow<List<MediaSourceInstance>> get() = instances
     override val allFactories: List<MediaSourceFactory> = emptyList()
     override val allFactoryIds: List<FactoryId> = emptyList()
     override val mediaFetcher: Flow<MediaFetcher> = flowOf(fetcher)
@@ -398,6 +403,20 @@ internal class FakeEpisodePreferencesRepository : EpisodePreferencesRepository {
 }
 
 /**
+ * 没有任何记忆的浏览记忆仓库; 下载不写浏览记忆, 写入即失败.
+ */
+internal class FakeManualBrowseMemoryRepository : ManualBrowseMemoryRepository {
+    override fun flow(subjectId: Int): Flow<ManualBrowseMemory?> = flowOf(null)
+    override suspend fun get(subjectId: Int): ManualBrowseMemory? = null
+    override suspend fun set(subjectId: Int, memory: ManualBrowseMemory) = error("Not used")
+    override suspend fun setIf(subjectId: Int, expected: ManualBrowseMemory, memory: ManualBrowseMemory): Boolean =
+        error("Not used")
+
+    override suspend fun remove(subjectId: Int) = error("Not used")
+    override suspend fun removeIf(subjectId: Int, expected: ManualBrowseMemory): Boolean = error("Not used")
+}
+
+/**
  * 把新下载直接放入 [storage]. [gate] 非空时先等待它完成; [failure] 非空时抛出它.
  */
 internal class FakeAddDownloadUseCase(private val storage: FakeDownloadStorage) : AddDownloadUseCase {
@@ -405,7 +424,13 @@ internal class FakeAddDownloadUseCase(private val storage: FakeDownloadStorage) 
     var gate: CompletableDeferred<Unit>? = null
     var failure: Throwable? = null
 
-    override suspend fun invoke(subject: SubjectInfo, episode: EpisodeInfo, media: Media, metadata: MediaCacheMetadata): MediaCache {
+    override suspend fun invoke(
+        subject: SubjectInfo,
+        episode: EpisodeInfo,
+        media: Media,
+        metadata: MediaCacheMetadata,
+        splitSeason: SplitSeason?,
+    ): MediaCache {
         gate?.await()
         failure?.let { throw it }
         val cache = testDownloadCache(episode.episodeId, subject.subjectId)

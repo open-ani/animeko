@@ -28,14 +28,14 @@ import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
-import me.him188.ani.app.domain.media.fetch.isCaptchaRequired
 import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
+import me.him188.ani.app.domain.media.fetch.isCaptchaRequired
 import me.him188.ani.app.domain.media.fetch.isDisabled
 import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
 import me.him188.ani.app.domain.media.fetch.isRateLimited
 import me.him188.ani.app.domain.media.fetch.isWorking
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
-import me.him188.ani.app.domain.mediasource.web.displayName
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -43,7 +43,6 @@ import me.him188.ani.datasources.mikan.MikanCNMediaSource
 import me.him188.ani.datasources.mikan.MikanMediaSource
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.platform.annotations.TestOnly
-
 
 /**
  * 单个数据源的搜索结果.
@@ -68,13 +67,14 @@ data class MediaSourceResultPresentation(
     val isRateLimited: Boolean get() = state.isRateLimited
     val rateLimitedUntilMillis: Long? get() = (state as? MediaSourceFetchState.RateLimited)?.retryAt
     val captchaRequest: SolveRequest? get() = (state as? MediaSourceFetchState.CaptchaRequired)?.request
-    val captchaMessage: String? get() = captchaRequest?.kind?.let { "需要处理${it.displayName()}" }
+    val captchaKind: WebCaptchaKind? get() = captchaRequest?.kind
 }
 
 /**
- * 在 [MediaSelectorView] 使用, 管理多个 [MediaSourceResultPresentation] 的结果
+ * 一次 fetch 会话中全部数据源的结果集合, 按 [MediaSourceKind] 拆分为 [btSources] 与 [webSources].
  *
- * 对应 UI 是 "BT" 和 "WEB" 的两行列表, 列表包含 [MediaSourceResultPresentation]
+ * [btSources] 供 [me.him188.ani.app.ui.mediaselect.bt.BtResourcesPage] 的数据源面板 / 下拉、列表加载态与下载对话框使用, 也用于判断是否显示 BT 模式入口;
+ * [webSources] 经 [MediaSelectorState] 供自动匹配页展示各源状态.
  */
 @Immutable
 data class MediaSourceResultListPresentation(

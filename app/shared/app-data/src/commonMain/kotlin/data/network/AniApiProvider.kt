@@ -18,6 +18,7 @@ import me.him188.ani.client.apis.DeveloperVerificationAniApi
 import me.him188.ani.client.apis.EpisodesAniApi
 import me.him188.ani.client.apis.HomeAniApi
 import me.him188.ani.client.apis.OAuthAniApi
+import me.him188.ani.client.apis.QRLoginAniApi
 import me.him188.ani.client.apis.PeerFilterRuleAniApi
 import me.him188.ani.client.apis.PersonsAniApi
 import me.him188.ani.client.apis.PlaybackHistoryAniApi
@@ -41,6 +42,7 @@ class AniApiProvider(
     val trendsApi = ApiInvoker(client) { TrendsAniApi(baseurl, it) }
     val scheduleApi = ApiInvoker(client) { ScheduleAniApi(baseurl, it) }
     val oauthApi = ApiInvoker(client) { OAuthAniApi(baseurl, it) }
+    val qrLoginApi = ApiInvoker(client) { QRLoginAniApi(baseurl, it) }
     val developerVerificationApi = ApiInvoker(client) { DeveloperVerificationAniApi(baseurl, it) }
     val homeApi = ApiInvoker(client) { HomeAniApi(baseurl, it) }
     val subjectRelationsApi = ApiInvoker(client) { SubjectRelationsAniApi(baseurl, it) }

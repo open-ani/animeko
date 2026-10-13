@@ -93,6 +93,7 @@ class SubjectDetailsImageViewerTest {
                     subjectId = info.subjectId,
                     displayName = info.displayName,
                     selfCollectionType = UnifiedCollectionType.DOING,
+                    collectionStats = info.collectionStats,
                     airingInfo = TestSubjectAiringInfo,
                     progressInfo = TestSubjectProgressInfos.ContinueWatching2,
                     episodeListUiState = TestEpisodeListUiState,

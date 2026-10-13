@@ -39,6 +39,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonPrimitive
 import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.domain.foundation.webSourceUserAgent
 import me.him188.ani.app.domain.media.resolver.WebResource
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
 import me.him188.ani.app.domain.mediasource.web.BlockReason
@@ -47,6 +48,7 @@ import me.him188.ani.app.domain.mediasource.web.PageEvaluator
 import me.him188.ani.app.domain.mediasource.web.PageExpectation
 import me.him188.ani.app.domain.mediasource.web.PageVerdict
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
+import me.him188.ani.app.domain.mediasource.web.acceptSelectorSearch
 import me.him188.ani.app.domain.mediasource.web.normalizedSessionHost
 import me.him188.ani.app.domain.mediasource.web.normalizedStorageOrigin
 import me.him188.ani.utils.coroutines.IO_
@@ -82,12 +84,12 @@ class InteractiveSolveUi internal constructor(
  *   60s 粘滞窗口内直接走浏览器; 站点恢复后自动降级回直连.
  * - [solve]: 解决编排. interactive 必定呈现对话框 (无缓存入口); auto 按顺序遍历 [solvers].
  * - 会话注册表: key 为 host (去 `www.`), 每 host 最多一个活浏览器, LRU 上限 + 闲置 TTL 自动回收.
+ *   浏览器以请求的数据源 UA ([PageExpectation.userAgent]) 创建, 只给 UA 相同的请求复用; 同一 host 换了 UA 时旧会话作废.
  * - 无通用 solvedResults 缓存: 自动 solver 可将已验证业务页保留 60s, 仅供精确同 URL 的下一次请求消费一次.
  *
  * @param solvers 自动解决策略链.
  * @param solverEnabled 自动解决总开关 (用户设置). 每次自动 solve 前读取, 关闭时不尝试任何 [solvers];
  * 不影响 interactive 手动解决.
- * @param searchRoutes 备用取数路由.
  */
 class WebSessionManager(
     private val browserFactory: CaptchaBrowserFactory,
@@ -98,7 +100,6 @@ class WebSessionManager(
     private val backgroundScope: CoroutineScope,
     private val solvers: List<CaptchaSolver> = emptyList(),
     private val solverEnabled: suspend () -> Boolean = { true },
-    private val searchRoutes: List<SearchRoute> = emptyList(),
     private val maxSessions: Int = 3,
     private val idleTtl: Duration = 5.minutes,
     private val stickyWindow: Duration = 60.seconds,
@@ -113,6 +114,8 @@ class WebSessionManager(
 
     private class BrowserSession(
         val browser: CaptchaBrowser,
+        /** 创建浏览器时指定的 UA, `null` 为平台默认. */
+        val userAgent: String?,
     ) {
         var lastUsedAtMillis: Long = 0
         var refCount: Int = 0
@@ -195,14 +198,6 @@ class WebSessionManager(
             }
         }
 
-        if (host != null) {
-            for (route in searchRoutes) {
-                if (route.matches(host)) {
-                    route.fetch(url, expectation, client)?.let { return it }
-                }
-            }
-        }
-
         // 浏览器粘滞: 60s 内 HTTP 刚被挡过且有暖会话, 不再先失败一次
         if (host != null && shouldStickToBrowser(host)) {
             loadInBrowser(host, url, expectation)?.let { verdict ->
@@ -213,7 +208,7 @@ class WebSessionManager(
             }
         }
 
-        val page = httpFetch(url)
+        val page = httpFetch(url, expectation)
         val verdict = evaluator.evaluate(page, expectation)
         if (verdict !is PageVerdict.Blocked || verdict.reason !is BlockReason.Captcha || host == null) {
             return verdict
@@ -252,19 +247,14 @@ class WebSessionManager(
     }
 
     /**
-     * 用暖会话加载页面. 无暖会话时返回 `null` (不创建浏览器).
+     * 用暖会话加载页面. 没有 UA 相同的暖会话时返回 `null` (不创建浏览器).
      */
     private suspend fun <T> loadInBrowser(
         host: String,
         url: String,
         expectation: PageExpectation<T>,
     ): PageVerdict<T>? {
-        val session = lock.withLock {
-            hostStates[host]?.session?.also {
-                it.refCount++
-                it.lastUsedAtMillis = getTimeMillis()
-            }
-        } ?: return null
+        val session = retainSession(host, expectation.userAgent) ?: return null
 
         try {
             val browser = session.browser
@@ -321,11 +311,16 @@ class WebSessionManager(
         return pageHost == host || pageHost.endsWith(".$host") || host.endsWith(".$pageHost")
     }
 
-    private suspend fun httpFetch(url: String): LoadedPage = withContext(ioContext) {
+    private suspend fun httpFetch(url: String, expectation: PageExpectation<*>): LoadedPage = withContext(ioContext) {
         try {
             client.use {
                 prepareGet(url) {
-                    accept(ContentType.Text.Html)
+                    webSourceUserAgent(expectation.userAgent)
+                    if (expectation is PageExpectation.SearchResults) {
+                        acceptSelectorSearch(expectation.config.subjectFormatId)
+                    } else {
+                        accept(ContentType.Text.Html)
+                    }
                 }.execute { response ->
                     response.toLoadedPage()
                 }
@@ -465,7 +460,7 @@ class WebSessionManager(
                 request = request,
                 http = client,
                 acquireBrowser = {
-                    (acquired ?: acquireSession(host).also { acquired = it }).browser
+                    (acquired ?: acquireSession(host, request.expectation.userAgent).also { acquired = it }).browser
                 },
                 evaluate = { page -> evaluator.evaluate(page, request.expectation) },
                 retainSolvedPage = { page -> solvedPage = page },
@@ -488,7 +483,7 @@ class WebSessionManager(
     }
 
     private suspend fun runInteractiveSolve(host: String, request: SolveRequest): SolveOutcome {
-        val session = acquireSession(host)
+        val session = acquireSession(host, request.expectation.userAgent)
         try {
             val browser = session.browser
             val userDecision = CompletableDeferred<SolveOutcome>()
@@ -637,20 +632,18 @@ class WebSessionManager(
     // region 视频资源嗅探
 
     /**
-     * 在暖会话中提取视频资源. 无暖会话时返回 `null`, 调用方回落到平台默认提取器.
+     * 在暖会话中提取视频资源. 没有 UA 与 [userAgent] 相同的暖会话时返回 `null`, 调用方回落到平台默认提取器.
+     *
+     * @param userAgent 数据源配置的 UA, `null` 为平台默认.
      */
     suspend fun extractVideoResource(
         pageUrl: String,
+        userAgent: String?,
         timeoutMillis: Long,
         resourceMatcher: (String) -> WebViewVideoExtractor.Instruction,
     ): WebResource? {
         val host = normalizedSessionHost(pageUrl) ?: return null
-        val session = lock.withLock {
-            hostStates[host]?.session?.also {
-                it.refCount++
-                it.lastUsedAtMillis = getTimeMillis()
-            }
-        } ?: return null
+        val session = retainSession(host, userAgent) ?: return null
 
         val browser = session.browser
         val deferred = CompletableDeferred<WebResource>()
@@ -691,46 +684,49 @@ class WebSessionManager(
 
     // region 会话生命周期
 
-    private suspend fun acquireSession(host: String): BrowserSession {
-        lock.withLock {
-            hostStates[host]?.session?.let {
-                it.refCount++
-                it.lastUsedAtMillis = getTimeMillis()
-                return it
-            }
+    /**
+     * 取 [host] 上 UA 为 [userAgent] 的暖会话并计入引用. 没有时返回 `null`.
+     */
+    private suspend fun retainSession(host: String, userAgent: String?): BrowserSession? = lock.withLock {
+        hostStates[host]?.session?.takeIf { it.userAgent == userAgent }?.also {
+            it.refCount++
+            it.lastUsedAtMillis = getTimeMillis()
         }
+    }
+
+    /**
+     * 取或创建 [host] 上 UA 为 [userAgent] 的会话. 已有会话的 UA 不同时关闭它:
+     * 一个 host 的 cookie 只有一份, 只能绑定一个 UA.
+     */
+    private suspend fun acquireSession(host: String, userAgent: String?): BrowserSession {
+        retainSession(host, userAgent)?.let { return it }
         return browserCreateSemaphore.withPermit {
             // double-check: 等待信号量期间可能已有人创建
-            lock.withLock {
-                hostStates[host]?.session?.let {
-                    it.refCount++
-                    it.lastUsedAtMillis = getTimeMillis()
-                    return it
-                }
-            }
-            val browser = withContext(ioContext) { browserFactory.create() }
-            val session = BrowserSession(browser).apply {
+            retainSession(host, userAgent)?.let { return@withPermit it }
+            val browser = withContext(ioContext) { browserFactory.create(userAgent) }
+            val session = BrowserSession(browser, userAgent).apply {
                 refCount = 1
                 lastUsedAtMillis = getTimeMillis()
             }
             var result: BrowserSession = session
-            var duplicate: BrowserSession? = null
+            var discarded: BrowserSession? = null
             var evicted: List<BrowserSession> = emptyList()
             lock.withLock {
                 val state = hostStateLocked(host)
                 val existing = state.session
-                if (existing != null) {
+                if (existing != null && existing.userAgent == userAgent) {
                     // 竞态: 已有人注册了会话, 丢弃我们刚创建的
                     existing.refCount++
                     existing.lastUsedAtMillis = getTimeMillis()
                     result = existing
-                    duplicate = session
+                    discarded = session
                 } else {
+                    discarded = existing
                     state.session = session
                     evicted = evictLruLocked()
                 }
             }
-            duplicate?.let { closeSession(it) }
+            discarded?.let { closeSession(it) }
             evicted.forEach { closeSession(it) }
             result
         }

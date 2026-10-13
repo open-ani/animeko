@@ -60,10 +60,22 @@ class DanmakuFetchRequest(
     val episodeId: Int,
     val episodeSort: EpisodeSort,
     val episodeEp: EpisodeSort?,
+    /**
+     * 用于展示和模糊匹配的剧集名称, 通常是中文名.
+     */
     val episodeName: String,
+    /**
+     * 剧集的所有已知名称 (原名, 译名等), 用于按标题精确匹配. 弹幕源的剧集标题语言不固定,
+     * 例如弹弹 play 对同一部番可能只有日文原名, 只用 [episodeName] 会匹配不到.
+     */
+    val episodeNames: List<String> = listOf(episodeName),
 
     val filename: String?,
     val fileHash: String?,
     val fileSize: Long?,
     val videoDuration: Duration,
+    /**
+     * 当前条目是拆分季的后半时按季内序号对集的规则, 其他情况为 `null`.
+     */
+    val splitSeason: DanmakuSplitSeasonMatcher? = null,
 )

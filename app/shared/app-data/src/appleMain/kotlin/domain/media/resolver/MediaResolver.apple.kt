@@ -139,6 +139,7 @@ class IosWebViewVideoExtractor(
     // Hold strong reference
     private lateinit var aniInterceptContentController: WKUserContentController
     private lateinit var webView: WKWebView
+    private var webViewReleased = false
 
     private var currentHandler: Handler? = null
 
@@ -154,15 +155,20 @@ class IosWebViewVideoExtractor(
         // Create a new handler for each request to avoid re-entrancy issues
         val handler = Handler(pageUrl, config, resourceMatcher)
         currentHandler = handler
-        handler.run()
+        try {
+            handler.run()
+        } finally {
+            releaseWebView()
+        }
     }
 
     // Must be on Main thread
     @OptIn(ExperimentalForeignApi::class)
     private fun initWebView() {
-        if (::webView.isInitialized) {
+        if (::webView.isInitialized && !webViewReleased) {
             return
         }
+        webViewReleased = false
 
         aniInterceptContentController = WKUserContentController().apply {
             // Add the message handler for "AniIntercept"
@@ -257,6 +263,19 @@ class IosWebViewVideoExtractor(
         )
     }
 
+    // Must be on Main thread
+    private fun releaseWebView() {
+        currentHandler = null
+        if (!::webView.isInitialized || webViewReleased) return
+        webViewReleased = true
+        // WKUserContentController retains script message handlers strongly, and ours references this extractor,
+        // so without removing it the WKWebView (and its web content process) would never be released.
+        aniInterceptContentController.removeScriptMessageHandlerForName("AniIntercept")
+        aniInterceptContentController.removeAllUserScripts()
+        webView.navigationDelegate = null
+        webView.stopLoading()
+    }
+
     @OptIn(DelicateCoroutinesApi::class)
     private inner class Handler(
         private val pageUrl: String,
@@ -268,8 +287,9 @@ class IosWebViewVideoExtractor(
         suspend fun run(): WebResource? {
             logger.info { "Starting webview for $pageUrl" }
             webView.setCustomUserAgent(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " +
-                        "Chrome/58.0.3029.110 Safari/537.3",
+                config.userAgent
+                    ?: ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " +
+                            "Chrome/58.0.3029.110 Safari/537.3"),
             )
 
             try {

@@ -21,6 +21,9 @@ import androidx.media3.exoplayer.mediacodec.MediaCodecInfo
 import androidx.media3.exoplayer.mediacodec.MediaCodecRenderer
 import androidx.media3.exoplayer.upstream.BandwidthMeter
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.PlaybackSpeed
 import java.lang.reflect.Field
@@ -90,14 +93,22 @@ private class ExoPlayerReflectionStats(private val exoPlayer: ExoPlayer) {
 @Composable
 actual fun rememberPlayerStatsState(player: MediampPlayer): State<PlayerStatsSnapshot?> {
     return produceState<PlayerStatsSnapshot?>(initialValue = null, player) {
-        val reflectionStats = (player.impl as? ExoPlayer)?.let { ExoPlayerReflectionStats(it) }
-        while (true) {
-            value = runCatching { player.readAndroidPlayerStats(reflectionStats) }
-                .getOrElse { player.readFallbackPlayerStats("ExoPlayer") }
-            delay(1.seconds)
-        }
+        androidPlayerStatsFlow(player).collect { value = it }
     }
 }
+
+/** Also usable by ViewModels; collection controls the lifetime of stats polling. */
+@OptIn(UnstableApi::class)
+fun androidPlayerStatsFlow(player: MediampPlayer): Flow<PlayerStatsSnapshot> = flow {
+    val reflectionStats = (player.impl as? ExoPlayer)?.let { ExoPlayerReflectionStats(it) }
+    while (true) {
+        emit(
+            runCatching { player.readAndroidPlayerStats(reflectionStats) }
+                .getOrElse { player.readFallbackPlayerStats("ExoPlayer") },
+        )
+        delay(1.seconds)
+    }
+}.flowOn(player.mainDispatcher)
 
 @OptIn(UnstableApi::class)
 private fun MediampPlayer.readAndroidPlayerStats(reflectionStats: ExoPlayerReflectionStats?): PlayerStatsSnapshot {

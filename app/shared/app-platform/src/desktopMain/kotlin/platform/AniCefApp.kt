@@ -48,14 +48,29 @@ import java.util.concurrent.locks.ReentrantLock
 import javax.swing.SwingUtilities
 import kotlin.concurrent.thread
 import kotlin.coroutines.resume
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 
 object AniCefApp {
     private val logger = logger<AniCefApp>()
 
+    /**
+     * 已创建的 [CefApp]. 创建后 CEF 会在自己的线程上异步初始化, 实例存在不代表已经就绪, 见 [initialized].
+     */
     @Volatile
     private var app: CefApp? = null
+
+    /**
+     * [app] 是否已确认进入 [CefApp.CefAppState.INITIALIZED].
+     */
+    @Volatile
+    private var initialized = false
+
+    /**
+     * 启动时等待初始化的上限. 机器严重卡顿 (刚唤醒、内存换页) 时初始化会被拖慢, 这个值要能覆盖那种情况.
+     */
+    private val STARTUP_INITIALIZATION_TIMEOUT: Duration = 30.seconds
 
     @Volatile
     var currentAppLogFile: File? = null
@@ -199,7 +214,9 @@ object AniCefApp {
     /**
      * Initialize singleton instance of [CefApp].
      *
-     * You can call [getInstance] later to get it.
+     * 超时只抛出 [JCEFInitializationException] 通知启动流程, 不会销毁实例:
+     * 同一个 JVM 里 CEF 一旦 dispose 就无法再创建 (`CefApp.getInstance` 会抛 "CefApp was terminated"),
+     * 而初始化在 CEF 自己的线程上仍会继续. 之后调用 [awaitInitialized] 可以接着等同一个实例就绪.
      */
     suspend fun initialize(
         logDir: File,
@@ -208,12 +225,10 @@ object AniCefApp {
         proxyAuthUsername: String? = null,
         proxyAuthPassword: String? = null,
     ) {
-        val currentApp = app
-        if (currentApp != null) return
+        if (initialized) return
 
         val cefApp = lock.withLock {
-            val currentApp2 = app
-            if (currentApp2 != null) return
+            app?.let { return@withLock it }
 
             val finalCacheDir = if (checkLockFile(cacheDir)) {
                 cacheDir
@@ -238,27 +253,51 @@ object AniCefApp {
             newApp
         }
 
-        withTimeoutOrNull(8.seconds) {
-            logger.info { "Awaiting JCEF initialization." }
+        if (!awaitInitialized(cefApp, STARTUP_INITIALIZATION_TIMEOUT)) {
+            throw JCEFInitializationException(
+                "Failed to initialize JCEF within $STARTUP_INITIALIZATION_TIMEOUT, state: ${CefApp.getState()}. " +
+                        "Will keep waiting for the same instance when a browser is requested. " +
+                        "Last cef logs: \n${getLatestCefLog().joinToString("\n")}",
+            )
+        }
+    }
+
+    /**
+     * 等待 JCEF 完成初始化, 最多等 [timeout].
+     *
+     * 返回 `false` 表示仍未就绪: 从未调用过 [initialize], 实例已终止, 或者这次又超时了.
+     * 启动时超时过的实例可以在这里接着等, 见 [initialize].
+     */
+    suspend fun awaitInitialized(timeout: Duration): Boolean {
+        if (initialized) return true
+        val cefApp = app ?: return false
+        return awaitInitialized(cefApp, timeout)
+    }
+
+    private suspend fun awaitInitialized(cefApp: CefApp, timeout: Duration): Boolean {
+        if (initialized) return true
+        if (cefApp.isTerminated) {
+            logger.warn { "JCEF instance is terminated, cannot wait for initialization." }
+            return false
+        }
+        logger.info { "Awaiting JCEF initialization, timeout: $timeout." }
+        val result = withTimeoutOrNull(timeout) {
             suspendCancellableCoroutine<Unit> { cont ->
+                // 已初始化的实例会立即回调, 所以重复等待是安全的.
                 cefApp.onInitialization { state ->
                     if (state == CefApp.CefAppState.INITIALIZED && cont.isActive) {
-                        logger.info { "JCEF is initialized." }
                         cont.resume(Unit)
                     }
                 }
             }
-        }.also { result ->
-            if (result == null) {
-                // 长时间没加载好 JCEF, 可能是 CEF 内部出错了, 直接抛出异常并附带最新的 CEF 日志.
-                app = null
-                disposeAppBlocking(cefApp)
-                throw JCEFInitializationException(
-                    "Failed to initialize JCEF, state: ${CefApp.getState()}, " +
-                            "last cef logs: \n${getLatestCefLog().joinToString("\n")}",
-                )
-            }
         }
+        if (result == null) {
+            logger.warn { "JCEF did not initialize within $timeout, state: ${CefApp.getState()}." }
+            return false
+        }
+        initialized = true
+        logger.info { "JCEF is initialized." }
+        return true
     }
 
     /**
@@ -299,7 +338,9 @@ object AniCefApp {
      *
      * You should dispose it if drop.
      *
-     * @return `null` if CefApp hasn't initialized yet.
+     * 调用前应先用 [awaitInitialized] 确认就绪, 否则创建的浏览器会一直等到初始化完成才开始加载.
+     *
+     * @return `null` if [initialize] has never been called.
      */
     fun createClient(): CefClient? {
         return app?.createClient()

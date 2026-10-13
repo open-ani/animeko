@@ -35,17 +35,18 @@ import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.mediasource.web.normalizedSessionHost
+import me.him188.ani.app.domain.mediasource.web.orderSubjectsForAutoMatch
 import me.him188.ani.app.domain.mediasource.web.selectEpisodesImpl
 import me.him188.ani.app.domain.mediasource.web.selectSubjectsForCaptchaProbe
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
 import me.him188.ani.utils.coroutines.flows.restartable
+import me.him188.ani.utils.coroutines.runCatchingCancellable
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.xml.Document
 import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * 交互式的数据源测试器. 用于 UI 的 "测试数据源" 功能.
@@ -306,35 +307,28 @@ class SelectorMediaSourceTester(
 
         val searchUrl = createSearchUrl(url, searchKeyword, useOnlyFirstWord, removeSpecial)
         val searchConfig = selectorSearchConfigFlow.value ?: SelectorSearchConfig.Empty
-        return try {
+        return runCatchingCancellable {
             val verdict = fetchWithRetries(searchUrl, PageExpectation.SearchResults(searchConfig))
             logger.info {
                 "SelectorMediaSourceTester[$mediaSourceId] searchSubject url=$searchUrl verdict=${verdict::class.simpleName}"
             }
-            Result.success(FetchedPage(searchUrl, verdict))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
+            FetchedPage(searchUrl, verdict)
+        }.onFailure { e ->
             logger.info {
                 "SelectorMediaSourceTester[$mediaSourceId] searchSubject failure " +
                         "type=${e::class.qualifiedName} message=${e.message} cause=${e.cause?.let { it::class.qualifiedName }}"
             }
-            Result.failure(e)
         }
     }
 
     private suspend fun searchEpisodes(subjectDetailsPageUrl: String): Result<FetchedPage> {
         val searchConfig = selectorSearchConfigFlow.value ?: SelectorSearchConfig.Empty
-        return try {
+        return runCatchingCancellable {
             val verdict = fetchWithRetries(
                 subjectDetailsPageUrl,
                 PageExpectation.SubjectDetails(searchConfig, subjectDetailsPageUrl),
             )
-            Result.success(FetchedPage(subjectDetailsPageUrl, verdict))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
-            Result.failure(e)
+            FetchedPage(subjectDetailsPageUrl, verdict)
         }
     }
 
@@ -355,12 +349,11 @@ class SelectorMediaSourceTester(
                         }
                         SelectorTestSearchSubjectResult.Success(
                             fetched.url,
-                            subjects.orEmpty().map {
+                            searchConfig.orderSubjectsForAutoMatch(subjects.orEmpty()).map {
                                 SelectorTestSubjectPresentation.compute(
                                     it,
                                     query,
                                     document,
-                                    searchConfig.filterBySubjectName,
                                 )
                             },
                         )

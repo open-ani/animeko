@@ -72,7 +72,27 @@ data class SelectedChannelEpisodes(
      */
     val channels: List<String>?,
     val episodes: List<WebSearchEpisodeInfo>,
-)
+    /**
+     * 按页面上的播放列表分组, 顺序与页面一致. 归一化后同名的线路不合并, 浏览时仍能分辨.
+     * `null` 表示该 format 不支持 channels, 或结果不是由 format 解析得到的.
+     */
+    val channelGroups: List<ChannelGroup>? = null,
+) {
+    /**
+     * 页面上的一条播放列表.
+     */
+    data class ChannelGroup(
+        /**
+         * 归一化后的线路名, 与 [WebSearchEpisodeInfo.channel] 一致.
+         */
+        val name: String,
+        /**
+         * 页面上的原文.
+         */
+        val label: String,
+        val episodes: List<WebSearchEpisodeInfo>,
+    )
+}
 
 
 /**
@@ -105,7 +125,8 @@ data object SelectorChannelFormatIndexGrouped :
         val matchEpisodeSortFromName: String = DEFAULT_MATCH_EPISODE_SORT_FROM_NAME,
     ) : SelectorFormatConfig {
         override fun isValid(): Boolean {
-            return selectChannelNames.isNotBlank() && selectEpisodeLists.isNotBlank() && selectEpisodesFromList.isNotBlank() && matchEpisodeSortFromName.isNotBlank()
+            // matchEpisodeSortFromName 可以为空: 列表规则不要求解析集号, 空表示整个名称就是集号文本
+            return selectChannelNames.isNotBlank() && selectEpisodeLists.isNotBlank() && selectEpisodesFromList.isNotBlank()
         }
     }
 
@@ -128,27 +149,29 @@ data object SelectorChannelFormatIndexGrouped :
         val selectLists = QueryParser.parseSelectorOrNull(config.selectEpisodeLists) ?: return null
         val matchEpisodeSortFromNameRegex = Regex.parseOrNull(config.matchEpisodeSortFromName) ?: return null
 
-        // null means no match, will be filtered out
-        val channelNames = page.select(selectChannelNames)
+        // name == null means no match, will be filtered out
+        val channelLabels = page.select(selectChannelNames)
             .map { e ->
                 val text = e.text().trim().takeIf { it.isNotBlank() } ?: return@map null
-                if (matchChannelName == null) {
+                val name = if (matchChannelName == null) {
                     text
                 } else {
                     matchChannelName.findGroupOrFullText(text, "ch") // null means no match
                 }
+                name?.let { text to it }
             }
 
         val lists = page.select(selectLists)
 
-        val episodes = lists.asSequence()
-            .zip(channelNames.asSequence()) { list, channelName ->
-                if (channelName == null) {
-                    return@zip emptyList()
+        val groups = lists.asSequence()
+            .zip(channelLabels.asSequence()) { list, channel ->
+                if (channel == null) {
+                    return@zip null
                 }
+                val (label, channelName) = channel
                 val links = selectLinksOrNull(config.selectEpisodeLinksFromList, list)
 
-                list.select(selectEpisodesFromList).mapIndexedNotNull { index, a ->
+                val episodes = list.select(selectEpisodesFromList).mapIndexedNotNull { index, a ->
                     val text = a.text()
 //                if (text in channelNames) return@mapNotNull null
 
@@ -163,12 +186,15 @@ data object SelectorChannelFormatIndexGrouped :
                         playUrl = SelectorHelpers.computeAbsoluteUrl(baseUrl, href),
                     )
                 }
+                SelectedChannelEpisodes.ChannelGroup(channelName, label, episodes)
             }
-            .flatten()
+            .filterNotNull()
+            .toList()
 
         return SelectedChannelEpisodes(
-            channelNames.filterNotNull(),
-            episodes.toList(),
+            channelLabels.mapNotNull { it?.second },
+            groups.flatMap { it.episodes },
+            channelGroups = groups,
         )
     }
 
@@ -241,7 +267,8 @@ data object SelectorChannelFormatNoChannel :
         }
 
         override fun isValid(): Boolean {
-            return selectEpisodes.isNotBlank() && matchEpisodeSortFromName.isNotBlank()
+            // matchEpisodeSortFromName 可以为空: 列表规则不要求解析集号, 空表示整个名称就是集号文本
+            return selectEpisodes.isNotBlank()
         }
     }
 

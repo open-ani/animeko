@@ -36,6 +36,10 @@ struct iOSApp: App {
 	var body: some Scene {
 		WindowGroup {
 			ContentView(app: app)
+				.onOpenURL { url in
+					// ani:// 链接, 例如扫码登录的 ani://qr-login?requestId=...
+					_ = app.openUrl(url: url.absoluteString)
+				}
 		}
 	}
 }

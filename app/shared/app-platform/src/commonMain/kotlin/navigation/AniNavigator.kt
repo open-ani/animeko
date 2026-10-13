@@ -160,6 +160,17 @@ interface AniNavigator {
         navigateOAuthAuthorize("bangumi")
     }
 
+    fun navigateQrLoginScan() {
+        navigate(NavRoutes.QrLoginScan)
+    }
+
+    /**
+     * @param requestId 见 [NavRoutes.QrLoginConfirm.requestId]
+     */
+    fun navigateQrLoginConfirm(requestId: String) {
+        navigate(NavRoutes.QrLoginConfirm(requestId))
+    }
+
     fun navigatePlaybackHistorySyncStatus() {
         navigate(NavRoutes.PlaybackHistorySyncStatus)
     }
@@ -197,6 +208,10 @@ interface AniNavigator {
 
     fun navigateSchedule() {
         navigate(NavRoutes.Schedule)
+    }
+
+    fun navigateTrendingRanking() {
+        navigate(NavRoutes.TrendingRanking)
     }
 
     fun navigatePlaybackHistory() {

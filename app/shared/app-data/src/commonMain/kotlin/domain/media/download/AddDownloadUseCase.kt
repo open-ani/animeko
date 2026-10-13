@@ -14,7 +14,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.episode.allNames
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.domain.danmaku.SplitSeasonDanmakuMatcher
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.usecase.UseCase
@@ -34,12 +37,15 @@ import me.him188.ani.utils.logging.warn
 interface AddDownloadUseCase : UseCase {
     /**
      * 持久化成功即返回记录; 弹幕缓存与统计事件在后台进行, 失败不影响结果. [metadata] 必须属于 [subject] 与 [episode].
+     *
+     * @param splitSeason [subject] 所在的拆分季, 缓存弹幕时用来匹配合并的番剧.
      */
     suspend operator fun invoke(
         subject: SubjectInfo,
         episode: EpisodeInfo,
         media: Media,
         metadata: MediaCacheMetadata,
+        splitSeason: SplitSeason? = null,
     ): MediaCache
 }
 
@@ -55,6 +61,7 @@ class AddDownloadUseCaseImpl(
         episode: EpisodeInfo,
         media: Media,
         metadata: MediaCacheMetadata,
+        splitSeason: SplitSeason?,
     ): MediaCache {
         require(metadata.subjectId == subject.subjectId.toString()) { "metadata.subjectId does not match subject" }
         require(metadata.episodeId == episode.episodeId.toString()) { "metadata.episodeId does not match episode" }
@@ -73,10 +80,12 @@ class AddDownloadUseCaseImpl(
                         episodeSort = episode.sort,
                         episodeEp = episode.ep,
                         episodeName = episode.name,
+                        episodeNames = episode.allNames,
                         filename = media.originalTitle,
                         fileSize = cache.fileStats.first().totalSize.takeUnless { it.isUnspecified }?.inBytes,
                         fileHash = null,
                         videoDuration = Duration.ZERO,
+                        splitSeason = SplitSeasonDanmakuMatcher.create(splitSeason, subject.allNames, episode.sort, episode.ep),
                     ),
                 )
             } catch (e: CancellationException) {

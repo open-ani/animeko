@@ -51,6 +51,7 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.GraphicEq
 import me.him188.ani.app.ui.foundation.LocalEpisodeProgressSettings
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.LongClickProgressFill
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_details_next_page
@@ -153,7 +154,7 @@ fun EpisodeGridCell(
             )
             EpisodeCellLabel(
                 sort = item.sort.toString(),
-                name = item.nameCn.ifBlank { item.name },
+                name = item.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
                 sortColor = sortColor,
                 nameColor = nameColor,
                 modifier = Modifier

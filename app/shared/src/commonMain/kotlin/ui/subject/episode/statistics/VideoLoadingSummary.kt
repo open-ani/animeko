@@ -49,6 +49,7 @@ import me.him188.ani.app.ui.lang.subject_episode_statistics_no_matching_file
 import me.him188.ani.app.ui.lang.subject_episode_statistics_resolution_timed_out
 import me.him188.ani.app.ui.lang.subject_episode_statistics_unknown_error_tap
 import me.him188.ani.app.ui.lang.subject_episode_statistics_unsupported_media
+import me.him188.ani.app.ui.lang.subject_episode_statistics_web_engine_unavailable
 import org.jetbrains.compose.resources.stringResource
 
 
@@ -104,6 +105,7 @@ fun VideoLoadingSummary(
     if (state is VideoLoadingState.Failed) {
         val errorText = stringResource(Lang.subject_episode_statistics_error)
         val noMatchingFileText = stringResource(Lang.subject_episode_statistics_no_matching_file)
+        val webEngineUnavailableText = stringResource(Lang.subject_episode_statistics_web_engine_unavailable)
         val resolutionTimedOutText = stringResource(Lang.subject_episode_statistics_resolution_timed_out)
         val unsupportedMediaText = stringResource(Lang.subject_episode_statistics_unsupported_media)
         val unknownErrorTapText = stringResource(Lang.subject_episode_statistics_unknown_error_tap)
@@ -139,6 +141,7 @@ fun VideoLoadingSummary(
 
                 when (state) {
                     VideoLoadingState.NoMatchingFile -> Text(noMatchingFileText)
+                    VideoLoadingState.WebEngineUnavailable -> Text(webEngineUnavailableText)
                     VideoLoadingState.ResolutionTimedOut -> Text(resolutionTimedOutText)
                     VideoLoadingState.UnsupportedMedia -> Text(unsupportedMediaText)
                     is VideoLoadingState.UnknownError -> {

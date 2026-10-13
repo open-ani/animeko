@@ -21,6 +21,8 @@ data class EpisodeDownloadItem(
     val title: String,
     val watchStatus: UnifiedCollectionType,
     val hasPublished: Boolean,
+    /** 剧集原名, 供"显示原名"设置开启时使用; 默认与 [title] 相同. */
+    val originalTitle: String = title,
 )
 
 sealed interface SubjectDownloadListItem {

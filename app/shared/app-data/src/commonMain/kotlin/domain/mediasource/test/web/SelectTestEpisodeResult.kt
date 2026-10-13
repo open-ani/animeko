@@ -76,7 +76,7 @@ class SelectorTestEpisodePresentation(
                 episodeSort = info.episodeSortOrEp,
                 playUrl = info.playUrl,
                 tags = buildMatchTags {
-                    if (config.filterByEpisodeSort) {
+                    if (config.autoMatch.filterByEpisodeSort) {
                         if (info.episodeSortOrEp == null) {
                             emit("缺失 EP", isMissing = true)
                         } else {

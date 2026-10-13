@@ -59,8 +59,9 @@ import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.reportSnapshotText
 import me.him188.ani.app.ui.comment.toDataReason
-import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.rating.EditableRatingActions
+import me.him188.ani.app.ui.rating.EditableRatingUiState
 import me.him188.ani.app.ui.rating.RatingEditController
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.components.SubjectCollectionTypeEditActions
@@ -187,7 +188,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             subjectId,
         )
         val ratingUiStateFlow = ratingEditController.uiStateFlow(
-            ratingInfo = subjectInfo.ratingInfo,
+            ratingInfo = subjectCollectionFlow.map { it.subjectInfo.ratingInfo },
             selfRatingInfo = subjectCollectionFlow.map { it.selfRatingInfo },
             enableEdit = subjectCollectionFlow.map { it.collectionType != UnifiedCollectionType.NOT_COLLECTED },
         )
@@ -197,7 +198,8 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             EditableRatingActions by ratingEditController {}
 
 
-        val comments = bangumiCommentRepository.subjectCommentsPager(subjectId)
+        val commentsCount = MutableStateFlow<Int?>(null)
+        val comments = bangumiCommentRepository.subjectCommentsPager(subjectId) { commentsCount.value = it }
             .map { page ->
                 page.map { it.parseToUIComment() }
             }
@@ -205,7 +207,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
 
         val subjectCommentState = CommentState(
             list = comments,
-            countState = stateOf(null),
+            countState = commentsCount.produceState(null, this),
             onSubmitCommentReaction = { _, _, _ -> },
             backgroundScope = this,
             onSubmitCommentVote = { comment, vote ->
@@ -235,12 +237,6 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             backgroundScope = this,
         )
 
-        val loadingState = LoadStates(
-            refresh = LoadState.Loading,
-            prepend = LoadState.NotLoading(false),
-            append = LoadState.NotLoading(false),
-        )
-
         val relatedPersonsFlow = subjectRelationsRepository.subjectRelatedPersonsFlow(subjectId)
             .stateIn(this, SharingStarted.Eagerly, null)
 
@@ -266,10 +262,13 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             subjectId = subjectInfo.subjectId,
             info = subjectInfo,
             staffPager = relatedPersonsFlow
+                .filterNotNull()
                 .map {
                     PagingData.from(
-                        it ?: emptyList(),
-                        sourceLoadStates = loadingState,
+                        it,
+                        sourceLoadStates = LoadStates(
+                            LoadState.NotLoading(true), LoadState.NotLoading(true), LoadState.NotLoading(true),
+                        ),
                     )
                 }
                 .cachedIn(this),
@@ -280,15 +279,23 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 }
                 .map { PagingData.from(it) }
                 .cachedIn(this),
-            charactersPager = relatedCharactersFlow.map {
+            charactersPager = relatedCharactersFlow.filterNotNull().map {
                 PagingData.from(
-                    it ?: emptyList(),
-                    sourceLoadStates = loadingState,
+                    it,
+                    sourceLoadStates = LoadStates(
+                        LoadState.NotLoading(true), LoadState.NotLoading(true), LoadState.NotLoading(true),
+                    ),
                 )
             }.cachedIn(this),
             relatedSubjectsPager = bangumiRelatedPeopleService.relatedSubjectsFlow(subjectId)
                 .map {
-                    PagingData.from(it)
+                    // This response contains the complete list; no further pages will arrive.
+                    PagingData.from(
+                        it,
+                        sourceLoadStates = LoadStates(
+                            LoadState.NotLoading(true), LoadState.NotLoading(true), LoadState.NotLoading(true),
+                        ),
+                    )
                 }
                 .cachedIn(this),
             exposedCharactersPager = relatedCharactersFlow
@@ -314,6 +321,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                     subjectId = subjectId,
                     displayName = collection.subjectInfo.displayName,
                     selfCollectionType = collection.collectionType,
+                    collectionStats = collection.subjectInfo.collectionStats,
                     airingInfo = collection.airingInfo,
                     progressInfo = SubjectProgressInfo.compute(
                         collection.subjectInfo, collection.episodes, PackedDate.now(),
@@ -327,7 +335,12 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 )
             }.stateIn(
                 this, SharingStarted.WhileSubscribed(5000),
-                SubjectDetailsUiState.Placeholder.copy(subjectId = subjectId),
+                // 统计先用已有的条目信息, 避免加载前显示 0
+                SubjectDetailsUiState.Placeholder.copy(
+                    subjectId = subjectId,
+                    collectionStats = subjectInfo.collectionStats,
+                    rating = EditableRatingUiState.Placeholder.copy(ratingInfo = subjectInfo.ratingInfo),
+                ),
             ),
         )
         return state

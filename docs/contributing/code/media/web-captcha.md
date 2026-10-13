@@ -45,10 +45,14 @@ SelectorMediaSource
         ├─ RateLimited → delay 后重试一次; 仍失败 → UI 显示限流倒计时, 到点自动重试
         ├─ Captcha     → solve(interactive = false)
         │                 ├─ Solved → 重新 fetchPage
-        │                 └─ 失败   → UI 显示验证码 chip
+        │                 └─ 失败   → 自动匹配页的源行显示可点击的验证提示
         │                              点击 → solve(interactive = true) → 用户在浏览器解决 → 重启该源
         └─ NotFound    → 视为无结果
 ```
+
+手动查找的搜索与条目页请求走同一 `fetchPage`。被验证码挡住时直接 `solve(interactive = true)`，
+解决后重试一次同一请求，仍失败显示错误与重试；限流与其他错误只显示错误与重试。
+浏览记忆回放遇到 `Blocked` 视为未命中，不发起 solve。
 
 ## PageEvaluator: 唯一判决函数
 
@@ -106,7 +110,8 @@ SelectorMediaSource
   **禁止任何形式的等待** (`runBlocking`、`invokeAndWait`、信号量等);
 - cookie 收集用 `suspendCancellableCoroutine` 桥接回调, 由 manager 的协程消费, 永不阻塞 UI 线程。
 
-iOS 没有浏览器实现: 不支持交互解决, UI 以提示代替 "处理验证码" 按钮; 不依赖浏览器的自动 solver 照常工作。
+iOS 没有浏览器实现: 不支持交互解决, UI 以提示代替 "处理验证码" 按钮, 手动查找的对应状态是不带重试的提示;
+不依赖浏览器的自动 solver 照常工作。
 
 ## Cookie 与 User-Agent
 
@@ -121,6 +126,19 @@ iOS 没有浏览器实现: 不支持交互解决, UI 以提示代替 "处理验�
 `cf_clearance` 绑定 User-Agent: HTTP 侧的 UA 与浏览器真实 UA 不一致时, 即使 cookie 同步正确也会被再次挑战。
 因此 solve 成功时记录浏览器的 UA, [WebSourceIdentity] 插件对该 host 的后续请求覆写 `User-Agent`;
 未 solve 过的 host 不受影响。
+
+数据源可以配置自己的 UA (`searchConfig.userAgent`), 它从一开始就是身份的一部分, 全程使用:
+直连请求经 `webSourceUserAgent` 带上它 (优先于注册表), 验证码浏览器以它创建, solve 后注册表记录的也就是它,
+播放时加载播放页的 WebView 和请求视频的播放器同样使用它。这样解验证码得到的 clearance 对搜索、详情页和播放页都有效。
+旧配置只能设置播放器的 UA (`addHeadersToVideo.userAgent`)。它不迁移到 `searchConfig.userAgent`, 只在后者为空时
+供播放器使用, 不参与上述身份, 以免升级后搜索请求换了 UA, 站点返回不同的页面。
+
+一个 host 的 cookie 只有一份, 只能绑定一个 UA, 因此暖会话记录创建时的 UA, 只给 UA 相同的请求复用
+(浏览器重载、播放页嗅探); 以另一个 UA 解验证码时旧会话作废。不配置 UA 的数据源对应 "平台默认" 这一种身份。
+
+桌面端 CEF 只有全局 UA 设置, 单个浏览器的 UA 通过两处覆写实现: 请求头 (所有 frame) 与 DevTools 的
+`navigator.userAgent` (仅主 frame 的渲染进程)。跨站 iframe 里的脚本仍读到 CEF 默认 UA,
+依赖 iframe 内脚本指纹的挑战 (如 Turnstile) 在配置了 UA 时可能更难通过。
 
 ## 自动解决与备用取数
 

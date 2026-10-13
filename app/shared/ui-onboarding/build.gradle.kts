@@ -29,6 +29,12 @@ kotlin {
         implementation(projects.utils.uiTesting)
     }
     sourceSets.androidMain.dependencies {
+        // 扫码登录的相机预览与二维码识别
+        implementation(libs.androidx.camera.camera2)
+        implementation(libs.androidx.camera.lifecycle)
+        implementation(libs.androidx.camera.view)
+        implementation(libs.zxing.core)
+        implementation(libs.androidx.activity.compose)
     }
     sourceSets.desktopMain.dependencies {
     }

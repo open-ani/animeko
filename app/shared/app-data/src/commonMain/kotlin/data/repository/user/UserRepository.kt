@@ -16,6 +16,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -173,6 +174,7 @@ class UserRepository(
                         ),
                     ),
                     refreshToken = data.tokens.refreshToken,
+                    userId = data.userId,
                 )
 
                 SendOtpResult.Success(
@@ -326,6 +328,43 @@ class UserRepository(
         }
     }
 
+    /**
+     * 解绑邮箱. 换绑见 [bindOrReBindEmail].
+     *
+     * @throws RepositoryRequestError 这是用户的唯一登录方式 (HTTP 409), 消息可以直接展示给用户
+     * @throws RepositoryException
+     */
+    suspend fun unbindEmail() = withContext(Dispatchers.Default) {
+        try {
+            val resp = authApi.invoke { unbindEmail().body() }
+            applyAuthenticationResponse(resp)
+        } catch (e: ClientRequestException) {
+            if (e.response.status == HttpStatusCode.Conflict) {
+                throw RepositoryRequestError(e.response.bodyAsText(), cause = e)
+            }
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
+    /**
+     * 注销账号: 服务端删除此账号的全部数据, 成功后清除本地的登录状态. 不可撤回.
+     *
+     * @throws RepositoryException
+     */
+    suspend fun deleteAccount() = withContext(Dispatchers.Default) {
+        try {
+            profileApi.invoke { deleteAccount() }
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+        // 账号已经没了, 本地登录状态必须清除, 不能因为界面离开而中断
+        withContext(NonCancellable) {
+            clearSelfInfo()
+        }
+    }
+
     private suspend fun applyAuthenticationResponse(resp: AniUserAuthRoutingAuthenticationResponse) {
         sessionManager.setSession(
             AccessTokenSession(
@@ -336,6 +375,7 @@ class UserRepository(
                 ),
             ),
             refreshToken = resp.tokens.refreshToken,
+            userId = resp.userId,
         )
 
         // update local self info cache

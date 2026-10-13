@@ -65,6 +65,33 @@ Compose Multiplatform 在 `desktop` 和 `ios` 均使用 [Skiko][Skiko] 渲染，
 
 ### 编译时会发生什么
 
+Android TV 文件按功能放在共享模块目录下，由独立的 `tv` KMP Compose 子模块编译：
+
+```text
+app/shared/ui-episode/
+├── build.gradle.kts           原 KMP 模块
+├── src/commonMain/
+├── src/androidMain/
+├── src/androidTv/kotlin/      TV 生产代码
+├── src/androidTvTest/kotlin/  TV 测试
+└── tv/build.gradle.kts        ani.kmp-compose 子模块，依赖原 KMP 模块
+```
+
+`tv/build.gradle.kts` 使用 `ani.kmp-compose`，
+将 `../src/androidTv/kotlin` 加入自己的 `androidMain`，
+将 `../src/androidTvTest/kotlin` 加入自己的 `androidHostTest`。
+`androidTv` 和 `androidTvTest` 是目录名，不是 KMP target 或 KotlinSourceSet。
+TV 子模块沿用统一的 KMP targets，但 TV 文件和专用依赖只加入 Android 源集，desktop/iOS 不接入它们。
+Compose、SDK、编译选项与 JUnit 配置由约定插件统一提供；父 KMP 模块不接入 TV 目录或专用依赖。
+功能子模块的 Gradle 名称为 `:app:shared:ui-xxx-tv`，目录为 `app/shared/ui-xxx/tv`。
+主壳模块 `:app:shared:tv` 位于 `app/shared/shared-tv`，编译 `app/shared/src/androidTv` 中的代码。
+
+TV 子模块通过 Gradle 依赖访问原 KMP 模块的公开 API，不能访问其 `internal` 声明。
+原模块的 `androidMain` 继续提供两端需要的 Android `actual` 实现。
+TV 主壳子模块 `:app:shared:tv` 装配各功能的 `ui-xxx-tv` 子模块，应用只在 `tv` flavor 中引入它。
+手机、desktop、iOS 不引入 TV 代码与专用依赖；手机和 TV 两个 APK 可以在同一次调用中构建，
+见[Android TV 构建](building.md#android-tv)。
+
 - `common` 内放置可同时在两个平台跑的代码, `android` 内放置只能在 Android 平台跑的代码，`desktop`
   内放置只能在桌面 JVM 平台跑的代码；
 - `android` 内，可以访问 `common` 内的代码，还可以访问 Android SDK 例如 `Activity`；

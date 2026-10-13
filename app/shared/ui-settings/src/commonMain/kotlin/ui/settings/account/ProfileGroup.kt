@@ -18,6 +18,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,6 +28,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -82,13 +84,20 @@ import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.rememberDragAndDropState
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.qr_login_settings_description
+import me.him188.ani.app.ui.lang.qr_login_title
+import me.him188.ani.app.ui.lang.settings_account_profile_account_deleted
+import me.him188.ani.app.ui.lang.settings_account_profile_account_management
 import me.him188.ani.app.ui.lang.settings_account_profile_avatar_invalid_format
 import me.him188.ani.app.ui.lang.settings_account_profile_avatar_size_exceeded
 import me.him188.ani.app.ui.lang.settings_account_profile_bind
 import me.him188.ani.app.ui.lang.settings_account_profile_crop_and_upload
 import me.him188.ani.app.ui.lang.settings_account_profile_crop_avatar
 import me.him188.ani.app.ui.lang.settings_account_profile_crop_hint
+import me.him188.ani.app.ui.lang.settings_account_profile_delete_account
+import me.him188.ani.app.ui.lang.settings_account_profile_delete_account_description
 import me.him188.ani.app.ui.lang.settings_account_profile_done
 import me.him188.ani.app.ui.lang.settings_account_profile_email
 import me.him188.ani.app.ui.lang.settings_account_profile_nickname
@@ -102,6 +111,10 @@ import me.him188.ani.app.ui.lang.settings_account_profile_third_party_accounts
 import me.him188.ani.app.ui.lang.settings_account_profile_unbind
 import me.him188.ani.app.ui.lang.settings_account_profile_unbind_bangumi_confirmation
 import me.him188.ani.app.ui.lang.settings_account_profile_unbind_confirmation
+import me.him188.ani.app.ui.lang.settings_account_profile_unbind_email_confirmation
+import me.him188.ani.app.ui.lang.settings_account_profile_unbind_email_last_login_method
+import me.him188.ani.app.ui.lang.settings_account_profile_ok
+import me.him188.ani.app.ui.lang.login_change_email
 import me.him188.ani.app.ui.lang.settings_account_profile_upload_avatar
 import me.him188.ani.app.ui.lang.settings_account_profile_uploading_avatar
 import me.him188.ani.app.ui.lang.settings_account_profile_user_id
@@ -110,6 +123,7 @@ import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.LoadErrorCardLayout
 import me.him188.ani.app.ui.search.LoadErrorCardRole
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
+import me.him188.ani.app.ui.settings.framework.components.RowButtonItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
@@ -132,7 +146,11 @@ fun SettingsScope.ProfileGroup(
     onNavigateToOAuth: (OAuthPlatform) -> Unit,
     onNavigateToGithubAccount: () -> Unit,
     vm: ProfileViewModel = viewModel<ProfileViewModel> { ProfileViewModel() },
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /**
+     * 前往扫码登录其他设备. 为 `null` (当前平台不能扫码) 时不显示入口
+     */
+    onNavigateToQrLogin: (() -> Unit)? = null,
 ) {
     val state by vm.stateFlow.collectAsStateWithLifecycle(initialValue = AccountSettingsState.Empty)
     val asyncHandler = rememberAsyncHandler()
@@ -159,6 +177,7 @@ fun SettingsScope.ProfileGroup(
         },
         onExternalAccountClick = onNavigateToOAuth,
         onGithubAccountClick = onNavigateToGithubAccount,
+        onQrLoginClick = onNavigateToQrLogin,
         onAvatarUpload = {
             vm.uploadAvatar(it)
         },
@@ -178,6 +197,12 @@ fun SettingsScope.ProfileGroup(
                 vm.unbindExternalAccount(provider)
             }
         },
+        onUnbindEmail = {
+            asyncHandler.launch {
+                vm.unbindEmail()
+            }
+        },
+        onDeleteAccount = { vm.deleteAccount() },
         modifier = modifier,
     )
 }
@@ -209,13 +234,24 @@ internal fun SettingsScope.ProfileGroupImpl(
      * 参数为平台 ID
      */
     onUnbindExternalAccount: (provider: String) -> Unit,
+    onUnbindEmail: () -> Unit,
+    /**
+     * 注销账号. 返回时已经完成, 出错时抛出异常.
+     */
+    onDeleteAccount: suspend () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * 点击 "扫码登录", 为其他设备 (例如电视) 登录当前账号. 为 `null` 时不显示. 未登录时也不显示
+     */
+    onQrLoginClick: (() -> Unit)? = null,
     windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass,
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showUnbindBangumiDialog by remember { mutableStateOf(false) }
     // 待确认解绑的第三方平台 ID
     var unbindingExternalProvider by remember { mutableStateOf<String?>(null) }
+    var showUnbindEmailDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
     val currentInfo = state.selfInfo.selfInfo
     val currentState by rememberUpdatedState(state.selfInfo)
@@ -225,6 +261,7 @@ internal fun SettingsScope.ProfileGroupImpl(
     val nicknameHintText = stringResource(Lang.settings_account_profile_nickname_hint)
     val emailText = stringResource(Lang.settings_account_profile_email)
     val bindText = stringResource(Lang.settings_account_profile_bind)
+    val changeEmailText = stringResource(Lang.login_change_email)
     val userIdText = stringResource(Lang.settings_account_profile_user_id)
     val thirdPartyAccountsText = stringResource(Lang.settings_account_profile_third_party_accounts)
     val notBoundText = stringResource(Lang.settings_account_profile_not_bound)
@@ -269,9 +306,9 @@ internal fun SettingsScope.ProfileGroupImpl(
                     sanitizeValue = { it.trim() },
                 )
 
-                val canBindEmail = remember(currentInfo) {
-                    currentInfo != null && currentInfo.email == null
-                }
+                // 未绑定时点击去绑定, 已绑定时点击去换绑
+                val canEditEmail = currentInfo != null
+                val hasEmail = currentInfo?.email != null
 
                 TextItem(
                     title = {
@@ -284,12 +321,24 @@ internal fun SettingsScope.ProfileGroupImpl(
                         }
                     },
                     description = { Text(emailText) },
-                    modifier = Modifier.placeholder(isPlaceholder),
-                    onClick = if (canBindEmail) onNavigateToEmail else null,
-                    action = if (canBindEmail) {
+                    modifier = Modifier.placeholder(isPlaceholder).testTag("email"),
+                    onClick = if (canEditEmail) onNavigateToEmail else null,
+                    action = if (canEditEmail) {
                         {
-                            IconButton(onNavigateToEmail) {
-                                Icon(Icons.Rounded.Edit, bindText, tint = MaterialTheme.colorScheme.primary)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (hasEmail) {
+                                    TextButton(
+                                        onClick = { showUnbindEmailDialog = true },
+                                        modifier = Modifier.testTag("email-unbind"),
+                                    ) { Text(unbindText) }
+                                }
+                                IconButton(onNavigateToEmail, Modifier.testTag("email-edit")) {
+                                    Icon(
+                                        Icons.Rounded.Edit,
+                                        if (hasEmail) changeEmailText else bindText,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
                             }
                         }
                     } else null,
@@ -303,6 +352,16 @@ internal fun SettingsScope.ProfileGroupImpl(
                     description = { Text(userIdText) },
                     modifier = Modifier.placeholder(isPlaceholder),
                 )
+
+                if (onQrLoginClick != null && currentState.isSessionValid == true) {
+                    TextItem(
+                        title = { Text(stringResource(Lang.qr_login_title)) },
+                        description = { Text(stringResource(Lang.qr_login_settings_description)) },
+                        icon = { Icon(Icons.Rounded.QrCodeScanner, null) },
+                        onClick = onQrLoginClick,
+                        modifier = Modifier.testTag("qrLogin"),
+                    )
+                }
 
                 Group(title = { Text(thirdPartyAccountsText) }) {
                     TextItem(
@@ -364,6 +423,21 @@ internal fun SettingsScope.ProfileGroupImpl(
                         )
                     }
                 }
+
+                if (currentState.isSessionValid == true) {
+                    Group(title = { Text(stringResource(Lang.settings_account_profile_account_management)) }) {
+                        RowButtonItem(
+                            onClick = { showDeleteAccountDialog = true },
+                            description = {
+                                Text(stringResource(Lang.settings_account_profile_delete_account_description))
+                            },
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.testTag("deleteAccount"),
+                        ) {
+                            Text(stringResource(Lang.settings_account_profile_delete_account))
+                        }
+                    }
+                }
             }
         }
     }
@@ -388,6 +462,21 @@ internal fun SettingsScope.ProfileGroupImpl(
         )
     }
 
+    if (showUnbindEmailDialog) {
+        // 邮箱是唯一登录方式时不能解绑, 否则用户将无法再登录. 服务端也会拒绝 (409), 这里提前告知用户
+        val hasOtherLoginMethod = !currentInfo?.bangumiUsername.isNullOrEmpty()
+                || currentInfo?.externalAccounts.orEmpty().isNotEmpty()
+        UnbindEmailDialog(
+            email = currentInfo?.email.orEmpty(),
+            canUnbind = hasOtherLoginMethod,
+            onConfirm = {
+                onUnbindEmail()
+                showUnbindEmailDialog = false
+            },
+            onCancel = { showUnbindEmailDialog = false },
+        )
+    }
+
     unbindingExternalProvider?.let { provider ->
         UnbindExternalAccountDialog(
             platformName = OAuthPlatform.fromId(provider)?.displayName ?: provider,
@@ -396,6 +485,23 @@ internal fun SettingsScope.ProfileGroupImpl(
                 unbindingExternalProvider = null
             },
             onCancel = { unbindingExternalProvider = null },
+        )
+    }
+
+    if (showDeleteAccountDialog) {
+        val asyncHandler = rememberAsyncHandler()
+        val toaster = LocalToaster.current
+        val accountDeletedText = stringResource(Lang.settings_account_profile_account_deleted)
+        DeleteAccountDialog(
+            isDeleting = asyncHandler.isWorking,
+            onConfirm = {
+                asyncHandler.launch {
+                    onDeleteAccount()
+                    toaster.toast(accountDeletedText)
+                    showDeleteAccountDialog = false
+                }
+            },
+            onCancel = { showDeleteAccountDialog = false },
         )
     }
 
@@ -433,6 +539,49 @@ private fun UnbindExternalAccountDialog(
         text = { Text(stringResource(Lang.settings_account_profile_unbind_confirmation, platformName)) },
         confirmButton = {
             TextButton(onConfirm, Modifier.testTag("unbindExternalAccountConfirm")) {
+                Text(stringResource(Lang.settings_account_profile_unbind), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onCancel) {
+                Text(stringResource(Lang.subject_collection_cancel))
+            }
+        },
+    )
+}
+
+/**
+ * @param canUnbind 为 `false` 时邮箱是唯一登录方式, 只提示不能解绑
+ */
+@Composable
+private fun UnbindEmailDialog(
+    email: String,
+    canUnbind: Boolean,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    if (!canUnbind) {
+        AlertDialog(
+            onCancel,
+            text = {
+                Text(
+                    stringResource(Lang.settings_account_profile_unbind_email_last_login_method),
+                    Modifier.testTag("unbindEmailLastLoginMethod"),
+                )
+            },
+            confirmButton = {
+                TextButton(onCancel) {
+                    Text(stringResource(Lang.settings_account_profile_ok))
+                }
+            },
+        )
+        return
+    }
+    AlertDialog(
+        onCancel,
+        text = { Text(stringResource(Lang.settings_account_profile_unbind_email_confirmation, email)) },
+        confirmButton = {
+            TextButton(onConfirm, Modifier.testTag("unbindEmailConfirm")) {
                 Text(stringResource(Lang.settings_account_profile_unbind), color = MaterialTheme.colorScheme.error)
             }
         },

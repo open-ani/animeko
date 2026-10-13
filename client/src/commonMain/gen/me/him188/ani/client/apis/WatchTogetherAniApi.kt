@@ -49,7 +49,7 @@ open class WatchTogetherAniApi : ApiClient {
 
     /**
      * Create or join a watch-together room
-     *
+     * Create or join a watch-together room
      * @param aniJoinWatchTogetherRoomRequest
      * @return AniWatchTogetherJoinResponse
      */
@@ -82,12 +82,13 @@ open class WatchTogetherAniApi : ApiClient {
 
     /**
      * Leave a watch-together room
-     *
+     * Leave a watch-together room
      * @param roomId
      * @param aniLeaveWatchTogetherRoomRequest
-     * @return void
+     * @return kotlin.Any
      */
-    open suspend fun leaveWatchTogetherRoom(roomId: kotlin.String, aniLeaveWatchTogetherRoomRequest: AniLeaveWatchTogetherRoomRequest): HttpResponse<Unit> {
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun leaveWatchTogetherRoom(roomId: kotlin.String, aniLeaveWatchTogetherRoomRequest: AniLeaveWatchTogetherRoomRequest): HttpResponse<kotlin.Any> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -115,7 +116,7 @@ open class WatchTogetherAniApi : ApiClient {
 
     /**
      * Report watch-together member state
-     *
+     * Report watch-together member state
      * @param roomId
      * @param aniReportWatchTogetherStateRequest
      * @return AniWatchTogetherReportResponse
@@ -150,3 +151,4 @@ open class WatchTogetherAniApi : ApiClient {
 }
 
 // @formatter:on
+

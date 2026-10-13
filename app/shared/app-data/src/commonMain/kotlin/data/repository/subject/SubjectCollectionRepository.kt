@@ -54,11 +54,14 @@ import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
+import me.him188.ani.app.data.models.subject.SubjectTmdbArt
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.models.subject.TmdbImage
 import me.him188.ani.app.data.network.EpisodeService
 import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
@@ -87,14 +90,16 @@ import me.him188.ani.client.models.AniEpisodeType
 import me.him188.ani.client.models.AniFavourite
 import me.him188.ani.client.models.AniSelfRatingInfo
 import me.him188.ani.client.models.AniSubjectCollection
+import me.him188.ani.client.models.AniSplitSeason
 import me.him188.ani.client.models.AniSubjectRelations
 import me.him188.ani.client.models.AniTag
+import me.him188.ani.client.models.AniTmdbImage
+import me.him188.ani.client.models.AniTmdbSubjectArt
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.combine
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.logging.debug
@@ -187,8 +192,6 @@ abstract class SubjectCollectionRepository(
      * 未收藏 (本地无记录) 时 emit `null`.
      */
     abstract fun getSubjectDisplayInfoOffline(subjectId: Int): Flow<OfflineSubjectDisplayInfo?>
-
-    abstract suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>>
 
     abstract suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>>
 
@@ -454,7 +457,7 @@ class SubjectCollectionRepositoryImpl(
 
         // 执行网络请求查询好需要的 subject 和 episodes
         val items = subjectService.getSubjectCollections(
-            type = type?.toSubjectCollectionType(),
+            type = type?.toAniSubjectCollectionType(),
             offset = offset,
             limit = limit,
         )
@@ -490,7 +493,7 @@ class SubjectCollectionRepositoryImpl(
         isPrivate: Boolean?,
     ) {
         withContext(defaultDispatcher) {
-            subjectService.patchSubjectCollection(
+            val stats = subjectService.patchSubjectCollection(
                 subjectId,
                 AniUpdateSubjectCollectionRequest(
                     selfRating = AniSelfRatingInfo(
@@ -502,12 +505,14 @@ class SubjectCollectionRepositoryImpl(
                 ),
             )
 
-            subjectCollectionDao.updateRating(
+            subjectCollectionDao.updateRatingAndStats(
                 subjectId,
                 score,
                 comment,
                 tags,
                 isPrivate,
+                collectionStats = stats.favorite.toSubjectCollectionStats(),
+                ratingInfo = ratingInfoOf(stats.rank, stats.score, stats.scoreDetails),
             )
         }
     }
@@ -586,14 +591,11 @@ class SubjectCollectionRepositoryImpl(
                     subjectId = this.subjectId,
                     displayName = nameCn.ifEmpty { name },
                     imageLarge = imageLarge,
+                    imageThumb = imageThumb.ifEmpty { imageLarge },
                     totalEpisodes = totalEpisodes,
                 )
             }
         }
-    }
-
-    override suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>> {
-        return subjectCollectionDao.subjectIdsByCollectionType(types).flowOn(defaultDispatcher)
     }
 
     override suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>> {
@@ -605,8 +607,13 @@ class SubjectCollectionRepositoryImpl(
         payload: AniUpdateSubjectCollectionRequest,
     ) {
         withContext(defaultDispatcher) {
-            subjectService.patchSubjectCollection(subjectId, payload)
-            subjectCollectionDao.updateType(subjectId, payload.collectionType.toUnifiedCollectionType())
+            val stats = subjectService.patchSubjectCollection(subjectId, payload)
+            subjectCollectionDao.updateTypeAndStats(
+                subjectId,
+                payload.collectionType.toUnifiedCollectionType(),
+                collectionStats = stats.favorite.toSubjectCollectionStats(),
+                ratingInfo = ratingInfoOf(stats.rank, stats.score, stats.scoreDetails),
+            )
         }
     }
 
@@ -699,7 +706,7 @@ data class CollectionsFilterQuery(
     }
 }
 
-private fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
+internal fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
     return SubjectInfo(
         subjectId = subjectId,
         subjectType = SubjectType.ANIME,
@@ -708,6 +715,7 @@ private fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
         summary = summary,
         nsfw = nsfw,
         imageLarge = imageLarge,
+        imageThumb = imageThumb,
         totalEpisodes = totalEpisodes,
         airDate = airDate,
         tags = tags,
@@ -715,6 +723,7 @@ private fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
         ratingInfo = ratingInfo,
         collectionStats = collectionStats,
         completeDate = completeDate,
+        tmdbArt = tmdbArt,
     )
 }
 
@@ -812,34 +821,20 @@ fun AniSubjectCollection.toEntity(
         nameCn = nameCn,
         summary = summary,
         nsfw = nsfw,
-        imageLarge = staticSubjectImageLargeUrl(id.toInt()),
+        imageLarge = imageLarge,
+        imageThumb = imageThumb,
         totalEpisodes = episodes.size,
         airDate = PackedDate.parseFromDate(airDate),
         aliases = aliases,
         tags = tags.map { it.toTag() },
         collectionStats = favorite.toSubjectCollectionStats(),
-        ratingInfo = RatingInfo(
-            rank = rank ?: 0,
-            total = scoreDetails.values.sum(),
-            count = RatingCounts(
-                s1 = scoreDetails["1"] ?: 0,
-                s2 = scoreDetails["2"] ?: 0,
-                s3 = scoreDetails["3"] ?: 0,
-                s4 = scoreDetails["4"] ?: 0,
-                s5 = scoreDetails["5"] ?: 0,
-                s6 = scoreDetails["6"] ?: 0,
-                s7 = scoreDetails["7"] ?: 0,
-                s8 = scoreDetails["8"] ?: 0,
-                s9 = scoreDetails["9"] ?: 0,
-                s10 = scoreDetails["10"] ?: 0,
-            ),
-            score = score ?: "0",
-        ),
+        ratingInfo = ratingInfoOf(rank, score, scoreDetails),
         completeDate = PackedDate.Invalid,
         selfRatingInfo = selfRating.toSelfRatingInfo(),
         collectionType = collectionType.toUnifiedCollectionType(),
         recurrence = airingInfo?.recurrence?.toSubjectRecurrence(),
         relations = relations.toSubjectRelationsEntity(),
+        tmdbArt = tmdbArt?.toSubjectTmdbArt(),
         lastUpdated = updatedAt?.let { Instant.parse(it) }?.toEpochMilliseconds() ?: 0,
         lastFetched = lastFetched,
         cachedStaffUpdated = 0,
@@ -847,11 +842,13 @@ fun AniSubjectCollection.toEntity(
     )
 }
 
-/**
- * 条目大封面的静态 CDN 地址. 不依赖本地数据库, 可用于本地无记录时的兜底展示.
- */
-fun staticSubjectImageLargeUrl(subjectId: Int): String =
-    "https://static.myani.org/bangumi/subjects/$subjectId/large"
+private fun AniTmdbSubjectArt.toSubjectTmdbArt(): SubjectTmdbArt = SubjectTmdbArt(
+    backdrops = backdrops.map { it.toTmdbImage() },
+    posters = posters.mapValues { it.value.toTmdbImage() },
+    logos = logos.mapValues { it.value.toTmdbImage() },
+)
+
+private fun AniTmdbImage.toTmdbImage(): TmdbImage = TmdbImage(medium = medium, large = large, vector = vector)
 
 /**
  * 本地数据库中缓存的条目展示信息.
@@ -861,6 +858,8 @@ data class OfflineSubjectDisplayInfo(
     val subjectId: Int,
     val displayName: String,
     val imageLarge: String,
+    /** 列表用封面, 没有缩略图时与 [imageLarge] 相同. */
+    val imageThumb: String,
     val totalEpisodes: Int,
 )
 
@@ -870,12 +869,50 @@ fun AniSubjectRelations.toSubjectRelationsEntity(): SubjectRelations {
         seriesMainSubjectNames,
         sequelSubjects,
         sequelSubjectNames,
+        splitSeason = splitSeason?.toSplitSeason(),
     )
 }
+
+private fun AniSplitSeason.toSplitSeason(): SplitSeason = SplitSeason(
+    parts = parts.map { part ->
+        SplitSeason.Part(
+            subjectId = part.subjectId,
+            names = part.names,
+            markers = part.markers,
+            firstSort = part.firstSort,
+            episodeCount = part.episodeCount,
+            inlineSpecialCount = part.inlineSpecialCount,
+        )
+    },
+    selfIndex = selfIndex,
+    baseNames = baseNames,
+    otherSeasonNumbers = otherSeasonNumbers,
+)
 
 fun AniTag.toTag(): Tag = Tag(
     name = name,
     count = count,
+)
+
+/**
+ * @param scoreDetails 键为 `"1"` 到 `"10"`
+ */
+private fun ratingInfoOf(rank: Int?, score: String?, scoreDetails: Map<String, Int>): RatingInfo = RatingInfo(
+    rank = rank ?: 0,
+    total = scoreDetails.values.sum(),
+    count = RatingCounts(
+        s1 = scoreDetails["1"] ?: 0,
+        s2 = scoreDetails["2"] ?: 0,
+        s3 = scoreDetails["3"] ?: 0,
+        s4 = scoreDetails["4"] ?: 0,
+        s5 = scoreDetails["5"] ?: 0,
+        s6 = scoreDetails["6"] ?: 0,
+        s7 = scoreDetails["7"] ?: 0,
+        s8 = scoreDetails["8"] ?: 0,
+        s9 = scoreDetails["9"] ?: 0,
+        s10 = scoreDetails["10"] ?: 0,
+    ),
+    score = score ?: "0",
 )
 
 fun AniFavourite.toSubjectCollectionStats(): SubjectCollectionStats {

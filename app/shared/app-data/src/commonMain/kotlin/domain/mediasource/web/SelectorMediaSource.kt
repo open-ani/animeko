@@ -14,10 +14,9 @@ import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flattenConcat
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -25,7 +24,11 @@ import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.models.fold
 import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
+import me.him188.ani.app.domain.mediasource.MediaListFilter
+import me.him188.ani.app.domain.mediasource.MediaListFilterContext
+import me.him188.ani.app.domain.mediasource.MediaListFilters
 import me.him188.ani.app.domain.mediasource.MediaSourceEngineHelpers
+import me.him188.ani.app.domain.mediasource.asCandidate
 import me.him188.ani.app.domain.mediasource.codec.DefaultMediaSourceCodec
 import me.him188.ani.app.domain.mediasource.codec.DontForgetToRegisterCodec
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceArguments
@@ -39,9 +42,14 @@ import me.him188.ani.datasources.api.matcher.WebVideoMatcher
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherContext
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherProvider
 import me.him188.ani.datasources.api.matcher.WebViewConfig
-import me.him188.ani.datasources.api.paging.SinglePagePagedSource
 import me.him188.ani.datasources.api.paging.SizedSource
 import me.him188.ani.datasources.api.paging.map
+import me.him188.ani.app.domain.mediasource.web.format.SelectedChannelEpisodes
+import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.paging.emptySizedSource
+import me.him188.ani.datasources.api.source.BrowseChannel
+import me.him188.ani.datasources.api.source.BrowseEpisode
+import me.him188.ani.datasources.api.source.BrowseSubject
 import me.him188.ani.datasources.api.source.ConnectionStatus
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.HttpMediaSource
@@ -63,7 +71,6 @@ import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.time.Duration
 
 @Suppress("unused") // bug
 private typealias ArgumentType = SelectorMediaSourceArguments
@@ -121,12 +128,28 @@ class SelectorMediaSource(
         val FactoryId = FactoryId("web-selector")
 
         /**
-         * 按 cookie 名称合并多组 cookies: 后面列表中的同名 cookie 覆盖前面的, 顺序为名称首次出现的顺序.
+         * [matcher] 对 WebView 配置的修改: 依次合并 [config] 已有的 cookies、[matchVideo] 中配置的 cookies 和 [captchaCookies];
+         * [userAgent] 非 `null` 时覆盖 [config] 的 User-Agent.
          *
-         * 这是 [matcher] 向 WebView 注入 cookies 时的合并语义.
-         * 公开给外部工具 (如 `tools/datasource-test-mcp`) 复用, 以保证与 App 行为一致.
+         * 公开给编辑器测试页与外部工具 (如 `tools/datasource-test-mcp`) 复用, 以保证与 App 播放时行为一致.
+         *
+         * @param userAgent 数据源配置的 UA ([SelectorSearchConfig.userAgentOrNull]).
+         * @param captchaCookies 该站点已解出的验证码会话 cookies. HTTP、播放器、各平台共用同一份 cookie 真相.
          */
-        fun mergeCookies(vararg cookieLists: List<String>): List<String> {
+        fun patchWebViewConfig(
+            config: WebViewConfig,
+            matchVideo: SelectorSearchConfig.MatchVideoConfig,
+            userAgent: String?,
+            captchaCookies: List<String> = emptyList(),
+        ): WebViewConfig = config.copy(
+            cookies = mergeCookies(config.cookies, matchVideo.cookies.lines(), captchaCookies),
+            userAgent = userAgent ?: config.userAgent,
+        )
+
+        /**
+         * 按 cookie 名称合并多组 cookies: 后面列表中的同名 cookie 覆盖前面的, 顺序为名称首次出现的顺序.
+         */
+        private fun mergeCookies(vararg cookieLists: List<String>): List<String> {
             val merged = linkedMapOf<String, String>()
             for (cookie in cookieLists.asSequence().flatten()) {
                 val trimmed = cookie.trim()
@@ -317,63 +340,52 @@ class SelectorMediaSource(
         }.takeIf(List<DefaultMedia>::isNotEmpty)
     }
 
-    // all-in-one search
-    private suspend fun EngineType.search(
-        searchConfig: SelectorSearchConfig,
-        query: SelectorSearchQuery,
-        mediaSourceId: String,
-        subjectId: Int?,
-    ): List<DefaultMedia> = withContext(Dispatchers.Default) {
+    /**
+     * 配置声明了 [SelectorSearchConfig.onlySupportsPlayers] 时, 当前平台的播放器是否在其中. 不在则自动匹配不发起任何请求.
+     */
+    private fun isSupportedByPlatformPlayer(): Boolean {
+        if (searchConfig.onlySupportsPlayers.isEmpty()) return true
         val currentPlayerNames = when (currentPlatform()) {
             // 桌面端已迁移至 mpv, 但许多现有订阅仍声明 "vlc", 暂时保持兼容
             is Platform.Desktop -> listOf("mpv", "vlc")
             is Platform.Android -> listOf("exoplayer")
             Platform.Ios -> listOf("avkit")
         }
-        if (
-            searchConfig.onlySupportsPlayers.isNotEmpty()
-            && currentPlayerNames.none { it in searchConfig.onlySupportsPlayers }
-        ) {
-            logger.warn {
-                val supports =
-                    searchConfig.onlySupportsPlayers.joinToString(prefix = "[", postfix = "]")
+        if (currentPlayerNames.any { it in searchConfig.onlySupportsPlayers }) return true
+        logger.warn {
+            val supports =
+                searchConfig.onlySupportsPlayers.joinToString(prefix = "[", postfix = "]")
 
-                "SelectorMediaSource '${info.displayName}' is not supported by the platform player. " +
-                        "Declared supported players: $supports, " +
-                        "current players: $currentPlayerNames"
-            }
-            return@withContext emptyList()
+            "SelectorMediaSource '${info.displayName}' is not supported by the platform player. " +
+                    "Declared supported players: $supports, " +
+                    "current players: $currentPlayerNames"
         }
+        return false
+    }
 
-        // 搜索缓存: 上一次真实搜索已把条目页面的全部剧集写入缓存 (addCache).
-        // 若缓存的剧集列表包含当前请求的剧集 (典型场景: 切集), 直接从缓存构建结果, 不发起任何网络请求.
-        // 缓存按 TTL 过期, 也会在该条目手动重新查询时被清除.
-        searchFromCacheOrNull(searchConfig, query, mediaSourceId, subjectId)?.let { return@withContext it }
-
+    /**
+     * 向站点搜索一个关键词, 返回搜到的所有条目的全部剧集. 不读搜索缓存, 调用方先查 [searchFromCacheOrNull].
+     */
+    private suspend fun EngineType.searchOnline(
+        searchConfig: SelectorSearchConfig,
+        query: SelectorSearchQuery,
+        mediaSourceId: String,
+        subjectId: Int?,
+    ): List<DefaultMedia> = withContext(Dispatchers.Default) {
         delayUntilNextAllowedSearch()
 
-        val searchUrl = searchConfig.searchUrl.replace(
-            "{keyword}",
-            MediaSourceEngineHelpers.encodeUrlSegment(
-                MediaSourceEngineHelpers.getSearchKeyword(
-                    query.subjectName,
-                    searchConfig.searchRemoveSpecial,
-                    searchConfig.searchUseOnlyFirstWord,
-                ),
+        val searchUrl = buildSearchUrl(
+            MediaSourceEngineHelpers.getSearchKeyword(
+                query.subjectName,
+                searchConfig.autoMatch.searchRemoveSpecial,
+                searchConfig.autoMatch.searchUseOnlyFirstWord,
             ),
         )
 
         val originalSubjects = fetchPageOrThrow(searchUrl, PageExpectation.SearchResults(searchConfig))
             ?: return@withContext emptyList()
 
-        val subjects = originalSubjects.let { originalList ->
-            val filters = searchConfig.createFiltersForSubject()
-            with(query.toFilterContext()) {
-                originalList.filter {
-                    filters.applyOn(it.asCandidate())
-                }
-            }
-        }
+        val subjects = searchConfig.orderSubjectsForAutoMatch(originalSubjects)
 
         buildList {
             for (subjectInfo in subjects) {
@@ -409,32 +421,116 @@ class SelectorMediaSource(
     }
 
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> {
+        if (!searchConfig.autoMatch.enabled) {
+            // 只用于浏览手动选集的数据源, 不参与自动匹配
+            return emptySizedSource()
+        }
+        if (!isSupportedByPlatformPlayer()) return emptySizedSource()
+
         val allSubjectNames = query.subjectNames.toSet()
         val freshnessProbe = query.latestAiredEpisode()?.let {
             SelectorEpisodeProbe(episodeSort = it.sort, episodeEp = it.ep, episodeName = it.name)
         }
+        val subjectId = query.subjectId.toIntOrNull()
+        fun searchQuery(name: String) = SelectorSearchQuery(
+            subjectName = name,
+            episodeSort = query.episodeSort,
+            allSubjectNames = allSubjectNames,
+            episodeEp = query.episodeEp,
+            episodeName = query.episodeName,
+            freshnessProbe = freshnessProbe,
+        )
 
-        return query.subjectNames
-            .take(searchConfig.searchUseSubjectNamesCount.coerceAtLeast(1))
-            .map { name ->
-                SinglePagePagedSource {
-                    engine.search(
-                        searchConfig,
-                        SelectorSearchQuery(
-                            subjectName = name,
-                            episodeSort = query.episodeSort,
-                            allSubjectNames = allSubjectNames,
-                            episodeEp = query.episodeEp,
-                            episodeName = query.episodeName,
-                            freshnessProbe = freshnessProbe,
-                        ),
-                        mediaSourceId,
-                        query.subjectId.toIntOrNull(),
-                    ).asFlow()
-                }.map {
-                    MediaMatch(it, MatchKind.FUZZY)
+        val primary = query.subjectNames.take(searchConfig.autoMatch.searchUseSubjectNamesCount.coerceAtLeast(1))
+        val fallback = searchConfig.distinctFallbackKeywords(primary, query.fallbackSearchKeywords)
+        val remembered = rememberedKeywords(subjectId, primary + fallback)
+        val filterContext = MediaListFilterContext(
+            subjectNames = allSubjectNames,
+            episodeSort = query.episodeSort,
+            episodeEp = query.episodeEp,
+            episodeName = query.episodeName,
+        )
+        return engine.searchChain(primary, fallback, remembered, subjectId, ::searchQuery) { media ->
+            media.anySubjectNameMatches(filterContext)
+        }.map { MediaMatch(it, MatchKind.FUZZY) }
+    }
+
+    /**
+     * [keywords] 中上次搜到过条目页的, 即搜索缓存里有它的未过期行的, 保持原顺序.
+     * 有行只说明搜到过条目页, 不说明名字对上了, 所以只用来决定搜索顺序. 读缓存失败按没有记忆处理.
+     */
+    private suspend fun rememberedKeywords(subjectId: Int?, keywords: List<String>): List<String> {
+        val cached = try {
+            repository.getCachedSubjectNames(subjectId, mediaSourceId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to read cached search keywords" }
+            return emptyList()
+        }
+        if (cached.isEmpty()) return emptyList()
+        val cachedSet = cached.toHashSet()
+        return keywords.filter { it in cachedSet }
+    }
+
+    /**
+     * 自动匹配的关键词链. [primary] 每一个都搜, 结果全部返回; 它们都没搜到名字能对上的条目时, 再依次尝试 [fallback], 搜到为止.
+     *
+     * [remembered] 是其中上次搜到过条目页的 ([rememberedKeywords]), 先于其余关键词按同样的规则搜; 它们搜到了就结束, 其余的不再搜.
+     * 「更多」这类搜不到的关键词没有缓存行, 切集时不会再为它发请求.
+     *
+     * 每个关键词的结果一搜到就发出, 不等整条链结束. 两次向站点发起的搜索之间等待 [SelectorSearchConfig.requestInterval];
+     * 命中搜索缓存的不发请求也不等待.
+     *
+     * @param matches 一次搜索的结果里是否有名字能对上请求条目的, 见 [anySubjectNameMatches].
+     */
+    private fun EngineType.searchChain(
+        primary: List<String>,
+        fallback: List<String>,
+        remembered: List<String>,
+        subjectId: Int?,
+        query: (name: String) -> SelectorSearchQuery,
+        matches: (List<DefaultMedia>) -> Boolean,
+    ): SizedSource<DefaultMedia> {
+        val finishedState = MutableStateFlow(false)
+        val totalSizeState = MutableStateFlow<Int?>(null)
+        return object : SizedSource<DefaultMedia> {
+            override val results: Flow<DefaultMedia> = flow {
+                var total = 0
+                var matched = false
+                var searchedOnline = false
+                suspend fun searchAndEmit(name: String) {
+                    val searchQuery = query(name)
+                    // 搜索缓存: 上一次真实搜索已把条目页面的全部剧集写入缓存 (addCache).
+                    // 若缓存的剧集列表包含当前请求的剧集 (典型场景: 切集), 直接从缓存构建结果, 不发起任何网络请求.
+                    // 缓存按 TTL 过期, 也会在该条目手动重新查询时被清除.
+                    val media = searchFromCacheOrNull(searchConfig, searchQuery, mediaSourceId, subjectId)
+                        ?: run {
+                            if (searchedOnline) delay(searchConfig.requestInterval)
+                            searchedOnline = true
+                            searchOnline(searchConfig, searchQuery, mediaSourceId, subjectId)
+                        }
+                    if (!matched && matches(media)) matched = true
+                    total += media.size
+                    emitAll(media.asFlow())
                 }
-            }.flattenConcat(searchConfig.requestInterval)
+                val primarySet = primary.toHashSet()
+                val rememberedSet = remembered.toHashSet()
+                suspend fun searchInOrder(names: List<String>) {
+                    for (name in names) {
+                        // 主关键词全搜, 回退关键词搜到为止
+                        if (matched && name !in primarySet) break
+                        searchAndEmit(name)
+                    }
+                }
+                searchInOrder(remembered)
+                if (!matched) searchInOrder((primary + fallback).filter { it !in rememberedSet })
+                totalSizeState.value = total
+                finishedState.value = true
+            }
+            override val finished: Flow<Boolean> get() = finishedState
+            override val totalSize: Flow<Int?> get() = totalSizeState
+        }
     }
 
     /**
@@ -447,58 +543,99 @@ class SelectorMediaSource(
             .maxByOrNull { it.sort }
     }
 
+    // region 浏览: 列表模式, 不做任何自动匹配
+
+    override val supportsBrowsing: Boolean get() = true
+
+    private fun buildSearchUrl(keyword: String): String =
+        searchConfig.searchUrl.replace("{keyword}", MediaSourceEngineHelpers.encodeUrlSegment(keyword))
+
+    override suspend fun searchSubjects(keyword: String): List<BrowseSubject> {
+        delayUntilNextAllowedSearch()
+        val subjects = fetchPageOrThrow(buildSearchUrl(keyword), PageExpectation.SearchResults(searchConfig))
+            ?: return emptyList()
+        return subjects.map { BrowseSubject(name = it.name, url = it.fullUrl) }
+    }
+
+    override suspend fun browseSubject(subject: BrowseSubject): List<BrowseChannel> {
+        val selected = fetchPageOrThrow(subject.url, PageExpectation.SubjectDetails(searchConfig, subject.url))
+            ?: return emptyList()
+        return selected.toBrowseChannels()
+    }
+
+    override fun createMedia(
+        subject: BrowseSubject,
+        channelName: String?,
+        episode: BrowseEpisode,
+        episodeSort: EpisodeSort?,
+    ): Media = engine.createMedia(
+        WebSearchEpisodeInfo(
+            channel = channelName,
+            name = episode.name,
+            episodeSortOrEp = episode.episodeSort,
+            playUrl = episode.url,
+        ),
+        episodeSort,
+        searchConfig,
+        mediaSourceId,
+        subjectName = subject.name,
+    )
+
+    // endregion
+
     override val matcher: WebVideoMatcher by lazy {
         object : WebVideoMatcher {
             override fun match(
                 url: String,
                 context: WebVideoMatcherContext
-            ): WebVideoMatcher.MatchResult = engine.matchWebVideo(url, arguments.searchConfig.matchVideo)
+            ): WebVideoMatcher.MatchResult = engine.matchWebVideo(
+                url,
+                arguments.searchConfig.matchVideo,
+                arguments.searchConfig.userAgentOrNull,
+            )
 
-            override fun patchConfig(config: WebViewConfig): WebViewConfig {
-                val configuredCookies = arguments.searchConfig.matchVideo.cookies
-                    .lines()
-                    .filter { it.isNotBlank() }
-                // HTTP、播放器、两个平台共用同一份 cookie 真相
-                val captchaCookies = sessionManager.cookieJar.getCookieHeaderValues(searchConfig.searchUrl)
-                return config.copy(
-                    cookies = mergeCookies(
-                        config.cookies,
-                        configuredCookies,
-                        captchaCookies,
-                    ),
-                )
-            }
+            override fun patchConfig(config: WebViewConfig): WebViewConfig = patchWebViewConfig(
+                config,
+                arguments.searchConfig.matchVideo,
+                userAgent = arguments.searchConfig.userAgentOrNull,
+                captchaCookies = sessionManager.cookieJar.getCookieHeaderValues(searchConfig.searchUrl),
+            )
         }
     }
 
 }
 
 /**
- * Concat multiple [SizedSource]s into one.
- *
- * [Results][SizedSource.results] are be concated in the [Flow.flattenConcat] flavor.
+ * 结果里是否有条目名能对上请求条目的. 判据与选择器过滤 WEB 资源的一致 ([MediaListFilters.ContainsSubjectName]),
+ * 所以这里认为对上的, 选择器不会以名字不符为由排除.
  */
-private fun <T> Iterable<SizedSource<T>>.flattenConcat(delayInBetween: Duration): SizedSource<T> {
-    return object : SizedSource<T> {
-        override val results: Flow<T> = flow {
-            val flows = this@flattenConcat.map { it.results }
-            flows.forEachIndexed { index, flow ->
-                emitAll(flow)
-                if (index != flows.lastIndex) {
-                    delay(delayInBetween)
-                }
-            }
-        }
-        override val finished: Flow<Boolean> = combine(this@flattenConcat.map { it.finished }) { values ->
-            values.all { it }
-        }
+private fun List<DefaultMedia>.anySubjectNameMatches(context: MediaListFilterContext): Boolean = with(context) {
+    any { media ->
+        MediaListFilters.ContainsSubjectName.applyOn(
+            object : MediaListFilter.Candidate by media.asCandidate() {
+                override val subjectName: String get() = media.properties.subjectName ?: media.originalTitle
+            },
+        )
+    }
+}
 
-        override val totalSize: Flow<Int?> = combine(this@flattenConcat.map { it.totalSize }) { values ->
-            if (values.any { it == null }) {
-                return@combine null
-            }
-            @Suppress("UNCHECKED_CAST")
-            (values as Array<Int>).sum()
-        }
+/**
+ * 按页面上的播放列表分组, 顺序与页面一致; 没有分组信息时按线路名分组. 没有线路概念的页面得到一个名称为 `null` 的线路.
+ * 没有剧集的线路不列出.
+ */
+internal fun SelectedChannelEpisodes.toBrowseChannels(): List<BrowseChannel> {
+    fun List<WebSearchEpisodeInfo>.toBrowseEpisodes() =
+        map { BrowseEpisode(name = it.name, url = it.playUrl, episodeSort = it.episodeSortOrEp) }
+
+    channelGroups?.let { groups ->
+        return groups.filter { it.episodes.isNotEmpty() }
+            .map { BrowseChannel(name = it.name, label = it.label, episodes = it.episodes.toBrowseEpisodes()) }
+    }
+    if (episodes.isEmpty()) return emptyList()
+    if (channels == null) {
+        return listOf(BrowseChannel(name = null, label = null, episodes = episodes.toBrowseEpisodes()))
+    }
+    return episodes.groupBy { it.channel }.map { (channel, episodes) ->
+        BrowseChannel(name = channel, label = channel, episodes = episodes.toBrowseEpisodes())
     }
 }

@@ -149,15 +149,21 @@ fun SettingsScope.MediaSelectorWorkflowItem(
 ) {
     val isWidthCompact = currentWindowAdaptiveInfo1().isWidthCompact
     Box(Modifier.fillMaxWidth()) {
-        Card(
+        MediaSelectorWorkflowPreview(
+            state,
             modifier
                 .ifThen(isWidthCompact) { fillMaxWidth() }
                 .ifThen(!isWidthCompact) { widthIn(max = 450.dp) }
                 .padding(horizontal = SettingsScope.itemHorizontalPadding, vertical = 4.dp)
                 .align(Alignment.Center),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        ) {
-            SelectorWorkflowAnimation(state.viewModel, Modifier.padding(8.dp))
-        }
+        )
+    }
+}
+
+/** Platform-neutral preview of the shared selector workflow and its setting interactions. */
+@Composable
+fun MediaSelectorWorkflowPreview(state: MediaSelectorWorkflowDemoState, modifier: Modifier = Modifier) {
+    Card(modifier, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+        SelectorWorkflowAnimation(state.viewModel, Modifier.padding(8.dp))
     }
 }

@@ -355,6 +355,8 @@ afterEvaluate {
             reconstructLinuxSolink()
             isolateLinuxBundledLibraries()
             restoreLinuxRuntimeExecutables()
+            // 必须最后执行: 上面的步骤会重打包 jar.
+            normalizeJarsForReproducibility()
         }
     }
 }

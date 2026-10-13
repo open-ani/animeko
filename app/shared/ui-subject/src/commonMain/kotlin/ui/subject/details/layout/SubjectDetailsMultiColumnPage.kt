@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -66,13 +67,16 @@ import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import com.kmpalette.color
 import com.kmpalette.palette.graphics.Palette
 import kotlinx.collections.immutable.toImmutableList
+import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.tools.ColorUtils
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
@@ -166,7 +170,7 @@ internal fun SubjectDetailsMultiColumnPage(
         windowInsets,
         navigationIcon,
         onClickOpenExternal,
-        topBarTitle = info.displayName,
+        topBarTitle = info.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
         backgroundOverlay = {
             val surfaceColor = MaterialTheme.colorScheme.surface
             val colors = remember(backgroundPalette) {
@@ -208,7 +212,7 @@ internal fun SubjectDetailsMultiColumnPage(
         ) {
             SubjectTitleBlock(info, uiState)
             if (layoutParams.kind != SubjectDetailsPaneKind.EXPANDED) {
-                SubjectRatingRow(state, showHistogram = layoutParams.showInlineRatingHistogram)
+                SubjectRatingRow(state, uiState.rating.ratingInfo, showHistogram = layoutParams.showInlineRatingHistogram)
             }
             if (info.summary.isNotBlank()) {
                 SubjectSummarySection(info.summary)
@@ -265,12 +269,12 @@ internal fun SubjectDetailsMultiColumnPage(
                         EditRatingButton(uiState.rating.selfRatingInfo.score, onClick = { state.requestEditRating() })
                     }
                     SubjectRatingSummary(
-                        info.ratingInfo,
+                        uiState.rating.ratingInfo,
                         Modifier.padding(top = 8.dp),
                         scoreStyle = MaterialTheme.typography.headlineMedium,
                         onClick = { state.requestEditRating() },
                     )
-                    RatingHistogram(info.ratingInfo, Modifier.padding(top = 16.dp))
+                    RatingHistogram(uiState.rating.ratingInfo, Modifier.padding(top = 16.dp))
                 }
                 if (comments.itemCount > 0) {
                     RailCard {
@@ -402,7 +406,7 @@ internal fun SubjectDetailsMultiColumnPlaceholder(
         windowInsets,
         navigationIcon,
         onClickOpenExternal,
-        topBarTitle = subjectInfo?.displayName,
+        topBarTitle = subjectInfo?.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle),
     ) {
         Column(
             Modifier.width(layoutParams.sidebarWidth),
@@ -429,7 +433,7 @@ internal fun SubjectDetailsMultiColumnPlaceholder(
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            val title = subjectInfo?.displayName
+            val title = subjectInfo?.preferredDisplayName(LocalSubjectAppearanceSettings.current.useOriginalTitle)
             if (!title.isNullOrBlank()) {
                 Text(
                     title,
@@ -512,7 +516,7 @@ private fun SubjectSidebar(
             )
         }
         // 收藏统计三格 (收藏 / 在看 / 想看)
-        SubjectCollectionStatsRow(info.collectionStats)
+        SubjectCollectionStatsRow(uiState.collectionStats)
 
         HorizontalDivider()
 
@@ -529,21 +533,28 @@ private fun SubjectSidebar(
 
 @Composable
 private fun SubjectTitleBlock(info: SubjectInfo, uiState: SubjectDetailsUiState) {
+    val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
+    val primaryTitle = info.preferredDisplayName(useOriginalTitle)
+    val secondaryTitle = if (useOriginalTitle) info.displayName else info.name
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            info.displayName,
-            style = MaterialTheme.typography.headlineSmall,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (info.name.isNotBlank() && info.name != info.displayName) {
-            Text(
-                info.name,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        SelectionContainer {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    primaryTitle,
+                    style = MaterialTheme.typography.headlineSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (secondaryTitle.isNotBlank() && secondaryTitle != primaryTitle) {
+                    Text(
+                        secondaryTitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
         // 元数据行 (对齐定稿的内联文本, 非 chip): 季度 · 播出状态 · 总集数
         FlowRow(
@@ -569,19 +580,19 @@ private fun SubjectTitleBlock(info: SubjectInfo, uiState: SubjectDetailsUiState)
  * 评分行: 评分摘要靠左 (点击打开评分编辑); [showHistogram] 时直方图右对齐 (定宽, 定稿 274×90 Size=Large).
  */
 @Composable
-private fun SubjectRatingRow(state: SubjectDetailsState, showHistogram: Boolean) {
-    val info = state.info ?: return
+private fun SubjectRatingRow(state: SubjectDetailsState, ratingInfo: RatingInfo, showHistogram: Boolean) {
+    if (state.info == null) return
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SubjectRatingSummary(
-            info.ratingInfo,
+            ratingInfo,
             onClick = { state.requestEditRating() },
         )
         if (showHistogram) {
             Spacer(Modifier.weight(1f))
-            RatingHistogram(info.ratingInfo, Modifier.width(RATING_HISTOGRAM_WIDTH))
+            RatingHistogram(ratingInfo, Modifier.width(RATING_HISTOGRAM_WIDTH))
         }
     }
 }

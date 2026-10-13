@@ -91,7 +91,7 @@ class SelectorTestState(
         searchConfigState.value?.searchUrl
     }
     private val useOnlyFirstWord by derivedStateOf {
-        searchConfigState.value?.searchUseOnlyFirstWord
+        searchConfigState.value?.autoMatch?.searchUseOnlyFirstWord
     }
 
     val gridState = LazyGridState()
@@ -177,7 +177,7 @@ class SelectorTestState(
                         snapshotFlow { searchKeyword },
                         snapshotFlow { searchUrl },
                         snapshotFlow { useOnlyFirstWord },
-                        snapshotFlow { searchConfigState.value?.searchRemoveSpecial },
+                        snapshotFlow { searchConfigState.value?.autoMatch?.searchRemoveSpecial },
                     ) { searchKeyword, searchUrl, useOnlyFirstWord, searchRemoveSpecial ->
                         SelectorMediaSourceTester.SubjectQuery(
                             searchKeyword = searchKeyword,

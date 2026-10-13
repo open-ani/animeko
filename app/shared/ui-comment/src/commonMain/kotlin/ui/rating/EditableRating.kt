@@ -20,6 +20,7 @@ import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.TestSelfRatingInfo
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.rating_requires_collection
 import me.him188.ani.app.ui.lang.settings_mediasource_close
@@ -56,12 +57,20 @@ interface EditableRatingActions {
     fun requestEditRating()
     fun cancelEditRating()
     fun submitRating(request: RateRequest)
+
+    /**
+     * 只修改分数, 保留已有的评价内容和可见性, 并等待完成. 供只能打分的界面 (例如 TV) 使用.
+     *
+     * @return 失败原因, 成功为 `null`.
+     */
+    suspend fun updateScore(score: Int): LoadError?
     fun dismissRatingRequiresCollectionDialog()
 
     companion object Noop : EditableRatingActions {
         override fun requestEditRating() {}
         override fun cancelEditRating() {}
         override fun submitRating(request: RateRequest) {}
+        override suspend fun updateScore(score: Int): LoadError? = null
         override fun dismissRatingRequiresCollectionDialog() {}
     }
 }

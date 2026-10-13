@@ -17,6 +17,7 @@ import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.repository.subject.toAniSubjectCollectionType
 import me.him188.ani.app.domain.mediasource.MediaListFilters
 import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.domain.search.SubjectType
@@ -65,6 +66,7 @@ class AniSubjectSearchService(
                     SearchSort.DATE -> AniSubjectSearchSortBy.AIR_DATE_DESC
                 },
                 fields = fields?.map { it.toAniField() },
+                excludeCollectionTypes = filters?.excludeCollectionTypes?.mapNotNull { it.toAniSubjectCollectionType() },
             )
         }.body()
 
@@ -84,35 +86,34 @@ class AniSubjectSearchService(
             }
         }
     }
+}
 
-    private fun AniSubjectSearch.toBatchSubjectDetails(): BatchSubjectDetails {
-        return BatchSubjectDetails(
-            subjectInfo = SubjectInfo(
-                subjectId = this.id.toInt(),
-                subjectType = SubjectType.ANIME,
-                name = this.name,
-                nameCn = this.nameCn,
-                summary = this.summary,
-                nsfw = this.nsfw,
-                imageLarge = this.imageLarge,
-                totalEpisodes = this.mainEpisodeCount,
-                airDate = PackedDate.parseFromDate(this.airDate),
-                tags = this.tags.map { Tag(it.name, it.count) },
-                aliases = emptyList(),
-                ratingInfo = RatingInfo(this.rank ?: 0, this.ratingTotal, RatingCounts.Zero, this.score ?: ""),
-                collectionStats = SubjectCollectionStats.Zero,
-                completeDate = PackedDate.Invalid,
-
-                ),
-            mainEpisodeCount = this.mainEpisodeCount,
-            lightSubjectRelations = LightSubjectRelations(
-                lightRelatedPersonInfoList = this.lightRelatedPersonInfoList.map { pi ->
-                    LightRelatedPersonInfo(pi.name, PersonPosition(pi.position))
-                },
-                lightRelatedCharacterInfoList = emptyList(),
-            ),
-        )
-    }
+internal fun AniSubjectSearch.toBatchSubjectDetails(): BatchSubjectDetails {
+    return BatchSubjectDetails(
+        subjectInfo = SubjectInfo(
+            subjectId = this.id.toInt(),
+            subjectType = SubjectType.ANIME,
+            name = this.name,
+            nameCn = this.nameCn,
+            summary = this.summary,
+            nsfw = this.nsfw,
+            imageLarge = this.imageLarge,
+            totalEpisodes = this.mainEpisodeCount,
+            airDate = PackedDate.parseFromDate(this.airDate),
+            tags = this.tags.map { Tag(it.name, it.count) },
+            aliases = emptyList(),
+            ratingInfo = RatingInfo(this.rank ?: 0, this.ratingTotal, RatingCounts.Zero, this.score ?: ""),
+            collectionStats = SubjectCollectionStats.Zero,
+            completeDate = PackedDate.Invalid,
+        ),
+        mainEpisodeCount = this.mainEpisodeCount,
+        lightSubjectRelations = LightSubjectRelations(
+            lightRelatedPersonInfoList = this.lightRelatedPersonInfoList.map { pi ->
+                LightRelatedPersonInfo(pi.name, PersonPosition(pi.position))
+            },
+            lightRelatedCharacterInfoList = emptyList(),
+        ),
+    )
 }
 
 private fun SubjectSearchField.toAniField(): AniSubjectSearchField = when (this) {

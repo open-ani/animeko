@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.RatingEnter
@@ -43,21 +44,22 @@ class RatingEditController(
     /**
      * 把对话框状态与提交状态合并进展示数据.
      *
+     * @param ratingInfo 全站评分. 自己评分后会随之变化.
      * @param enableEdit 是否允许点击进入编辑, 通常是 "已收藏".
      */
     fun uiStateFlow(
-        ratingInfo: RatingInfo,
+        ratingInfo: Flow<RatingInfo>,
         selfRatingInfo: Flow<SelfRatingInfo>,
         enableEdit: Flow<Boolean>,
     ): Flow<EditableRatingUiState> = combine(
-        selfRatingInfo,
+        combine(ratingInfo, selfRatingInfo) { rating, self -> rating to self },
         enableEdit,
         showRatingDialog,
         showRatingRequiresCollectionDialog,
         tasker.isRunning,
-    ) { self, enable, showDialog, showRequiresCollection, updating ->
+    ) { (rating, self), enable, showDialog, showRequiresCollection, updating ->
         EditableRatingUiState(
-            ratingInfo = ratingInfo,
+            ratingInfo = rating,
             selfRatingInfo = self,
             enableEdit = enable,
             showRatingDialog = showDialog,
@@ -96,6 +98,21 @@ class RatingEditController(
             }
             showRatingDialog.value = false
         }
+    }
+
+    override suspend fun updateScore(score: Int): LoadError? {
+        require(score in 0..10)
+        check(isCollected())
+        val current = currentSelfRating()
+        return tasker.async {
+            LoadError.runAndWrapOrThrowCancellation {
+                onRate(RateRequest(score, current.comment.orEmpty(), current.isPrivate))
+                Analytics.recordEvent(RatingSubmit) {
+                    put("score", score)
+                    subjectId?.let { put("subject_id", it) }
+                }
+            }
+        }.await()
     }
 
     override fun dismissRatingRequiresCollectionDialog() {

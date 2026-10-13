@@ -10,6 +10,7 @@
 package me.him188.ani.app.platform
 
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,12 +18,16 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
+import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AniEpisodeCommentService
@@ -30,61 +35,35 @@ import me.him188.ani.app.data.network.AniPersonCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.AnimeScheduleService
-import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.network.DefaultWatchTogetherApiService
 import me.him188.ani.app.data.network.EpisodeService
 import me.him188.ani.app.data.network.EpisodeServiceImpl
-import me.him188.ani.app.data.network.RecommendationRepository
 import me.him188.ani.app.data.network.RemoteSubjectService
 import me.him188.ani.app.data.network.SubjectService
-import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.network.WatchTogetherApiService
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.persistent.database.MIGRATION_19_20
 import me.him188.ani.app.data.persistent.database.createDatabaseBuilder
-import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
-import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
-import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
-import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
-import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
-import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
-import me.him188.ani.app.data.repository.media.EpisodePreferencesRepositoryImpl
-import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepository
-import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepositoryImpl
 import me.him188.ani.app.data.repository.media.MediaSourceSaves
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
-import me.him188.ani.app.data.repository.media.MikanIndexCacheRepository
-import me.him188.ani.app.data.repository.media.MikanIndexCacheRepositoryImpl
-import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
-import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
-import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepositoryImpl
-import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
-import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
-import me.him188.ani.app.data.repository.player.EpisodeScreenshotRepository
+import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.episode.EpisodeCollectionSyncer
 import me.him188.ani.app.data.repository.player.PlaybackHistorySyncer
-import me.him188.ani.app.data.repository.player.WhatslinkEpisodeScreenshotRepository
-import me.him188.ani.app.data.repository.person.PersonCommentRepository
-import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.data.repository.repositoryModules
-import me.him188.ani.app.data.repository.subject.DefaultSubjectRelationsRepository
-import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
-import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
-import me.him188.ani.app.data.repository.subject.SubjectCollectionRepositoryImpl
-import me.him188.ani.app.data.repository.subject.SubjectSearchCompletionRepository
-import me.him188.ani.app.data.repository.subject.SubjectRelationGraphRepository
-import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
-import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
-import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
 import me.him188.ani.app.data.repository.user.AccessTokenSession
-import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.data.repository.user.TokenRepository
-import me.him188.ani.app.domain.danmaku.DanmakuRepository
+import me.him188.ani.app.data.repository.user.UserRepository
+import me.him188.ani.app.domain.torrent.TorrentEngineType
+import me.him188.ani.app.domain.torrent.engines.PikPakEngine
+import me.him188.ani.torrent.pikpak.PikPakCredentials
+import me.him188.ani.torrent.pikpak.PikPakSessionStoreAdapter
+import me.him188.ani.utils.io.inSystem
+import me.him188.ani.app.domain.foundation.AniInstallIdFeatureHandler
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
 import me.him188.ani.app.domain.foundation.CookieJarFeatureHandler
@@ -96,6 +75,7 @@ import me.him188.ani.app.domain.foundation.DistributionChannelFeatureHandler
 import me.him188.ani.app.domain.foundation.GlobalHttpEventBus
 import me.him188.ani.app.domain.foundation.GlobalHttpEvents
 import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.MaxRequestsPerHostFeatureHandler
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.ServerListFeature
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
@@ -108,19 +88,22 @@ import me.him188.ani.app.domain.foundation.VersionExpiryFeatureHandler
 import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
+import me.him188.ani.app.domain.install.InstallIdRepository
+import me.him188.ani.app.domain.install.InstallReporter
 import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.mediasource.web.PageEvaluator
 import me.him188.ani.app.domain.mediasource.web.captcha.BrowserImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
-import me.him188.ani.app.domain.mediasource.web.captcha.GirigiriSearchRoute
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.MacCmsImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
+import me.him188.ani.app.domain.media.cache.PikPakWebM3uCacheMigration
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.KtorPersistentHttpDownloader
+import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.HttpMediaCacheStorage
@@ -144,8 +127,6 @@ import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
 import me.him188.ani.app.domain.usecase.useCaseModules
 import me.him188.ani.app.ui.subject.details.state.DefaultSubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
-import me.him188.ani.datasources.bangumi.BangumiClient
-import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
@@ -158,22 +139,40 @@ import org.koin.core.scope.Scope
 import org.koin.dsl.module
 import kotlin.time.Duration.Companion.minutes
 
-private val Scope.client get() = get<BangumiClient>()
 private val Scope.database get() = get<AniDatabase>()
 private val Scope.settingsRepository get() = get<SettingsRepository>()
 private val Scope.aniApiProvider get() = get<AniApiProvider>()
 
-fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScope: CoroutineScope) =
-    listOf(useCaseModules(), repositoryModules(getContext().dataStores), otherModules(getContext, coroutineScope))
+/**
+ * 各端共享的 Koin 装配，默认包含完整缓存/BT 模块。
+ *
+ * [enableMediaCache] 为 false 时只绑定空存储的 [MediaDownloadManager]，不注册 [HttpDownloader]。
+ */
+fun KoinApplication.getCommonKoinModule(
+    getContext: () -> Context,
+    coroutineScope: CoroutineScope,
+    enableMediaCache: Boolean = true,
+) = listOf(
+    useCaseModules(),
+    repositoryModules(getContext, coroutineScope),
+    otherModules(getContext, coroutineScope, enableMediaCache),
+)
 
-private fun KoinApplication.otherModules(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
-    // Repositories
+private fun KoinApplication.otherModules(
+    getContext: () -> Context,
+    coroutineScope: CoroutineScope,
+    enableMediaCache: Boolean,
+) = module {
+    // Application services
     single<ProxyProvider> { SettingsBasedProxyProvider(get(), coroutineScope) }
     single<SessionManager> {
         SessionManager(
             tokenRepository = get(),
             coroutineScope = coroutineScope,
             refreshSession = AniSessionRefresher { aniApiProvider.userAuthApi },
+            newLoginListener = SessionManager.NewLoginListener { userId ->
+                get<InstallReporter>().beforeNewLogin(userId)
+            },
         )
     }
     single<SessionStateProvider> {
@@ -186,8 +185,10 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             coroutineScope,
         )
     }
+    single<InstallIdRepository> { InstallIdRepository(getContext().dataStores.installInfoStore) }
     single<HttpClientProvider> {
         val sessionManager by inject<SessionManager>()
+        val installIdRepository = get<InstallIdRepository>()
         DefaultHttpClientProvider(
             get(), coroutineScope,
             featureHandlers = listOf(
@@ -198,6 +199,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                     },
                     onRefresh = { null },
                 ),
+                AniInstallIdFeatureHandler { installIdRepository.currentId },
                 ServerListFeatureHandler(
                     get<ServerSelector>().flow,
                 ),
@@ -207,6 +209,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                 SseFeatureHandler,
                 CookieJarFeatureHandler, // web 数据源统一 cookie jar (构造时注入)
                 WebSourceIdentityFeatureHandler, // web 数据源 per-host UA 对齐
+                MaxRequestsPerHostFeatureHandler,
             ),
         )
     }
@@ -236,7 +239,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             solverEnabled = {
                 settingsRepository.mediaSelectorSettings.flow.first().enableImageCaptchaAutoSolve
             },
-            searchRoutes = listOf(GirigiriSearchRoute(evaluator)),
             maxSessions = browserFactory.recommendedMaxSessions,
         )
     }
@@ -250,11 +252,13 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             }
         }
     }
-    single<AniApiProvider> { AniApiProvider(get<HttpClientProvider>().get(useAniToken = true)) }
+    single<AniApiProvider> {
+        AniApiProvider(get<HttpClientProvider>().get(useAniToken = true, useAniInstallId = true))
+    }
     single<WatchTogetherApiService> {
         DefaultWatchTogetherApiService(
             provider = get(),
-            eventsClient = get<HttpClientProvider>().get(useAniToken = true, useSse = true),
+            eventsClient = get<HttpClientProvider>().get(useAniToken = true, useAniInstallId = true, useSse = true),
         )
     }
     single<LocalPlaybackBridge> { LocalPlaybackBridge() }
@@ -269,81 +273,11 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             automationGate = get(),
         ).also { it.start() }
     }
-    single<TokenRepository> { TokenRepository(getContext().dataStores.tokenStore) }
-    single<EpisodePreferencesRepository> {
-        EpisodePreferencesRepositoryImpl(
-            getContext().dataStores.preferredAllianceStore,
-            database.preferredWebMediaSourceDao(),
-        )
-    }
-    single<BangumiClient> {
-        BangumiClientImpl(
-            get<HttpClientProvider>().get(
-                userAgent = ScopedHttpClientUserAgent.ANI,
-            ),
-        )
-    }
 
-    single<SubjectCollectionRepository> {
-        SubjectCollectionRepositoryImpl(
-            subjectService = get(),
-            subjectCollectionDao = database.subjectCollection(),
-//            characterDao = database.character(),
-//            characterActorDao = database.characterActor(),
-//            personDao = database.person(),
-//            subjectCharacterRelationDao = database.subjectCharacterRelation(),
-//            subjectPersonRelationDao = database.subjectPersonRelation(),
-            subjectRelationsDao = database.subjectRelations(),
-            episodeCollectionRepository = get(),
-            animeScheduleRepository = get(),
-            episodeService = get(),
-            episodeCollectionDao = database.episodeCollection(),
-            sessionManager = get(),
-            nsfwModeSettingsFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode },
-            getEpisodeTypeFiltersUseCase = get(),
-        )
-    }
-    single<FollowedSubjectsRepository> {
-        FollowedSubjectsRepository(
-            subjectCollectionRepository = get(),
-            animeScheduleRepository = get(),
-            episodeCollectionRepository = get(),
-            settingsRepository = get(),
-            sessionManager = get(),
-        )
-    }
     single<AniSubjectSearchService> {
         AniSubjectSearchService(
             subjectApi = aniApiProvider.subjectApi,
         )
-    }
-    single<SubjectSearchRepository> {
-        SubjectSearchRepository(
-            aniSubjectSearchService = get(),
-            subjectCollectionRepository = get(),
-        )
-    }
-    single<SubjectSearchCompletionRepository> {
-        SubjectSearchCompletionRepository(
-            aniSubjectSearchService = get(),
-            subjectCollectionRepository = get(),
-            settingsRepository = get(),
-        )
-    }
-    single<SubjectSearchHistoryRepository> {
-        SubjectSearchHistoryRepository(database.searchHistory(), database.searchTag())
-    }
-    single<SubjectRelationsRepository> {
-        DefaultSubjectRelationsRepository(
-            database.subjectCollection(),
-            database.subjectRelations(),
-            subjectService = get(),
-            subjectCollectionRepository = get(),
-            aniSubjectRelationIndexService = get(),
-        )
-    }
-    single<SubjectRelationGraphRepository> {
-        SubjectRelationGraphRepository(get<AniApiProvider>().subjectApi, database.subjectCollection())
     }
 
     // Data layer network services
@@ -356,59 +290,22 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<EpisodeService> { EpisodeServiceImpl(aniApiProvider.subjectApi) }
 
     single<BangumiRelatedPeopleService> { BangumiRelatedPeopleService(get<AniApiProvider>().subjectApi) }
-    single<PersonDetailsRepository> {
-        PersonDetailsRepository(
-            personsApi = aniApiProvider.personsApi,
-            charactersApi = aniApiProvider.charactersApi,
-        )
-    }
-    single<AnimeScheduleRepository> { AnimeScheduleRepository(get()) }
-    single<BangumiCommentRepository> {
-        BangumiCommentRepository(
-            get(),
-            database.subjectReviews(),
-        )
-    }
-    single<EpisodeCollectionRepository> {
-        EpisodeCollectionRepository(
-            subjectDao = database.subjectCollection(),
-            episodeCollectionDao = database.episodeCollection(),
-            episodeService = get(),
-            animeScheduleRepository = get(),
-            subjectCollectionRepository = inject(),
-            getEpisodeTypeFiltersUseCase = get(),
-        )
-    }
-    single<EpisodeProgressRepository> {
-        EpisodeProgressRepository(
-            episodeCollectionRepository = get(),
-            downloadManager = get(),
-        )
-    }
-    single<EpisodeScreenshotRepository> { WhatslinkEpisodeScreenshotRepository() }
     single<BangumiCommentService> { BangumiBangumiCommentServiceImpl(get<AniApiProvider>().subjectApi) }
     single<AniEpisodeCommentService> { AniEpisodeCommentService(get<AniApiProvider>().episodesApi) }
     single<AniCommentReportService> { AniCommentReportService(get<AniApiProvider>().commentsApi) }
-    single<EpisodeCommentRepository> { EpisodeCommentRepository(aniCommentService = get()) }
     single<AniPersonCommentService> {
         AniPersonCommentService(
             personsApi = get<AniApiProvider>().personsApi,
             charactersApi = get<AniApiProvider>().charactersApi,
         )
     }
-    single<PersonCommentRepository> { PersonCommentRepository(aniCommentService = get()) }
-    single<MediaSourceInstanceRepository> {
-        MediaSourceInstanceRepositoryImpl(getContext().dataStores.mediaSourceSaveStore)
-    }
-    single<MediaSourceSubscriptionRepository> {
-        MediaSourceSubscriptionRepository(getContext().dataStores.mediaSourceSubscriptionStore)
-    }
-    single<EpisodePlayHistoryRepository> {
-        EpisodePlayHistoryRepositoryImpl(
-            dataStore = getContext().dataStores.episodeHistoryStore,
-            playbackHistoryDao = database.playbackHistoryDao(),
-            onDirtyChanged = { get<PlaybackHistorySyncer>().requestSync() },
-        )
+    single(createdAtStart = true) {
+        EpisodeCollectionSyncer(
+            repository = get<EpisodeCollectionRepository>(),
+            api = aniApiProvider.subjectApi,
+            sessionStateProvider = get(),
+            scope = coroutineScope,
+        ).also { it.start() }
     }
     single(createdAtStart = true) {
         PlaybackHistorySyncer(
@@ -418,43 +315,29 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             scope = coroutineScope,
         ).also { it.start() }
     }
+    single(createdAtStart = true) {
+        InstallReporter(
+            store = getContext().dataStores.installInfoStore,
+            playHistoryRepository = get(),
+            api = aniApiProvider.userProfileApi,
+            sessionStateProvider = get(),
+            currentUserId = get<UserRepository>().selfInfoFlow.map { it?.id?.toString() },
+            scope = coroutineScope,
+        ).also { it.start() }
+    }
     single<AniSubjectRelationIndexService> {
         val provider = get<AniApiProvider>()
         AniSubjectRelationIndexService(provider.subjectRelationsApi)
     }
 
-    single<PeerFilterSubscriptionRepository> {
-        PeerFilterSubscriptionRepository(
-            dataStore = getContext().dataStores.peerFilterSubscriptionStore,
-            ruleSaveDir = getContext().files.dataDir.resolve("peerfilter-subs"),
-            httpClient = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI),
-            builtinPeerFilterRuleApi = get<AniApiProvider>().pfRuleApi,
-        )
-    }
     single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
-    single<TrendsRepository> { TrendsRepository(get<AniApiProvider>().trendsApi) }
-    single<RecommendationRepository> { RecommendationRepository(get<AniApiProvider>().homeApi) }
-    single<AutoSkipRepository> { AutoSkipRepository(get<AniApiProvider>().episodesApi) }
 
-    single<DanmakuRepository> {
-        DanmakuRepository(
-            parentCoroutineContext = coroutineScope.coroutineContext,
-            danmakuApi = aniApiProvider.danmakuApi,
-            danmakuDao = database.danmakuDao(),
-            httpClientProvider = get(),
-            getMediaCacheUseCase = get(),
-            getSubjectEpisodeInfoBundleFlowUseCase = get(),
-            settingsRepository = get(),
-        )
-    }
     single<UpdateManager> {
         UpdateManager(
-            saveDir = getContext().files.cacheDir.resolve("updates/download"),
+            // Android FileProvider 共享整个 updates/ 目录, 见 file_paths.xml
+            rootDir = getContext().files.cacheDir.resolve("updates"),
         )
     }
-    single<SettingsRepository> { PreferencesRepositoryImpl(getContext().dataStores.preferencesStore) }
-    single<DanmakuRegexFilterRepository> { DanmakuRegexFilterRepositoryImpl(getContext().dataStores.danmakuFilterStore) }
-    single<MikanIndexCacheRepository> { MikanIndexCacheRepositoryImpl(getContext().dataStores.mikanIndexStore) }
 
     single<AniDatabase> {
         getContext().createDatabaseBuilder()
@@ -471,18 +354,41 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             .build()
     }
 
-    single<HttpDownloader> {
-        KtorPersistentHttpDownloader(
-            dao = database.httpCacheDownloadStateDao(),
-            get<HttpClientProvider>().get(),
-            fileSystem = SystemFileSystem,
-            baseSaveDir = get<MediaSaveDirProvider>().saveDir
-                .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) },
-            scope = coroutineScope,
+    // Bound even without media cache: SettingsViewModel, which TV also uses, injects it lazily.
+    single<PikPakEngine> {
+        val settings = get<SettingsRepository>()
+
+        // Cache restoration reads isSupported synchronously; a default placeholder could discard valid records.
+        val savedConfig = runBlocking { settings.pikpakConfig.flow.first() }
+        val configState = settings.pikpakConfig.flow
+            .stateIn(coroutineScope, SharingStarted.Eagerly, savedConfig)
+        fun PikPakConfig.toCredentials() = takeIf {
+            it.enabled && it.username.isNotEmpty() && (it.password.isNotEmpty() || it.refreshToken.isNotEmpty())
+        }?.let { PikPakCredentials(it.username, it.password) }
+        val credentials = configState
+            .map { it.toCredentials() }
+            .stateIn(coroutineScope, SharingStarted.Eagerly, savedConfig.toCredentials())
+
+        PikPakEngine(
+            config = configState,
+            credentials = credentials,
+            sessionStore = PikPakSessionStoreAdapter(
+                readRefreshToken = { account ->
+                    configState.value.takeIf { it.username == account }?.refreshToken.orEmpty()
+                },
+                // A request started before an account switch must not replace the new account's token.
+                writeRefreshToken = { account, rt ->
+                    settings.pikpakConfig.update {
+                        if (username == account) copy(refreshToken = rt) else this
+                    }
+                },
+            ),
+            client = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.NONE),
+            saveDir = Path(get<MediaSaveDirProvider>().saveDir, TorrentEngineType.PikPak.id).inSystem,
+            parentCoroutineContext = coroutineScope.coroutineContext,
         )
     }
 
-    // Media
     single {
         DownloadOperations(
             downloadManager = get(),
@@ -490,64 +396,88 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             executionScope = coroutineScope.childScope(),
         )
     }
-    single<MediaDownloadManager> {
-        val id = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID
-        val engines = get<TorrentManager>().engines
-        val metadataStore = getContext().dataStores.mediaCacheMetadataStore
 
-        MediaDownloadManager(
-            storages = buildList(capacity = engines.size) {
-                /*if (currentAniBuildConfig.isDebug) {
-                    // 注意, 这个必须要在第一个, 见 [DefaultTorrentManager.engines] 注释
+    if (enableMediaCache) {
+        single<HttpDownloader> {
+            KtorPersistentHttpDownloader(
+                dao = database.httpCacheDownloadStateDao(),
+                get<HttpClientProvider>().get(),
+                fileSystem = SystemFileSystem,
+                baseSaveDir = get<MediaSaveDirProvider>().saveDir
+                    .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) },
+                scope = coroutineScope,
+            )
+        }
+
+        single<MediaDownloadManager> {
+            val id = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID
+            val engines = get<TorrentManager>().engines
+            val metadataStore = getContext().dataStores.mediaCacheMetadataStore
+
+            MediaDownloadManager(
+                storages = buildList(capacity = engines.size) {
+                    /*if (currentAniBuildConfig.isDebug) {
+                        // 注意, 这个必须要在第一个, 见 [DefaultTorrentManager.engines] 注释
+                        add(
+                            @Suppress("DEPRECATION")
+                            TorrentMediaCacheStorage(
+                                mediaSourceId = "test-in-memory",
+                                store = metadataStore,
+                                engine = DummyMediaCacheEngine("test-in-memory"),
+                                "[debug]dummy",
+                                coroutineScope.childScopeContext(),
+                            ),
+                        )
+                    }*/
+                    for (engine in engines) {
+                        val isPikPak = engine.type == TorrentEngineType.PikPak
+                        add(
+                            @Suppress("DEPRECATION")
+                            TorrentMediaCacheStorage(
+                                mediaSourceId = id,
+                                store = metadataStore,
+                                torrentEngine = TorrentMediaCacheEngine(
+                                    mediaSourceId = id,
+                                    engineKey = MediaCacheEngineKey(engine.type.id),
+                                    torrentEngine = engine,
+                                    // PikPak runs in-process and must not start Android's BT foreground service.
+                                    engineAccess = if (isPikPak) AlwaysUseTorrentEngineAccess else get(),
+                                    dao = database.torrentCacheInfoDao(),
+                                    baseSaveDirProvider = get(),
+                                ),
+                                displayName = "LocalTorrent",
+                                parentCoroutineContext = coroutineScope.childScopeContext(),
+                                engineAvailability = (engine as? PikPakEngine)?.availability ?: flowOf(true),
+                                shareRatioLimitFlow = if (isPikPak) flowOf(0f)
+                                else settingsRepository.anitorrentConfig.flow.map { it.shareRatioLimit },
+                            ),
+                        )
+                    }
                     add(
                         @Suppress("DEPRECATION")
-                        TorrentMediaCacheStorage(
-                            mediaSourceId = "test-in-memory",
+                        HttpMediaCacheStorage(
+                            mediaSourceId = id,
                             store = metadataStore,
-                            engine = DummyMediaCacheEngine("test-in-memory"),
-                            "[debug]dummy",
+                            dao = database.httpCacheDownloadStateDao(),
+                            httpEngine = get<HttpMediaCacheEngine>(),
+                            displayName = "LocalWebM3u",
                             coroutineScope.childScopeContext(),
                         ),
                     )
-                }*/
-                for (engine in engines) {
-                    add(
-                        @Suppress("DEPRECATION")
-                        TorrentMediaCacheStorage(
-                            mediaSourceId = id,
-                            store = metadataStore,
-                            torrentEngine = TorrentMediaCacheEngine(
-                                mediaSourceId = id,
-                                engineKey = MediaCacheEngineKey(engine.type.id),
-                                torrentEngine = engine,
-                                engineAccess = get(),
-                                dao = database.torrentCacheInfoDao(),
-                                baseSaveDirProvider = get(),
-                            ),
-                            displayName = "LocalTorrent",
-                            parentCoroutineContext = coroutineScope.childScopeContext(),
-                            shareRatioLimitFlow = settingsRepository.anitorrentConfig.flow
-                                .map { it.shareRatioLimit },
-                        ),
-                    )
-                }
-                add(
-                    @Suppress("DEPRECATION")
-                    HttpMediaCacheStorage(
-                        mediaSourceId = id,
-                        store = metadataStore,
-                        dao = database.httpCacheDownloadStateDao(),
-                        httpEngine = get<HttpMediaCacheEngine>(),
-                        displayName = "LocalWebM3u",
-                        coroutineScope.childScopeContext(),
-                    ),
-                )
-            },
-            backgroundScope = coroutineScope.childScope(),
-        )
+                },
+                backgroundScope = coroutineScope.childScope(),
+            )
+        }
+    } else {
+        single<MediaDownloadManager> {
+            MediaDownloadManager(
+                storages = emptyList(),
+                backgroundScope = coroutineScope.childScope(),
+            )
+        }
     }
 
-
+    // Media source services
     single<MediaSourceCodecManager> {
         MediaSourceCodecManager()
     }
@@ -568,12 +498,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             requester = MediaSourceSubscriptionRequesterImpl(client, get<AniApiProvider>().subscriptionApi),
         )
     }
-    single<SelectorMediaSourceEpisodeCacheRepository> {
-        SelectorMediaSourceEpisodeCacheRepository(
-            dao = database.webSearchSessionCacheDao(),
-            userTtlFlow = get<SettingsRepository>().mediaSelectorSettings.flow.map { it.webSearchCacheTtl },
-        )
-    }
 
     // Caching
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
@@ -590,6 +514,14 @@ fun KoinApplication.startCommonKoinModule(
     // Start the proxy provider very soon (before initialization of any other components)
     runBlocking {
         koin.get<SessionManager>().clearSessionIfAccessTokenExpired()
+        // 在任何请求之前加载, 让发往 Ani 服务器的请求都带上安装 ID
+        try {
+            koin.get<InstallIdRepository>().load()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger("ani-startup").warn(e) { "Failed to load install id" }
+        }
         // We have to block here to read the saved proxy settings
         when (val proxyProvider = koin.get<HttpClientProvider>()) {
             // compile-safe type cast
@@ -599,7 +531,35 @@ fun KoinApplication.startCommonKoinModule(
     // Now, the proxy settings is ready. Other components can use http clients.
 
     coroutineScope.launch {
-        koin.get<HttpDownloader>().init() // restore http download states first
+        // Without media cache (TV) there is no HttpDownloader, and nothing below applies.
+        val httpDownloader = koin.getOrNull<HttpDownloader>() ?: return@launch
+        val startupLogger = logger("ani-startup")
+        httpDownloader.init() // restore http download states first
+
+        // Migration changes engine ownership and must finish before cache restoration dispatches
+        // records. A migration failure is isolated so records remain restorable by their current engine.
+        try {
+            PikPakWebM3uCacheMigration(
+                metadataStore = context.dataStores.mediaCacheMetadataStore,
+                httpDao = koin.get<AniDatabase>().httpCacheDownloadStateDao(),
+                torrentDao = koin.get<AniDatabase>().torrentCacheInfoDao(),
+                baseSaveDirProvider = koin.get(),
+                pikpakSaveDir = koin.get<PikPakEngine>().saveDir,
+            ).migrate()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            startupLogger.warn(e) { "Failed to migrate legacy PikPak caches; restoring them as they are." }
+        }
+
+        try {
+            koin.get<PikPakEngine>().sweepLeftoversOnStartup()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            startupLogger.warn(e) { "Failed to sweep leftover PikPak cloud objects on startup." }
+        }
+
         val manager = koin.get<MediaDownloadManager>()
         for (storage in manager.storages) {
             storage.restorePersistedCaches()
@@ -658,7 +618,6 @@ private fun holdingInstanceMatrixSequence() = sequence {
         ),
     )
 }
-
 
 fun createAppRootCoroutineScope(): CoroutineScope {
     val logger = logger("ani-root")

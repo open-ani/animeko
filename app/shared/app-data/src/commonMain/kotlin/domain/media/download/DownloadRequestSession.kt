@@ -32,6 +32,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.preference.MediaPreference
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
@@ -84,7 +85,7 @@ sealed interface DownloadRequestState {
         override val pendingEpisodeIds: List<Int>,
         val fetchSession: MediaFetchSession,
         val selector: MediaSelector,
-        internal val choice: CompletableDeferred<Media>,
+        internal val choice: CompletableDeferred<DownloadChoice>,
     ) : Working
 
     /**
@@ -121,6 +122,11 @@ sealed interface DownloadRequestState {
         override val pendingEpisodeIds: List<Int> get() = emptyList()
     }
 }
+
+/**
+ * 用户在选源时的选择. [lineCandidates] 见 [DownloadRequestSession.select].
+ */
+internal data class DownloadChoice(val media: Media, val lineCandidates: List<Media>)
 
 /**
  * 选集时条目的一集.
@@ -196,12 +202,14 @@ class DownloadRequestSession internal constructor(
 
     /**
      * 只在等待该集选源时生效.
+     * @param lineCandidates 与 [media] 同一线路、覆盖其他集的资源, 选集时与选源器里同线路的候选一起规划;
+     *        同一集有多个单集资源时优先用它们. 手动查找按位置为其他集生成的资源从这里传入: 它们通常不在选源器的候选里.
      * @return 是否接受了本次选择
      */
-    fun select(episodeId: Int, media: Media): Boolean {
+    fun select(episodeId: Int, media: Media, lineCandidates: List<Media> = emptyList()): Boolean {
         val current = state.value as? DownloadRequestState.AwaitingSelection ?: return false
         if (current.episodeId != episodeId) return false
-        return current.choice.complete(media)
+        return current.choice.complete(DownloadChoice(media, lineCandidates))
     }
 
     /**
@@ -260,6 +268,7 @@ class DownloadRequestSession internal constructor(
         mutableState.value = DownloadRequestState.Preparing(episodeId, pending)
         val collection = subjects.subjectCollectionFlow(subjectId).first()
         val subject = collection.subjectInfo
+        val splitSeason = collection.relations.splitSeason
         val episodes = collection.episodes.map { it.episodeInfo }
         val episode = episodes.firstOrNull { it.episodeId == episodeId }
             ?: throw NoSuchElementException("Episode $episodeId is not in subject $subjectId")
@@ -267,14 +276,14 @@ class DownloadRequestSession internal constructor(
         // 还没上映的集不复用已有合集: 整季合集会把它算作覆盖, 但种子里还没有对应文件, 会建出永远下载不到的记录.
         if (episode.isAired()) {
             BatchDownloadPlanner.findReusableSeasonMedia(episode, existing.map { it.origin })?.let { media ->
-                createAll(subject, listOf(episode to media), pending)
+                createAll(subject, splitSeason, listOf(episode to media), pending)
                 return setOf(episodeId)
             }
         }
 
         val batch = awaitSelection(episodeId, pending, subject, episode, episodes, existing)
         // 发起下载的那一集已有记录时不在这一批里, 也算处理完, 否则会反复回到选源
-        return createAll(subject, batch, pending) + episodeId
+        return createAll(subject, splitSeason, batch, pending) + episodeId
     }
 
     /**
@@ -292,6 +301,7 @@ class DownloadRequestSession internal constructor(
      */
     private suspend fun createAll(
         subject: SubjectInfo,
+        splitSeason: SplitSeason?,
         batch: List<Pair<EpisodeInfo, Media>>,
         pending: List<Int>,
     ): Set<Int> {
@@ -302,7 +312,7 @@ class DownloadRequestSession internal constructor(
                 for ((target, media) in batch) {
                     val pendingNow = batchIds.filter { it !in handled } + pending.filter { it !in batchIds }
                     setStateUnlessFinished(DownloadRequestState.Creating(target.episodeId, pendingNow))
-                    addDownload(subject, target, media, MediaCacheMetadata(MediaFetchRequest.create(subject, target)))
+                    addDownload(subject, target, media, MediaCacheMetadata(MediaFetchRequest.create(subject, target)), splitSeason)
                     created += ExistingDownload(media, target.episodeId)
                     handled += target.episodeId
                 }
@@ -341,15 +351,16 @@ class DownloadRequestSession internal constructor(
 
         try {
             while (true) {
-                val choice = CompletableDeferred<Media>()
+                val choice = CompletableDeferred<DownloadChoice>()
                 mutableState.value =
                     DownloadRequestState.AwaitingSelection(episodeId, pending, fetchSession, selector, choice)
-                val chosen = choice.await()
+                val (chosen, lineCandidates) = choice.await()
 
                 // 同一线路 (数据源 + 字幕组 + 条目名) 的条目级候选; 预览按全部集规划.
                 // BT 源的结果不按条目名过滤, 同字幕组的其他条目 (如 "坂本日常" 之于 "日常") 靠标题里的条目名与所选资源或条目一致排除.
+                // 选择时给出的同线路资源排在前面, 规划时单集取第一个覆盖它的: 手动查找按位置的对应是用户认定的, 优先于数据源对集号的解析.
                 val chosenNames = chosen.lineSubjectNames()
-                val group = selector.subjectCandidates.first()
+                val group = lineCandidates + selector.subjectCandidates.first()
                     .mapNotNull { it.result }
                     .filter { !it.isLocalCache() && it.isSameLineAs(chosen, chosenNames, subject.allNames) }
                 // 还没上映的集 (发起下载的那一集除外) 不规划: 整季合集会把它们算作覆盖, 但种子里还没有对应文件.

@@ -22,21 +22,24 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.repository.subject.OfflineSubjectDisplayInfo
-import me.him188.ani.app.data.repository.subject.staticSubjectImageLargeUrl
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
+import me.him188.ani.app.domain.mediasource.web.captcha.createTestWebSessionManager
 import me.him188.ani.app.ui.download.components.DownloadStatus
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.platform.annotations.TestOnly
 
+@OptIn(TestOnly::class)
 class DownloadManagementViewModelTest {
     @Test
     fun `downloads are grouped by subject with offline info and fallbacks`() = withFixture {
@@ -46,7 +49,7 @@ class DownloadManagementViewModelTest {
             testDownloadCache(5, subjectId = 2, creationTime = 50),
         )
         subjects.collectionTypes[1] = UnifiedCollectionType.DOING
-        subjects.displayInfos[1] = OfflineSubjectDisplayInfo(1, "Subject One", "https://img/1", 12)
+        subjects.displayInfos[1] = OfflineSubjectDisplayInfo(1, "Subject One", "https://img/1", "https://img/1", 12)
 
         assertTrue(vm.uiState.value.isLoading)
         val state = awaitState { state -> state.groups.any { it.subjectName == "Subject One" } }
@@ -63,7 +66,7 @@ class DownloadManagementViewModelTest {
         val unknown = state.groups.first { it.subjectId == 2 }
         assertEquals("Subject 2", unknown.subjectName)
         assertNull(unknown.collectionType)
-        assertEquals(staticSubjectImageLargeUrl(2), unknown.imageUrl)
+        assertNull(unknown.imageUrl)
         assertNull(unknown.totalEpisodeCount)
         assertEquals(listOf(5), unknown.entries.map { it.episodeId })
     }
@@ -198,6 +201,9 @@ class DownloadManagementViewModelTest {
                 downloadManager, FakeAddDownloadUseCase(storage),
             ),
             operations,
+            createTestWebSessionManager(testScope.backgroundScope),
+            FakeManualBrowseMemoryRepository(),
+            { flowOf(null) },
         )
         val vm = DownloadManagementViewModel(
             downloadManager, subjects, histories, operations, presenters,

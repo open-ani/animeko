@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
 import me.him188.ani.app.data.models.preference.EpisodeProgressSettings
+import me.him188.ani.app.data.models.preference.SubjectAppearanceSettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.UserRepository
@@ -38,6 +39,7 @@ import me.him188.ani.app.domain.mediasource.web.captcha.WebCaptchaDialogHost
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.app.domain.torrent.engines.PikPakEngine
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
@@ -48,6 +50,7 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalPlatformFontFamily
 import me.him188.ani.app.ui.foundation.LocalEpisodeProgressSettings
 import me.him188.ani.app.ui.foundation.LocalSketch
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.ActiveInputSourceState
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
@@ -60,6 +63,7 @@ import me.him188.ani.app.ui.foundation.rememberPlatformFontFamily
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.lang.LocaleZhCN
+import me.him188.ani.torrent.pikpak.PikPakNotEnoughSpaceException
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
@@ -76,6 +80,7 @@ class AniAppState(
     val overlayComposables: List<@Composable () -> Unit>,
     val platformFont: String?,
     val episodeProgressSettings: EpisodeProgressSettings,
+    val subjectAppearanceSettings: SubjectAppearanceSettings,
 )
 
 @Stable
@@ -86,6 +91,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val webSessionManager: WebSessionManager by inject()
     private val userRepository: UserRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
+    private val pikPakEngine: PikPakEngine by inject()
 
     private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
 
@@ -94,6 +100,8 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
     )
 
     val browserNavigator by inject<BrowserNavigator>()
+
+    val pikPakNotEnoughSpace: Flow<PikPakNotEnoughSpaceException> get() = pikPakEngine.notEnoughSpace
 
     val bangumiSessionExpired =
         combine(userRepository.selfInfoFlow, sessionStateProvider.stateFlow) { selfInfo, sessionState ->
@@ -121,6 +129,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
                 "Microsoft YaHei UI"
             } else null,
             uiSettings.episodeProgress,
+            uiSettings.subjectAppearance,
         )
     }.shareInBackground(
         started = SharingStarted.Eagerly,
@@ -147,6 +156,7 @@ fun AniApp(
         LocalTimeFormatter provides remember { TimeFormatter() },
         LocalThemeSettings provides appState.themeSettings,
         LocalEpisodeProgressSettings provides appState.episodeProgressSettings,
+        LocalSubjectAppearanceSettings provides appState.subjectAppearanceSettings,
         LocalPlatformFontFamily provides rememberPlatformFontFamily(appState.platformFont),
         LocalActiveInputSource provides remember { ActiveInputSourceState() },
     ) {

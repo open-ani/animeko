@@ -22,6 +22,7 @@ import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringInfo
+import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.ui.comment.CommentReportState
@@ -83,6 +84,8 @@ data class SubjectDetailsUiState(
     val subjectId: Int,
     val displayName: String,
     val selfCollectionType: UnifiedCollectionType,
+    /** 全站收藏数. 自己修改收藏类型后会随之变化. */
+    val collectionStats: SubjectCollectionStats,
     /** `null` 表示加载中. */
     val airingInfo: SubjectAiringInfo?,
     /** `null` 表示加载中. */
@@ -105,6 +108,7 @@ data class SubjectDetailsUiState(
             subjectId = 0,
             displayName = "",
             selfCollectionType = UnifiedCollectionType.NOT_COLLECTED,
+            collectionStats = SubjectCollectionStats.Zero,
             airingInfo = null,
             progressInfo = null,
             episodeListUiState = EpisodeListUiState.Placeholder,

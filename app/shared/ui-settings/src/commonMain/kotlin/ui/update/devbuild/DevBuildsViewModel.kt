@@ -18,9 +18,10 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.update.UpdateManager
 import me.him188.ani.app.platform.currentAniBuildConfig
+import me.him188.ani.app.tools.update.PARALLEL_DOWNLOAD_CONNECTIONS
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.ktor.engineMaxRequestsPerHost
 import me.him188.ani.utils.ktor.getPlatformKtorEngine
 import me.him188.ani.utils.platform.currentPlatform
 import org.koin.core.component.KoinComponent
@@ -39,6 +40,7 @@ class DevBuildsViewModel : AbstractViewModel(), KoinComponent {
         // GitHubDevBuildApi 手动处理 artifact 下载的重定向, 并自行检查状态码
         followRedirects = false
         expectSuccess = false
+        engineMaxRequestsPerHost(PARALLEL_DOWNLOAD_CONNECTIONS)
     }
 
     /**
@@ -49,7 +51,7 @@ class DevBuildsViewModel : AbstractViewModel(), KoinComponent {
             api = GitHubDevBuildApi(client),
             spec = spec,
             installer = installer,
-            saveDir = updateManager.saveDir.resolve(SAVE_DIR_NAME),
+            saveDir = updateManager.devBuildsDir,
             getToken = { settingsRepository.debugSettings.flow.first().devBuildGitHubToken },
             currentVersionName = currentAniBuildConfig.versionName,
             backgroundScope = backgroundScope,
@@ -69,12 +71,5 @@ class DevBuildsViewModel : AbstractViewModel(), KoinComponent {
     override fun onCleared() {
         super.onCleared()
         client.close()
-    }
-
-    private companion object {
-        /**
-         * [UpdateManager.saveDir] 下的子目录. 在 Android 上仍处于 FileProvider 允许共享的 `updates/download/` 之内.
-         */
-        const val SAVE_DIR_NAME = "dev-builds"
     }
 }

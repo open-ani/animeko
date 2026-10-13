@@ -23,6 +23,7 @@ import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.SupportedLocales
+import me.him188.ani.app.ui.lang.renderLocale
 import me.him188.ani.app.ui.lang.settings_app_danmaku_refresh_rate
 import me.him188.ani.app.ui.lang.settings_app_language
 import me.him188.ani.app.ui.lang.settings_player_exoplayer_preinit_effect_graph

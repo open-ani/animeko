@@ -8,6 +8,7 @@
  */
 
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import groovy.json.JsonSlurper
 
 plugins {
     id("ani.android-application")
@@ -103,10 +104,18 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
-    flavorDimensions += "distribution"
+    flavorDimensions += AniAndroidFlavors.DIMENSION
     productFlavors {
-        create("default") {
-            dimension = "distribution"
+        create(AniAndroidFlavors.DEFAULT) {
+            dimension = AniAndroidFlavors.DIMENSION
+            // The phone BT service uses SharedMemory (API 27); TV does not register that service.
+            minSdk = maxOf(27, getIntProperty("android.min.sdk"))
+        }
+        create(AniAndroidFlavors.TV) {
+            // Android TV 形态: 与 default 平级、单维度,
+            // 保证手机任务名 assembleDefaultRelease 与产物路径零变化.
+            dimension = AniAndroidFlavors.DIMENSION
+            applicationIdSuffix = ".tv"
         }
     }
     buildFeatures {
@@ -116,8 +125,10 @@ android {
 }
 
 dependencies {
+    // 两个 flavor 共用共享库；TV 对手机页面的访问边界靠约定 + Konsist 维护。
     implementation(projects.app.shared)
     implementation(projects.app.shared.application)
+    "tvImplementation"(projects.app.shared.tv)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -143,4 +154,21 @@ googleServices {
         .let {
             if (it) MissingGoogleServicesStrategy.ERROR else MissingGoogleServicesStrategy.IGNORE
         }
+}
+
+val googleServicesPackageNames: Set<String> =
+    providers.fileContents(layout.projectDirectory.file("google-services.json")).asText.orNull?.let { json ->
+        ((JsonSlurper().parseText(json) as Map<*, *>)["client"] as? List<*>).orEmpty().mapNotNullTo(mutableSetOf()) { client ->
+            val clientInfo = (client as? Map<*, *>)?.get("client_info") as? Map<*, *>
+            (clientInfo?.get("android_client_info") as? Map<*, *>)?.get("package_name") as? String
+        }
+    }.orEmpty()
+
+androidComponents {
+    onVariants(selector().withFlavor(AniAndroidFlavors.DIMENSION to AniAndroidFlavors.TV)) { variant ->
+        if (variant.applicationId.get() !in googleServicesPackageNames) {
+            val taskName = "process${variant.name.replaceFirstChar { it.uppercase() }}GoogleServices"
+            tasks.matching { it.name == taskName }.configureEach { enabled = false }
+        }
+    }
 }

@@ -247,6 +247,7 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
             return AniWatchTogetherReportResponse(
                 serverTime = NOW_MILLIS,
                 membership = AniWatchTogetherMembership.OK,
+                version = 0L,
             )
         }
 

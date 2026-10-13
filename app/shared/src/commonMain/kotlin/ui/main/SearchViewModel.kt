@@ -35,13 +35,17 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.episode.GetAnimeSeasonIdsFlowUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.search.SubjectSearchQuery
+import me.him188.ani.app.domain.search.isExplicitR18
+import me.him188.ani.app.domain.search.withNsfwFilter
 import me.him188.ani.app.domain.search.withYearFilter
+import me.him188.ani.app.ui.exploration.search.SearchFilterState
 import me.him188.ani.app.ui.exploration.search.SearchPageEffect
 import me.him188.ani.app.ui.exploration.search.SearchPageIntent
 import me.him188.ani.app.ui.exploration.search.SearchPageState
 import me.him188.ani.app.ui.exploration.search.SubjectPreviewItemInfo
 import me.him188.ani.app.ui.exploration.search.buildSearchFilterState
 import me.him188.ani.app.ui.exploration.search.withQuery
+import me.him188.ani.app.ui.exploration.search.withTagKinds
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.search.PagingSearchState
@@ -56,7 +60,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 @Stable
-class SearchViewModel(
+open class SearchViewModel(
     initialSearchQuery: SubjectSearchQuery,
 ) : AbstractViewModel(), KoinComponent {
     private val searchHistoryRepository: SubjectSearchHistoryRepository by inject()
@@ -80,14 +84,7 @@ class SearchViewModel(
     private val searchState = PagingSearchState(
         createPager = { scope ->
             val rawQuery = queryFlow.value.normalized()
-            val explicitR18 = rawQuery.tags?.contains("R18") == true
-            val query = rawQuery.copy(
-                nsfw = when {
-                    explicitR18 -> true
-                    nsfwSettingFlow.value == NsfwMode.HIDE -> false
-                    else -> null
-                },
-            )
+            val query = rawQuery.withNsfwFilter(nsfwSettingFlow.value)
 
             subjectSearchRepository.searchSubjects(
                 searchQuery = query,
@@ -101,7 +98,8 @@ class SearchViewModel(
                     SubjectPreviewItemInfo.compute(
                         subject.subjectInfo,
                         subject.mainEpisodeCount,
-                        nsfwModeSettings = if (explicitR18) {
+                        // 主动选择 R18 标签时不模糊 NSFW 条目, HIDE 除外
+                        nsfwModeSettings = if (rawQuery.isExplicitR18 && nsfwMode != NsfwMode.HIDE) {
                             NsfwMode.DISPLAY
                         } else {
                             nsfwMode
@@ -120,7 +118,10 @@ class SearchViewModel(
             query = initialQuery,
             hasActiveSearch = false,
             removingHistory = null,
-            searchFilterState = buildSearchFilterState(initialQuery.tags.orEmpty()),
+            searchFilterState = buildSearchFilterState(
+                initialQuery.tags.orEmpty(),
+                SearchFilterState.tagKinds(nsfwSettingFlow.value),
+            ),
             selectedItemIndex = -1,
             searchHistoryPager = searchHistoryPager,
             searchState = searchState,
@@ -138,6 +139,11 @@ class SearchViewModel(
     private var initialSearchQueryStarted = false
 
     init {
+        launchInBackground {
+            nsfwSettingFlow.collect { nsfwMode ->
+                updateSearchPageState { it.withTagKinds(SearchFilterState.tagKinds(nsfwMode)) }
+            }
+        }
         // 拉取可浏览的季度列表, 供番剧索引的季度筛选使用.
         launchInBackground {
             try {
@@ -240,6 +246,7 @@ class SearchViewModel(
                         SearchPageEffect.NavigateToSubjectDetails(
                             subjectId = intent.item.subjectId,
                             title = intent.item.title,
+                            originalTitle = intent.item.originalTitle,
                             imageUrl = intent.item.imageUrl,
                         ),
                     )
@@ -263,7 +270,7 @@ class SearchViewModel(
 
     fun reloadCurrentSubjectDetails() {
         val curr = currentPreviewingSubject ?: return
-        subjectDetailsStateLoader.reload(curr.subjectId, curr)
+        subjectDetailsStateLoader.load(curr.subjectId, curr, force = true)
     }
 
     private fun updateQuery(query: SubjectSearchQuery, submit: Boolean) {
@@ -329,12 +336,12 @@ class SearchViewModel(
     }
 
     private fun viewSubjectDetails(previewItem: SubjectPreviewItemInfo) {
-        subjectDetailsStateLoader.clear()
+        // load 自动取消在途任务, 不需要先 clear
         subjectDetailsStateLoader.load(
             previewItem.subjectId,
             placeholder = SubjectInfo.createPlaceholder(
                 previewItem.subjectId,
-                previewItem.title,
+                previewItem.originalTitle,
                 previewItem.imageUrl,
                 previewItem.title,
             ).also { currentPreviewingSubject = it },

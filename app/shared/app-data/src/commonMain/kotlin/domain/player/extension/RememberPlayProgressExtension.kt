@@ -20,6 +20,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.data.models.player.EpisodeHistory
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodeSession
@@ -30,6 +31,7 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.source.MediaData
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -43,6 +45,8 @@ import kotlin.time.Duration.Companion.seconds
  * - 切换数据源
  * - 暂停
  * - 播放完成
+ *
+ * 播放完成时位置照常保存 (钳到时长以内), 记录不会被删除; 恢复时由 [EpisodeHistory.isFinished] 判断是否从头播放.
  */
 class RememberPlayProgressExtension(
     private val context: PlayerExtensionContext,
@@ -88,6 +92,9 @@ class RememberPlayProgressExtension(
         backgroundTaskScope.launch("PlaybackStateListener") {
             val player = context.player
             var haveResumedOnce = false
+            // 已经恢复过记忆进度的媒体. 播放器在原位置重新打开同一个 MediaData 时 (Android 上视频输出超时后恢复播放),
+            // 保留播放器打开时的位置, 不跳回记忆的进度.
+            var resumedMediaData: MediaData? = null
             player.state.collectLatest { state ->
                 when {
                     state.mediaStatus == MediaStatus.Opening -> {
@@ -96,17 +103,23 @@ class RememberPlayProgressExtension(
                     }
 
                     state.isPlaying -> {
+                        val mediaData = player.mediaData.value
+                        if (mediaData != null && mediaData === resumedMediaData) {
+                            haveResumedOnce = true
+                        }
                         // Some backends (notably desktop mpv) report playing before the loaded file accepts seeks.
                         // Restore once metadata is ready, but only report after playback remains active for 5 seconds.
                         if (!haveResumedOnce) {
                             if (automationGate.suppressed.value) {
                                 haveResumedOnce = true
+                                resumedMediaData = mediaData
                             } else {
                                 val positionMillis =
-                                    playProgressRepository.getPositionMillisByEpisodeId(episodeSession.episodeId)
+                                    playProgressRepository.getResumePositionMillisByEpisodeId(episodeSession.episodeId)
                                 if (positionMillis == null) {
                                     logger.info { "Did not find saved position" }
                                     haveResumedOnce = true
+                                    resumedMediaData = mediaData
                                 } else {
                                     logger.info {
                                         "Loaded saved position: $positionMillis, waiting for video properties"
@@ -117,7 +130,9 @@ class RememberPlayProgressExtension(
                                             "Video properties ready, seeking to saved position: $positionMillis"
                                         }
                                         player.seekTo(positionMillis)
+                                        // seek 引起的状态变化会取消本次收集, 标记必须在 NonCancellable 内完成
                                         haveResumedOnce = true
+                                        resumedMediaData = mediaData
                                     }
                                 }
                             }
@@ -198,21 +213,18 @@ class RememberPlayProgressExtension(
             return
         }
 
-        if (videoDurationMillis - currentPositionMillis < 5000 || currentPositionMillis > videoDurationMillis) {
-            playProgressRepository.remove(episodeId)
-        } else {
-            val info = latestInfoBundle(episodeId, episodeSession)
-            playProgressRepository.saveOrUpdate(
-                episodeId = episodeId,
-                positionMillis = currentPositionMillis,
-                subjectId = info?.subjectId,
-                episodeSort = info?.episodeInfo?.sort?.number,
-                subjectName = info?.subjectInfo?.displayName,
-                subjectImageUrl = info?.subjectInfo?.imageLarge,
-                episodeName = info?.episodeInfo?.displayName,
-                durationMillis = videoDurationMillis,
-            )
-        }
+        // 有些后端上报的位置会略微超过时长 (#1506), 钳到时长以内, 保证进度比例不超过 1 且能被识别为已看完.
+        val info = latestInfoBundle(episodeId, episodeSession)
+        playProgressRepository.saveOrUpdate(
+            episodeId = episodeId,
+            positionMillis = currentPositionMillis.coerceAtMost(videoDurationMillis),
+            subjectId = info?.subjectId,
+            episodeSort = info?.episodeInfo?.sort?.number,
+            subjectName = info?.subjectInfo?.displayName,
+            subjectImageUrl = info?.subjectInfo?.imageLarge,
+            episodeName = info?.episodeInfo?.displayName,
+            durationMillis = videoDurationMillis,
+        )
     }
 
     private suspend fun latestInfoBundle(

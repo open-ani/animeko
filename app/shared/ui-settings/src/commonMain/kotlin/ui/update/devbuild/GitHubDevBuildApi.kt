@@ -10,35 +10,22 @@
 package me.him188.ani.app.ui.update.devbuild
 
 import io.ktor.client.HttpClient
-import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
-import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsChannel
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.URLBuilder
-import io.ktor.http.contentLength
-import io.ktor.http.takeFrom
-import io.ktor.utils.io.readAvailable
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import me.him188.ani.utils.coroutines.IO_
-import me.him188.ani.utils.io.DEFAULT_BUFFER_SIZE
+import me.him188.ani.app.tools.update.downloadToFile
 import me.him188.ani.utils.io.SystemPath
-import me.him188.ani.utils.io.bufferedSink
-import me.him188.ani.utils.logging.info
-import me.him188.ani.utils.logging.logger
 
 /**
  * 查询 GitHub 仓库的 commits, PR, Build workflow 的运行记录和上传的 artifacts, 以及下载 artifact 和安装包.
@@ -151,80 +138,14 @@ class GitHubDevBuildApi(
     }
 
     /**
-     * 下载 [url] 到 [target], 不附带 token. 跟随最多 [MAX_DOWNLOAD_REDIRECTS] 次重定向 (Release 附件的直链会重定向到对象存储).
-     * [onProgress] 在下载过程中周期性回调, 完成时最后回调一次.
+     * 下载 [url] 到 [target], 不附带 token. 见 [downloadToFile].
      */
     suspend fun downloadFile(
         url: String,
         target: SystemPath,
         onProgress: (downloadedBytes: Long, totalBytes: Long?) -> Unit = { _, _ -> },
     ) {
-        var currentUrl = url
-        var redirects = 0
-        while (true) {
-            val redirectedTo = downloadFileOnce(currentUrl, target, onProgress) ?: return
-            if (++redirects > MAX_DOWNLOAD_REDIRECTS) {
-                throw GitHubApiException(HttpStatusCode.Found, "重定向次数过多: $url")
-            }
-            currentUrl = resolveRedirect(currentUrl, redirectedTo)
-        }
-    }
-
-    /**
-     * 按 RFC 3986 把 `Location` 头 [location] 解析为绝对地址: 绝对地址原样使用, 相对地址基于 [base] 解析且不继承 [base] 的 query.
-     */
-    private fun resolveRedirect(base: String, location: String): String {
-        if (ABSOLUTE_URL_REGEX.containsMatchIn(location)) return location
-        return URLBuilder(base).apply {
-            parameters.clear()
-            fragment = ""
-            takeFrom(location)
-        }.buildString()
-    }
-
-    /**
-     * @return 需要跟随的重定向地址; 下载完成时为 `null`.
-     */
-    private suspend fun downloadFileOnce(
-        url: String,
-        target: SystemPath,
-        onProgress: (downloadedBytes: Long, totalBytes: Long?) -> Unit,
-    ): String? {
-        return client.prepareGet(url) {
-            timeout {
-                requestTimeoutMillis = DOWNLOAD_TIMEOUT_MILLIS
-            }
-        }.execute { response ->
-            if (response.status.value in 300..399) {
-                return@execute response.headers[HttpHeaders.Location]
-                    ?: throw GitHubApiException(response.status, "服务器返回了重定向但没有 Location 头")
-            }
-            if (!response.status.isSuccess()) {
-                throw response.toApiException()
-            }
-            val total = response.contentLength()
-            logger.info { "Downloading dev build package, total=$total, target=$target" }
-            val channel = response.bodyAsChannel()
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            var downloaded = 0L
-            var lastReported = 0L
-            withContext(Dispatchers.IO_) {
-                target.bufferedSink().use { sink ->
-                    while (true) {
-                        val read = channel.readAvailable(buffer)
-                        if (read == -1) break
-                        sink.write(buffer, 0, read)
-                        downloaded += read
-                        if (downloaded - lastReported >= PROGRESS_REPORT_INTERVAL_BYTES) {
-                            lastReported = downloaded
-                            onProgress(downloaded, total)
-                        }
-                    }
-                }
-            }
-            onProgress(downloaded, total ?: downloaded)
-            null
-        }
+        client.downloadToFile(url, target, onProgress)
     }
 
     private suspend fun getText(
@@ -272,12 +193,6 @@ class GitHubDevBuildApi(
         const val DEFAULT_BRANCH = "main"
         const val DEFAULT_WORKFLOW_FILE_NAME = "build.yml"
 
-        private const val DOWNLOAD_TIMEOUT_MILLIS = 1_000_000L
-        private const val MAX_DOWNLOAD_REDIRECTS = 5
-        private val ABSOLUTE_URL_REGEX = Regex("""^[a-zA-Z][a-zA-Z0-9+.-]*://""")
-        private const val PROGRESS_REPORT_INTERVAL_BYTES = 512 * 1024L
-
-        private val logger = logger<GitHubDevBuildApi>()
         private val json = Json {
             ignoreUnknownKeys = true
         }

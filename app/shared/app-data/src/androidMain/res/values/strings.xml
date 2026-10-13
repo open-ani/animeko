@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pikpak_cache_service_name">Animeko cloud cache</string>
+    <string name="pikpak_cache_service_title_idle">Cloud cache service is running</string>
+    <string name="pikpak_cache_service_title_working">Caching %1$d resource(s)</string>
+    <string name="pikpak_cache_service_content">Download: %1$s</string>
+    <string name="pikpak_cache_service_pause_all">Pause all</string>
+</resources>

@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.media.cache.storage
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
@@ -43,6 +44,8 @@ import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.flowOfFileSizeZero
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 
 /**
  * 表示一个媒体缓存的存储空间, 例如一个本地目录.
@@ -79,6 +82,10 @@ interface MediaCacheStorage : AutoCloseable {
      * Note that to retrieve [Media] (more specifically, [CachedMedia]) from the cache storage, you might want to use [cacheMediaSource].
      */
     val listFlow: Flow<List<MediaCache>>
+
+    /** Whether this storage owns a record, including persisted records awaiting restoration. */
+    suspend fun hasRecordForMedia(mediaId: String): Boolean =
+        listFlow.first().any { it.origin.mediaId == mediaId }
 
     /**
      * 重新加载那些上次 APP 运行时保存在本地的缓存.
@@ -178,6 +185,7 @@ class MediaCacheStorageSource(
     private val displayName: String,
     override val location: MediaSourceLocation = MediaSourceLocation.Local,
 ) : MediaSource {
+    private val logger = logger<MediaCacheStorageSource>()
     override val mediaSourceId: String get() = storage.mediaSourceId
     override val kind: MediaSourceKind get() = MediaSourceKind.LocalCache
 
@@ -187,7 +195,16 @@ class MediaCacheStorageSource(
         return SinglePagePagedSource {
             storage.listFlow.first().mapNotNull { cache ->
                 val kind = query.matchesSubject(cache.metadata) ?: return@mapNotNull null
-                MediaMatch(cache.getCachedMedia().forRecord(cache.metadata), kind)
+                // 跳过无法提供媒体的缓存; 协程取消必须继续向上传播.
+                val cachedMedia = try {
+                    cache.getCachedMedia()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.warn(e) { "Skipping cache that failed to provide media: ${cache.cacheId}" }
+                    return@mapNotNull null
+                }
+                MediaMatch(cachedMedia.forRecord(cache.metadata), kind)
             }.asFlow()
         }
     }
@@ -253,4 +270,3 @@ class TestMediaCacheStorage : MediaCacheStorage {
     override fun close() {
     }
 }
-

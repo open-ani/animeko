@@ -39,6 +39,25 @@ class PlayerSkipOpEdStatePrefetchTest {
     }
 
     @Test
+    fun `pending chapter is available only until cancelled or skipped`() {
+        val state = createState()
+        state.update(100_000)
+        assertNull(state.pendingChapter)
+        state.update(116_000)
+        assertEquals(op, state.pendingChapter)
+        state.cancelSkipOpEd()
+        assertNull(state.pendingChapter)
+        state.update(120_000)
+        assertNull(state.pendingChapter)
+
+        val automatic = createState()
+        automatic.update(116_000)
+        assertEquals(op, automatic.pendingChapter)
+        automatic.update(120_000)
+        assertNull(automatic.pendingChapter)
+    }
+
+    @Test
     fun `prefetch covers 30s after chapter end from lead time until chapter end`() {
         val state = createState()
         // 缓存 OP 结束后的 30 秒, 前提是 OP 开头 (120s) 之前的内容已缓冲好

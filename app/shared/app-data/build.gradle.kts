@@ -61,7 +61,6 @@ kotlin {
 
         api(projects.datasource.datasourceApi)
         api(projects.datasource.datasourceCore)
-        api(projects.datasource.bangumi)
         api(projects.datasource.mikan)
         api(projects.datasource.jellyfin)
         api(projects.datasource.ikaros)
@@ -69,6 +68,7 @@ kotlin {
         api(projects.danmaku.dandanplay)
 
         api(libs.paging.common)
+        api(libs.androidx.collection)
 
         implementation(libs.koin.core)
         implementation(libs.atomicfu)
@@ -110,6 +110,8 @@ kotlin {
     sourceSets.androidMain.dependencies {
         implementation(libs.androidx.browser)
         implementation(libs.onnxruntime.android)
+        api(libs.datastore) // PlatformDataStoreManagerAndroid (data/persistent, 自 :app:shared 搬迁)
+        api(libs.datastore.preferences)
         api(libs.androidx.lifecycle.runtime.ktx)
         api(libs.androidx.lifecycle.service)
         api(libs.androidx.lifecycle.process)

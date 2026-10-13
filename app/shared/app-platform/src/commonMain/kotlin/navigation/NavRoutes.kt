@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -46,6 +46,20 @@ sealed class NavRoutes : NavKey {
     @Serializable
     data class OAuthAuthorize(val provider: String) : NavRoutes()
 
+    /**
+     * 扫描其他设备 (例如电视) 上的登录二维码.
+     */
+    @Serializable
+    data object QrLoginScan : NavRoutes()
+
+    /**
+     * 确认为其他设备登录当前账号.
+     *
+     * @param requestId 扫码登录会话的 ID, 来自二维码或 `ani://qr-login` 链接
+     */
+    @Serializable
+    data class QrLoginConfirm(val requestId: String) : NavRoutes()
+
     @Serializable
     data class Settings(
         /**
@@ -79,6 +93,7 @@ sealed class NavRoutes : NavKey {
     @Serializable
     data class PersonDetail(
         val personId: Int,
+        val role: PersonDetailRole = PersonDetailRole.Staff,
     ) : NavRoutes()
 
     @Serializable
@@ -118,6 +133,9 @@ sealed class NavRoutes : NavKey {
     data object Schedule : NavRoutes()
 
     @Serializable
+    data object TrendingRanking : NavRoutes()
+
+    @Serializable
     data object PlaybackHistory : NavRoutes()
 
     @Serializable
@@ -129,6 +147,10 @@ sealed class NavRoutes : NavKey {
     @Serializable
     data object BangumiMerge : NavRoutes()
 }
+
+/** Explicit entry identity; a person's asynchronously loaded careers never change their route. */
+@Serializable
+enum class PersonDetailRole { VoiceActor, Staff }
 
 @Serializable
 data class SubjectDetailPlaceholder(

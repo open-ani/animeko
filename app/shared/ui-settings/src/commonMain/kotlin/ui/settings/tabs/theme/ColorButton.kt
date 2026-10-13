@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.settings.tabs.theme
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.aspectRatio
@@ -33,6 +34,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.materialkolor.hct.Hct
@@ -51,15 +57,22 @@ fun ColorButton(
     cardColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     containerColor: Color = MaterialTheme.colorScheme.primaryContainer,
 ) {
+    var focused by remember { mutableStateOf(false) }
     val containerSize by animateDpAsState(targetValue = if (selected) 28.dp else 0.dp)
     val iconSize by animateDpAsState(targetValue = if (selected) 16.dp else 0.dp)
 
     Surface(
         modifier = modifier
+            .onFocusChanged { focused = it.isFocused }
+            .semantics {
+                this.selected = selected
+                role = Role.RadioButton
+            }
             .sizeIn(maxHeight = 80.dp, maxWidth = 80.dp, minHeight = 64.dp, minWidth = 64.dp)
             .aspectRatio(1f),
         shape = RoundedCornerShape(16.dp),
         color = cardColor,
+        border = if (focused) BorderStroke(3.dp, MaterialTheme.colorScheme.onSurface) else null,
         onClick = onClick,
     ) {
         Box(Modifier.fillMaxSize()) {
@@ -69,7 +82,7 @@ fun ColorButton(
             val color3 = Color(Hct.from(hct.hue, 40.0, 60.0).toInt())
 
             Box(
-                modifier = modifier
+                modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
                     .drawBehind { drawCircle(color1) }

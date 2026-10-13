@@ -12,11 +12,13 @@ package me.him188.ani.app.domain.media.cache.engine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
-import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
 import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorageSource
+import me.him188.ani.app.domain.media.cache.storage.TestMediaCacheStorage
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolver
@@ -24,6 +26,8 @@ import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
+import me.him188.ani.datasources.api.isLocalCache
+import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.httpdownloader.DownloadId
@@ -46,12 +50,45 @@ import kotlin.test.assertTrue
  */
 class HttpDownloadIdentityTest {
     @Test
+    fun `completed episode remains queryable while another HTTP episode is downloading`() = runTest {
+        val downloader = FakeDownloader()
+        val engine = engine(downloader)
+        val media = TestMediaList.first().copy(
+            kind = MediaSourceKind.WEB,
+            download = ResourceLocation.HttpStreamingFile("https://example.com/episode.mp4"),
+        )
+        val downloading = engine.createCache(media, testMetadata(1), testEpisodeMetadata(1), backgroundScope.coroutineContext)
+        val downloadingId = downloader.states.keys.single()
+        val completed = engine.createCache(media, testMetadata(2), testEpisodeMetadata(2), backgroundScope.coroutineContext)
+        val completedId = downloader.states.keys.single { it != downloadingId }
+        downloader.states[completedId] = downloader.states.getValue(completedId).copy(status = DownloadStatus.COMPLETED)
+        val storage = TestMediaCacheStorage().apply {
+            listFlow.value = listOf(downloading, completed)
+        }
+        val query = MediaFetchRequest(
+            subjectId = "1",
+            episodeId = "2",
+            subjectNames = listOf("Subject"),
+            episodeSort = EpisodeSort(2),
+            episodeName = "Episode 2",
+        )
+
+        val results = MediaCacheStorageSource(storage, "Test HTTP Storage").fetch(query).results.toList()
+
+        val cached = results.single().media
+        assertTrue(cached.isLocalCache())
+        assertEquals(completed.getCachedMedia().download, cached.download)
+        assertEquals(listOf(EpisodeSort(2)), cached.episodeRange?.knownSorts?.toList())
+        assertEquals(DownloadStatus.DOWNLOADING, downloader.states.getValue(downloadingId).status)
+    }
+
+    @Test
     fun `season episodes create different HTTP files and deleting one keeps the other`() = runTest {
         val downloader = FakeDownloader()
         val engine = engine(downloader)
         val media = TestMediaList.first().copy(
-            kind = MediaSourceKind.BitTorrent,
-            download = ResourceLocation.MagnetLink("magnet:?xt=urn:btih:season"),
+            kind = MediaSourceKind.WEB,
+            download = ResourceLocation.HttpStreamingFile("https://example.com/season.mp4"),
         )
         val firstCache = engine.createCache(media, testMetadata(1), testEpisodeMetadata(1), backgroundScope.coroutineContext)
         val firstId = downloader.states.keys.single()
@@ -109,7 +146,11 @@ class HttpDownloadIdentityTest {
 
     @Test
     fun `identity is stable filesystem safe and distinguishes episodes subjects and media`() = runTest {
-        val media = TestMediaList.first()
+        // The HTTP engine only accepts WEB media; the test list defaults to magnets.
+        val media = TestMediaList.first().copy(
+            kind = MediaSourceKind.WEB,
+            download = ResourceLocation.HttpStreamingFile("https://example.com/identity.mp4"),
+        )
         suspend fun createId(media: Media, metadata: MediaCacheMetadata): DownloadId {
             val downloader = FakeDownloader()
             engine(downloader).createCache(media, metadata, testEpisodeMetadata(1), backgroundScope.coroutineContext)
@@ -121,7 +162,7 @@ class HttpDownloadIdentityTest {
         assertNotEquals(id, createId(media, testMetadata(2)))
         assertNotEquals(id, createId(media, testMetadata(1).copy(subjectId = "2")))
         assertTrue(id.value.matches(Regex("http-v2-[0-9a-f]{64}")))
-        val slash = TestMediaList.first().copy(mediaId = "source/path")
+        val slash = media.copy(mediaId = "source/path")
         val colon = slash.copy(mediaId = "source:path")
         assertNotEquals(createId(slash, testMetadata(1)), createId(colon, testMetadata(1)))
     }
@@ -166,7 +207,6 @@ class HttpDownloadIdentityTest {
 
             override suspend fun getById(id: DownloadId) = downloader.persisted[id]
         },
-        pikpakConfig = { PikPakConfig.Default.copy(enabled = true) },
     )
 }
 

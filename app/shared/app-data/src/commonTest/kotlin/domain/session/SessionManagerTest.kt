@@ -16,6 +16,7 @@ import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.GuestSession
+import me.him188.ani.app.data.repository.user.Session
 import me.him188.ani.app.data.repository.user.TokenRepository
 import me.him188.ani.app.data.repository.user.TokenSave
 import kotlin.test.Test
@@ -77,7 +78,66 @@ class SessionManagerTest {
         )
     }
 
-    private fun createSessionManager(repository: TokenRepository, coroutineScope: CoroutineScope): SessionManager {
+    @Test
+    fun `login from guest notifies listener before the session is saved`() = runTest {
+        val repository = TokenRepository(MemoryDataStore(TokenSave.Initial))
+        val calls = mutableListOf<Pair<String, Session>>()
+        val manager = createSessionManager(repository, backgroundScope) { userId ->
+            calls += userId to repository.session.value()
+        }
+
+        manager.setSession(validSession(), "refresh", userId = "u1")
+
+        assertEquals(listOf<Pair<String, Session>>("u1" to GuestSession), calls)
+        assertEquals(validSession(), repository.session.value())
+    }
+
+    @Test
+    fun `setSession while logged in does not notify listener`() = runTest {
+        val repository = TokenRepository(MemoryDataStore(TokenSave.Initial))
+        repository.setSession(validSession())
+        val calls = mutableListOf<String>()
+        val manager = createSessionManager(repository, backgroundScope) { calls += it }
+
+        manager.setSession(validSession(), "refresh", userId = "u1")
+
+        assertEquals(emptyList(), calls)
+    }
+
+    @Test
+    fun `setSession that is not a new login does not notify listener`() = runTest {
+        val repository = TokenRepository(MemoryDataStore(TokenSave.Initial))
+        val calls = mutableListOf<String>()
+        val manager = createSessionManager(repository, backgroundScope) { calls += it }
+
+        manager.setSession(validSession(), "refresh", isNewLogin = false, userId = "u1")
+
+        assertEquals(emptyList(), calls)
+    }
+
+    @Test
+    fun `listener failure does not affect login`() = runTest {
+        val repository = TokenRepository(MemoryDataStore(TokenSave.Initial))
+        val manager = createSessionManager(repository, backgroundScope) { error("listener failed") }
+
+        manager.setSession(validSession(), "refresh", userId = "u1")
+
+        assertEquals(validSession(), repository.session.value())
+    }
+
+    private fun validSession() = AccessTokenSession(
+        AccessTokenPair(
+            aniAccessToken = "ani",
+            expiresAtMillis = nowMillis + 2.hours.inWholeMilliseconds,
+            bangumiAccessToken = null,
+        ),
+    )
+
+    private fun createSessionManager(
+        repository: TokenRepository,
+        coroutineScope: CoroutineScope,
+        onNewLogin: (suspend (userId: String) -> Unit)? = null,
+    ): SessionManager {
         return SessionManager(
             tokenRepository = repository,
             coroutineScope = coroutineScope,
@@ -85,6 +145,9 @@ class SessionManagerTest {
                 error("refresh should not be called")
             },
             clock = FixedClock(nowMillis),
+            newLoginListener = onNewLogin?.let { listener ->
+                SessionManager.NewLoginListener { userId -> listener(userId) }
+            },
         )
     }
 

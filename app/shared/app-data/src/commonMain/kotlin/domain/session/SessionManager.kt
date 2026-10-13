@@ -75,12 +75,26 @@ class SessionManager(
     private val refreshSession: SessionRefresher,
     private val clock: Clock = Clock.System,
     private val config: Config = Config(),
+    private val newLoginListener: NewLoginListener? = null,
 ) {
     fun interface SessionRefresher {
         /**
          * @throws RepositoryException
          */
         suspend fun refresh(refreshToken: String): OAuthResult
+    }
+
+    /**
+     * 监听从未登录状态登录. 已登录时的绑定/解绑等操作也会调用 [setSession], 但不算新的登录.
+     */
+    fun interface NewLoginListener {
+        /**
+         * 在新会话保存之前调用. 此时还没有请求能带上新用户的 token, 本机数据仍是登录前的状态,
+         * 例如播放记录还没有和新用户的云端记录合并.
+         *
+         * 抛出的异常会被记录并忽略, 不影响登录.
+         */
+        suspend fun beforeNewLogin(userId: String)
     }
 
     data class Config(
@@ -236,17 +250,34 @@ class SessionManager(
 
     /**
      * 登录成功后调用, 设置一个会话. 这也会导致 [stateProvider] [SessionStateProvider.stateFlow] 更新.
+     *
+     * @param userId 会话所属的用户. 从未登录状态登录时会传给 [NewLoginListener].
      */
     suspend fun setSession(
         session: AccessTokenSession,
         // Ani 登录保证每次登录都返回新的 refreshToken, 所以我们要求都更新
         refreshToken: String,
         isNewLogin: Boolean = true,
+        userId: String? = null,
     ) {
+        if (isNewLogin && userId != null && tokenRepository.session.first() is GuestSession) {
+            notifyNewLogin(userId)
+        }
         tokenRepository.setSession(session)
         tokenRepository.setRefreshToken(refreshToken)
         if (isNewLogin) {
             _stateProvider.emitEvent(SessionEvent.NewLogin)
+        }
+    }
+
+    private suspend fun notifyNewLogin(userId: String) {
+        val listener = newLoginListener ?: return
+        try {
+            listener.beforeNewLogin(userId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.error("NewLoginListener failed, ignoring", e)
         }
     }
 

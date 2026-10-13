@@ -131,7 +131,7 @@ class SubjectRelationGraphScreenTest {
         setContent(TestSubjectRelationGraphs.Kimetsu)
         onNodeWithText("Part 2 · Current").assertExists()
         // 当前条目的前一部显示在顶部, 更早的条目需要向上滚动
-        onNodeWithText("剧场版 鬼灭之刃 无限列车篇").assertExists()
+        onNodeWithText("鬼灭之刃 无限列车篇").assertExists()
         onNodeWithText("兄妹的羁绊").assertDoesNotExist()
     }
 
@@ -155,9 +155,10 @@ class SubjectRelationGraphScreenTest {
         // 剧场版形式的总集篇不在主线上, 而是第一部下的一行
         onNodeWithText("兄妹的羁绊").assertExists()
         onNodeWithText("Compilation · 2019").assertExists()
-        // 主线有 4 部正片和 4 部剧场版, 剧场版不计入 "第几部"
+        // 主线有 4 部正片, 4 部剧场版和 1 部 TV 特别篇, 后两者不计入 "第几部"
         onNodeWithText("4 in main story", substring = true).assertDoesNotExist()
-        onNodeWithText("8 in main story · 11 related").assertExists()
+        onNodeWithText("9 in main story · 10 related").assertExists()
+        onNodeWithText("Special").assertExists()
     }
 
     @Test

@@ -382,21 +382,20 @@ class MediaDownloadManagerTest {
     // defaultStorageFor
 
     @Test
-    fun `default storage prefers WebM3u engine for BT media`() = runTest {
+    fun `default storage prefers PikPak engine for BT media`() = runTest {
         val torrent = storage(MediaCacheEngineKey.Anitorrent)
-        val unsupported = storage(MediaCacheEngineKey.WebM3u, supports = false)
-        val web = storage(MediaCacheEngineKey.WebM3u)
-        val otherWeb = storage(MediaCacheEngineKey.WebM3u)
-        val manager = manager(torrent, unsupported, web, otherWeb)
+        val unsupported = storage(MediaCacheEngineKey.PikPak, supports = false)
+        val pikPak = storage(MediaCacheEngineKey.PikPak)
+        val manager = manager(torrent, unsupported, pikPak)
 
-        assertSame(web, manager.defaultStorageFor(TestMediaList.first().copy(kind = MediaSourceKind.BitTorrent)))
+        assertSame(pikPak, manager.defaultStorageFor(TestMediaList.first().copy(kind = MediaSourceKind.BitTorrent)))
     }
 
     @Test
-    fun `default storage uses torrent engine when WebM3u cannot handle BT media`() = runTest {
-        val web = storage(MediaCacheEngineKey.WebM3u, supports = false)
+    fun `default storage uses anitorrent when PikPak cannot handle BT media`() = runTest {
+        val pikPak = storage(MediaCacheEngineKey.PikPak, supports = false)
         val torrent = storage(MediaCacheEngineKey.Anitorrent)
-        val manager = manager(web, torrent)
+        val manager = manager(pikPak, torrent)
 
         assertSame(torrent, manager.defaultStorageFor(TestMediaList.first().copy(kind = MediaSourceKind.BitTorrent)))
     }

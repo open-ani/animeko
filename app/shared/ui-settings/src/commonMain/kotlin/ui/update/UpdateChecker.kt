@@ -26,7 +26,9 @@ import me.him188.ani.utils.ktor.getPlatformKtorEngine
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
+import me.him188.ani.utils.platform.isAndroidTv
 
 class UpdateChecker {
     /**
@@ -87,7 +89,7 @@ class UpdateChecker {
             }
             val platform = currentPlatform()
             parameter("clientVersion", currentAniBuildConfig.versionName)
-            parameter("clientPlatform", platform.name.lowercase())
+            parameter("clientPlatform", platform.updateClientPlatform())
             parameter("clientArch", platform.arch.displayName)
             parameter("releaseClass", releaseClass.name)
         }.bodyAsText().let {
@@ -121,3 +123,6 @@ class UpdateChecker {
         ): String = kotlin.runCatching { TimeFormatter().format(seconds * 1000) }.getOrElse { seconds.toString() }
     }
 }
+
+internal fun Platform.updateClientPlatform(): String =
+    if (isAndroidTv()) "androidtv" else name.lowercase()

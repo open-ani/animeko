@@ -27,6 +27,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -180,6 +181,17 @@ class KtorHttpDownloaderTest {
                             // 404 response
                             respond("Not found", HttpStatusCode.NotFound)
                         }
+
+                        // 分片请求一直挂起: 下载停在 DOWNLOADING, 直到被暂停或取消.
+                        "https://example.com/stalled.m3u8" -> {
+                            respond(
+                                content = STALLED_MEDIA_PLAYLIST,
+                                status = HttpStatusCode.OK,
+                                headers = headersOf(HttpHeaders.ContentType, "application/vnd.apple.mpegurl"),
+                            )
+                        }
+
+                        "https://example.com/stalled-segment.ts" -> awaitCancellation()
 
                         "https://example.com/timeout.m3u8" -> {
                             // Simulate a long delay
@@ -1129,11 +1141,12 @@ class KtorHttpDownloaderTest {
 
     @Test
     fun `pauseAll - should pause all downloads`() = testScope.runTest {
+        // 第二个任务准备期间, 第一个任务不能先下载完.
         val id1 = downloader.download(
-            url = "https://example.com/master.m3u8",
+            url = "https://example.com/stalled.m3u8",
         )
         val id2 = downloader.download(
-            url = "https://example.com/master.m3u8",
+            url = "https://example.com/stalled.m3u8",
         )
 
         assertEquals(2, downloader.getActiveDownloadIds().size)
@@ -1150,11 +1163,12 @@ class KtorHttpDownloaderTest {
 
     @Test
     fun `cancelAll - should cancel all downloads`() = testScope.runTest {
+        // 第二个任务准备期间, 第一个任务不能先下载完.
         val id1 = downloader.download(
-            url = "https://example.com/master.m3u8",
+            url = "https://example.com/stalled.m3u8",
         )
         val id2 = downloader.download(
-            url = "https://example.com/master.m3u8",
+            url = "https://example.com/stalled.m3u8",
         )
         assertEquals(2, downloader.getActiveDownloadIds().size)
 
@@ -1402,6 +1416,17 @@ class KtorHttpDownloaderTest {
             segment2.ts
             #EXTINF:4.0,
             segment3.ts
+            #EXT-X-ENDLIST
+        """
+
+        private const val STALLED_MEDIA_PLAYLIST = """
+            #EXTM3U
+            #EXT-X-VERSION:3
+            #EXT-X-TARGETDURATION:5
+            #EXT-X-MEDIA-SEQUENCE:0
+
+            #EXTINF:4.0,
+            stalled-segment.ts
             #EXT-X-ENDLIST
         """
 

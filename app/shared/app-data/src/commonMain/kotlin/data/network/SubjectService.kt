@@ -24,10 +24,8 @@ import me.him188.ani.app.data.models.subject.CharacterRole
 import me.him188.ani.app.data.models.subject.PersonInfo
 import me.him188.ani.app.data.models.subject.PersonPosition
 import me.him188.ani.app.data.models.subject.PersonType
-import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
-import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.session.SessionStateProvider
@@ -38,10 +36,8 @@ import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniPerson
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectRecommendation
+import me.him188.ani.client.models.AniSubjectStats
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
-import me.him188.ani.datasources.bangumi.models.BangumiCount
-import me.him188.ani.datasources.bangumi.models.BangumiSubjectCollectionType
-import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollection
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.restartable
@@ -56,7 +52,7 @@ import kotlin.coroutines.CoroutineContext
  */
 interface SubjectService {
     suspend fun getSubjectCollections(
-        type: BangumiSubjectCollectionType?,
+        type: AniCollectionType?,
         offset: Int,
         limit: Int
     ): List<AniSubjectCollection>
@@ -76,7 +72,12 @@ interface SubjectService {
      */
     fun subjectCollectionById(subjectId: Int): Flow<AniSubjectCollection?>
 
-    suspend fun patchSubjectCollection(subjectId: Int, payload: AniUpdateSubjectCollectionRequest)
+    /**
+     * 修改或创建收藏.
+     *
+     * @return 修改后条目的全站统计, 包含自己这次的修改
+     */
+    suspend fun patchSubjectCollection(subjectId: Int, payload: AniUpdateSubjectCollectionRequest): AniSubjectStats
     suspend fun deleteSubjectCollection(subjectId: Int)
 
     suspend fun getSubjectRecommendations(subjectId: Int, limit: Int): List<AniSubjectRecommendation>
@@ -94,19 +95,11 @@ interface SubjectService {
     suspend fun getBangumiFullSyncState(): BangumiSyncState?
 }
 
-data class BatchSubjectCollection(
-    val batchSubjectDetails: BatchSubjectDetails,
-    /**
-     * `null` 表示未收藏
-     */
-    val collection: BangumiUserSubjectCollection?,
-)
-
 suspend inline fun SubjectService.setSubjectCollectionTypeOrDelete(
     subjectId: Int,
     type: AniCollectionType?
 ) {
-    return if (type == null) {
+    if (type == null) {
         deleteSubjectCollection(subjectId)
     } else {
         patchSubjectCollection(subjectId, AniUpdateSubjectCollectionRequest(collectionType = type))
@@ -121,7 +114,7 @@ class RemoteSubjectService(
     private val logger = logger<RemoteSubjectService>()
 
     override suspend fun getSubjectCollections(
-        type: BangumiSubjectCollectionType?,
+        type: AniCollectionType?,
         offset: Int,
         limit: Int
     ): List<AniSubjectCollection> = withContext(ioDispatcher) {
@@ -129,7 +122,7 @@ class RemoteSubjectService(
         val collections = try {
             subjectApi {
                 getSubjectCollections(
-                    type = type?.toAniCollectionType(),
+                    type = type,
                     limit = limit,
                     offset = offset,
                 ).body().items
@@ -187,18 +180,21 @@ class RemoteSubjectService(
 
     val subjectCountStatsRestarter = FlowRestarter()
 
-    override suspend fun patchSubjectCollection(subjectId: Int, payload: AniUpdateSubjectCollectionRequest) {
+    override suspend fun patchSubjectCollection(
+        subjectId: Int,
+        payload: AniUpdateSubjectCollectionRequest,
+    ): AniSubjectStats {
         sessionManager.checkAccessAniApiNow()
-        withContext(ioDispatcher) {
+        val stats = withContext(ioDispatcher) {
             subjectApi {
                 this.updateSubjectCollection(
                     subjectId.toLong(),
                     payload,
-                )
-                Unit
+                ).body()
             }
         }
         subjectCountStatsRestarter.restart()
+        return stats
     }
 
     override suspend fun getSubjectRecommendations(subjectId: Int, limit: Int): List<AniSubjectRecommendation> {
@@ -236,28 +232,6 @@ class RemoteSubjectService(
                 ),
             )
         }.restartable(subjectCountStatsRestarter)
-//        return sessionManager.username.filterNotNull().map { username ->
-//            sessionManager.checkTokenNow()
-//            val types = UnifiedCollectionType.entries - UnifiedCollectionType.NOT_COLLECTED
-//            val totals = IntArray(types.size) { type ->
-//                api {
-//                    getUserCollectionsByUsername(
-//                        username,
-//                        subjectType = BangumiSubjectType.Anime,
-//                        type = types[type].toSubjectCollectionType(),
-//                        limit = 1, // we only need the total count. API requires at least 1
-//                    ).body().total ?: 0
-//                }
-//            }
-//            SubjectCollectionCounts(
-//                wish = totals[UnifiedCollectionType.WISH.ordinal],
-//                doing = totals[UnifiedCollectionType.DOING.ordinal],
-//                done = totals[UnifiedCollectionType.DONE.ordinal],
-//                onHold = totals[UnifiedCollectionType.ON_HOLD.ordinal],
-//                dropped = totals[UnifiedCollectionType.DROPPED.ordinal],
-//                total = totals.sum(),
-//            )
-//        }.flowOn(ioDispatcher)
     }
 
     override fun subjectCollectionById(subjectId: Int): Flow<AniSubjectCollection?> {
@@ -297,19 +271,6 @@ class RemoteSubjectService(
 }
 
 
-private fun BangumiCount.toRatingCounts() = RatingCounts(
-    _1 ?: 0,
-    _2 ?: 0,
-    _3 ?: 0,
-    _4 ?: 0,
-    _5 ?: 0,
-    _6 ?: 0,
-    _7 ?: 0,
-    _8 ?: 0,
-    _9 ?: 0,
-    _10 ?: 0,
-)
-
 
 data class BatchSubjectDetails(
     val subjectInfo: SubjectInfo,
@@ -342,28 +303,6 @@ data class BatchSubjectRelations(
     val allPersons
         get() = relatedCharacterInfoList.asSequence()
             .flatMap { it.character.actors } + relatedPersonInfoList.asSequence().map { it.personInfo }
-}
-
-internal fun BangumiUserSubjectCollection?.toSelfRatingInfo(): SelfRatingInfo {
-    if (this == null) {
-        return SelfRatingInfo.Empty
-    }
-    return SelfRatingInfo(
-        score = rate,
-        comment = comment.takeUnless { it.isNullOrBlank() },
-        tags = tags,
-        isPrivate = private,
-    )
-}
-
-private fun BangumiSubjectCollectionType.toAniCollectionType(): AniCollectionType {
-    return when (this) {
-        BangumiSubjectCollectionType.Wish -> AniCollectionType.WISH
-        BangumiSubjectCollectionType.Done -> AniCollectionType.DONE
-        BangumiSubjectCollectionType.Doing -> AniCollectionType.DOING
-        BangumiSubjectCollectionType.OnHold -> AniCollectionType.ON_HOLD
-        BangumiSubjectCollectionType.Dropped -> AniCollectionType.DROPPED
-    }
 }
 
 private fun AniPerson.toPersonInfo(): PersonInfo {
