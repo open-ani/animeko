@@ -130,6 +130,9 @@ object ReleaseArtifactNames {
     ): String = "$appName-$fullVersion-$osName-$archName.$extension"
 
     fun server(fullVersion: String, extension: String): String = "$appName-server-$fullVersion.$extension"
+
+    /** 桌面 zip 发布包的增量更新清单, 见 [DESKTOP_PACKAGE_MANIFEST_SUFFIX]. */
+    fun desktopPackageManifest(packageAssetName: String): String = packageAssetName + DESKTOP_PACKAGE_MANIFEST_SUFFIX
 }
 
 enum class ReleaseHostOs {
@@ -419,6 +422,12 @@ abstract class UploadDesktopInstallersTask : ReleaseUploadTask() {
     @get:PathSensitive(PathSensitivity.NONE)
     abstract val zipDistribution: RegularFileProperty
 
+    /** [zipDistribution] 的增量更新清单, 与它一起上传. */
+    @get:Optional
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val zipDistributionManifest: RegularFileProperty
+
     @get:Optional
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -439,28 +448,11 @@ abstract class UploadDesktopInstallersTask : ReleaseUploadTask() {
         val fullVersion = releaseFullVersion.get()
 
         when (currentReleaseHostOs()) {
-            ReleaseHostOs.WINDOWS -> uploadReleaseAsset(
-                name = ReleaseArtifactNames.desktopDistributionFile(
-                    fullVersion = fullVersion,
-                    osName = "windows",
-                    extension = "zip",
-                ),
-                contentType = "application/x-zip",
-                file = requiredFile(zipDistribution, "zipDistribution"),
-            )
+            ReleaseHostOs.WINDOWS -> uploadZipDistribution(fullVersion, osName = "windows")
 
             ReleaseHostOs.MACOS -> {
-                if (currentReleaseHostArch() == "x86_64") {
-                    uploadReleaseAsset(
-                        name = ReleaseArtifactNames.desktopDistributionFile(
-                            fullVersion = fullVersion,
-                            osName = "macos",
-                            extension = "zip",
-                        ),
-                        contentType = "application/x-zip",
-                        file = requiredFile(zipDistribution, "zipDistribution"),
-                    )
-                } else {
+                if (currentReleaseHostArch() == "aarch64") {
+                    // 首次安装用 dmg, 版本 API 也返回 dmg; zip 只供应用内增量更新拼包, 客户端从 dmg 地址派生它的地址.
                     uploadReleaseAsset(
                         name = ReleaseArtifactNames.desktopDistributionFile(
                             fullVersion = fullVersion,
@@ -474,6 +466,7 @@ abstract class UploadDesktopInstallersTask : ReleaseUploadTask() {
                         ),
                     )
                 }
+                uploadZipDistribution(fullVersion, osName = "macos")
             }
 
             ReleaseHostOs.LINUX -> {
@@ -499,6 +492,27 @@ abstract class UploadDesktopInstallersTask : ReleaseUploadTask() {
                 )
             }
         }
+    }
+
+    /**
+     * 上传 zip 发布包和它的增量更新清单. 清单名由包名派生, 客户端同样从包地址派生清单地址.
+     */
+    private fun uploadZipDistribution(fullVersion: String, osName: String) {
+        val packageName = ReleaseArtifactNames.desktopDistributionFile(
+            fullVersion = fullVersion,
+            osName = osName,
+            extension = "zip",
+        )
+        uploadReleaseAsset(
+            name = packageName,
+            contentType = "application/x-zip",
+            file = requiredFile(zipDistribution, "zipDistribution"),
+        )
+        uploadReleaseAsset(
+            name = ReleaseArtifactNames.desktopPackageManifest(packageName),
+            contentType = "application/json",
+            file = requiredFile(zipDistributionManifest, "zipDistributionManifest"),
+        )
     }
 
     private fun requiredFile(property: RegularFileProperty, propertyName: String): File =
