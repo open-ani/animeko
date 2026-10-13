@@ -31,7 +31,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import me.him188.ani.app.domain.media.resolver.MediaResolutionException
 import me.him188.ani.app.domain.media.resolver.ResolutionFailures
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
-import me.him188.ani.app.domain.mediasource.codec.decodeFromStringOrNull
 import me.him188.ani.app.domain.mediasource.codec.serializeToString
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
@@ -279,7 +278,9 @@ class ApiMediaSourceTest {
     fun `codec round trip preserves arbitrary requests and multiple configurations`() {
         val codecs = MediaSourceCodecManager()
         val args = fixture()
-        val data = codecs.decodeFromStringOrNull(codecs.serializeToString(listOf(args, args.copy(name = "Another"))))!!
+        val data = codecs.decodeSubscriptionFromString(
+            codecs.serializeToString(listOf(args, args.copy(name = "Another"))),
+        )
         assertEquals(2, data.mediaSources.size)
         assertEquals(args, codecs.decode(data.mediaSources[0]))
         assertTrue(ApiMediaSource.Factory().allowMultipleInstances)

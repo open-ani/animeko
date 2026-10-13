@@ -17,6 +17,7 @@ import androidx.compose.ui.test.performTextReplacement
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import me.him188.ani.app.domain.mediasource.api.ApiDetail
 import me.him188.ani.app.domain.mediasource.api.ApiMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.api.ApiPlayback
@@ -24,6 +25,7 @@ import me.him188.ani.app.domain.mediasource.api.ApiRequest
 import me.him188.ani.app.domain.mediasource.api.ApiSearch
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.codec.serializeToString
+import me.him188.ani.app.domain.mediasource.subscription.UnsupportedSubscriptionSchemaException
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
@@ -167,6 +169,27 @@ class EditApiMediaSourceStateTest {
         assertTrue(fixture.state.jsonEditor.isError)
         assertEquals("{", fixture.state.jsonEditor.text)
         assertEquals(renamed, fixture.saved)
+    }
+
+    @Test
+    fun `json editor imports current and legacy subscription formats`() {
+        val exported = codecs.serializeToString(listOf(arguments))
+        val sources = Json.parseToJsonElement(exported).jsonObject.getValue("mediaSources")
+        val formats = listOf(
+            apiEditorJson.encodeToString(ApiMediaSourceArguments.serializer(), arguments),
+            exported,
+            """{"mediaSources":$sources}""",
+            """{"exportedMediaSourceDataList":{"mediaSources":$sources}}""",
+        )
+        for (text in formats) {
+            val fixture = fixture()
+            fixture.state.jsonEditor.edit(text)
+            assertFalse(fixture.state.jsonEditor.isError)
+            assertEquals(arguments, fixture.saved)
+        }
+        assertFailsWith<UnsupportedSubscriptionSchemaException> {
+            decodeApiArguments("""{"schemaVersion":999,"mediaSources":$sources}""", codecs)
+        }
     }
 
     @Test

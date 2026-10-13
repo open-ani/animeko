@@ -24,7 +24,6 @@ import me.him188.ani.app.domain.mediasource.api.ApiMediaSource
 import me.him188.ani.app.domain.mediasource.api.ApiMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.api.ApiRequest
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
-import me.him188.ani.app.domain.mediasource.codec.decodeFromStringOrNull
 import me.him188.ani.app.ui.settings.mediasource.ExportMediaSourceState
 import me.him188.ani.app.ui.settings.mediasource.ImportMediaSourceState
 import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
@@ -39,12 +38,12 @@ internal val apiEditorJson = Json {
 }
 
 /**
- * 解析 JSON 编辑器里的文本. 既接受裸的 [ApiMediaSourceArguments] 对象, 也接受导出格式 (`{"mediaSources":[...]}`) 中的单个源.
+ * 解析 JSON 编辑器里的文本. 接受裸的 [ApiMediaSourceArguments] 对象, 或订阅及导出格式中的单个源.
  */
 internal fun decodeApiArguments(text: String, codecs: MediaSourceCodecManager): ApiMediaSourceArguments {
     val root = apiEditorJson.parseToJsonElement(text)
-    if (root is JsonObject && "mediaSources" in root) {
-        val sources = requireNotNull(codecs.decodeFromStringOrNull(text)) { "Invalid media source export" }.mediaSources
+    if (root is JsonObject && ("mediaSources" in root || "exportedMediaSourceDataList" in root)) {
+        val sources = codecs.decodeSubscriptionFromString(text).mediaSources
         require(sources.size == 1) { "Expected exactly one media source, got ${sources.size}" }
         val data = sources.single()
         require(data.factoryId == ApiMediaSource.FactoryId) { "Expected a json-api source" }
