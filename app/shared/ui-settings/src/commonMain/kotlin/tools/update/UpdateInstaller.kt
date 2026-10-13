@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.extension
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -46,6 +47,14 @@ interface UpdateInstaller {
      * 实际差分数据由外部更新器在安装阶段下载.
      */
     fun getUpdatePreparationUrls(packageUrls: List<String>): List<String> = packageUrls
+
+    /**
+     * 创建下载安装包用的 [FileDownloader].
+     *
+     * 默认整包下载. Windows 和 macOS 用 `DeltaPackageDownloader` 增量下载: 复用已安装目录里内容相同的文件,
+     * 只从发布包取有变化的部分, 在本地拼出与发布包等价的 zip 后仍走 [install].
+     */
+    fun createPackageDownloader(client: ScopedHttpClient): FileDownloader = DefaultFileDownloader(client)
 
     /**
      * 如果 [install] 可能返回 [InstallationResult.Failed], 则需实现
