@@ -1,0 +1,37 @@
+#  Copyright (C) 2024-2026 OpenAni and contributors.
+#
+#  此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+#  Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+#
+#  https://github.com/open-ani/ani/blob/main/LICENSE
+
+# 构建 Windows 更新器 tools/ani-update, 产物作为 artifact 上传.
+# 应用打包时用的是提交在 app/desktop/appResources/windows/ani_update.exe 的二进制,
+# 改了更新器源码后从这里下载 artifact 换掉它.
+name: Build ani_update
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tools/ani-update/**'
+      - '.github/workflows/build-ani-update.yml'
+
+jobs:
+  build:
+    name: Build ani_update.exe
+    runs-on: windows-2022
+    defaults:
+      run:
+        working-directory: tools/ani-update
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        run: cargo test --release --locked
+      - name: Build
+        run: cargo build --release --locked
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ani_update
+          path: tools/ani-update/target/release/ani_update.exe
+          if-no-files-found: error

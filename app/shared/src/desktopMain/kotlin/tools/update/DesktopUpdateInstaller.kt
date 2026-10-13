@@ -25,6 +25,7 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Platform
 import java.io.File
+import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.coroutines.cancellation.CancellationException
@@ -425,21 +426,30 @@ object WindowsUpdateInstaller : DesktopUpdateInstaller {
 
     override val installablePackageExtensions: Set<String> = setOf("zip")
 
+    /**
+     * 增量下载直接拼出解压好的目录, 更新器把它整个换进安装目录, 省掉写 zip 再解压.
+     */
     override fun createPackageDownloader(client: ScopedHttpClient): FileDownloader {
         val appDir = ExecutableDirectoryDetector.INSTANCE.getExecutableDirectory()
-        if (!appDir.resolve("Ani.exe").exists()) {
+        if (!appDir.resolve(APP_EXECUTABLE).exists()) {
             // 开发运行时不是安装目录, 没有可复用的文件.
             return DefaultFileDownloader(client)
         }
-        return DeltaPackageDownloader(client, installRoot = appDir)
+        return DeltaPackageDownloader(client, installRoot = appDir, output = PackageOutput.Directory)
     }
 
+    /**
+     * [file] 是增量下载拼出的新版本目录, 或整包 zip (整包回退、拖拽安装、开发版). 更新器 `tools/ani-update`
+     * 两种都能装: 等本进程退出后把新版本换进安装目录, 再启动新版本.
+     *
+     * 更新器复制到临时目录运行而不是安装目录: 它要重命名安装目录, 自己不能在里面.
+     */
     override fun install(file: SystemPath, context: ContextMP): InstallationResult {
         logger.info { "Installing update for Windows" }
         val appDir = ExecutableDirectoryDetector.INSTANCE.getExecutableDirectory()
         logger.info { "Current app dir: ${appDir.absolutePath}" }
-        if (!appDir.resolve("Ani.exe").exists()) {
-            logger.info { "Current app dir does not have 'Ani.exe'. Fallback to manual update" }
+        if (!appDir.resolve(APP_EXECUTABLE).exists()) {
+            logger.info { "Current app dir does not have '$APP_EXECUTABLE'. Fallback to manual update" }
             return InstallationResult.Failed(InstallationFailureReason.UNSUPPORTED_FILE_STRUCTURE)
         }
 
@@ -447,32 +457,62 @@ object WindowsUpdateInstaller : DesktopUpdateInstaller {
             System.getProperty("compose.application.resources.dir")
                 ?: throw IllegalStateException("Cannot get resources directory"),
         )
-        val updateExecutable = resourcesDir.resolve("ani_update.exe")
+        val updateExecutable = resourcesDir.resolve(UPDATER_EXECUTABLE)
         if (!updateExecutable.exists()) {
-            logger.info { "'ani_update.exe' not found. Fallback to manual update" }
+            logger.info { "'$UPDATER_EXECUTABLE' not found. Fallback to manual update" }
             return InstallationResult.Failed(InstallationFailureReason.UNSUPPORTED_FILE_STRUCTURE)
         }
 
-        // Copy ani_update.exe to current dir
-        val copiedUpdateExecutable = appDir.resolve("ani_update.exe")
-        updateExecutable.copyTo(copiedUpdateExecutable, true)
+        val updaterDir = Files.createTempDirectory(UPDATER_TEMP_DIR_PREFIX).toFile()
+        val updater = updaterDir.resolve(UPDATER_EXECUTABLE)
+        updateExecutable.copyTo(updater, overwrite = true)
 
-        ProcessBuilder(
-            "cmd", "/c", "start", "cmd", "/c",
-            "\"", copiedUpdateExecutable.absolutePath, file.absolutePath, appDir.absolutePath, "\"",
+        val command = updaterCommand(
+            updater = updater,
+            appDir = appDir,
+            source = file.toFile(),
+            pid = ProcessHandle.current().pid(),
         )
-            .directory(appDir)
+        logger.info { "Launching updater: $command" }
+        ProcessBuilder(command)
+            .directory(updaterDir)
             .start()
 
         logger.info { "Installer started" }
         return exitProcessForUpdate(delayMillis = 0)
     }
 
+    /**
+     * 启动更新器的命令行. 经 `cmd /c start` 启动, 更新器在自己的控制台窗口里运行并显示进度.
+     * [source] 是目录时按新版本目录安装, 否则按 zip 安装.
+     */
+    internal fun updaterCommand(updater: File, appDir: File, source: File, pid: Long): List<String> = listOf(
+        "cmd", "/c", "start", "",
+        updater.absolutePath,
+        "--pid", pid.toString(),
+        "--app-dir", appDir.absolutePath,
+        if (source.isDirectory) "--staging" else "--archive", source.absolutePath,
+    )
+
+    /**
+     * 启动时清理上次更新留下的东西: 旧版本放在安装目录里的更新器, 更新器交换目录失败时留下的 `<安装目录>.old*`,
+     * 以及临时目录里的更新器副本. 删不掉的 (比如更新器进程还没退出) 下次再删.
+     */
     override fun deleteOldUpdater() {
         val appDir = ExecutableDirectoryDetector.INSTANCE.getExecutableDirectory()
-        val updateExecutable = appDir.resolve("ani_update.exe")
-        if (updateExecutable.exists()) {
-            updateExecutable.delete()
-        }
+        appDir.resolve(UPDATER_EXECUTABLE).delete()
+        appDir.parentFile?.listFiles()
+            ?.filter { it.isDirectory && it.name.startsWith(appDir.name + ".old") }
+            ?.forEach { leftover ->
+                logger.info { "Deleting leftover of a previous update: $leftover" }
+                leftover.deleteRecursively()
+            }
+        File(System.getProperty("java.io.tmpdir")).listFiles()
+            ?.filter { it.isDirectory && it.name.startsWith(UPDATER_TEMP_DIR_PREFIX) }
+            ?.forEach { it.deleteRecursively() }
     }
+
+    private const val APP_EXECUTABLE = "Ani.exe"
+    private const val UPDATER_EXECUTABLE = "ani_update.exe"
+    private const val UPDATER_TEMP_DIR_PREFIX = "ani-update-"
 }

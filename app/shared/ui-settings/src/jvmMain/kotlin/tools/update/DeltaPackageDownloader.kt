@@ -38,7 +38,6 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import java.io.File
 import java.io.OutputStream
-import java.util.zip.ZipFile
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeSource
@@ -52,10 +51,13 @@ import kotlin.time.TimeSource
  *
  * 下载地址必须是 zip 发布包的地址. 清单不存在、镜像不支持 Range、本地目录不符等任何一步失败, 都回退到 [fallback]
  * 整包下载, 状态与进度也随之切到 [fallback] 的.
+ *
+ * [output] 决定拼出来的是 zip 还是解压好的目录; 回退的整包下载总是 zip, 所以安装器两种都要能装.
  */
 class DeltaPackageDownloader(
     private val client: ScopedHttpClient,
     private val installRoot: File,
+    private val output: PackageOutput = PackageOutput.Zip,
     private val fallback: FileDownloader = DefaultFileDownloader(client),
 ) : FileDownloader {
     override val state = MutableStateFlow<FileDownloaderState>(FileDownloaderState.Idle)
@@ -79,7 +81,7 @@ class DeltaPackageDownloader(
 
         for (url in alternativeUrls) {
             try {
-                val target = saveDir.resolve(filenameProvider(url))
+                val target = saveDir.resolve(output.targetName(filenameProvider(url)))
                 withContext(Dispatchers.IO_) {
                     assemble(url, target)
                 }
@@ -123,12 +125,12 @@ class DeltaPackageDownloader(
         val startTime = TimeSource.Monotonic.markNow()
         val manifest = fetchManifest(packageUrl)
         val targetFile = target.toFile()
-        if (targetFile.isFile) {
-            if (runCatching { verifyPackage(targetFile, manifest) }.isSuccess) {
+        if (targetFile.exists()) {
+            if (runCatching { output.verify(targetFile, manifest) }.isSuccess) {
                 logger.info { "Package ${targetFile.name} already assembled and verified, skipping" }
                 return
             }
-            targetFile.delete()
+            targetFile.deleteRecursively()
         }
 
         val index = LocalFileIndex.build(installRoot, manifest)
@@ -140,8 +142,9 @@ class DeltaPackageDownloader(
 
         targetFile.parentFile?.mkdirs()
         val partFile = File(targetFile.path + ".part")
+        partFile.deleteRecursively()
         try {
-            PackageZipWriter(partFile.outputStream()).use { writer ->
+            output.createWriter(partFile).use { writer ->
                 var done = 0L
                 fun advance(bytes: Long) {
                     done += bytes
@@ -170,18 +173,18 @@ class DeltaPackageDownloader(
                 }
                 writer.finish()
             }
-            verifyPackage(partFile, manifest)
+            output.verify(partFile, manifest)
             check(partFile.renameTo(targetFile)) { "Failed to move $partFile to $targetFile" }
         } finally {
-            partFile.delete()
+            partFile.deleteRecursively()
         }
         logger.info {
-            "Assembled ${targetFile.name} (${targetFile.length()} bytes) in ${startTime.elapsedNow()}, " +
+            "Assembled ${targetFile.name} in ${startTime.elapsedNow()}, " +
                     "downloaded ${plan.remoteBytes} of ${manifest.packageSize} bytes"
         }
     }
 
-    private fun writeLocalStep(writer: PackageZipWriter, step: Step, advance: (Long) -> Unit) {
+    private fun writeLocalStep(writer: PackageWriter, step: Step, advance: (Long) -> Unit) {
         when (step) {
             is Step.Directory -> writer.writeDirectory(step.entry)
             is Step.Local -> {
@@ -238,27 +241,6 @@ class DeltaPackageDownloader(
             if (read < 0) throw IOException("Response ended with $remaining of $count bytes missing")
             out.write(buffer, 0, read)
             remaining -= read
-        }
-    }
-
-    /**
-     * 逐 entry 核对 [file] 与清单: 名字和顺序、大小、CRC 和解压后内容的 sha256. 不一致时抛 [IllegalStateException].
-     */
-    private fun verifyPackage(file: File, manifest: DesktopPackageManifest) {
-        ZipFile(file).use { zip ->
-            val entries = zip.entries().toList()
-            check(entries.map { it.name } == manifest.entries.map { it.name }) {
-                "Entries of ${file.name} do not match the manifest"
-            }
-            for ((actual, expected) in entries.zip(manifest.entries)) {
-                if (expected.isDirectory) continue
-                check(actual.size == expected.size && actual.crc == expected.crc32) {
-                    "Entry ${expected.name} has size=${actual.size} crc=${actual.crc}, " +
-                            "expected size=${expected.size} crc=${expected.crc32}"
-                }
-                val sha256 = zip.getInputStream(actual).use { it.sha256Hex() }
-                check(sha256 == expected.sha256) { "Entry ${expected.name} content does not match the manifest" }
-            }
         }
     }
 
