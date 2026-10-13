@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.io.IOException
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.io.SystemPath
@@ -40,6 +41,7 @@ import java.io.File
 import java.io.OutputStream
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
 /**
@@ -222,7 +224,17 @@ class DeltaPackageDownloader(
                 if (total != manifest.packageSize) {
                     throw IOException("Package size at $packageUrl is $total, manifest says ${manifest.packageSize}")
                 }
-                block(response.bodyAsChannel())
+                val channel = response.bodyAsChannel()
+                try {
+                    block(channel)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    // 响应体读到一半就抛出时, execute 收尾要等没读完的响应体, Windows 上观察到这一步再也不返回.
+                    // 先把剩下的读完 (限时), 让收尾能正常结束, 再把错误抛给调用方回退整包下载.
+                    runCatching { withTimeout(DRAIN_TIMEOUT) { channel.discard() } }
+                    throw e
+                }
             }
         }
     }
@@ -312,6 +324,11 @@ class DeltaPackageDownloader(
 
         /** 两个要下载的 entry 相隔不超过这么多字节时合并成一个请求, 中间的字节多下一点换来少一次往返. */
         const val COALESCE_GAP_BYTES = 256 * 1024L
+
+        /**
+         * entry 校验失败后放弃这个 Range 请求前, 最多花这么久把剩下的响应体读完.
+         */
+        val DRAIN_TIMEOUT = 30.seconds
         const val DEFAULT_COPY_BUFFER = 64 * 1024
 
         /** 一个请求可能覆盖几百 MB, 不能用 client 默认的请求超时. */

@@ -284,25 +284,32 @@ class DesktopUpdateE2e(
                     "ANIMEKO_DESKTOP_TEST_DATA_DIR" to dataDir.absolutePath,
                     "ANI_DISALLOW_PROJECT_DIRECTORIES_FALLBACK" to "true",
                 )
-                platform.withLaunchdEnvironment(environment) {
-                    val process = ProcessBuilder(platform.executable(installDir).absolutePath)
-                        .directory(installDir)
-                        .redirectErrorStream(true)
-                        .redirectOutput(stdoutFile)
-                        .apply { environment().putAll(environment) }
-                        .start()
-                    if (!process.waitFor(APP_TIMEOUT.inWholeSeconds, TimeUnit.SECONDS)) {
-                        process.destroyForcibly()
-                        throw IllegalStateException("The app did not exit within $APP_TIMEOUT")
+                try {
+                    platform.withLaunchdEnvironment(environment) {
+                        runApp(environment)
                     }
-                    if (scenario.transfer != Transfer.NONE && platform.installs) {
-                        awaitUntil("the updated app to report", RELAUNCH_TIMEOUT) { phases().contains("relaunched") }
-                    }
-                    awaitUntil("the app and updater processes to exit", EXIT_TIMEOUT) { appProcesses().isEmpty() }
+                } finally {
+                    recordedRequests = server.requests.toList()
                 }
-                recordedRequests = server.requests.toList()
                 verify(server, originalTree)
             }
+        }
+
+        private fun runApp(environment: Map<String, String>) {
+            val process = ProcessBuilder(platform.executable(installDir).absolutePath)
+                .directory(installDir)
+                .redirectErrorStream(true)
+                .redirectOutput(stdoutFile)
+                .apply { environment().putAll(environment) }
+                .start()
+            if (!process.waitFor(APP_TIMEOUT.inWholeSeconds, TimeUnit.SECONDS)) {
+                process.destroyForcibly()
+                throw IllegalStateException("The app did not exit within $APP_TIMEOUT")
+            }
+            if (scenario.transfer != Transfer.NONE && platform.installs) {
+                awaitUntil("the updated app to report", RELAUNCH_TIMEOUT) { phases().contains("relaunched") }
+            }
+            awaitUntil("the app and updater processes to exit", EXIT_TIMEOUT) { appProcesses().isEmpty() }
         }
 
         private fun verify(server: MockUpdateServer, originalTree: Map<String, String>) {

@@ -42,7 +42,8 @@ class DeltaPackageDownloaderOkHttpTest {
         TestZipEntry("Ani/", null),
         TestZipEntry("Ani/app/", null),
         TestZipEntry("Ani/app/a.jar", patternBytes(400_000, seed = 1)),
-        TestZipEntry("Ani/app/b.jar", randomBytes(300_000, seed = 2)),
+        // 要比 socket 和 channel 的缓冲区大得多: 响应体读到一半失败时, 剩下的部分能否被正确放弃取决于引擎.
+        TestZipEntry("Ani/app/b.jar", randomBytes(16 * 1024 * 1024, seed = 2)),
         TestZipEntry("Ani/app/c.jar", patternBytes(200_000, seed = 3)),
     )
     private val packageFile = writeTestZip(tempDir.resolve("release.zip"), released)
