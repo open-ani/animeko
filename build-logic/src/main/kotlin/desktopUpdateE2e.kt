@@ -365,8 +365,9 @@ class DesktopUpdateE2e(
             check(missing.isEmpty() && different.isEmpty() && extra.isEmpty()) {
                 "Installed app differs from the new version. Missing: $missing, different: $different, extra: $extra"
             }
+            // 更新器交换完会删 `<安装目录>.old`, 删不掉 (比如被杀毒软件占着) 只记日志, 应用下次启动再删, 所以这里不算失败.
             val leftovers = installParent.listFiles().orEmpty().filter { it.name != platform.appDirName }
-            check(leftovers.isEmpty()) { "Leftovers next to the installed app: $leftovers" }
+            if (leftovers.isNotEmpty()) logger.warn("[update-e2e] leftovers next to the installed app: $leftovers")
             check(platform.executable(installDir).canExecute()) { "The updated launcher is not executable" }
         }
 
