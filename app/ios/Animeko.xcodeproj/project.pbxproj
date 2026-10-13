@@ -14,6 +14,12 @@
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
 		6FA72F27919077AAAC1D327A /* Pods_Animeko.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9394AA604B73CA09673A25D5 /* Pods_Animeko.framework */; };
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
+		E20000000000000000000000 = {isa = PBXBuildFile; fileRef = E10000000000000000000000; };
+		E20000000000000000000001 = {isa = PBXBuildFile; fileRef = E10000000000000000000001; };
+		E20000000000000000000002 = {isa = PBXBuildFile; fileRef = E10000000000000000000002; };
+		E20000000000000000000003 = {isa = PBXBuildFile; fileRef = E10000000000000000000003; };
+		E20000000000000000000004 = {isa = PBXBuildFile; fileRef = E10000000000000000000004; };
+		E20000000000000000000005 = {isa = PBXBuildFile; fileRef = E10000000000000000000005; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -41,6 +47,12 @@
 		7555FF8C242A565B00829871 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9394AA604B73CA09673A25D5 /* Pods_Animeko.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Animeko.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F249EC154975837B7E34C6F8 /* Pods-Animeko.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Animeko.release.xcconfig"; path = "Target Support Files/Pods-Animeko/Pods-Animeko.release.xcconfig"; sourceTree = "<group>"; };
+		E10000000000000000000000 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "VideoEnhancementRenderer.swift"; path = "Animeko/VideoEnhancementRenderer.swift"; sourceTree = SOURCE_ROOT; };
+		E10000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "EnhancedPlayerView.swift"; path = "Animeko/EnhancedPlayerView.swift"; sourceTree = SOURCE_ROOT; };
+		E10000000000000000000002 = {isa = PBXFileReference; lastKnownFileType = text; name = "Anime4K_Restore_CNN_S.glsl"; path = "../../utils/video-enhancement-shader-provider/src/commonMain/composeResources/files/shaders/Anime4K_Restore_CNN_S.glsl"; sourceTree = SOURCE_ROOT; };
+		E10000000000000000000003 = {isa = PBXFileReference; lastKnownFileType = text; name = "Anime4K_Restore_CNN_M.glsl"; path = "../../utils/video-enhancement-shader-provider/src/commonMain/composeResources/files/shaders/Anime4K_Restore_CNN_M.glsl"; sourceTree = SOURCE_ROOT; };
+		E10000000000000000000004 = {isa = PBXFileReference; lastKnownFileType = text; name = "Anime4K_Upscale_CNN_x2_M.glsl"; path = "../../utils/video-enhancement-shader-provider/src/commonMain/composeResources/files/shaders/Anime4K_Upscale_CNN_x2_M.glsl"; sourceTree = SOURCE_ROOT; };
+		E10000000000000000000005 = {isa = PBXFileReference; lastKnownFileType = text; name = "ewa_lanczossharp.frag"; path = "../../utils/video-enhancement-shader-provider/src/commonMain/composeResources/files/shaders/exo-effects/ewa_lanczossharp.frag"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,6 +88,12 @@
 		7555FF72242A565900829871 = {
 			isa = PBXGroup;
 			children = (
+				E10000000000000000000000,
+				E10000000000000000000001,
+				E10000000000000000000002,
+				E10000000000000000000003,
+				E10000000000000000000004,
+				E10000000000000000000005,
 				7555FF7D242A565900829871 /* Animeko */,
 				7555FF7C242A565900829871 /* Products */,
 				6967FD3DE1F113A1DCC2353C /* Frameworks */,
@@ -175,6 +193,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */,
+				E20000000000000000000002,
+				E20000000000000000000003,
+				E20000000000000000000004,
+				E20000000000000000000005,
 				058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -245,6 +267,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E20000000000000000000000,
+				E20000000000000000000001,
 				2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */,
 				7555FF83242A565900829871 /* ContentView.swift in Sources */,
 			);
