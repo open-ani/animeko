@@ -12,9 +12,12 @@ package me.him188.ani.app.domain.episode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.subject.SyncSubjectCollectionTypesByProgressUseCase
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
 
 data class SetEpisodeCollectionTypeRequest(
@@ -41,11 +44,26 @@ class SetEpisodeCollectionTypeUseCaseImpl(
     koin: Koin,
 ) : SetEpisodeCollectionTypeUseCase {
     private val episodeCollectionRepository: EpisodeCollectionRepository by koin.inject()
+    private val syncSubjectCollectionTypesByProgressUseCase: SyncSubjectCollectionTypesByProgressUseCase by koin.inject()
+
     override suspend fun invoke(subjectId: Int, episodeId: Int, collectionType: UnifiedCollectionType) {
         withContext(Dispatchers.Default) {
             // 只写本地并入队, 不发网络请求; 推送由 EpisodeCollectionSyncer 负责
             episodeCollectionRepository.setEpisodeCollectionType(subjectId, episodeId, collectionType)
+
+            if (collectionType == UnifiedCollectionType.DONE) {
+                try {
+                    syncSubjectCollectionTypesByProgressUseCase.requestSubjectSync(subjectId)
+                } catch (e: Exception) {
+                    logger.warn(e) {
+                        "Failed to request automatic collection type advancement for subject $subjectId"
+                    }
+                }
+            }
         }
     }
-}
 
+    private companion object {
+        val logger = logger<SetEpisodeCollectionTypeUseCase>()
+    }
+}
