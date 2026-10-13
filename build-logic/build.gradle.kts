@@ -64,6 +64,7 @@ dependencies {
     api(libs.compose.stability.analyzer.gradle.plugin)
     implementation(kotlin("script-runtime"))
     implementation(libs.snakeyaml)
+    implementation(libs.commons.compress) // DesktopUpdateE2e 写带 unix 权限的 zip
 }
 
 dependencies {

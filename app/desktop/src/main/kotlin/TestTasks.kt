@@ -74,6 +74,10 @@ object TestTasks {
                 downloadUpdateAndInstall(args, context)
             }
 
+            "update-e2e" -> {
+                UpdateE2eTestTask.run(File(args[0]), context)
+            }
+
             "dandanplay-app-id" -> {
                 if (currentAniBuildConfig.dandanplayAppId.isBlank()) {
                     logger.error { "dandanplayAppId is empty" }

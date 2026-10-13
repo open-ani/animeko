@@ -592,6 +592,7 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             // buildIosIpaRelease()
         }
         packageDesktopAndUpload()
+        desktopUpdateE2eTest()
 
         if (!matrix.isUbuntu) {
             gradleCheck() // save time
@@ -2232,6 +2233,34 @@ class WithMatrix(
                 )
             }
         }
+    }
+
+    /**
+     * 用刚打包好的应用走一遍 mock 的自动更新 (检查、增量或整包下载、安装、重启), 场景见 build-logic 的 DesktopUpdateE2e.
+     * 只在上传安装包的 GitHub 托管 runner 上跑: 测试会启动应用和更新器, 不该碰自托管机器. Linux 的 AppImage 走 zsync, 不在其中.
+     */
+    fun JobBuilder<*>.desktopUpdateE2eTest() {
+        if (!matrix.uploadDesktopInstallers || matrix.selfHosted) return
+        if (!(matrix.isWindows || matrix.isMacOS)) return
+        runGradle(
+            name = "Desktop update E2E test",
+            tasks = arrayOf(":app:desktop:updateE2eTest"),
+            maxAttempts = 1,
+            timeoutMinutes = 40,
+        )
+        uses(
+            name = "Upload desktop update E2E logs",
+            `if` = "failure()",
+            action = UploadArtifact(
+                name = "update-e2e-${matrix.runner.id}",
+                path_Untyped = $$"""
+                    app/desktop/build/update-e2e/**/*.log
+                    app/desktop/build/update-e2e/**/*.json
+                    app/desktop/build/update-e2e/**/*.jsonl
+                """.trimIndent(),
+                ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
+            ),
+        )
     }
 
     fun JobBuilder<*>.uploadComposeLogs() {

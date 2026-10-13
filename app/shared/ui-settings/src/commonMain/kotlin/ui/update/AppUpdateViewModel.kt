@@ -49,9 +49,13 @@ import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * 主页使用的自动更新检查
+ *
+ * @param updateChecker 端到端测试传入指向 mock 服务器的检查器, 其余流程与正常使用完全相同.
  */
 @Stable
-open class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
+open class AppUpdateViewModel(
+    private val updateChecker: UpdateChecker = UpdateChecker(),
+) : AbstractViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val updateSettings = settingsRepository.updateSettings.flow
     private val updateManager: UpdateManager by inject()
@@ -62,7 +66,6 @@ open class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
     private val fileDownloader by lazy {
         updateInstaller.createPackageDownloader(clientProvider.get(maxRequestsPerHost = PARALLEL_DOWNLOAD_CONNECTIONS))
     }
-    private val updateChecker: UpdateChecker = UpdateChecker()
 
     /**
      * 最新的版本. 当 [checked] 为 `true` 时, `null` 表示没有新版本. 否则表示还没有检查过.

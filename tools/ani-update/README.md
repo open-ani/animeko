@@ -12,3 +12,9 @@ Animeko 的 Windows 更新器, 应用退出后把新版本换进安装目录. �
 
 本地构建: `cargo build --release`, 产物在 `target/release/ani_update.exe`. 在 macOS 或 Linux 上可以 `cargo test` 和
 `cargo check --target x86_64-pc-windows-msvc` 做类型检查, 但 Windows API 调用需要在 Windows 上运行.
+
+## 测试
+
+`cargo test` 覆盖参数解析、解压和逐文件移动. 完整的更新流程由 `./gradlew :app:desktop:updateE2eTest` 验证:
+它用打包好的应用对着本机 mock 的更新服务器走一遍检查、下载、安装、重启, 其中安装就是运行这里的更新器.
+CI 在 Windows 打包 job 里自动跑; 换了 `ani_update.exe` 后本地也可以跑一次.

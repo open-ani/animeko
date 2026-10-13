@@ -327,6 +327,7 @@ kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version = "23.0.0" }
 directories = { module = "dev.dirs:directories", version = "26" }
 snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
+commons-compress = { module = "org.apache.commons:commons-compress", version = "1.27.1" }
 antlr-kotlin-runtime = { module = "com.strumenta:antlr-kotlin-runtime", version.ref = "antlr-kotlin" }
 ipaddress-parser = { module = "com.github.seancfoley:ipaddress", version.ref = "ipaddress-parser" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }

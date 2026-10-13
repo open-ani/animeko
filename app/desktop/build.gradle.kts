@@ -361,6 +361,19 @@ afterEvaluate {
     }
 }
 
+// 自动更新端到端测试: 以打包好的应用为旧版本, 对着本机 mock 的更新服务器走一遍检查、下载、安装、重启.
+// 场景和核对项见 build-logic 的 DesktopUpdateE2e. CI 在打包后运行; 本地: ./gradlew :app:desktop:updateE2eTest [--scenario delta]
+if (getOs() == Os.Windows || getOs() == Os.MacOS) {
+    tasks.register("updateE2eTest", DesktopUpdateE2eTask::class) {
+        group = "verification"
+        description = "Runs the packaged app through mocked auto updates"
+        dependsOn("createReleaseDistributable")
+        val packagedAppName = if (getOs() == Os.Windows) "Ani" else "Ani.app"
+        appDir.set(layout.buildDirectory.dir("compose/binaries/main-release/app/$packagedAppName"))
+        workDir.set(layout.buildDirectory.dir("update-e2e"))
+    }
+}
+
 idea {
     module {
         excludeDirs.add(file("appResources/macos-x64/lib"))
