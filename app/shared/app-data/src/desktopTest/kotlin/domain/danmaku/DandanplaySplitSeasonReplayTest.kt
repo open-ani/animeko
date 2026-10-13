@@ -23,6 +23,8 @@ import me.him188.ani.app.domain.danmaku.DandanplaySplitSeasonFixtures.respondJso
 import me.him188.ani.danmaku.api.provider.DanmakuFetchRequest
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
+import me.him188.ani.test.TestFactory
+import me.him188.ani.test.runDynamicTests
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -31,7 +33,8 @@ import kotlin.test.assertTrue
  * 用录制的 Ani 条目数据和弹弹 play 响应 (`resources/dandanplay-split-season`) 回放拆分季各集的弹幕自动匹配,
  * 不访问网络. 每一集的正确答案按标题和播出日期人工核对, 见该目录的 README.
  *
- * 每个条目回放两遍: 录制的响应, 以及剧集标题只留 "第x话" 的响应 (弹弹刚收录新一集还没有标题时), 两遍的答案相同.
+ * 按 `index.json` 每集回放两遍, 各是一个测试: 录制的响应, 以及剧集标题只留 "第x话" 的响应 (弹弹刚收录新一集还没有标题时),
+ * 两遍的答案相同.
  */
 class DandanplaySplitSeasonReplayTest {
     private val index = DandanplaySplitSeasonFixtures.json.decodeFromString(
@@ -58,86 +61,25 @@ class DandanplaySplitSeasonReplayTest {
         }
     }
 
-    @Test
-    fun `ReZero S2 part 2`() = replay(316247)
-
-    @Test
-    fun `ReZero S3 part 2`() = replay(510728)
-
-    @Test
-    fun `ReZero S4 part 1`() = replay(547888)
-
-    /**
-     * #3414
-     */
-    @Test
-    fun `ReZero S4 part 2`() = replay(633836)
-
-    @Test
-    fun `Mushoku Tensei S1 part 2`() = replay(325585)
-
-    @Test
-    fun `Mushoku Tensei S2 part 2`() = replay(444557)
-
-    @Test
-    fun `Attack on Titan S3 part 2`() = replay(263750)
-
-    @Test
-    fun `Attack on Titan final season part 2`() = replay(331752)
-
-    @Test
-    fun `Spy x Family part 2`() = replay(373267)
-
-    @Test
-    fun `Ancient Magus Bride S2 part 2`() = replay(442523)
-
-    @Test
-    fun `86 part 2`() = replay(331887)
-
-    @Test
-    fun `Moriarty the Patriot part 2`() = replay(319252)
-
-    @Test
-    fun `Haikyuu To the Top part 2`() = replay(295421)
-
-    @Test
-    fun `Fire Force S3 part 2`() = replay(502876)
-
-    @Test
-    fun `Sakamoto Days part 2`() = replay(524005)
-
-    @Test
-    fun `JoJo Stone Ocean part 1`() = replay(332261)
-
-    @Test
-    fun `JoJo Stone Ocean part 2`() = replay(375913)
-
-    @Test
-    fun `JoJo Stone Ocean part 3`() = replay(395782)
-
-    @Test
-    fun `Misfit of Demon King Academy S2 part 2`() = replay(455981)
-
-    private fun replay(subjectId: Int) = runTest {
-        val case = index.subjects.single { it.subjectId == subjectId }
-        val subject = subjects.getValue(subjectId)
-        val failures = buildList {
+    @TestFactory
+    fun `replay every episode`() = runDynamicTests {
+        for (case in index.subjects) {
+            val subject = subjects.getValue(case.subjectId)
             for (expectation in case.episodes) {
                 val episode = subject.episodes.single { it.sort == EpisodeSort(expectation.sort) }
                 for (withTitles in listOf(true, false)) {
-                    val actual = match(subject.fetchRequest(episode), withTitles)
-                    val correct = if (expectation.expected.isEmpty()) actual == null else actual in expectation.expected
-                    if (!correct) {
-                        add(
-                            "sort ${expectation.sort} (ep ${episode.ep}, ${episode.name})" +
-                                    (if (withTitles) "" else " without Dandanplay titles") +
-                                    ": expected ${expectation.expected}, actual $actual",
-                        )
+                    val name = "${case.subjectId} ${case.name} sort ${expectation.sort} ep ${episode.ep}" +
+                            if (withTitles) "" else " without Dandanplay titles"
+                    add(name) {
+                        runTest {
+                            val actual = match(subject.fetchRequest(episode), withTitles)
+                            val correct = if (expectation.expected.isEmpty()) actual == null else actual in expectation.expected
+                            assertTrue(correct, "${episode.name}: expected ${expectation.expected}, actual $actual")
+                        }
                     }
                 }
             }
         }
-        assertTrue(failures.isEmpty(), "${case.subjectId} ${case.name}:\n" + failures.joinToString("\n"))
     }
 
     /**
