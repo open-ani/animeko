@@ -1,0 +1,388 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
+package me.him188.ani.app.ui.notification
+
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.notification.Announcement
+import me.him188.ani.app.data.models.notification.AppNotification
+import me.him188.ani.app.data.models.notification.NotificationBadgeState
+import me.him188.ani.app.data.models.notification.NotificationGroup
+import me.him188.ani.app.data.repository.notification.NotificationRepository
+import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.notification.NotificationBadgeManager
+import me.him188.ani.app.domain.session.InvalidSessionReason
+import me.him188.ani.app.domain.session.SessionState
+import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.app.domain.usecase.GlobalKoin
+import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.utils.coroutines.flows.FlowRestarter
+import me.him188.ani.utils.coroutines.flows.restartable
+import me.him188.ani.utils.logging.warn
+import org.koin.core.Koin
+
+/**
+ * 当前用户能否查看自己的通知.
+ */
+enum class NotificationAccess {
+    /**
+     * 登录状态尚未确定 (App 刚启动, 正在刷新 token).
+     */
+    LOADING,
+
+    /**
+     * 游客, 或登录已失效. 只能看公告.
+     */
+    GUEST,
+    AUTHORIZED,
+    ;
+
+    companion object {
+        /**
+         * 网络错误导致无法刷新 token 时仍视为已登录: 请求会以网络错误失败, 由列表展示可重试的错误.
+         */
+        fun from(state: SessionState): NotificationAccess = when (state) {
+            is SessionState.Valid -> AUTHORIZED
+            is SessionState.Invalid -> when (state.reason) {
+                InvalidSessionReason.NETWORK_ERROR -> AUTHORIZED
+                InvalidSessionReason.NO_TOKEN,
+                InvalidSessionReason.UNKNOWN,
+                    -> GUEST
+            }
+        }
+    }
+}
+
+private fun SessionStateProvider.accessFlow(): Flow<NotificationAccess> =
+    stateFlow.map { NotificationAccess.from(it) }.distinctUntilChanged()
+
+/**
+ * 通知中心.
+ *
+ * - 列表按 [selectedGroup] 分页加载, 游客时为空.
+ * - 标记已读先更新 [readOverlay], 再请求服务端; 失败时撤销本地标记. 请求结束后 (无论成败) 请求刷新未读数.
+ */
+@Stable
+class NotificationCenterViewModel(
+    koin: Koin = GlobalKoin,
+) : AbstractViewModel() {
+    private val repository: NotificationRepository by koin.inject()
+    private val badgeManager: NotificationBadgeManager by koin.inject()
+    private val sessionStateProvider: SessionStateProvider by koin.inject()
+
+    /**
+     * 通知中心展示的分组. 多于一个时显示标签页.
+     */
+    val groups: List<NotificationGroup> = NotificationGroup.SUPPORTED
+
+    private val selectedGroupFlow = MutableStateFlow(groups.first())
+    val selectedGroup: StateFlow<NotificationGroup> = selectedGroupFlow.asStateFlow()
+
+    val access: StateFlow<NotificationAccess> = sessionStateProvider.accessFlow()
+        .stateIn(backgroundScope, SharingStarted.Eagerly, NotificationAccess.LOADING)
+
+    val notificationsPager: Flow<PagingData<AppNotification>> =
+        combine(access, selectedGroupFlow) { access, group -> access to group }
+            .distinctUntilChanged()
+            .flatMapLatest { (access, group) ->
+                if (access == NotificationAccess.AUTHORIZED) {
+                    repository.notificationsPager(group)
+                } else {
+                    flowOf(PagingData.empty())
+                }
+            }
+            .cachedIn(backgroundScope)
+
+    private val readOverlayFlow = MutableStateFlow(ReadOverlay.Empty)
+
+    /**
+     * 本地叠加的已读状态. "全部标为已读" 只作用于当时的分组, 切换分组时重置. 登录状态变化时整个重置:
+     * 列表会重新加载, 已读状态以服务端为准, 而上一个用户的本地标记会让新用户的未读通知显示为已读, 点击也不会再标记.
+     */
+    val readOverlay: StateFlow<ReadOverlay> = readOverlayFlow.asStateFlow()
+
+    val badgeState: StateFlow<NotificationBadgeState> get() = badgeManager.state
+
+    init {
+        badgeManager.requestRefresh()
+        resetReadOverlayOnAccessChange(access, readOverlayFlow)
+    }
+
+    fun selectGroup(group: NotificationGroup) {
+        if (selectedGroupFlow.value == group) return
+        selectedGroupFlow.value = group
+        readOverlayFlow.update { it.copy(allReadUpToMillis = null) }
+    }
+
+    /**
+     * 打开一条通知时调用. 已读的通知不做任何事.
+     */
+    fun markRead(notification: AppNotification) {
+        if (readOverlayFlow.value.isRead(notification)) return
+        readOverlayFlow.update { it.withRead(notification.id) }
+        backgroundScope.launch {
+            try {
+                repository.markNotificationsRead(listOf(notification.id))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                readOverlayFlow.update { it.withoutRead(notification.id) }
+                logger.warn(e) { "Failed to mark notification ${notification.id} as read" }
+            } finally {
+                // 请求可能已经到达服务端, 即使随后被取消
+                badgeManager.requestRefresh()
+            }
+        }
+    }
+
+    /**
+     * 把当前分组中不晚于 [newestCreatedAtMillis] 的通知全部标为已读. 传入已加载的最新一条的创建时间,
+     * 以免把用户还没看到的通知也标为已读.
+     *
+     * 请求在 ViewModel 的作用域中进行: 调用方的协程被取消 (例如离开页面) 时, 已经发出的请求仍会完成.
+     *
+     * @throws me.him188.ani.app.data.repository.RepositoryException 请求失败时. 此时撤销本地标记.
+     */
+    suspend fun markAllRead(newestCreatedAtMillis: Long) {
+        val group = selectedGroupFlow.value
+        markAllReadInBackground(readOverlayFlow, badgeManager, upToMillis = newestCreatedAtMillis) {
+            repository.markAllNotificationsRead(group, beforeMillis = newestCreatedAtMillis)
+        }
+    }
+
+    fun refreshBadge() {
+        badgeManager.requestRefresh()
+    }
+}
+
+/**
+ * 公告列表. 游客也能浏览, 但没有已读状态, 也不能标记已读.
+ */
+@Stable
+class AnnouncementsViewModel(
+    koin: Koin = GlobalKoin,
+) : AbstractViewModel() {
+    private val repository: NotificationRepository by koin.inject()
+    private val badgeManager: NotificationBadgeManager by koin.inject()
+    private val sessionStateProvider: SessionStateProvider by koin.inject()
+
+    val access: StateFlow<NotificationAccess> = sessionStateProvider.accessFlow()
+        .stateIn(backgroundScope, SharingStarted.Eagerly, NotificationAccess.LOADING)
+
+    /**
+     * 登录状态变化时重新加载, 以获得对应用户的已读状态.
+     */
+    val announcementsPager: Flow<PagingData<Announcement>> = access
+        .flatMapLatest { access ->
+            if (access == NotificationAccess.LOADING) {
+                flowOf(PagingData.empty())
+            } else {
+                repository.announcementsPager()
+            }
+        }
+        .cachedIn(backgroundScope)
+
+    private val readOverlayFlow = MutableStateFlow(ReadOverlay.Empty)
+
+    /**
+     * 本地叠加的已读状态. 登录状态变化时重置, 原因见 [NotificationCenterViewModel.readOverlay].
+     */
+    val readOverlay: StateFlow<ReadOverlay> = readOverlayFlow.asStateFlow()
+
+    init {
+        resetReadOverlayOnAccessChange(access, readOverlayFlow)
+    }
+
+    /**
+     * 打开一条公告时调用. 游客 ([Announcement.read] 为 `null`) 和已读的公告不做任何事.
+     */
+    fun markRead(announcement: Announcement) {
+        if (access.value != NotificationAccess.AUTHORIZED) return
+        if (readOverlayFlow.value.isRead(announcement) != false) return
+        readOverlayFlow.update { it.withRead(announcement.id) }
+        backgroundScope.launch {
+            try {
+                repository.markAnnouncementsRead(listOf(announcement.id))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                readOverlayFlow.update { it.withoutRead(announcement.id) }
+                logger.warn(e) { "Failed to mark announcement ${announcement.id} as read" }
+            } finally {
+                // 请求可能已经到达服务端, 即使随后被取消
+                badgeManager.requestRefresh()
+            }
+        }
+    }
+
+    /**
+     * 把发布时间不晚于 [newestPublishedAtMillis] (已加载的最新一条) 的公告标为已读, 本地和服务端用同一个界限.
+     *
+     * 请求在 ViewModel 的作用域中进行: 调用方的协程被取消 (例如离开页面) 时, 已经发出的请求仍会完成.
+     *
+     * @throws me.him188.ani.app.data.repository.RepositoryException 请求失败时. 此时撤销本地标记.
+     */
+    suspend fun markAllRead(newestPublishedAtMillis: Long) {
+        markAllReadInBackground(readOverlayFlow, badgeManager, upToMillis = newestPublishedAtMillis) {
+            repository.markAllAnnouncementsRead(beforeMillis = newestPublishedAtMillis)
+        }
+    }
+
+    fun refreshBadge() {
+        badgeManager.requestRefresh()
+    }
+}
+
+/**
+ * 登录状态变化时清空 [readOverlay]. 启动时从 [NotificationAccess.LOADING] 得到第一个确定的状态不算变化.
+ */
+private fun AbstractViewModel.resetReadOverlayOnAccessChange(
+    access: Flow<NotificationAccess>,
+    readOverlay: MutableStateFlow<ReadOverlay>,
+) {
+    access.filter { it != NotificationAccess.LOADING }
+        .distinctUntilChanged()
+        .drop(1)
+        .onEach { readOverlay.value = ReadOverlay.Empty }
+        .launchIn(backgroundScope)
+}
+
+/**
+ * "全部标为已读": 先在本地把不晚于 [upToMillis] 的项显示为已读, 再在 ViewModel 的作用域中执行 [request] 并等待它完成.
+ *
+ * [request] 失败 (不包括取消) 时撤销本地标记并抛出异常. 无论结果如何, 结束后都请求刷新未读数, 因为请求可能已经到达服务端.
+ */
+private suspend fun AbstractViewModel.markAllReadInBackground(
+    readOverlay: MutableStateFlow<ReadOverlay>,
+    badgeManager: NotificationBadgeManager,
+    upToMillis: Long,
+    request: suspend () -> Unit,
+) {
+    val previous = readOverlay.value.allReadUpToMillis
+    val applied = maxOf(previous ?: Long.MIN_VALUE, upToMillis)
+    readOverlay.update { it.copy(allReadUpToMillis = applied) }
+    backgroundScope.async {
+        try {
+            request()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 只撤销这次的标记: 请求期间本地标记可能已被重置或再次修改
+            readOverlay.update { if (it.allReadUpToMillis == applied) it.copy(allReadUpToMillis = previous) else it }
+            throw e
+        } finally {
+            badgeManager.requestRefresh()
+        }
+    }.await()
+}
+
+/**
+ * 详情页的加载状态.
+ */
+@Immutable
+sealed interface DetailLoadState<out T> {
+    @Immutable
+    data object Loading : DetailLoadState<Nothing>
+
+    @Immutable
+    data class Loaded<T>(val value: T) : DetailLoadState<T>
+
+    /**
+     * 通知或公告不存在. 重试也不会成功.
+     */
+    @Immutable
+    data object NotFound : DetailLoadState<Nothing>
+
+    /**
+     * 例如网络错误.
+     */
+    @Immutable
+    data class Failed(val error: LoadError) : DetailLoadState<Nothing>
+}
+
+/**
+ * @param load 不存在时返回 `null`.
+ */
+private fun <T : Any> loadDetailFlow(
+    restarter: FlowRestarter,
+    load: suspend () -> T?,
+): Flow<DetailLoadState<T>> = flow {
+    emit(DetailLoadState.Loading)
+    val result = try {
+        load()?.let { DetailLoadState.Loaded(it) } ?: DetailLoadState.NotFound
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        DetailLoadState.Failed(LoadError.fromException(e))
+    }
+    emit(result)
+}.restartable(restarter)
+
+/**
+ * 单独打开的通知详情页 (窄屏).
+ */
+@Stable
+class NotificationDetailViewModel(
+    val notificationId: String,
+    koin: Koin = GlobalKoin,
+) : AbstractViewModel() {
+    private val repository: NotificationRepository by koin.inject()
+    private val restarter = FlowRestarter()
+
+    val state: StateFlow<DetailLoadState<AppNotification>> =
+        loadDetailFlow(restarter) { repository.getNotification(notificationId) }
+            .stateIn(backgroundScope, SharingStarted.Lazily, DetailLoadState.Loading)
+
+    fun reload() {
+        restarter.restart()
+    }
+}
+
+/**
+ * 单独打开的公告详情页 (窄屏).
+ */
+@Stable
+class AnnouncementDetailViewModel(
+    val announcementId: String,
+    koin: Koin = GlobalKoin,
+) : AbstractViewModel() {
+    private val repository: NotificationRepository by koin.inject()
+    private val restarter = FlowRestarter()
+
+    val state: StateFlow<DetailLoadState<Announcement>> =
+        loadDetailFlow(restarter) { repository.getAnnouncement(announcementId) }
+            .stateIn(backgroundScope, SharingStarted.Lazily, DetailLoadState.Loading)
+
+    fun reload() {
+        restarter.restart()
+    }
+}

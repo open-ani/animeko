@@ -1,0 +1,97 @@
+<resources>
+    <string name="notification_title">Notifications</string>
+    <string name="notification_mark_all_read">Mark all as read</string>
+    <string name="notification_settings">Notification settings</string>
+    <string name="notification_unread">Unread</string>
+    <string name="notification_has_unread">Unread notifications</string>
+    <string name="notification_empty">No notifications</string>
+    <string name="notification_detail_placeholder">Select a notification to see the details</string>
+    <string name="notification_not_found">This notification doesn’t exist</string>
+    <string name="notification_group_notice">Notices</string>
+    <string name="notification_view_details">View details</string>
+
+    <string name="notification_time_just_now">Just now</string>
+    <string name="notification_time_minutes_ago">%1$s min ago</string>
+    <string name="notification_time_hours_ago">%1$s hr ago</string>
+    <string name="notification_time_yesterday">Yesterday</string>
+    <string name="notification_time_month_day">%4$s %3$s</string>
+    <string name="notification_time_date">%4$s %3$s, %1$s</string>
+
+    <string name="notification_announcement_overline">Announcement</string>
+    <string name="notification_announcements_title">Announcements</string>
+    <string name="notification_announcements_empty">No announcements</string>
+    <string name="notification_announcement_detail_title">Announcement</string>
+    <string name="notification_announcement_detail_placeholder">Select an announcement to see the details</string>
+    <string name="notification_announcement_not_found">This announcement doesn’t exist or was removed</string>
+    <string name="notification_announcement_pinned">Pinned</string>
+    <string name="notification_announcement_tag_general">Announcement</string>
+    <string name="notification_announcement_tag_maintenance">Maintenance</string>
+    <string name="notification_announcement_tag_release">New version</string>
+    <string name="notification_announcement_tag_community">Community</string>
+
+    <string name="notification_report_result_row_title">A comment you reported has been handled</string>
+    <string name="notification_report_result_detail_title">Report result</string>
+    <string name="notification_report_result_upheld">Report upheld</string>
+    <string name="notification_report_result_description">Thanks for your report. We have taken action on this comment.</string>
+    <string name="notification_report_reason">Reason</string>
+    <string name="notification_report_target">Reported content</string>
+    <string name="notification_report_reported_at">Reported at</string>
+    <string name="notification_report_handled_at">Handled at</string>
+    <string name="notification_report_outcome">Outcome</string>
+    <string name="notification_report_outcome_removed">Comment removed</string>
+    <string name="notification_report_outcome_handled">Action taken</string>
+    <string name="notification_report_snapshot_title">Reported comment (as it was when you reported it)</string>
+    <string name="notification_report_snapshot_footnote">This is a snapshot of the comment taken when you reported it. %1$s</string>
+    <string name="notification_report_privacy_footnote">The reported user is not told who reported them.</string>
+    <string name="notification_report_target_episode_comment">Episode comment</string>
+    <string name="notification_report_target_subject_review">Anime review</string>
+    <string name="notification_report_target_person_comment">Person comment</string>
+    <string name="notification_report_target_character_comment">Character comment</string>
+    <string name="notification_report_target_comment">Comment</string>
+    <string name="notification_report_go_to_episode">Go to episode</string>
+    <string name="notification_report_go_to_subject">Go to anime</string>
+    <string name="notification_report_go_to_person">Go to person</string>
+    <string name="notification_report_go_to_character">Go to character</string>
+
+    <string name="notification_account_security_detail_title">Account security</string>
+    <string name="notification_account_new_login">New sign-in on another device</string>
+    <string name="notification_account_email_bound">Sign-in email added</string>
+    <string name="notification_account_email_changed">Sign-in email changed</string>
+    <string name="notification_account_email_unbound">Sign-in email removed</string>
+    <string name="notification_account_third_party_unbound">%1$s account unlinked</string>
+    <string name="notification_account_third_party_unbound_generic">Third-party account unlinked</string>
+    <string name="notification_account_third_party_unbound_supporting">It was used to sign in to another Animeko account</string>
+    <string name="notification_account_bangumi_expired">Bangumi authorization expired</string>
+    <string name="notification_account_bangumi_expired_supporting">Reauthorize to keep syncing your collection</string>
+    <string name="notification_account_unknown">Account security alert</string>
+    <string name="notification_account_new_login_description">Your account was signed in on a device you have not used before.</string>
+    <string name="notification_account_new_login_hint">If this wasn’t you, check your account security settings as soon as possible.</string>
+    <string name="notification_account_email_bound_description">A sign-in email was added to your account.</string>
+    <string name="notification_account_email_changed_description">The sign-in email of your account was changed.</string>
+    <string name="notification_account_email_unbound_description">The sign-in email was removed from your account.</string>
+    <string name="notification_account_third_party_unbound_description">This third-party account was used to sign in to another Animeko account, so it has been unlinked from your account.</string>
+    <string name="notification_account_bangumi_expired_description">Bangumi no longer accepts the authorization. Reauthorize to keep syncing your collection with Bangumi.</string>
+    <string name="notification_account_unknown_description">There was a security-related change to your account.</string>
+    <string name="notification_account_time">Time</string>
+    <string name="notification_account_device">Device</string>
+    <string name="notification_account_platform">Platform</string>
+    <string name="notification_account_client_version">App version</string>
+    <string name="notification_account_login_method">Sign-in method</string>
+    <string name="notification_account_email">Email</string>
+    <string name="notification_account_provider">Third-party account</string>
+    <string name="notification_account_reauthorize">Reauthorize</string>
+    <string name="notification_account_settings">Account settings</string>
+    <string name="notification_login_method_email_otp">email code sign-in</string>
+    <string name="notification_login_method_github">GitHub sign-in</string>
+    <string name="notification_login_method_bangumi">Bangumi sign-in</string>
+    <string name="notification_login_method_qr_code">QR code sign-in</string>
+
+    <string name="notification_system_detail_title">System message</string>
+
+    <string name="notification_settings_group_system">System</string>
+    <string name="notification_settings_system_item">Your report results and account security</string>
+    <string name="notification_settings_system_description">Always on</string>
+    <string name="notification_settings_group_announcements">Announcements</string>
+    <string name="notification_settings_announcement_item">You receive a new announcement</string>
+    <string name="notification_settings_announcement_description">When off, new announcements don’t put a dot on your avatar.</string>
+</resources>

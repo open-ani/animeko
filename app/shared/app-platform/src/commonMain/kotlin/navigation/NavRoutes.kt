@@ -146,6 +146,40 @@ sealed class NavRoutes : NavKey {
      */
     @Serializable
     data object BangumiMerge : NavRoutes()
+
+    /**
+     * 通知中心.
+     */
+    @Serializable
+    data object Notifications : NavRoutes()
+
+    /**
+     * 单独打开的一条通知 (窄屏). 宽屏时通知详情显示在通知中心的右侧.
+     *
+     * @param notificationId 服务端的通知 ID
+     */
+    @Serializable
+    data class NotificationDetail(val notificationId: String) : NavRoutes()
+
+    /**
+     * 公告列表.
+     */
+    @Serializable
+    data object Announcements : NavRoutes()
+
+    /**
+     * 单独打开的一条公告 (窄屏). 宽屏时公告详情显示在公告列表的右侧.
+     *
+     * @param announcementId 服务端的公告 ID
+     */
+    @Serializable
+    data class AnnouncementDetail(val announcementId: String) : NavRoutes()
+
+    /**
+     * 通知设置.
+     */
+    @Serializable
+    data object NotificationSettings : NavRoutes()
 }
 
 /** Explicit entry identity; a person's asynchronously loaded careers never change their route. */

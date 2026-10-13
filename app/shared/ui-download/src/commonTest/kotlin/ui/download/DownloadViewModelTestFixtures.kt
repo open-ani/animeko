@@ -35,6 +35,7 @@ import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
@@ -310,6 +311,7 @@ internal class FakeSettingsRepository : SettingsRepository {
     override val analyticsSettings: Settings<AnalyticsSettings> get() = error("Not used")
     override val debugSettings: Settings<DebugSettings> get() = error("Not used")
     override val watchTogetherSettings: Settings<WatchTogetherSettings> get() = error("Not used")
+    override val notificationSettings: Settings<NotificationSettings> get() = error("Not used")
 }
 
 /**

@@ -28,9 +28,11 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.models.preference.PikPakConfig
+import me.him188.ani.app.data.network.AniAnnouncementService
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AniEpisodeCommentService
+import me.him188.ani.app.data.network.AniNotificationService
 import me.him188.ani.app.data.network.AniPersonCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AniSubjectSearchService
@@ -98,6 +100,8 @@ import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.MacCmsImageCaptchaSolver
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
+import me.him188.ani.app.domain.notification.NotificationBadgeManager
+import me.him188.ani.app.domain.notification.NotificationBadgeManagerImpl
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
 import me.him188.ani.app.domain.media.cache.PikPakWebM3uCacheMigration
@@ -293,6 +297,15 @@ private fun KoinApplication.otherModules(
     single<BangumiCommentService> { BangumiBangumiCommentServiceImpl(get<AniApiProvider>().subjectApi) }
     single<AniEpisodeCommentService> { AniEpisodeCommentService(get<AniApiProvider>().episodesApi) }
     single<AniCommentReportService> { AniCommentReportService(get<AniApiProvider>().commentsApi) }
+    single<AniNotificationService> { AniNotificationService(aniApiProvider.notificationsApi) }
+    single<AniAnnouncementService> { AniAnnouncementService(aniApiProvider.announcementsApi) }
+    single<NotificationBadgeManager>(createdAtStart = true) {
+        NotificationBadgeManagerImpl(
+            notificationService = get(),
+            sessionStateProvider = get(),
+            scope = coroutineScope,
+        ).also { it.start() }
+    }
     single<AniPersonCommentService> {
         AniPersonCommentService(
             personsApi = get<AniApiProvider>().personsApi,
