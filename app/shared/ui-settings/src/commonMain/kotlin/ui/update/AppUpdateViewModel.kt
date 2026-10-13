@@ -30,7 +30,6 @@ import me.him188.ani.app.domain.update.UpdateManager
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.MonoTasker
-import me.him188.ani.app.tools.update.DefaultFileDownloader
 import me.him188.ani.app.tools.update.PARALLEL_DOWNLOAD_CONNECTIONS
 import me.him188.ani.app.tools.update.FileDownloaderState
 import me.him188.ani.app.tools.update.InstallationResult
@@ -61,7 +60,7 @@ open class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
     private val installationRunner by lazy { UpdateInstallationRunner(updateInstaller) }
 
     private val fileDownloader by lazy {
-        DefaultFileDownloader(clientProvider.get(maxRequestsPerHost = PARALLEL_DOWNLOAD_CONNECTIONS))
+        updateInstaller.createPackageDownloader(clientProvider.get(maxRequestsPerHost = PARALLEL_DOWNLOAD_CONNECTIONS))
     }
     private val updateChecker: UpdateChecker = UpdateChecker()
 

@@ -19,6 +19,7 @@ import me.him188.ani.app.platform.features.DesktopFileRevealer
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.toFile
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -52,6 +53,22 @@ object MacOSUpdateInstaller : DesktopUpdateInstaller {
     private val logger = logger<MacOSUpdateInstaller>()
 
     override val installablePackageExtensions: Set<String> = setOf("dmg", "zip")
+
+    /**
+     * 版本 API 对 macOS 返回 dmg, 应用内更新改用同一发布里的 zip: 增量下载要按偏移从发布包取 entry, dmg 做不到;
+     * 整包回退时 zip 也不用经过 hdiutil 转换挂载. dmg 只用于首次安装.
+     */
+    override fun getUpdatePreparationUrls(packageUrls: List<String>): List<String> =
+        packageUrls.map { it.replace(DMG_SUFFIX, ".zip") }
+
+    override fun createPackageDownloader(client: ScopedHttpClient): FileDownloader {
+        val appDir = ExecutableDirectoryDetector.INSTANCE.getExecutableDirectory().parentFile
+        if (appDir == null || !appDir.name.endsWith(".app", ignoreCase = true)) {
+            // 开发运行时不在 .app 里, 没有可复用的安装目录.
+            return DefaultFileDownloader(client)
+        }
+        return DeltaPackageDownloader(client, installRoot = appDir)
+    }
 
     override fun install(file: SystemPath, context: ContextMP): InstallationResult {
         logger.info { "Preparing to install update for macOS using external script." }
@@ -417,6 +434,8 @@ object LinuxUpdateInstaller : DesktopUpdateInstaller {
 
 internal const val LINUX_APPIMAGE_UPDATE_TOOL = "appimageupdatetool-x86_64.AppImage"
 
+private val DMG_SUFFIX = Regex("\\.dmg$", RegexOption.IGNORE_CASE)
+
 /**
  * 版本 API 返回的是各平台通用的完整安装包地址. Linux Release 将 zsync 元数据作为同名 AppImage 的
  * `.zsync` 伴随资源发布, 因此只在 Linux 安装准备阶段派生该地址, 而不向版本 API 引入平台专用字段.
@@ -467,6 +486,15 @@ object WindowsUpdateInstaller : DesktopUpdateInstaller {
     private val logger = logger<WindowsUpdateInstaller>()
 
     override val installablePackageExtensions: Set<String> = setOf("zip")
+
+    override fun createPackageDownloader(client: ScopedHttpClient): FileDownloader {
+        val appDir = ExecutableDirectoryDetector.INSTANCE.getExecutableDirectory()
+        if (!appDir.resolve("Ani.exe").exists()) {
+            // 开发运行时不是安装目录, 没有可复用的文件.
+            return DefaultFileDownloader(client)
+        }
+        return DeltaPackageDownloader(client, installRoot = appDir)
+    }
 
     override fun install(file: SystemPath, context: ContextMP): InstallationResult {
         logger.info { "Installing update for Windows" }
