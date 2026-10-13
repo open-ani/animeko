@@ -124,6 +124,24 @@ class JsonApiConfigPaneTest {
     }
 
     @Test
+    fun `a video url in the episode fields makes the play request url optional`() = runAniComposeUiTest {
+        val (container, state) = setUp()
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                JsonApiConfigurationPane(state)
+            }
+        }
+        assertTrue(state.playRequest.urlIsError)
+
+        onNodeWithTag(JsonApiConfigPaneTestTags.EPISODE_SELECT_VIDEO_URL).performScrollTo().performTextInput("$.video")
+        waitForIdle()
+
+        assertEquals("$.video", container.value!!.searchConfig.subject.episodes.selectVideoUrl)
+        assertFalse(state.playRequest.urlIsError)
+        assertTrue(container.value!!.searchConfig.episodeListHasVideoUrl)
+    }
+
+    @Test
     fun `the shared auto match section writes tier and enabled`() = runAniComposeUiTest {
         val (container, state) = setUp()
         setContent {

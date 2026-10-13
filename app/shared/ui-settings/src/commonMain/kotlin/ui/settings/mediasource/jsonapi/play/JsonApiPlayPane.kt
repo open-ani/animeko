@@ -73,7 +73,9 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_copied
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_play_candidates
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_play_copy
+import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_play_episode_list_no_video
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_play_fallback
+import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_play_from_episode_list
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_play_no_candidate
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_play_not_found
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_play_not_json
@@ -92,7 +94,7 @@ import me.him188.ani.app.ui.settings.mediasource.jsonapi.edit.JsonApiPlayStageCo
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * 播放阶段的测试: 对当前查看的剧集发播放请求, 展示请求、响应与解析出的候选.
+ * 播放阶段的测试: 对当前查看的剧集发播放请求, 展示请求、响应与解析出的候选; 地址来自剧集列表时只展示地址.
  */
 @Stable
 class JsonApiPlayState(
@@ -217,6 +219,7 @@ fun JsonApiPlayPaneContent(
 
         val result by state.result.collectAsStateWithLifecycle(null)
         val success = result as? JsonApiPlayTestResult.Success
+        val listVideo = result as? JsonApiPlayTestResult.EpisodeListVideo
 
         val clipboard = LocalClipboard.current
         val toaster = LocalToaster.current
@@ -234,7 +237,19 @@ fun JsonApiPlayPaneContent(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item("summary") {
-                PlaySummaryRow(success, Modifier.padding(top = 20.dp))
+                PlaySummaryRow(result, Modifier.padding(top = 20.dp))
+            }
+
+            val listVideoUrl = listVideo?.videoUrl
+            if (listVideoUrl != null) {
+                item("episode-list-video") {
+                    CandidateItem(
+                        JsonApiVideoCandidate(channelMatch = null, url = listVideoUrl),
+                        isSelected = true,
+                        onCopy = copy,
+                        colors = itemColors,
+                    )
+                }
             }
 
             if (success != null) {
@@ -268,16 +283,27 @@ fun JsonApiPlayPaneContent(
 }
 
 @Composable
-private fun PlaySummaryRow(success: JsonApiPlayTestResult.Success?, modifier: Modifier = Modifier) {
+private fun PlaySummaryRow(result: JsonApiPlayTestResult?, modifier: Modifier = Modifier) {
     Row(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ProvideTextStyle(MaterialTheme.typography.titleMedium) {
+            val success = result as? JsonApiPlayTestResult.Success
             val video = success?.video
             val selected = video?.selected
             when {
+                result is JsonApiPlayTestResult.EpisodeListVideo -> {
+                    if (result.videoUrl == null) {
+                        Icon(Icons.Rounded.PriorityHigh, null, tint = MaterialTheme.colorScheme.error)
+                        Text(stringResource(Lang.settings_mediasource_jsonapi_play_episode_list_no_video))
+                    } else {
+                        Icon(Icons.Rounded.Verified, null, tint = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(Lang.settings_mediasource_jsonapi_play_from_episode_list))
+                    }
+                }
+
                 success == null -> {}
                 success.response == null -> {
                     Icon(Icons.Rounded.PriorityHigh, null, tint = MaterialTheme.colorScheme.error)

@@ -72,7 +72,7 @@
 2. `searchSubjectsOnline(...)`：搜索阶段请求，`JsonApiMediaSourceEngine.parseSubjects(...)`
 3. 按条目名过滤后对每个条目 `loadChannels(...)`：剧集阶段请求，`parseChannels(...)` 按线路格式展开
 4. `selectMedia(...)` 按集号筛选，`createMedia(...)` 产出 `download = ResourceLocation.WebVideo(..., apiParameters)`
-5. 播放时 `JsonApiMediaSource.resolveApiVideo(...)`：播放阶段请求，`parseVideo(...)` 按线路挑候选
+5. 播放时 `JsonApiMediaSource.resolveApiVideo(...)`：播放阶段请求，`parseVideo(...)` 按线路挑候选；剧集列表自带地址的站点改为重取列表读这一集的地址
 
 浏览方法（`searchSubjects` / `browseSubject` / `createMedia`）走同样的请求与解析，不做匹配。
 

@@ -147,6 +147,13 @@ class JsonApiConfigState(
         var nameTemplate: String by section.prop({ it.nameTemplate }, { copy(nameTemplate = it) })
         var episodeUrlTemplate: String by section.prop({ it.episodeUrlTemplate }, { copy(episodeUrlTemplate = it) })
         val episodeUrlTemplateIsError by derivedStateOf { !episodeUrlTemplate.contains("{id}") }
+        var selectVideoUrl: String by section.prop({ it.selectVideoUrl }, { copy(selectVideoUrl = it) })
+        val selectVideoUrlIsError by derivedStateOf { !isValidOptionalJsonPath(selectVideoUrl) }
+
+        /**
+         * 剧集列表里就有视频地址, 播放阶段的请求可以留空.
+         */
+        val hasVideoUrl: Boolean by derivedStateOf { selectVideoUrl.isNotBlank() }
     }
 
     // endregion
@@ -155,7 +162,10 @@ class JsonApiConfigState(
 
     private val playStage: ConfigSection<JsonApiPlayStage> = searchConfig.sub({ it.play }, { copy(play = it) })
 
-    val playRequest = RequestConfigState(playStage.sub({ it.request }, { copy(request = it) }))
+    val playRequest = RequestConfigState(
+        playStage.sub({ it.request }, { copy(request = it) }),
+        isOptional = { episodes.hasVideoUrl },
+    )
 
     var selectCandidates: String by playStage.prop({ it.selectCandidates }, { copy(selectCandidates = it) })
     val selectCandidatesIsError by derivedStateOf { !isValidOptionalJsonPath(selectCandidates) }
@@ -184,11 +194,16 @@ class JsonApiConfigState(
 
 /**
  * 一个阶段的请求配置.
+ *
+ * @param isOptional 本阶段的请求可以留空 (播放阶段在剧集列表自带视频地址时), 留空不算错误.
  */
 @Stable
-class RequestConfigState(section: ConfigSection<JsonApiRequestConfig>) {
+class RequestConfigState(
+    section: ConfigSection<JsonApiRequestConfig>,
+    private val isOptional: () -> Boolean = { false },
+) {
     var url: String by section.prop({ it.url }, { copy(url = it) })
-    val urlIsError by derivedStateOf { url.isBlank() }
+    val urlIsError by derivedStateOf { url.isBlank() && !isOptional() }
     var method by section.prop({ it.method }, { copy(method = it) })
     var headers: String by section.prop({ it.headers }, { copy(headers = it) })
     var body: String by section.prop({ it.body }, { copy(body = it) })

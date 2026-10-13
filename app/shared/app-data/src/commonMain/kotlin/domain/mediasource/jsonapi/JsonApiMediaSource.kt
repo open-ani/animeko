@@ -117,7 +117,7 @@ object JsonApiMediaSourceCodec : DefaultMediaSourceCodec<JsonApiMediaSourceArgum
  * 通用 JSON API 数据源: 站点通过 HTTP 接口提供搜索、剧集与播放地址, 配置见 [JsonApiSearchConfig].
  *
  * 浏览与自动匹配的结构与 Selector 数据源相同 (关键词链、搜索缓存、按集筛选), 区别在于页面是 JSON 而不是 HTML,
- * 以及视频地址在播放前由 [resolveApiVideo] 向站点重新获取, 而不是用 WebView 加载页面.
+ * 以及视频地址在播放前由 [resolveApiVideo] 向站点重新获取 (签发请求, 或重取剧集列表), 而不是用 WebView 加载页面.
  */
 class JsonApiMediaSource(
     override val mediaSourceId: String,
@@ -131,7 +131,8 @@ class JsonApiMediaSource(
         val FactoryId = FactoryId("json-api")
 
         /**
-         * 同一集的播放响应在这段时间内复用: 响应里已经含所有线路的候选, 换线路不必再请求, 也不会因为连续请求被限流.
+         * 播放时发出的请求 (签发请求或剧集列表请求) 的响应在这段时间内复用:
+         * 签发响应里已经含所有线路的候选, 剧集列表含条目的全部剧集, 换线路、换集不必再请求, 也不会因为连续请求被限流.
          */
         val PLAY_RESPONSE_TTL: Duration = 60.seconds
 
@@ -589,30 +590,29 @@ class JsonApiMediaSource(
     private val playResponseLock = Mutex()
 
     /**
-     * 按准备好的播放请求记忆响应: 请求模板只用到 `{id}` 时同一集的各线路共用一个响应, 用到线路变量时各线路分别请求.
+     * 播放时发出的请求按准备好的请求记忆响应: 签发请求模板只用到 `{id}` 时同一集的各线路共用一个响应,
+     * 用到线路变量时各线路分别请求; 重取的剧集列表按条目共用.
      */
     private val playResponses = LinkedHashMap<JsonApiPreparedRequest, PlayResponseEntry>()
 
     /**
-     * 向站点取当前有效的视频地址. 同一个播放请求在 [PLAY_RESPONSE_TTL] 内复用上次的响应, 见 [playResponses].
+     * 向站点取当前有效的视频地址: 剧集列表自带地址的站点重取列表读这一集的地址, 否则发签发请求.
+     * 同一个请求在 [PLAY_RESPONSE_TTL] 内复用上次的响应, 见 [playResponses].
      */
     override suspend fun resolveApiVideo(media: Media): WebVideo? {
         val parameters = (media.download as? ResourceLocation.WebVideo)?.apiParameters ?: return null
+        if (searchConfig.episodeListHasVideoUrl) {
+            resolveVideoUrlFromEpisodeList(parameters)?.let { return WebVideo(it, videoHeaders()) }
+            if (!searchConfig.play.isValid()) {
+                logger.info { "JsonApiMediaSource '$mediaSourceId': episode list has no video url for ${media.mediaId} and no play request is configured" }
+                return null
+            }
+        }
         val prepared = engine.prepareRequest(searchConfig, searchConfig.play.request, parameters) ?: run {
             logger.warn { "JsonApiMediaSource '$mediaSourceId': invalid play request config, url=${searchConfig.play.request.url}" }
             return null
         }
-        val response = playResponseLock.withLock {
-            val now = getTimeMillis()
-            playResponses[prepared]?.takeIf { now - it.fetchedAtMillis < PLAY_RESPONSE_TTL.inWholeMilliseconds }
-                ?.let { return@withLock it.response }
-            val fetched = execute("play", prepared)
-            playResponses[prepared] = PlayResponseEntry(fetched, now)
-            while (playResponses.size > PLAY_RESPONSE_CACHE_SIZE) {
-                playResponses.remove(playResponses.keys.first())
-            }
-            fetched
-        } ?: return null
+        val response = executeMemoized("play", prepared) ?: return null
         val json = response.json ?: run {
             logger.warn { "JsonApiMediaSource '$mediaSourceId': play response is not JSON: $response" }
             return null
@@ -634,6 +634,61 @@ class JsonApiMediaSource(
         }
         return WebVideo(selected.url, videoHeaders())
     }
+
+    /**
+     * 重新取资源所属条目的剧集列表, 读出这一集 (同线路、同 id) 当前的视频地址. 列表里没有这一集或这一集没有地址时为 `null`.
+     */
+    private suspend fun resolveVideoUrlFromEpisodeList(parameters: Map<String, String>): String? {
+        val episodeId = parameters["id"] ?: return null
+        val subject = JsonApiSubjectInfo(
+            id = parameters["subjectId"] ?: return null,
+            name = parameters["subjectName"].orEmpty(),
+            url = parameters["subjectUrl"].orEmpty(),
+        )
+        val stage = searchConfig.subject
+        val prepared = engine.prepareRequest(searchConfig, stage.request, JsonApiVariables.subject(subject)) ?: run {
+            logger.warn { "JsonApiMediaSource '$mediaSourceId': invalid subject request config, url=${stage.request.url}" }
+            return null
+        }
+        val response = executeMemoized("subject", prepared) ?: return null
+        val json = response.json ?: run {
+            logger.warn { "JsonApiMediaSource '$mediaSourceId': subject response is not JSON: $response" }
+            return null
+        }
+        val channels = engine.parseChannels(json, stage, subject) ?: run {
+            logger.warn { "JsonApiMediaSource '$mediaSourceId': invalid subject stage config" }
+            return null
+        }
+        val channelName = parameters["channel"]
+        val episode = channels.asSequence()
+            .filter { it.name == channelName }
+            .flatMap { it.episodes }
+            .firstOrNull { it.id == episodeId }
+        if (episode == null) {
+            logger.info { "JsonApiMediaSource '$mediaSourceId': episode $episodeId of channel '$channelName' is no longer in the list of subject ${subject.id}" }
+            return null
+        }
+        if (episode.videoUrl == null) {
+            logger.info { "JsonApiMediaSource '$mediaSourceId': episode $episodeId of subject ${subject.id} has no video url in the list" }
+        }
+        return episode.videoUrl
+    }
+
+    /**
+     * 发送播放时的请求, 在 [PLAY_RESPONSE_TTL] 内复用同一请求上次的响应.
+     */
+    private suspend fun executeMemoized(stage: String, prepared: JsonApiPreparedRequest): JsonApiResponse? =
+        playResponseLock.withLock {
+            val now = getTimeMillis()
+            playResponses[prepared]?.takeIf { now - it.fetchedAtMillis < PLAY_RESPONSE_TTL.inWholeMilliseconds }
+                ?.let { return@withLock it.response }
+            val fetched = execute(stage, prepared)
+            playResponses[prepared] = PlayResponseEntry(fetched, now)
+            while (playResponses.size > PLAY_RESPONSE_CACHE_SIZE) {
+                playResponses.remove(playResponses.keys.first())
+            }
+            fetched
+        }
 
     @Suppress("DEPRECATION")
     private fun videoHeaders(): Map<String, String> = buildMap {

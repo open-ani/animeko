@@ -33,6 +33,7 @@ import kotlin.time.Duration.Companion.seconds
  * 1. [search]: 按关键词搜索条目;
  * 2. [subject]: 列出一个条目的线路与剧集;
  * 3. [play]: 播放前取视频地址. 这类站点签发的地址有时效, 所以查询时不解析, 每次播放前才请求 (见 `ApiVideoResolver`).
+ *    剧集列表里就带视频地址的站点 ([JsonApiEpisodeFields.selectVideoUrl]) 可以不配置这一阶段的请求.
  *
  * 请求地址与请求体是 `{var}` 模板 ([JsonApiTemplate]), 各阶段可用的变量见各阶段类的注释.
  * 条目与剧集的页面地址 ([JsonApiSearchStage.subjectUrlTemplate], [JsonApiEpisodeFields.episodeUrlTemplate]) 也是模板,
@@ -92,6 +93,11 @@ data class JsonApiSearchConfig(
      * 站点的网页地址, 从条目页面模板推断, 供展示.
      */
     val websiteUrl: String get() = SelectorSearchConfig.guessBaseUrl(search.subjectUrlTemplate)
+
+    /**
+     * 剧集列表里就有视频地址 ([JsonApiEpisodeFields.selectVideoUrl] 非空). 此时播放阶段的请求可以留空.
+     */
+    val episodeListHasVideoUrl: Boolean get() = subject.episodes.selectVideoUrl.isNotBlank()
 
     @Stable
     companion object {
@@ -244,6 +250,14 @@ data class JsonApiEpisodeFields(
      * 站点 id 本身就是完整地址时写 `{id}`.
      */
     val episodeUrlTemplate: String = "",
+    /**
+     * 相对每集: 可直接播放的视频地址. 为空表示列表里没有地址, 播放时发播放阶段的请求.
+     *
+     * 非空时播放阶段的请求可以留空. 播放时不用查询时读到的地址, 而是重新取一次剧集列表读这一集的地址:
+     * 列表里的直链同样可能带签名有时效, 而重取一次的代价与签发请求相同.
+     */
+    @param:Language("jsonpath")
+    val selectVideoUrl: String = "",
 ) {
     fun isValid(): Boolean = selectEpisodes.isNotBlank() && selectName.isNotBlank() && selectId.isNotBlank() &&
             JsonApiTemplate.variableNames(episodeUrlTemplate).contains("id")
@@ -266,6 +280,9 @@ data class JsonApiEpisodeFields(
  *
  * 响应里可以有多条候选 (多线路). 资源属于某条线路时, 选 [selectCandidateChannel] 等于该线路匹配值的候选;
  * 没有线路时取第一条候选. 没有候选数组时整个响应就是一个视频.
+ *
+ * 剧集列表自带视频地址时 ([JsonApiEpisodeFields.selectVideoUrl]) 请求可以留空, 只有 [referer] 仍然生效;
+ * 配置了请求时, 只对列表里没有地址的剧集发它.
  */
 @Immutable
 @Serializable

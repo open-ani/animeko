@@ -218,6 +218,10 @@ data class JsonApiEpisodeInfo(
      * 剧集页面地址, 由 [JsonApiEpisodeFields.episodeUrlTemplate] 生成. 剧集的稳定标识.
      */
     val url: String,
+    /**
+     * 列表里给出的可直接播放的视频地址, 由 [JsonApiEpisodeFields.selectVideoUrl] 取得. 没有配置或这一集没有时为 `null`.
+     */
+    val videoUrl: String? = null,
 )
 
 /**
@@ -230,6 +234,7 @@ internal class JsonApiEpisodeParser private constructor(
     private val selectId: JsonPath,
     private val selectSort: JsonPath?,
     private val selectType: JsonPath?,
+    private val selectVideoUrl: JsonPath?,
     private val matchSortFromName: Regex?,
 ) {
     companion object {
@@ -248,6 +253,7 @@ internal class JsonApiEpisodeParser private constructor(
                 selectId = JsonPath.compileOrNull(fields.selectId) ?: return null,
                 selectSort = fields.selectSort.takeIf { it.isNotBlank() }?.let { JsonPath.compileOrNull(it) ?: return null },
                 selectType = fields.selectType.takeIf { it.isNotBlank() }?.let { JsonPath.compileOrNull(it) ?: return null },
+                selectVideoUrl = fields.selectVideoUrl.takeIf { it.isNotBlank() }?.let { JsonPath.compileOrNull(it) ?: return null },
                 matchSortFromName = matchSortFromName,
             )
         }
@@ -278,6 +284,10 @@ internal class JsonApiEpisodeParser private constructor(
                     mapOf("id" to id, "subjectId" to subject.id),
                     Escaping.NONE,
                 ),
+                videoUrl = selectVideoUrl?.let { path ->
+                    element.resolveOrNull(path)?.stringValueOrNull()?.trim()
+                        ?.takeIf { JsonApiMediaSourceEngine.isAbsoluteUrl(it) }
+                },
             )
         }
     }

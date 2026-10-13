@@ -45,6 +45,9 @@ class JsonApiMediaSourceTest {
         val requests = mutableListOf<HttpRequestData>()
         var rateLimitPlayOnce = false
 
+        /** 条目 3252 的剧集列表响应. */
+        var episodesResponse = SampleSite.EPISODES_RESPONSE
+
         /** 搜索这些词时站点返回空列表, 模拟站点搜索只认短关键词. */
         val emptySearchTerms = mutableSetOf<String>()
 
@@ -58,7 +61,7 @@ class JsonApiMediaSourceTest {
                     respondJson(if (hasResults) SampleSite.SEARCH_RESPONSE else "[]")
                 }
 
-                url.startsWith("https://api.example.com/episodes?anime_id=3252") -> respondJson(SampleSite.EPISODES_RESPONSE)
+                url.startsWith("https://api.example.com/episodes?anime_id=3252") -> respondJson(episodesResponse)
                 url.startsWith("https://api.example.com/episodes?anime_id=") -> respondJson("[]")
 
                 url == "https://api.example.com/playback" -> {
@@ -427,6 +430,73 @@ class JsonApiMediaSourceTest {
 
         assertEquals(SampleSite.LINE_B_URL, assertNotNull(lenient.resolveApiVideo(media)).m3u8Url)
         assertNull(strict.resolveApiVideo(media))
+    }
+
+    @Test
+    fun `resolveApiVideo reads the url from the episode list and sends no play request when the list carries it`() = runTest {
+        val site = Site().apply { episodesResponse = SampleSite.EPISODES_WITH_VIDEO_RESPONSE }
+        val (source, _) = createSource(SampleSite.listVideoConfig.copy(requestInterval = Duration.ZERO, userAgent = "Ani-Test/1"), site)
+        val media = source.fetchMedia(request(episode = 2)).single()
+
+        val video = assertNotNull(source.resolveApiVideo(media))
+
+        assertEquals(SampleSite.EPISODE_2_VIDEO_URL, video.m3u8Url)
+        assertEquals(mapOf("User-Agent" to "Ani-Test/1", "Referer" to "https://example.com/"), video.headers)
+        assertEquals(0, site.playCount)
+        // 查询时取过一次列表, 播放时重取一次, 不用查询时读到的地址
+        assertEquals(2, site.episodeRequests.size)
+    }
+
+    @Test
+    fun `the episode list refetched at play time is shared by episodes of the same subject until it expires`() = runTest {
+        val site = Site().apply { episodesResponse = SampleSite.EPISODES_WITH_VIDEO_RESPONSE }
+        val (source, _) = createSource(SampleSite.listVideoConfig.copy(requestInterval = Duration.ZERO), site)
+        val second = source.fetchMedia(request(episode = 2)).single()
+        val third = source.fetchMedia(request(episode = 3)).single()
+        val listRequestsAfterFetch = site.episodeRequests.size
+
+        assertEquals(SampleSite.EPISODE_2_VIDEO_URL, assertNotNull(source.resolveApiVideo(second)).m3u8Url)
+        assertEquals(SampleSite.EPISODE_3_VIDEO_URL, assertNotNull(source.resolveApiVideo(third)).m3u8Url)
+        assertEquals(listRequestsAfterFetch + 1, site.episodeRequests.size)
+
+        testScheduler.advanceTimeBy(JsonApiMediaSource.PLAY_RESPONSE_TTL.inWholeMilliseconds + 1)
+        assertEquals(SampleSite.EPISODE_2_VIDEO_URL, assertNotNull(source.resolveApiVideo(second)).m3u8Url)
+        assertEquals(listRequestsAfterFetch + 2, site.episodeRequests.size)
+    }
+
+    @Test
+    fun `an episode without a list url falls back to the play request only when one is configured`() = runTest {
+        val site = Site().apply { episodesResponse = SampleSite.EPISODES_WITH_VIDEO_RESPONSE }
+        val withoutPlayRequest = SampleSite.listVideoConfig.copy(requestInterval = Duration.ZERO)
+        val (strict, _) = createSource(withoutPlayRequest, site)
+        val (lenient, _) = createSource(withoutPlayRequest.copy(play = config.play), site)
+        // 第 1 集在列表里没有地址
+        val media = strict.fetchMedia(request(episode = 1)).single()
+
+        assertNull(strict.resolveApiVideo(media))
+        assertEquals(0, site.playCount)
+
+        val video = assertNotNull(lenient.resolveApiVideo(media))
+        assertEquals(SampleSite.LINE_B_URL, video.m3u8Url)
+        assertEquals(1, site.playCount)
+    }
+
+    @Test
+    fun `the list url is looked up within the channel of the media`() = runTest {
+        val site = Site().apply { episodesResponse = SampleSite.EPISODES_WITH_VIDEO_RESPONSE }
+        val (source, _) = createSource(
+            config.copy(
+                subject = config.subject.copy(episodes = config.subject.episodes.copy(selectVideoUrl = "$.video")),
+                play = JsonApiPlayStage(),
+            ),
+            site,
+        )
+        val media = source.fetchMedia(request(episode = 2))
+
+        assertEquals(4, media.size)
+        val lineD = media.first { it.properties.alliance == SampleSite.LINE_D }
+        assertEquals(SampleSite.EPISODE_2_VIDEO_URL, assertNotNull(source.resolveApiVideo(lineD)).m3u8Url)
+        assertEquals(0, site.playCount)
     }
 
     @Test

@@ -39,12 +39,15 @@ import kotlin.test.assertTrue
 
 class JsonApiMediaSourceTesterTest {
     private val requests = mutableListOf<HttpRequestData>()
+
+    /** 条目 3252 的剧集列表响应. */
+    private var episodesResponse = SampleSite.EPISODES_RESPONSE
     private val site = MockEngine { request ->
         requests += request
         val url = request.url.toString()
         when {
             url.endsWith("/search") -> respondJson(if ("芙莉莲" in request.bodyText.orEmpty()) SampleSite.SEARCH_RESPONSE else "[]")
-            url.contains("/episodes?anime_id=3252") -> respondJson(SampleSite.EPISODES_RESPONSE)
+            url.contains("/episodes?anime_id=3252") -> respondJson(episodesResponse)
             url.contains("/episodes?") -> respondJson("[]")
             url.endsWith("/playback") -> respondJson(SampleSite.PLAY_RESPONSE)
             else -> respondError(HttpStatusCode.NotFound)
@@ -153,6 +156,29 @@ class JsonApiMediaSourceTesterTest {
         val video = assertNotNull(result.video)
         assertEquals(3, video.candidates.size)
         assertEquals(SampleSite.LINE_C_URL, assertNotNull(video.selected).url)
+    }
+
+    @Test
+    fun `viewing an episode whose list entry has a video url shows it without a play request`() = runTest {
+        episodesResponse = SampleSite.EPISODES_WITH_VIDEO_RESPONSE
+        val tester = createTester()
+        tester.queryFrieren(SampleSite.listVideoConfig)
+        tester.subjectSelectionResultFlow.filterNotNull().first()
+        tester.setSubjectIndex(1)
+        tester.episodeListSelectionResultFlow.filterNotNull().first()
+        val episodes = tester.testEpisodesFlow.first { it.isNotEmpty() }
+        val withUrl = episodes.first { it.episode.id == "47464" }
+        val withoutUrl = episodes.first { it.episode.id == "47463" }
+        assertTrue(withUrl.presentation.tags.any { it.value == "视频: ${SampleSite.EPISODE_2_VIDEO_URL}" })
+
+        tester.setPlayEpisode(withUrl)
+        val first = tester.playResultFlow.filterNotNull().first()
+        assertEquals(JsonApiPlayTestResult.EpisodeListVideo(SampleSite.EPISODE_2_VIDEO_URL), first)
+
+        // 列表里没有这一集的地址, 播放阶段也没有请求可退
+        tester.setPlayEpisode(withoutUrl)
+        assertEquals(JsonApiPlayTestResult.EpisodeListVideo(null), tester.playResultFlow.filterNotNull().first { it != first })
+        assertTrue(requests.none { it.url.encodedPath.endsWith("/playback") })
     }
 
     @Test

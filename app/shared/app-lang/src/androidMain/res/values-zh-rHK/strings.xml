@@ -1848,6 +1848,8 @@
     <string name="settings_mediasource_jsonapi_episode_name_template_supporting">可用變量：{sort}、{name}、{id}</string>
     <string name="settings_mediasource_jsonapi_episode_url_template">劇集頁面地址模板</string>
     <string name="settings_mediasource_jsonapi_episode_url_template_supporting">必須包含 {id}，也可用 {subjectId}。用於打開站點頁面與識別劇集</string>
+    <string name="settings_mediasource_jsonapi_episode_select_video_url">提取視頻地址（可選）</string>
+    <string name="settings_mediasource_jsonapi_episode_select_video_url_supporting">JSONPath 表達式，相對於單個劇集。填寫後直接播放列表裡的地址，播放步驟的請求可留空</string>
     <string name="settings_mediasource_jsonapi_select_candidates">提取候選列表（可選）</string>
     <string name="settings_mediasource_jsonapi_select_candidates_supporting">JSONPath 表達式。期望返回一個數組，每個元素是一個視頻候選。為空時直接從響應根提取視頻地址</string>
     <string name="settings_mediasource_jsonapi_select_candidate_channel">提取候選的線路匹配值</string>
@@ -1866,6 +1868,9 @@
     <string name="settings_mediasource_jsonapi_play_no_candidate">沒有與線路匹配的候選</string>
     <string name="settings_mediasource_jsonapi_play_not_found">站點返回 404</string>
     <string name="settings_mediasource_jsonapi_play_not_json">響應不是 JSON，或播放步驟配置無效</string>
+    <string name="settings_mediasource_jsonapi_play_request_optional_hint">劇集列表已提供視頻地址，此處請求可留空；填寫後只對列表裡沒有地址的劇集發送</string>
+    <string name="settings_mediasource_jsonapi_play_from_episode_list">地址來自劇集列表，未發播放請求</string>
+    <string name="settings_mediasource_jsonapi_play_episode_list_no_video">劇集列表裡沒有這一集的視頻地址，播放步驟也沒有配置請求</string>
     <string name="settings_mediasource_jsonapi_play_open_video">打開視頻地址</string>
     <string name="settings_mediasource_jsonapi_play_copy">複製</string>
 </resources>

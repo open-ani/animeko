@@ -86,6 +86,17 @@ internal object SampleSite {
         ),
     )
 
+    /**
+     * 剧集列表自带视频地址的站点变体: 没有线路, 每集的 `video` 就是可播放地址, 播放阶段只配置 Referer.
+     */
+    val listVideoConfig = config.copy(
+        subject = config.subject.copy(
+            episodes = config.subject.episodes.copy(selectVideoUrl = "$.video"),
+            channelFormatId = JsonApiChannelFormatNoChannel.id,
+        ),
+        play = JsonApiPlayStage(referer = "$WEB/"),
+    )
+
     val SEARCH_RESPONSE = """
         [{"id": 26, "title": "葬送的芙莉莲", "title_original": "葬送のフリーレン", "aliases": ["Sousou no Frieren", "葬送的芙莉蓮"], "total_episodes": 28},
          {"id": 3252, "title": "葬送的芙莉莲 第二季", "title_original": "葬送のフリーレン 第2期", "aliases": ["Sousou no Frieren 2nd Season"], "total_episodes": 10}]
@@ -99,6 +110,20 @@ internal object SampleSite {
          {"id": 47464, "episode_number": 2.0, "title": "南方勇者", "kind": "main"},
          {"id": 47465, "episode_number": 3.0, "title": "喜欢的地方", "kind": "main"},
          {"id": 14369, "episode_number": 1.0, "title": "SP01", "kind": "sp"},
+         {"id": 14367, "episode_number": 1.0, "title": "EX01", "kind": "ex"}]
+    """.trimIndent()
+
+    const val EPISODE_2_VIDEO_URL = "https://cdn-list.example.com/2601/02.mp4?sign=l2b8f0&t=1791853200"
+    const val EPISODE_3_VIDEO_URL = "https://cdn-list.example.com/2601/03.m3u8?sign=l3c9a1&t=1791853200"
+
+    /**
+     * 同样的剧集, 列表里直接带 `video`: 第 1 集没有, 第 2、3 集是完整地址, SP01 是相对地址 (不算地址).
+     */
+    val EPISODES_WITH_VIDEO_RESPONSE = """
+        [{"id": 47463, "episode_number": 1.0, "title": "那我们走吧", "kind": "main"},
+         {"id": 47464, "episode_number": 2.0, "title": "南方勇者", "kind": "main", "video": "$EPISODE_2_VIDEO_URL"},
+         {"id": 47465, "episode_number": 3.0, "title": "喜欢的地方", "kind": "main", "video": "$EPISODE_3_VIDEO_URL"},
+         {"id": 14369, "episode_number": 1.0, "title": "SP01", "kind": "sp", "video": "/2601/sp01.mp4"},
          {"id": 14367, "episode_number": 1.0, "title": "EX01", "kind": "ex"}]
     """.trimIndent()
 

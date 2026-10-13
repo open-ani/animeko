@@ -63,6 +63,8 @@ import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_episode_select_sor
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_episode_select_sort_supporting
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_episode_select_type
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_episode_select_type_supporting
+import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_episode_select_video_url
+import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_episode_select_video_url_supporting
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_episode_type_mapping
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_episode_type_mapping_supporting
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_episode_url_template
@@ -77,6 +79,7 @@ import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_headers
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_headers_supporting
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_page_size
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_page_size_supporting
+import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_play_request_optional_hint
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_request_body
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_request_body_supporting
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_request_headers
@@ -131,6 +134,7 @@ object JsonApiConfigPaneTestTags {
     const val SEARCH_REQUEST_BODY = "JsonApiConfigPane.searchRequestBody"
     const val DECLARED_CHANNELS = "JsonApiConfigPane.declaredChannels"
     const val CHANNEL_FORMAT_PREFIX = "JsonApiConfigPane.channelFormat."
+    const val EPISODE_SELECT_VIDEO_URL = "JsonApiConfigPane.episodeSelectVideoUrl"
 }
 
 @Composable
@@ -525,6 +529,15 @@ private fun JsonApiEpisodeFieldsColumn(
             enabled = enabled,
             shape = textFieldShape,
         )
+        ConfigTextField(
+            conf.selectVideoUrl, { conf.selectVideoUrl = it },
+            label = stringResource(Lang.settings_mediasource_jsonapi_episode_select_video_url),
+            Modifier.testTag(JsonApiConfigPaneTestTags.EPISODE_SELECT_VIDEO_URL),
+            supportingText = stringResource(Lang.settings_mediasource_jsonapi_episode_select_video_url_supporting),
+            isError = conf.selectVideoUrlIsError,
+            enabled = enabled,
+            shape = textFieldShape,
+        )
     }
 }
 
@@ -540,6 +553,14 @@ internal fun JsonApiPlayStageColumn(
 ) {
     Column(modifier) {
         val itemPadding = Modifier.padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
+        if (state.episodes.hasVideoUrl) {
+            Text(
+                stringResource(Lang.settings_mediasource_jsonapi_play_request_optional_hint),
+                Modifier.padding(bottom = verticalSpacing),
+                color = MaterialTheme.colorScheme.outline,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
         RequestConfigSection(
             state.playRequest,
             variables = "{id}, {url}, {name}, {subjectId}, {subjectUrl}, {subjectName}, {channel}, {channelMatch}",

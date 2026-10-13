@@ -61,6 +61,14 @@ sealed class JsonApiPlayTestResult : RefreshResult {
         val video: JsonApiVideoResult?,
     ) : JsonApiPlayTestResult(), RefreshResult.Success
 
+    /**
+     * 视频地址来自剧集列表, 没有发播放请求. [videoUrl] 为 `null` 表示列表里没有这一集的地址, 而播放阶段也没有配置请求.
+     */
+    @Immutable
+    data class EpisodeListVideo(
+        val videoUrl: String?,
+    ) : JsonApiPlayTestResult(), RefreshResult.Success
+
     @Immutable
     data class ApiError(
         override val exception: RepositoryException,
@@ -94,7 +102,7 @@ fun TestSubjectPresentation.Companion.compute(
 )
 
 /**
- * 标签标出集号是否与请求一致 (开启按集号筛选时), 所在线路及其匹配值, 以及站点 id.
+ * 标签标出集号是否与请求一致 (开启按集号筛选时), 所在线路及其匹配值, 站点 id, 以及列表里给出的视频地址.
  */
 fun TestEpisodePresentation.Companion.compute(
     info: JsonApiEpisodeInfo,
@@ -132,6 +140,7 @@ fun TestEpisodePresentation.Companion.compute(
         } else {
             emit("播放地址: ${info.url}", isMatch = false)
         }
+        info.videoUrl?.let { emit("视频: $it", isMatch = true) }
     },
     origin = null,
 )

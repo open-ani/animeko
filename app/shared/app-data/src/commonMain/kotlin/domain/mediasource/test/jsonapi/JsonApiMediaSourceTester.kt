@@ -77,11 +77,17 @@ class JsonApiMediaSourceTester(
      */
     private sealed class Prepared<out C> {
         data object Invalid : Prepared<Nothing>()
+
+        /**
+         * 本阶段不发请求: 视频地址来自剧集列表.
+         */
+        data object NotNeeded : Prepared<Nothing>()
         class Ready<C>(val request: JsonApiPreparedRequest, val context: C) : Prepared<C>()
     }
 
     private sealed class Fetched<out C> {
         data object InvalidRequest : Fetched<Nothing>()
+        data object NotNeeded : Fetched<Nothing>()
         class Done<C>(val request: JsonApiPreparedRequest, val context: C, val result: Result<Exchange>) : Fetched<C>()
     }
 
@@ -251,6 +257,10 @@ class JsonApiMediaSourceTester(
 
     private val playRequestFlow = combine(configFlow, playEpisodeFlow) { config, episode ->
         if (config == null || episode == null) return@combine null
+        // 与正式播放一致: 列表里有这一集的地址就不发播放请求; 没有地址也没有播放请求时无请求可发
+        if (config.episodeListHasVideoUrl && (episode.episode.videoUrl != null || !config.play.isValid())) {
+            return@combine Prepared.NotNeeded
+        }
         engine.prepareRequest(config, config.play.request, episode.playVariables)
             ?.let { Prepared.Ready(it, episode) } ?: Prepared.Invalid
     }.distinctUntilChanged { old, new -> sameRequest(old, new) }
@@ -263,8 +273,11 @@ class JsonApiMediaSourceTester(
     /**
      * 当前查看的剧集的播放测试结果. `null` 表示没有在查看剧集或还没有结果.
      */
-    val playResultFlow: Flow<JsonApiPlayTestResult?> = combine(playFetchFlow, playRequestFlow, configFlow) { fetched, prepared, config ->
+    val playResultFlow: Flow<JsonApiPlayTestResult?> = combine(
+        playFetchFlow, playRequestFlow, configFlow, playEpisodeFlow,
+    ) { fetched, prepared, config, episode ->
         if (prepared == null) return@combine null
+        if (prepared is Prepared.NotNeeded) return@combine JsonApiPlayTestResult.EpisodeListVideo(episode?.episode?.videoUrl)
         if (prepared is Prepared.Invalid || config == null) return@combine JsonApiPlayTestResult.InvalidConfig
         val done = fetched.matching(prepared as Prepared.Ready) ?: return@combine null
         done.result.fold(
@@ -315,6 +328,7 @@ class JsonApiMediaSourceTester(
     private suspend fun <C> fetch(stage: String, prepared: Prepared<C>?, running: FlowRunning): Fetched<C>? = when (prepared) {
         null -> null
         Prepared.Invalid -> Fetched.InvalidRequest
+        Prepared.NotNeeded -> Fetched.NotNeeded
         is Prepared.Ready -> running.withRunning {
             Fetched.Done(
                 prepared.request,

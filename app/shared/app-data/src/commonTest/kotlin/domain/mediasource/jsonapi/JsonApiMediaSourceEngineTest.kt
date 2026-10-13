@@ -163,6 +163,27 @@ class JsonApiMediaSourceEngineTest {
     }
 
     @Test
+    fun `episode fields read an absolute video url from the list and ignore relative or missing ones`() {
+        val stage = config.subject.copy(
+            channelFormatId = JsonApiChannelFormatNoChannel.id,
+            episodes = config.subject.episodes.copy(selectVideoUrl = "$.video"),
+        )
+        val episodes = assertNotNull(
+            engine.parseChannels(json(SampleSite.EPISODES_WITH_VIDEO_RESPONSE), stage, subject),
+        ).single().episodes
+        assertEquals(
+            listOf(null, SampleSite.EPISODE_2_VIDEO_URL, SampleSite.EPISODE_3_VIDEO_URL, null, null),
+            episodes.map { it.videoUrl },
+        )
+
+        // 没有配置时不读列表里的地址
+        val plain = assertNotNull(
+            engine.parseChannels(json(SampleSite.EPISODES_WITH_VIDEO_RESPONSE), stage.copy(episodes = config.subject.episodes), subject),
+        ).single().episodes
+        assertEquals(listOf(null, null, null, null, null), plain.map { it.videoUrl })
+    }
+
+    @Test
     fun `parseChannels returns null for an unknown format or an invalid episode jsonpath`() {
         assertNull(engine.parseChannels(json("[]"), config.subject.copy(channelFormatId = JsonApiFormatId("nope")), subject))
         assertNull(
