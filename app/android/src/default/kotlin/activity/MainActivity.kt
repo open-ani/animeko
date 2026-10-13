@@ -31,9 +31,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.him188.ani.android.BuildConfig
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.user.QrLoginRepository
 import me.him188.ani.app.domain.episode.EpisodeLink
 import me.him188.ani.app.domain.episode.ResolveEpisodeLinkUseCase
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.pip.PIPModeChangedListener
 import me.him188.ani.app.pip.PictureInPictureHost
@@ -46,6 +48,7 @@ import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.theme.SystemBarColorEffect
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
+import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.utils.logging.error
@@ -58,6 +61,11 @@ class MainActivity : AniComponentActivity(), PictureInPictureHost {
     private val aniNavigator = AniNavigator()
     private val resolveEpisodeLink: ResolveEpisodeLinkUseCase by inject()
     private var linkNavigationJob: Job? = null
+    private val toaster = object : Toaster {
+        override fun toast(text: String) {
+            Toast.makeText(this@MainActivity, text, Toast.LENGTH_LONG).show()
+        }
+    }
 
     private val externalContentProviderFactory: ExternalContentProviderFactory by inject()
 
@@ -98,11 +106,11 @@ class MainActivity : AniComponentActivity(), PictureInPictureHost {
                 val link = EpisodeLink.parse(data.toString()) ?: return
                 linkNavigationJob?.cancel()
                 linkNavigationJob = navigateWhenReady("episode link") {
-                    val destination = resolveEpisodeLink(link)
-                    val episodeId = destination?.episodeId
-                    if (destination == null) {
-                        Toast.makeText(this@MainActivity, "无法打开剧集，请稍后重试", Toast.LENGTH_LONG).show()
-                    } else if (episodeId == null) {
+                    val resolution = resolveEpisodeLink(link)
+                    resolution.error?.let { toaster.showLoadError(it) }
+                    val destination = resolution.destination ?: return@navigateWhenReady
+                    val episodeId = destination.episodeId
+                    if (episodeId == null) {
                         navigateSubjectDetails(destination.subjectId, placeholder = null)
                     } else {
                         navigateEpisodeDetails(destination.subjectId, episodeId)
@@ -130,6 +138,7 @@ class MainActivity : AniComponentActivity(), PictureInPictureHost {
                 throw e
             } catch (e: Exception) {
                 logger.error(e) { "Failed to navigate to $destination" }
+                toaster.showLoadError(LoadError.fromException(RepositoryException.wrapOrThrowCancellation(e)))
             }
         }
 
@@ -152,12 +161,6 @@ class MainActivity : AniComponentActivity(), PictureInPictureHost {
 
         // 允许画到 system bars
         WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        val toaster = object : Toaster {
-            override fun toast(text: String) {
-                Toast.makeText(this@MainActivity, text, Toast.LENGTH_LONG).show()
-            }
-        }
 
         val externalContentProvider = externalContentProviderFactory.create(this, lifecycleScope)
 

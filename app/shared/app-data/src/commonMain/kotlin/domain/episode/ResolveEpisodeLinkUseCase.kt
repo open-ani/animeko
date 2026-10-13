@@ -11,6 +11,8 @@ package me.him188.ani.app.domain.episode
 
 import kotlinx.coroutines.CancellationException
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
@@ -22,9 +24,9 @@ class ResolveEpisodeLinkUseCase(
 ) {
     private val logger = logger<ResolveEpisodeLinkUseCase>()
 
-    suspend operator fun invoke(link: EpisodeLink): EpisodeLinkDestination? {
+    suspend operator fun invoke(link: EpisodeLink): EpisodeLinkResolution {
         try {
-            return when (link) {
+            val destination = when (link) {
                 is EpisodeLink.Subject -> {
                     val episode = link.ep?.let { ep ->
                         getEpisodes(link.subjectId).singleOrNull { it.type == EpisodeType.MainStory && it.ep == ep }
@@ -35,14 +37,24 @@ class ResolveEpisodeLinkUseCase(
                     EpisodeLinkDestination(it, link.episodeId)
                 }
             }
+            return EpisodeLinkResolution(destination, if (destination == null) LoadError.NoResults else null)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             logger.error(e) { "Failed to resolve episode link $link" }
-            return when (link) {
-                is EpisodeLink.Subject -> EpisodeLinkDestination(link.subjectId)
-                is EpisodeLink.Episode -> null
-            }
+            return EpisodeLinkResolution(
+                destination = when (link) {
+                    is EpisodeLink.Subject -> EpisodeLinkDestination(link.subjectId)
+                    is EpisodeLink.Episode -> null
+                },
+                error = LoadError.fromException(RepositoryException.wrapOrThrowCancellation(e)),
+            )
         }
     }
 }
+
+/** [destination] 是可导航的目标; [error] 由调用方展示, 包括回退到条目详情时的查询错误. */
+data class EpisodeLinkResolution(
+    val destination: EpisodeLinkDestination?,
+    val error: LoadError? = null,
+)
