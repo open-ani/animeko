@@ -101,7 +101,7 @@ class JsonApiMediaSourceTesterTest {
     }
 
     @Test
-    fun `selecting another subject never shows the previous subject's episodes under the new one`() = runTest {
+    fun `selecting another subject never shows the previous subject episodes under the new one`() = runTest {
         val tester = createTester()
         tester.queryFrieren()
         tester.subjectSelectionResultFlow.filterNotNull().first()

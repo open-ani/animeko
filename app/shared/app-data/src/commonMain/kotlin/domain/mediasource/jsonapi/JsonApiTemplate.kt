@@ -73,7 +73,7 @@ object JsonApiTemplate {
             var last = 0
             for (match in VARIABLE.findAll(template)) {
                 append(Regex.escape(template.substring(last, match.range.first)))
-                append("(.+?)")
+                append("([\\s\\S]+?)") // 不用 DOT_MATCHES_ALL: Kotlin/Native 没有这个选项
                 names += match.groupValues[1]
                 last = match.range.last + 1
             }
@@ -81,7 +81,7 @@ object JsonApiTemplate {
             append('$')
         }
         if (names.isEmpty()) return if (text == template) emptyMap() else null
-        val match = Regex(pattern, RegexOption.DOT_MATCHES_ALL).matchEntire(text) ?: return null
+        val match = Regex(pattern).matchEntire(text) ?: return null
         val result = LinkedHashMap<String, String>(names.size)
         for ((index, name) in names.withIndex()) {
             val value = match.groupValues[index + 1]
