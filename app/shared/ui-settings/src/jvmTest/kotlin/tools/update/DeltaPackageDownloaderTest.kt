@@ -120,13 +120,31 @@ class DeltaPackageDownloaderTest {
         }
     }
 
-    private fun ApplicationTestBuilder.downloader(): DeltaPackageDownloader = DeltaPackageDownloader(
-        createClient {
-            expectSuccess = true
-            install(HttpTimeout)
-        }.asScopedHttpClient(),
-        installRoot = installRoot,
-    )
+    private fun ApplicationTestBuilder.downloader(output: PackageOutput = PackageOutput.Zip): DeltaPackageDownloader =
+        DeltaPackageDownloader(
+            createClient {
+                expectSuccess = true
+                install(HttpTimeout)
+            }.asScopedHttpClient(),
+            installRoot = installRoot,
+            output = output,
+        )
+
+    private val stagingDir: File get() = saveDir.resolve("pkg.zip" + PackageOutput.Directory.SUFFIX)
+
+    /** 拼出的目录与发布包内容一致, 顶层的 `Ani/` 已去掉. */
+    private fun assertStagedPackage() {
+        assertTrue(stagingDir.isDirectory, "staging directory should exist")
+        assertFalse(File(stagingDir.path + ".part").exists(), "partial directory should be removed")
+        for (entry in released) {
+            val file = stagingDir.resolve(entry.name.substringAfter('/'))
+            if (entry.content == null) {
+                if (entry.name != "Ani/") assertTrue(file.isDirectory, entry.name)
+            } else {
+                assertEquals(entry.content.toList(), file.readBytes().toList(), entry.name)
+            }
+        }
+    }
 
     private suspend fun DeltaPackageDownloader.downloadPackage() = download(
         alternativeUrls = listOf(packageUrl),
@@ -249,6 +267,70 @@ class DeltaPackageDownloaderTest {
         assertEquals(emptyList<String?>(), rangeRequests)
         assertIs<FileDownloaderState.Succeed>(downloader.state.value)
         assertEquals(assembledBytes.toList(), target.readBytes().toList())
+    }
+
+    @Test
+    fun `directory output stages the unpacked new version`() = testApplication {
+        setupServer()
+        installOldVersion("Ani/app/b.jar", "Ani/app/c.jar")
+        val downloader = downloader(PackageOutput.Directory)
+
+        val result = assertNotNull(downloader.downloadPackage())
+
+        assertEquals(stagingDir.path, result.toString())
+        assertIs<FileDownloaderState.Succeed>(downloader.state.value)
+        assertEquals(listOf<String?>(rangeOf("Ani/app/b.jar"), rangeOf("Ani/app/c.jar")), rangeRequests)
+        assertStagedPackage()
+        assertFalse(target.exists(), "no zip is written in directory mode")
+    }
+
+    @Test
+    fun `directory output reuses an existing staging directory`() = testApplication {
+        setupServer()
+        installOldVersion("Ani/app/b.jar")
+        assertNotNull(downloader(PackageOutput.Directory).downloadPackage())
+        rangeRequests.clear()
+
+        val downloader = downloader(PackageOutput.Directory)
+        assertNotNull(downloader.downloadPackage())
+
+        assertEquals(emptyList<String?>(), rangeRequests)
+        assertIs<FileDownloaderState.Succeed>(downloader.state.value)
+        assertStagedPackage()
+    }
+
+    @Test
+    fun `directory output rebuilds a staging directory that no longer matches`() = testApplication {
+        setupServer()
+        installOldVersion("Ani/app/b.jar")
+        assertNotNull(downloader(PackageOutput.Directory).downloadPackage())
+        // 暂存目录里的文件可能是安装目录文件的硬链接, 先删再写, 不能原地改写
+        stagingDir.resolve("app/a.jar").apply {
+            delete()
+            writeBytes(byteArrayOf(1, 2, 3))
+        }
+        rangeRequests.clear()
+
+        assertNotNull(downloader(PackageOutput.Directory).downloadPackage())
+
+        assertEquals(listOf<String?>(rangeOf("Ani/app/b.jar")), rangeRequests)
+        assertStagedPackage()
+    }
+
+    @Test
+    fun `directory output falls back to a zip when a fetched entry is corrupted`() = testApplication {
+        setupServer()
+        corruptRanges = true
+        installOldVersion("Ani/app/b.jar")
+
+        val downloader = downloader(PackageOutput.Directory)
+        val result = assertNotNull(downloader.downloadPackage())
+
+        assertEquals(target.path, result.toString())
+        assertIs<FileDownloaderState.Succeed>(downloader.state.value)
+        assertFalse(stagingDir.exists())
+        assertFalse(File(stagingDir.path + ".part").exists())
+        assertEquals(packageBytes.toList(), target.readBytes().toList())
     }
 
     @Test

@@ -10,7 +10,6 @@
 package me.him188.ani.app.tools.update
 
 import java.io.BufferedOutputStream
-import java.io.Closeable
 import java.io.File
 import java.io.OutputStream
 import java.util.zip.CRC32
@@ -27,11 +26,11 @@ import java.util.zip.ZipEntry
  *
  * 调用方按清单顺序写入每个 entry, 最后调用 [finish].
  */
-internal class PackageZipWriter(output: OutputStream) : Closeable {
+internal class PackageZipWriter(output: OutputStream) : PackageWriter {
     private val out = PositionedOutputStream(BufferedOutputStream(output, BUFFER_SIZE))
     private val records = ArrayList<CentralRecord>()
 
-    fun writeDirectory(entry: DesktopPackageEntry) {
+    override fun writeDirectory(entry: DesktopPackageEntry) {
         require(entry.isDirectory) { "Not a directory entry: ${entry.name}" }
         val offset = out.position
         writeLocalHeader(entry.name, UTF8_FLAG, ZipEntry.STORED, entry.dosTime, crc = 0, compressedSize = 0, size = 0)
@@ -41,7 +40,7 @@ internal class PackageZipWriter(output: OutputStream) : Closeable {
     /**
      * 写入发布包中该 entry 的原始压缩数据. [writeData] 必须恰好写 [DesktopPackageEntry.compressedSize] 字节.
      */
-    suspend fun writeRawEntry(entry: DesktopPackageEntry, writeData: suspend (OutputStream) -> Unit) {
+    override suspend fun writeRawEntry(entry: DesktopPackageEntry, writeData: suspend (OutputStream) -> Unit) {
         require(!entry.isDirectory) { "Directory entry has no data: ${entry.name}" }
         val offset = out.position
         writeLocalHeader(
@@ -61,7 +60,7 @@ internal class PackageZipWriter(output: OutputStream) : Closeable {
      * 以本地文件 [content] 作为 entry 的内容写入, 按 entry 的压缩方法压缩. 内容必须与 entry 相同 (调用方已按
      * sha256 匹配); 读到的大小或 CRC 与清单不符说明文件在索引后被改过, 抛 [IllegalStateException].
      */
-    fun writeLocalEntry(entry: DesktopPackageEntry, content: File) {
+    override fun writeLocalEntry(entry: DesktopPackageEntry, content: File) {
         require(!entry.isDirectory) { "Directory entry has no content: ${entry.name}" }
         val offset = out.position
         when (entry.method) {
@@ -101,7 +100,7 @@ internal class PackageZipWriter(output: OutputStream) : Closeable {
     /**
      * 写 central directory 和 end of central directory, 之后不能再写 entry.
      */
-    fun finish() {
+    override fun finish() {
         check(records.size < ZIP64_ENTRY_COUNT) { "Too many entries for a non-ZIP64 archive: ${records.size}" }
         val centralDirectoryOffset = out.position
         for (record in records) {
