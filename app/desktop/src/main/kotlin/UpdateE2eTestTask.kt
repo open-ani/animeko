@@ -102,7 +102,7 @@ object UpdateE2eTestTask : KoinComponent {
             vm.startCheckLatestVersion(uriHandler = null)
             val presentation = vm.presentationFlow.first { p ->
                 p.checkUpdateError != null
-                        || p.state is AppUpdateState.AlreadyUpToDate
+                        || (p.state is AppUpdateState.AlreadyUpToDate && !p.isCheckingUpdate)
                         || p.state is AppUpdateState.Downloaded
                         || p.state is AppUpdateState.DownloadFailed
             }

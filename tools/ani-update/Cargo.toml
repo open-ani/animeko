@@ -18,6 +18,7 @@ windows-sys = { version = "0.59", features = [
     "Win32_Foundation",
     "Win32_Globalization",
     "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_RestartManager",
     "Win32_System_Threading",
 ] }
 

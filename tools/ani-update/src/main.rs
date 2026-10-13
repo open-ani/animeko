@@ -123,7 +123,7 @@ fn replace_app(app_dir: &Path, staging: &Path, log: &mut Log) -> Result<(), Stri
                         msg::OLD_LEFTOVER,
                         old_dir.display(),
                         error,
-                        running_processes_note(&old_dir)
+                        lockers_note(&files_in(&old_dir))
                     ));
                 }
                 log.info(msg::SWAPPED);
@@ -134,7 +134,7 @@ fn replace_app(app_dir: &Path, staging: &Path, log: &mut Log) -> Result<(), Stri
                     "{}: {}{}",
                     msg::SWAP_UNAVAILABLE,
                     error,
-                    running_processes_note(app_dir)
+                    lockers_note(&files_in(app_dir))
                 ));
             }
         }
@@ -174,7 +174,7 @@ fn move_files(app_dir: &Path, staging: &Path, log: &mut Log) -> Result<(), Strin
                 msg::MOVE_FAILED,
                 target.display(),
                 e,
-                running_processes_note(app_dir)
+                lockers_note(std::slice::from_ref(&target))
             )
         })?;
         new_files.insert(relative);
@@ -433,18 +433,21 @@ fn wait_for_app_processes(app_dir: &Path, log: &mut Log) {
     }
 }
 
-/// 文件操作失败时附在日志里的说明: 还有哪些进程在 [`dir`] 里运行. 没有时为空.
-fn running_processes_note(dir: &Path) -> String {
-    let running = running_processes_under(dir);
-    if running.is_empty() {
+/// 文件操作失败时附在日志里的说明: 哪些进程占着这些文件 (按 Restart Manager 的记录). 没有时为空.
+fn lockers_note(files: &[PathBuf]) -> String {
+    let lockers = locking_processes(files);
+    if lockers.is_empty() {
         String::new()
     } else {
-        format!(
-            " ({}: {})",
-            msg::PROCESSES_STILL_RUNNING,
-            describe_processes(&running)
-        )
+        format!(" ({}: {})", msg::LOCKED_BY, describe_processes(&lockers))
     }
+}
+
+/// [`dir`] 下的全部文件 (不含目录), 查占用时用. 读不了目录就当作没有文件.
+fn files_in(dir: &Path) -> Vec<PathBuf> {
+    walk(dir)
+        .map(|paths| paths.into_iter().filter(|p| p.is_file()).collect())
+        .unwrap_or_default()
 }
 
 fn describe_processes(processes: &[(u32, PathBuf)]) -> String {
@@ -458,20 +461,15 @@ fn describe_processes(processes: &[(u32, PathBuf)]) -> String {
 /// 可执行文件在 [`dir`] 下的进程 (不含自己) 的 pid 和路径.
 #[cfg(windows)]
 fn running_processes_under(dir: &Path) -> Vec<(u32, PathBuf)> {
-    use std::os::windows::ffi::OsStringExt;
     use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
     use windows_sys::Win32::System::Diagnostics::ToolHelp::{
         CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
         TH32CS_SNAPPROCESS,
     };
-    use windows_sys::Win32::System::Threading::{
-        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
-        PROCESS_QUERY_LIMITED_INFORMATION,
-    };
 
     let own_pid = std::process::id();
     let mut result = Vec::new();
-    // SAFETY: 快照和进程句柄用完都关闭; PROCESSENTRY32W 在调用前填好 dwSize; 路径缓冲区的长度传给了系统调用.
+    // SAFETY: 快照用完关闭; PROCESSENTRY32W 在调用前填好 dwSize.
     unsafe {
         let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
         if snapshot == INVALID_HANDLE_VALUE {
@@ -483,24 +481,10 @@ fn running_processes_under(dir: &Path) -> Vec<(u32, PathBuf)> {
             loop {
                 let pid = entry.th32ProcessID;
                 if pid != 0 && pid != own_pid {
-                    let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
-                    if !handle.is_null() {
-                        let mut buffer = vec![0u16; 32 * 1024];
-                        let mut length = buffer.len() as u32;
-                        if QueryFullProcessImageNameW(
-                            handle,
-                            PROCESS_NAME_WIN32,
-                            buffer.as_mut_ptr(),
-                            &mut length,
-                        ) != 0
-                        {
-                            let path =
-                                PathBuf::from(OsString::from_wide(&buffer[..length as usize]));
-                            if is_under(&path, dir) {
-                                result.push((pid, path));
-                            }
+                    if let Some(path) = process_image(pid) {
+                        if is_under(&path, dir) {
+                            result.push((pid, path));
                         }
-                        CloseHandle(handle);
                     }
                 }
                 if Process32NextW(snapshot, &mut entry) == 0 {
@@ -516,6 +500,118 @@ fn running_processes_under(dir: &Path) -> Vec<(u32, PathBuf)> {
 #[cfg(not(windows))]
 fn running_processes_under(_dir: &Path) -> Vec<(u32, PathBuf)> {
     Vec::new()
+}
+
+/// 用 Restart Manager 查出占着 [`files`] 中任一文件的进程, 给出 pid 和可执行文件路径 (拿不到路径时是 Restart Manager
+/// 记录的名字). 只用来写日志, 查不到就返回空.
+#[cfg(windows)]
+fn locking_processes(files: &[PathBuf]) -> Vec<(u32, PathBuf)> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Foundation::ERROR_MORE_DATA;
+    use windows_sys::Win32::System::RestartManager::{
+        RmEndSession, RmGetList, RmRegisterResources, RmStartSession, CCH_RM_SESSION_KEY,
+        RM_PROCESS_INFO,
+    };
+
+    let mut result = Vec::new();
+    if files.is_empty() {
+        return result;
+    }
+    let names: Vec<Vec<u16>> = files
+        .iter()
+        .map(|path| path.as_os_str().encode_wide().chain(Some(0)).collect())
+        .collect();
+    let pointers: Vec<*const u16> = names.iter().map(|name| name.as_ptr()).collect();
+    let mut session = 0u32;
+    let mut key = [0u16; CCH_RM_SESSION_KEY as usize + 1];
+    // SAFETY: 会话用完就结束; 传给系统调用的数组和长度一致; RM_PROCESS_INFO 由系统填充.
+    unsafe {
+        if RmStartSession(&mut session, 0, key.as_mut_ptr()) != 0 {
+            return result;
+        }
+        if RmRegisterResources(
+            session,
+            pointers.len() as u32,
+            pointers.as_ptr(),
+            0,
+            std::ptr::null(),
+            0,
+            std::ptr::null(),
+        ) == 0
+        {
+            let mut needed = 0u32;
+            let mut count = 0u32;
+            let mut reasons = 0u32;
+            let status = RmGetList(
+                session,
+                &mut needed,
+                &mut count,
+                std::ptr::null_mut(),
+                &mut reasons,
+            );
+            if (status == 0 || status == ERROR_MORE_DATA) && needed > 0 {
+                let mut infos: Vec<RM_PROCESS_INFO> = vec![std::mem::zeroed(); needed as usize];
+                count = needed;
+                if RmGetList(
+                    session,
+                    &mut needed,
+                    &mut count,
+                    infos.as_mut_ptr(),
+                    &mut reasons,
+                ) == 0
+                {
+                    for info in infos.iter().take(count as usize) {
+                        let pid = info.Process.dwProcessId;
+                        let name_len = info
+                            .strAppName
+                            .iter()
+                            .position(|&c| c == 0)
+                            .unwrap_or(info.strAppName.len());
+                        let name = String::from_utf16_lossy(&info.strAppName[..name_len]);
+                        result.push((
+                            pid,
+                            process_image(pid).unwrap_or_else(|| PathBuf::from(name)),
+                        ));
+                    }
+                }
+            }
+        }
+        RmEndSession(session);
+    }
+    result
+}
+
+#[cfg(not(windows))]
+fn locking_processes(_files: &[PathBuf]) -> Vec<(u32, PathBuf)> {
+    Vec::new()
+}
+
+/// 进程可执行文件的完整路径, 打不开进程时为 `None`.
+#[cfg(windows)]
+fn process_image(pid: u32) -> Option<PathBuf> {
+    use std::os::windows::ffi::OsStringExt;
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    // SAFETY: 句柄用完关闭; 缓冲区长度传给了系统调用.
+    unsafe {
+        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+        if handle.is_null() {
+            return None;
+        }
+        let mut buffer = vec![0u16; 32 * 1024];
+        let mut length = buffer.len() as u32;
+        let ok = QueryFullProcessImageNameW(
+            handle,
+            PROCESS_NAME_WIN32,
+            buffer.as_mut_ptr(),
+            &mut length,
+        ) != 0;
+        CloseHandle(handle);
+        ok.then(|| PathBuf::from(OsString::from_wide(&buffer[..length as usize])))
+    }
 }
 
 /// [`path`] 是否在 [`dir`] 下. Windows 路径不分大小写, 可能带 `\\?\` 前缀.
@@ -679,6 +775,7 @@ mod msg {
             "等待仍在安装目录中运行的进程退出";
         PROCESSES_STILL_RUNNING => "Processes still running from the installation directory",
             "仍在安装目录中运行的进程";
+        LOCKED_BY => "In use by", "被以下进程占用";
         EXTRACTING => "Extracting", "正在解压";
         EXTRACT_FAILED => "Failed to extract the package", "解压安装包失败";
         INVALID_STAGING => "The new version directory does not contain Ani.exe", "新版本目录里没有 Ani.exe";

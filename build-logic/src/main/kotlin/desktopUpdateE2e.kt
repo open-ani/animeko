@@ -259,6 +259,7 @@ class DesktopUpdateE2e(
         private val resultFile = dir.resolve("result.jsonl")
         private val configFile = dir.resolve("config.json")
         private val stdoutFile = dir.resolve("app-stdout.log")
+        private var recordedRequests: List<MockUpdateServer.RecordedRequest> = emptyList()
 
         fun execute() {
             copyTree(appDir, installDir)
@@ -299,6 +300,7 @@ class DesktopUpdateE2e(
                     }
                     awaitUntil("the app and updater processes to exit", EXIT_TIMEOUT) { appProcesses().isEmpty() }
                 }
+                recordedRequests = server.requests.toList()
                 verify(server, originalTree)
             }
         }
@@ -428,6 +430,8 @@ class DesktopUpdateE2e(
         fun diagnostics(): String = buildString {
             appendLine("[update-e2e] ${scenario.name} diagnostics")
             appendLine("reports: ${runCatching { reports().map { "${it.phase} ${it.detail.orEmpty()}" } }.getOrNull()}")
+            appendLine("requests received by the mock server:")
+            recordedRequests.forEach { appendLine("  $it") }
             fun tail(name: String, file: File?) {
                 if (file == null || !file.isFile) return
                 appendLine("---- $name: $file (last $DIAGNOSTIC_LINES lines)")

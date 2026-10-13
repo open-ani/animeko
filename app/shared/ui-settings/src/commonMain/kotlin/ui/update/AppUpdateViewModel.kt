@@ -164,7 +164,9 @@ open class AppUpdateViewModel(
                 }
                 logger.info { "Checking latest version, updateSettings=${updateSettings}" }
 
-                updateChecker.checkLatestVersion(updateSettings.releaseClass)
+                // 先更新 latestVersionFlow 再记 lastCheckTime: presentationFlow 读到 lastCheckTime 已设置而 latestVersion
+                // 还是旧值时会短暂显示「已是最新」.
+                updateChecker.checkLatestVersion(updateSettings.releaseClass).also { latestVersionFlow.value = it }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
@@ -174,8 +176,6 @@ open class AppUpdateViewModel(
             } finally {
                 lastCheckTime.value = currentTimeMillis()
             }
-
-            latestVersionFlow.update { ver }
 
             if (ver != null && updateSettings.autoDownloadUpdate) {
                 logger.info { "autoDownloadUpdate is true, starting download" }
