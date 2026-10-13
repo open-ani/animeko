@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.settings.mediasource.rss
 
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -112,3 +113,57 @@ fun <T : Any> createTestSaveableStorage(
         isSavingFlow = MutableStateFlow(isSaving),
     )
 }
+
+/**
+ * [SaveableStorage] 容器里的一个配置块. 读取时容器未加载则返回 [default]; 修改时构造新容器并保存.
+ *
+ * 嵌套的配置 (如 `arguments.searchConfig.autoMatch`) 用 [sub] 逐层取出, 每层只描述自己到父级的一对 get/copy.
+ * 这样针对同一配置块类型的编辑状态与 UI (如自动匹配层) 可以在不同数据源的编辑器之间共用, 不关心它在各自参数里的位置.
+ */
+@Stable
+class ConfigSection<C : Any>(
+    private val read: () -> C?,
+    private val write: (C) -> Unit,
+    /**
+     * 容器未加载时读到的值, 也作为嵌套块默认值的来源.
+     */
+    val default: C,
+) {
+    /**
+     * 当前值, 容器未加载时为 [default].
+     */
+    val value: C get() = read() ?: default
+
+    /**
+     * 引用本块的一个属性并支持修改它. 属性不能为 `null`.
+     */
+    fun <P : Any> prop(
+        get: (C) -> P,
+        copy: C.(P) -> C,
+    ): ReadWriteProperty<Any?, P> = object : ReadWriteProperty<Any?, P> {
+        override fun getValue(thisRef: Any?, property: KProperty<*>): P = read()?.let(get) ?: get(default)
+
+        override fun setValue(thisRef: Any?, property: KProperty<*>, value: P) {
+            val current = read() ?: return
+            write(current.copy(value))
+        }
+    }
+
+    /**
+     * 本块里的一个嵌套配置块.
+     */
+    fun <S : Any> sub(
+        get: (C) -> S,
+        copy: C.(S) -> C,
+    ): ConfigSection<S> = ConfigSection(
+        read = { read()?.let(get) },
+        write = { sub -> read()?.let { write(it.copy(sub)) } },
+        default = get(default),
+    )
+}
+
+/**
+ * 以整个容器为根的配置块.
+ */
+fun <C : Any> SaveableStorage<C>.section(default: C): ConfigSection<C> =
+    ConfigSection(read = { container }, write = { set(it) }, default = default)

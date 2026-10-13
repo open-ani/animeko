@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
-import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
+import me.him188.ani.app.domain.mediasource.test.TestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
@@ -40,7 +40,7 @@ import kotlin.time.Duration.Companion.seconds
  */
 @Stable
 class SelectorEpisodeState(
-    private val itemState: State<SelectorTestEpisodePresentation?>,
+    private val itemState: State<TestEpisodePresentation?>,
     /**
      * null means loading. Should finally have one.
      */

@@ -13,11 +13,6 @@ package me.him188.ani.app.domain.mediasource.web
 import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.ApiFailure
@@ -33,11 +28,13 @@ import me.him188.ani.app.domain.mediasource.codec.DefaultMediaSourceCodec
 import me.him188.ani.app.domain.mediasource.codec.DontForgetToRegisterCodec
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceArguments
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
+import me.him188.ani.app.domain.mediasource.keywordSearchChain
+import me.him188.ani.app.domain.mediasource.latestAiredEpisode
+import me.him188.ani.app.domain.mediasource.rememberedKeywords
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
-import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.matcher.WebVideoMatcher
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherContext
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherProvider
@@ -65,8 +62,6 @@ import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.deserializeArgumentsOrNull
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.warn
-import me.him188.ani.utils.platform.Platform
-import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -343,25 +338,8 @@ class SelectorMediaSource(
     /**
      * 配置声明了 [SelectorSearchConfig.onlySupportsPlayers] 时, 当前平台的播放器是否在其中. 不在则自动匹配不发起任何请求.
      */
-    private fun isSupportedByPlatformPlayer(): Boolean {
-        if (searchConfig.onlySupportsPlayers.isEmpty()) return true
-        val currentPlayerNames = when (currentPlatform()) {
-            // 桌面端已迁移至 mpv, 但许多现有订阅仍声明 "vlc", 暂时保持兼容
-            is Platform.Desktop -> listOf("mpv", "vlc")
-            is Platform.Android -> listOf("exoplayer")
-            Platform.Ios -> listOf("avkit")
-        }
-        if (currentPlayerNames.any { it in searchConfig.onlySupportsPlayers }) return true
-        logger.warn {
-            val supports =
-                searchConfig.onlySupportsPlayers.joinToString(prefix = "[", postfix = "]")
-
-            "SelectorMediaSource '${info.displayName}' is not supported by the platform player. " +
-                    "Declared supported players: $supports, " +
-                    "current players: $currentPlayerNames"
-        }
-        return false
-    }
+    private fun isSupportedByPlatformPlayer(): Boolean =
+        MediaSourceEngineHelpers.isSupportedByPlatformPlayer(searchConfig.onlySupportsPlayers, info.displayName, logger)
 
     /**
      * 向站点搜索一个关键词, 返回搜到的所有条目的全部剧集. 不读搜索缓存, 调用方先查 [searchFromCacheOrNull].
@@ -443,104 +421,28 @@ class SelectorMediaSource(
 
         val primary = query.subjectNames.take(searchConfig.autoMatch.searchUseSubjectNamesCount.coerceAtLeast(1))
         val fallback = searchConfig.distinctFallbackKeywords(primary, query.fallbackSearchKeywords)
-        val remembered = rememberedKeywords(subjectId, primary + fallback)
+        val remembered = repository.rememberedKeywords(subjectId, mediaSourceId, primary + fallback, logger)
         val filterContext = MediaListFilterContext(
             subjectNames = allSubjectNames,
             episodeSort = query.episodeSort,
             episodeEp = query.episodeEp,
             episodeName = query.episodeName,
         )
-        return engine.searchChain(primary, fallback, remembered, subjectId, ::searchQuery) { media ->
-            media.anySubjectNameMatches(filterContext)
+        return keywordSearchChain(
+            primary, fallback, remembered,
+            requestInterval = searchConfig.requestInterval,
+            matches = { media -> media.anySubjectNameMatches(filterContext) },
+        ) { name ->
+            val searchQuery = searchQuery(name)
+            // 搜索缓存: 上一次真实搜索已把条目页面的全部剧集写入缓存 (addCache).
+            // 若缓存的剧集列表包含当前请求的剧集 (典型场景: 切集), 直接从缓存构建结果, 不发起任何网络请求.
+            // 缓存按 TTL 过期, 也会在该条目手动重新查询时被清除.
+            engine.searchFromCacheOrNull(searchConfig, searchQuery, mediaSourceId, subjectId)
+                ?: run {
+                    beforeOnlineSearch()
+                    engine.searchOnline(searchConfig, searchQuery, mediaSourceId, subjectId)
+                }
         }.map { MediaMatch(it, MatchKind.FUZZY) }
-    }
-
-    /**
-     * [keywords] 中上次搜到过条目页的, 即搜索缓存里有它的未过期行的, 保持原顺序.
-     * 有行只说明搜到过条目页, 不说明名字对上了, 所以只用来决定搜索顺序. 读缓存失败按没有记忆处理.
-     */
-    private suspend fun rememberedKeywords(subjectId: Int?, keywords: List<String>): List<String> {
-        val cached = try {
-            repository.getCachedSubjectNames(subjectId, mediaSourceId)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to read cached search keywords" }
-            return emptyList()
-        }
-        if (cached.isEmpty()) return emptyList()
-        val cachedSet = cached.toHashSet()
-        return keywords.filter { it in cachedSet }
-    }
-
-    /**
-     * 自动匹配的关键词链. [primary] 每一个都搜, 结果全部返回; 它们都没搜到名字能对上的条目时, 再依次尝试 [fallback], 搜到为止.
-     *
-     * [remembered] 是其中上次搜到过条目页的 ([rememberedKeywords]), 先于其余关键词按同样的规则搜; 它们搜到了就结束, 其余的不再搜.
-     * 「更多」这类搜不到的关键词没有缓存行, 切集时不会再为它发请求.
-     *
-     * 每个关键词的结果一搜到就发出, 不等整条链结束. 两次向站点发起的搜索之间等待 [SelectorSearchConfig.requestInterval];
-     * 命中搜索缓存的不发请求也不等待.
-     *
-     * @param matches 一次搜索的结果里是否有名字能对上请求条目的, 见 [anySubjectNameMatches].
-     */
-    private fun EngineType.searchChain(
-        primary: List<String>,
-        fallback: List<String>,
-        remembered: List<String>,
-        subjectId: Int?,
-        query: (name: String) -> SelectorSearchQuery,
-        matches: (List<DefaultMedia>) -> Boolean,
-    ): SizedSource<DefaultMedia> {
-        val finishedState = MutableStateFlow(false)
-        val totalSizeState = MutableStateFlow<Int?>(null)
-        return object : SizedSource<DefaultMedia> {
-            override val results: Flow<DefaultMedia> = flow {
-                var total = 0
-                var matched = false
-                var searchedOnline = false
-                suspend fun searchAndEmit(name: String) {
-                    val searchQuery = query(name)
-                    // 搜索缓存: 上一次真实搜索已把条目页面的全部剧集写入缓存 (addCache).
-                    // 若缓存的剧集列表包含当前请求的剧集 (典型场景: 切集), 直接从缓存构建结果, 不发起任何网络请求.
-                    // 缓存按 TTL 过期, 也会在该条目手动重新查询时被清除.
-                    val media = searchFromCacheOrNull(searchConfig, searchQuery, mediaSourceId, subjectId)
-                        ?: run {
-                            if (searchedOnline) delay(searchConfig.requestInterval)
-                            searchedOnline = true
-                            searchOnline(searchConfig, searchQuery, mediaSourceId, subjectId)
-                        }
-                    if (!matched && matches(media)) matched = true
-                    total += media.size
-                    emitAll(media.asFlow())
-                }
-                val primarySet = primary.toHashSet()
-                val rememberedSet = remembered.toHashSet()
-                suspend fun searchInOrder(names: List<String>) {
-                    for (name in names) {
-                        // 主关键词全搜, 回退关键词搜到为止
-                        if (matched && name !in primarySet) break
-                        searchAndEmit(name)
-                    }
-                }
-                searchInOrder(remembered)
-                if (!matched) searchInOrder((primary + fallback).filter { it !in rememberedSet })
-                totalSizeState.value = total
-                finishedState.value = true
-            }
-            override val finished: Flow<Boolean> get() = finishedState
-            override val totalSize: Flow<Int?> get() = totalSizeState
-        }
-    }
-
-    /**
-     * 请求中已上映的最新一集正片. 剧集上映日期全部未知时为 `null`.
-     */
-    private fun MediaFetchRequest.latestAiredEpisode(): MediaFetchRequest.Episode? {
-        val today = PackedDate.now()
-        return episodes.asSequence()
-            .filter { it.sort is EpisodeSort.Normal && it.airDate.isValid && it.airDate <= today }
-            .maxByOrNull { it.sort }
     }
 
     // region 浏览: 列表模式, 不做任何自动匹配

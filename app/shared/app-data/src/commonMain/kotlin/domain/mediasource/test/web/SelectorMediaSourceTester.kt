@@ -25,6 +25,10 @@ import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
 import me.him188.ani.app.domain.mediasource.MediaSourceEngineHelpers
+import me.him188.ani.app.domain.mediasource.test.TestEpisodeListResult
+import me.him188.ani.app.domain.mediasource.test.TestEpisodePresentation
+import me.him188.ani.app.domain.mediasource.test.TestSubjectPresentation
+import me.him188.ani.app.domain.mediasource.test.TestSubjectSearchResult
 import me.him188.ani.app.domain.mediasource.web.BlockReason
 import me.him188.ani.app.domain.mediasource.web.PageExpectation
 import me.him188.ani.app.domain.mediasource.web.PageVerdict
@@ -141,7 +145,7 @@ class SelectorMediaSourceTester(
         selectorSearchQueryFlow,
     ) { apiResponse, searchConfig, query ->
         if (apiResponse == null) return@combine null
-        if (searchConfig == null || query == null) return@combine SelectorTestSearchSubjectResult.InvalidConfig
+        if (searchConfig == null || query == null) return@combine TestSubjectSearchResult.InvalidConfig
 
         selectSubjectResult(apiResponse, searchConfig, query)
     }
@@ -155,7 +159,7 @@ class SelectorMediaSourceTester(
         .combine(selectedSubjectIndexFlow) { result, index ->
             if (result == null) return@combine null
 
-            (result as? SelectorTestSearchSubjectResult.Success)?.subjects?.getOrNull(index)
+            (result as? TestSubjectSearchResult.Success)?.subjects?.getOrNull(index)
         } // not shared
         .distinctUntilChanged() // required, 否则在修改无关配置时也会触发重新搜索
 
@@ -187,11 +191,11 @@ class SelectorMediaSourceTester(
     ) { episodeListResult, query, searchConfig, episodeQuery ->
         when {
             query == null || searchConfig == null || episodeQuery == null -> {
-                SelectorTestEpisodeListResult.InvalidConfig
+                TestEpisodeListResult.InvalidConfig
             }
 
             episodeListResult == null -> {
-                SelectorTestEpisodeListResult.Success(null, emptyList())
+                TestEpisodeListResult.Success(null, emptyList())
             }
 
             else -> {
@@ -336,7 +340,7 @@ class SelectorMediaSourceTester(
         res: Result<FetchedPage>,
         searchConfig: SelectorSearchConfig,
         query: SelectorSearchQuery,
-    ): SelectorTestSearchSubjectResult {
+    ): TestSubjectSearchResult {
         return res.fold(
             onSuccess = { fetched ->
                 val document = fetched.verdict.documentOrNull()
@@ -345,12 +349,12 @@ class SelectorMediaSourceTester(
                         // 用当前配置重新解析缓存的 document, 编辑 selector 时无需重新抓取
                         val subjects = document?.let { selectSubjectsForCaptchaProbe(it, searchConfig) }
                         if (document != null && subjects == null) {
-                            return SelectorTestSearchSubjectResult.InvalidConfig
+                            return TestSubjectSearchResult.InvalidConfig
                         }
-                        SelectorTestSearchSubjectResult.Success(
+                        TestSubjectSearchResult.Success(
                             fetched.url,
                             searchConfig.orderSubjectsForAutoMatch(subjects.orEmpty()).map {
-                                SelectorTestSubjectPresentation.compute(
+                                TestSubjectPresentation.compute(
                                     it,
                                     query,
                                     document,
@@ -364,9 +368,9 @@ class SelectorMediaSourceTester(
             },
             onFailure = { reason ->
                 if (reason is RepositoryException) {
-                    SelectorTestSearchSubjectResult.ApiError(reason)
+                    TestSubjectSearchResult.ApiError(reason)
                 } else {
-                    SelectorTestSearchSubjectResult.UnknownError(reason)
+                    TestSubjectSearchResult.UnknownError(reason)
                 }
             },
         )
@@ -375,8 +379,8 @@ class SelectorMediaSourceTester(
     private fun BlockReason.toSubjectResult(
         pageUrl: String,
         searchConfig: SelectorSearchConfig,
-    ): SelectorTestSearchSubjectResult = when (this) {
-        is BlockReason.Captcha -> SelectorTestSearchSubjectResult.CaptchaRequired(
+    ): TestSubjectSearchResult = when (this) {
+        is BlockReason.Captcha -> TestSubjectSearchResult.CaptchaRequired(
             SolveRequest(
                 mediaSourceId = mediaSourceId,
                 pageUrl = pageUrl,
@@ -386,37 +390,37 @@ class SelectorMediaSourceTester(
         )
 
         // 限流不是验证码: 如实显示为 API 错误, 不误导用户去解验证码
-        is BlockReason.RateLimited -> SelectorTestSearchSubjectResult.ApiError(RepositoryRateLimitedException())
-        BlockReason.NotFound -> SelectorTestSearchSubjectResult.Success(pageUrl, emptyList())
-        is BlockReason.Forbidden -> SelectorTestSearchSubjectResult.ApiError(RepositoryAuthorizationException())
+        is BlockReason.RateLimited -> TestSubjectSearchResult.ApiError(RepositoryRateLimitedException())
+        BlockReason.NotFound -> TestSubjectSearchResult.Success(pageUrl, emptyList())
+        is BlockReason.Forbidden -> TestSubjectSearchResult.ApiError(RepositoryAuthorizationException())
     }
 
     private fun convertEpisodeResult(
         res: Result<FetchedPage>,
         config: SelectorSearchConfig,
         query: SelectorSearchQuery,
-    ): SelectorTestEpisodeListResult {
+    ): TestEpisodeListResult {
         return res.fold(
             onSuccess = { fetched ->
                 val document = fetched.verdict.documentOrNull()
                 when (val verdict = fetched.verdict) {
                     is PageVerdict.Ok<*>, is PageVerdict.EmptyContent -> {
-                        document ?: return SelectorTestEpisodeListResult.Success(null, emptyList())
+                        document ?: return TestEpisodeListResult.Success(null, emptyList())
                         val episodeList = runCatching {
                             selectEpisodesImpl(document, fetched.url, config)
-                        }.getOrNull() ?: return SelectorTestEpisodeListResult.InvalidConfig
-                        SelectorTestEpisodeListResult.Success(
+                        }.getOrNull() ?: return TestEpisodeListResult.InvalidConfig
+                        TestEpisodeListResult.Success(
                             episodeList.channels,
                             episodeList.episodes
                                 .fastDistinctBy { it.playUrl }
                                 .map {
-                                    SelectorTestEpisodePresentation.compute(it, query, document, config)
+                                    TestEpisodePresentation.compute(it, query, document, config)
                                 },
                         )
                     }
 
                     is PageVerdict.Blocked -> when (val reason = verdict.reason) {
-                        is BlockReason.Captcha -> SelectorTestEpisodeListResult.CaptchaRequired(
+                        is BlockReason.Captcha -> TestEpisodeListResult.CaptchaRequired(
                             SolveRequest(
                                 mediaSourceId = mediaSourceId,
                                 pageUrl = fetched.url,
@@ -426,19 +430,19 @@ class SelectorMediaSourceTester(
                         )
 
                         is BlockReason.RateLimited ->
-                            SelectorTestEpisodeListResult.ApiError(RepositoryRateLimitedException())
+                            TestEpisodeListResult.ApiError(RepositoryRateLimitedException())
 
-                        BlockReason.NotFound -> SelectorTestEpisodeListResult.Success(null, emptyList())
+                        BlockReason.NotFound -> TestEpisodeListResult.Success(null, emptyList())
                         is BlockReason.Forbidden ->
-                            SelectorTestEpisodeListResult.ApiError(RepositoryAuthorizationException())
+                            TestEpisodeListResult.ApiError(RepositoryAuthorizationException())
                     }
                 }
             },
             onFailure = { reason ->
                 if (reason is RepositoryException) {
-                    SelectorTestEpisodeListResult.ApiError(reason)
+                    TestEpisodeListResult.ApiError(reason)
                 } else {
-                    SelectorTestEpisodeListResult.UnknownError(reason)
+                    TestEpisodeListResult.UnknownError(reason)
                 }
             },
         )

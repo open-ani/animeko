@@ -13,6 +13,7 @@ import android.app.Activity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
+import me.him188.ani.app.domain.media.resolver.ApiVideoMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
@@ -54,6 +55,7 @@ fun getTvAndroidModules() = module {
         MediaResolver.from(
             listOf<MediaResolver>(LocalFileMediaResolver())
                 .plus(HttpStreamingMediaResolver())
+                .plus(ApiVideoMediaResolver(get<MediaSourceManager>().apiVideoResolverLoader))
                 .plus(
                     AndroidWebMediaResolver(
                         get<MediaSourceManager>().webVideoMatcherLoader,

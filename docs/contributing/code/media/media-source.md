@@ -19,9 +19,10 @@ interface MediaSource {
 
 ## 数据源类型
 
-目前支持两种通用数据源和一些特别支持的数据源：
+目前支持三种通用数据源和一些特别支持的数据源：
 
 - `SelectorMediaSource`：通用 [CSS Selector][CSS Selector] 数据源；
+- `JsonApiMediaSource`：通用 JSON 接口数据源，用于站点内容只经 JSON 接口（通常是 POST）加载、HTML 页面里没有数据的情况；
 - `RssMediaSource`：通用 RSS 订阅数据源；
 - 特别支持的数据源：
     - `JellyfinMediaSource`、`EmbyMediaSource`：Jellyfin、Emby 媒体库；
@@ -29,7 +30,7 @@ interface MediaSource {
     - `IkarosMediaSource`：[Ikaros][Ikaros] 媒体库。
 
 特别支持的数据源只是实现 `MediaSource` 接口以接入对应平台，本文不赘述。
-下面我们将着重了解 `SelectorMediaSource` 和 `RssMediaSource`。
+下面我们将着重了解 `SelectorMediaSource`、`JsonApiMediaSource` 和 `RssMediaSource`。
 
 ### `SelectorMediaSource`
 
@@ -100,6 +101,42 @@ Selector 配置据此分两层：
 `MediaFetcher` 先将结果写入共享回放缓存，再发布成功或失败等终态。
 完成标记与结果按序通过 `flatMapLatest` 的缓冲区；重试时忽略旧查询的标记，
 因此观察到终态时可以读取该次查询的完整结果（失败时为已收到的部分结果）。
+
+### `JsonApiMediaSource`
+
+`JsonApiMediaSource` 面向把搜索、剧集列表与播放地址都放在 JSON 接口后面的站点。配置
+（`JsonApiSearchConfig`）按三个阶段描述接口：搜索条目、取条目的剧集列表、为一集签发播放地址。
+每个阶段是一个请求模板（地址、方法、请求头、请求体，变量用 `{name}` 代入）加几个
+JSONPath 表达式；公共请求头（如 `apikey`）与地址前缀在三个阶段间共用。
+
+#### 设计目标与取舍
+
+- **与 Selector 源共用自动匹配层。** `JsonApiSearchConfig.autoMatch` 就是 `SelectorAutoMatchConfig`，
+  搜索缓存也写进同一张 `WebSearchSessionCache` 表（剧集的站点 id 从播放页地址按模板反解，
+  不单独存列）。关键字链（主名、回退关键字、记忆关键字的顺序与节流）是两种源共用的 `keywordSearchChain`。
+- **请求节流是源级的。** 三个阶段的请求共用一个最小间隔（`requestInterval`），而不是像 Selector 源那样
+  只在搜索之间等待：接口站点对剧集与播放请求同样限流，而且自动匹配一次会连着发搜索、剧集与播放请求。
+- **线路是声明出来的。** 有的站点剧集列表里没有线路，线路只在播放响应的候选数组里以一个
+  标识字段出现。因此线路格式 `declared` 让用户按 `名称=匹配值` 列出线路，每条线路列出全部剧集；
+  播放时按资源所在线路的匹配值挑候选。资源 id 总是带线路（`源.条目id-线路-剧集id`）：
+  同一集的各线路只差线路这一个维度，合并它们会让自动选择与失败换线路无从区分。
+  声明的线路对每个条目都存在，但站点未必给每个条目的每条线路候选（例如新番与旧番走不同线路），
+  所以默认在线路没有候选时退用第一条候选，让自动选中的资源总能播放；代价是播的可能不是所选线路，
+  编辑器的播放详情页会标出这种退用。
+- **搜索结果先按条目名过滤再取剧集。** 名字对不上的条目选择器也会排除，不值得为它们各发一次剧集请求。
+- **播放地址在播放时签发。** 签发的地址有效期短（通常几十分钟），不能写进 `Media`。
+  资源的 `download` 是 `ResourceLocation.WebVideo(页面地址, apiParameters = 播放请求的变量)`；
+  `apiParameters` 非空表示"由接口解析"，播放与缓存前 `ApiVideoMediaResolver` 从 `MediaSourceManager`
+  找到同 id 的源（它实现 `ApiVideoResolver`）当场签发，平台 WebView resolver 不打开页面。
+  同一集的播放响应在源内短暂记忆（60 秒），同一集换线路不重复请求。
+  用 `WebVideo` 的可选字段而不是新的 `ResourceLocation` 子类，是因为下载记录的反序列化遇到未知
+  子类时会丢弃整个列表，旧版本客户端打开新版本写入的下载列表就会丢掉全部记录。
+  已知限制：缓存下载中途地址过期后，下载器没有换地址重试的接口，与 Selector 源带签名的直链相同。
+- **编辑器的测试面板只在请求变化时重新请求。** 测试器缓存每个阶段的原始响应，只改 JSONPath 时
+  用缓存重新解析。请求体代入变量后必须是合法 JSON（字符串位置自动转义），编辑器在发送前就能发现模板错误。
+
+浏览方法与自动匹配产出相同的 `Media`（同一集两种途径得到相同的 `mediaId`），浏览时条目与剧集的站点 id
+从页面地址按模板反解，模板对不上的地址视为不属于本源。
 
 ## 数据源阶级
 
@@ -188,8 +225,8 @@ Selector 配置据此分两层：
 
 有以下多种方法扩展数据源支持：
 
-- （最简单）编写通用的数据源的配置。可以在 APP 内“设置-数据源管理”中添加 `Selector` 和 `RSS`
-  类型数据源。只需编写一些 CSS Selector 配置即可使用。
+- （最简单）编写通用的数据源的配置。可以在 APP 内“设置-数据源管理”中添加 `Selector`、`JSON API` 和 `RSS`
+  类型数据源。只需编写一些 CSS Selector 或 JSONPath 配置即可使用。
 - 实现新的 `MediaSelector`。参考 `IkarosMediaSource`（位于 `datasource/ikaros`）。通常需要为 Animeko
   仓库提交代码，增加一个新的模块。
 

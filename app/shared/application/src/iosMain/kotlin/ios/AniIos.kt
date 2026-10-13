@@ -45,6 +45,7 @@ import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.PlatformHlsPlaybackPreparer
+import me.him188.ani.app.domain.media.resolver.ApiVideoMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.IosWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileUriMediaResolver
@@ -382,6 +383,7 @@ fun getIosModules(
             torrentMediaResolvers(get<TorrentManager>().engines, get())
                 .plus(LocalFileUriMediaResolver())
                 .plus(HttpStreamingMediaResolver())
+                .plus(ApiVideoMediaResolver(get<MediaSourceManager>().apiVideoResolverLoader))
                 .plus(
                     IosWebMediaResolver(
                         get<MediaSourceManager>().webVideoMatcherLoader,
