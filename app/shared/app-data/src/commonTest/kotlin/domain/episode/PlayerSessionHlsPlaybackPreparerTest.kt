@@ -82,6 +82,51 @@ class PlayerSessionHlsPlaybackPreparerTest {
     }
 
     @Test
+    fun `opens proxied playlist at start position and prefetches there`() = runTest {
+        val preparer = RecordingHlsPlaybackPreparer()
+        val playerSession = createPlayerSession(
+            mode = HlsAdFilteringMode.ALL,
+            preparer = preparer,
+        )
+
+        playerSession.loadMedia(TestMediaList.first(), episode, startPositionMillis = 40_000)
+
+        // 播放器打开的是去除广告后的播放列表, 起播位置与预缓存提示在同一条时间轴上
+        val data = assertIs<UriMediaData>(playerSession.player.mediaData.first())
+        assertEquals("http://127.0.0.1:18080/proxied.m3u8", data.uri)
+        assertEquals(listOf<Long?>(40_000), preparer.startPositionHints)
+        assertEquals(40_000, playerSession.player.currentPositionMillis.value)
+    }
+
+    @Test
+    fun `starts from the beginning without prefetch hint by default`() = runTest {
+        val preparer = RecordingHlsPlaybackPreparer()
+        val playerSession = createPlayerSession(
+            mode = HlsAdFilteringMode.ALL,
+            preparer = preparer,
+        )
+
+        playerSession.loadMedia(TestMediaList.first(), episode)
+
+        assertEquals(listOf<Long?>(null), preparer.startPositionHints)
+        assertEquals(0, playerSession.player.currentPositionMillis.value)
+    }
+
+    @Test
+    fun `opens at start position without hls preparation`() = runTest {
+        val preparer = RecordingHlsPlaybackPreparer()
+        val playerSession = createPlayerSession(
+            mode = HlsAdFilteringMode.OFF,
+            preparer = preparer,
+        )
+
+        playerSession.loadMedia(TestMediaList.first(), episode, startPositionMillis = 40_000)
+
+        assertEquals(0, preparer.prepareCount)
+        assertEquals(40_000, playerSession.player.currentPositionMillis.value)
+    }
+
+    @Test
     fun `smart mode filters media sources tagged by subscription`() = runTest {
         val preparer = RecordingHlsPlaybackPreparer()
         val playerSession = createPlayerSession(
@@ -213,6 +258,7 @@ class PlayerSessionHlsPlaybackPreparerTest {
     private class RecordingHlsPlaybackPreparer : HlsPlaybackPreparer {
         val sessions = mutableListOf<RecordingHlsPlaybackProxySession>()
         val options = mutableListOf<HlsPlaybackOptions>()
+        val startPositionHints = mutableListOf<Long?>()
         val prepareCount: Int get() = options.size
 
         override suspend fun prepare(
@@ -221,6 +267,7 @@ class PlayerSessionHlsPlaybackPreparerTest {
             startPositionHintMillis: Long?,
         ): HlsPlaybackPreparerResult {
             this.options += options
+            startPositionHints += startPositionHintMillis
             val session = RecordingHlsPlaybackProxySession()
             sessions += session
             return HlsPlaybackPreparerResult(
