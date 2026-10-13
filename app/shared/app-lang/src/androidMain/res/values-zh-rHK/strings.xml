@@ -1822,6 +1822,8 @@
     <string name="settings_mediasource_jsonapi_select_name_supporting">JSONPath 表達式，相對於單個條目</string>
     <string name="settings_mediasource_jsonapi_select_id">提取條目 ID</string>
     <string name="settings_mediasource_jsonapi_select_id_supporting">JSONPath 表達式，相對於單個條目。作為後續請求裡的 {id}</string>
+    <string name="settings_mediasource_jsonapi_select_aliases">提取別名（可選）</string>
+    <string name="settings_mediasource_jsonapi_select_aliases_supporting">JSONPath 表達式，相對於單個條目，可以是字符串數組。自動匹配時條目名或任一別名對上即可</string>
     <string name="settings_mediasource_jsonapi_subject_url_template">條目頁面地址模板</string>
     <string name="settings_mediasource_jsonapi_subject_url_template_supporting">必須包含 {id}。用於打開站點頁面與識別條目</string>
     <string name="settings_mediasource_jsonapi_channel_format_declared">聲明線路</string>
@@ -1871,6 +1873,9 @@
     <string name="settings_mediasource_jsonapi_play_request_optional_hint">劇集列表已提供視頻地址，此處請求可留空；填寫後只對列表裡沒有地址的劇集發送</string>
     <string name="settings_mediasource_jsonapi_play_from_episode_list">地址來自劇集列表，未發播放請求</string>
     <string name="settings_mediasource_jsonapi_play_episode_list_no_video">劇集列表裡沒有這一集的視頻地址，播放步驟也沒有配置請求</string>
+    <string name="settings_mediasource_jsonapi_video_headers">視頻請求頭</string>
+    <string name="settings_mediasource_jsonapi_video_headers_supporting">每行一個 名稱: 值，只隨視頻請求發送，不發給接口；與 Referer 字段同名時以這裡為準。可用變量：%1$s</string>
+    <string name="settings_mediasource_jsonapi_unknown_variables">未知變量：%1$s</string>
     <string name="settings_mediasource_jsonapi_play_open_video">打開視頻地址</string>
     <string name="settings_mediasource_jsonapi_play_copy">複製</string>
 </resources>

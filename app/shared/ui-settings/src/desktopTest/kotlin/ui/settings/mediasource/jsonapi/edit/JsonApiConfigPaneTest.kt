@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiChannelFormatDeclared
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiChannelFormatNoChannel
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiDeclaredChannel
+import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiHttpMethod
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiMediaSourceArguments
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
@@ -83,6 +84,8 @@ class JsonApiConfigPaneTest {
             }
         }
         assertFalse(state.searchRequest.bodyIsError)
+        state.searchRequest.method = JsonApiHttpMethod.POST
+        waitForIdle()
 
         onNodeWithTag(JsonApiConfigPaneTestTags.SEARCH_REQUEST_BODY).performScrollTo().performTextClearance()
         onNodeWithTag(JsonApiConfigPaneTestTags.SEARCH_REQUEST_BODY).performTextInput("{\"a\": {keyword}")
@@ -139,6 +142,32 @@ class JsonApiConfigPaneTest {
         assertEquals("$.video", container.value!!.searchConfig.subject.episodes.selectVideoUrl)
         assertFalse(state.playRequest.urlIsError)
         assertTrue(container.value!!.searchConfig.episodeListHasVideoUrl)
+    }
+
+    @Test
+    fun `unknown template variables are flagged and a GET request hides its body`() = runAniComposeUiTest {
+        val (_, state) = setUp()
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                JsonApiConfigurationPane(state)
+            }
+        }
+        state.searchRequest.method = JsonApiHttpMethod.POST
+        waitForIdle()
+
+        onNodeWithTag(JsonApiConfigPaneTestTags.SEARCH_REQUEST_URL).performScrollTo().performTextClearance()
+        onNodeWithTag(JsonApiConfigPaneTestTags.SEARCH_REQUEST_URL).performTextInput("/search?q={keywrod}&page={page}")
+        waitForIdle()
+
+        assertEquals(listOf("keywrod"), state.searchRequest.urlUnknownVariables)
+        assertTrue(state.searchRequest.urlIsError)
+        onNodeWithTag(JsonApiConfigPaneTestTags.SEARCH_REQUEST_BODY).performScrollTo().assertExists()
+
+        state.searchRequest.method = JsonApiHttpMethod.GET
+        waitForIdle()
+
+        onNodeWithTag(JsonApiConfigPaneTestTags.SEARCH_REQUEST_BODY).assertDoesNotExist()
+        assertFalse(state.searchRequest.bodyIsError)
     }
 
     @Test

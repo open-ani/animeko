@@ -35,7 +35,6 @@ import me.him188.ani.app.domain.mediasource.rememberedKeywords
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.WebSearchEpisodeInfo
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
-import me.him188.ani.app.domain.mediasource.web.asCandidate
 import me.him188.ani.app.domain.mediasource.web.findMatchingEpisodeOrNull
 import me.him188.ani.app.domain.mediasource.web.guessSubtitleLanguageIds
 import me.him188.ani.app.domain.mediasource.web.matchingEpisodeSort
@@ -461,9 +460,7 @@ class JsonApiMediaSource(
         )
         val subjects = searchSubjectsOnline(keyword)
             .let { if (autoMatch.preferShorterName) it.sortedBy { s -> s.name.length } else it }
-            .filter { subject ->
-                with(filterContext) { MediaListFilters.ContainsSubjectName.applyOn(subject.toWebSearchSubjectInfo().asCandidate()) }
-            }
+            .mapNotNull { subject -> subject.withMatchingName(filterContext) }
         return buildList {
             for (subject in subjects) {
                 val channels = try {
@@ -556,6 +553,18 @@ class JsonApiMediaSource(
         }
     }
 
+    /**
+     * 条目名或任一别名对上请求的条目名时, 返回以对上的名字为 [JsonApiSubjectInfo.name] 的条目; 都对不上为 `null`.
+     *
+     * 资源与搜索缓存都用对上的名字: 选择器下游用同一判据按资源的条目名过滤, 保留站点标题会让只有别名对上的条目在那里被排除.
+     */
+    private fun JsonApiSubjectInfo.withMatchingName(context: MediaListFilterContext): JsonApiSubjectInfo? {
+        val matched = (listOf(name) + aliases).firstOrNull { candidate ->
+            with(context) { MediaListFilters.ContainsSubjectName.applyOn(subjectNameCandidate(candidate)) }
+        } ?: return null
+        return if (matched == name) this else copy(name = matched)
+    }
+
     private fun DefaultMedia.subjectNameMatches(context: MediaListFilterContext): Boolean = with(context) {
         val media = this@subjectNameMatches
         MediaListFilters.ContainsSubjectName.applyOn(
@@ -602,7 +611,7 @@ class JsonApiMediaSource(
     override suspend fun resolveApiVideo(media: Media): WebVideo? {
         val parameters = (media.download as? ResourceLocation.WebVideo)?.apiParameters ?: return null
         if (searchConfig.episodeListHasVideoUrl) {
-            resolveVideoUrlFromEpisodeList(parameters)?.let { return WebVideo(it, videoHeaders()) }
+            resolveVideoUrlFromEpisodeList(parameters)?.let { return WebVideo(it, videoHeaders(parameters)) }
             if (!searchConfig.play.isValid()) {
                 logger.info { "JsonApiMediaSource '$mediaSourceId': episode list has no video url for ${media.mediaId} and no play request is configured" }
                 return null
@@ -632,7 +641,7 @@ class JsonApiMediaSource(
         if (result.isFallback) {
             logger.info { "JsonApiMediaSource '$mediaSourceId': channel '$channelMatch' not found, falling back to ${selected.channelMatch}" }
         }
-        return WebVideo(selected.url, videoHeaders())
+        return WebVideo(selected.url, videoHeaders(parameters))
     }
 
     /**
@@ -690,13 +699,38 @@ class JsonApiMediaSource(
             fetched
         }
 
+    /**
+     * 播放器请求视频时的请求头: User-Agent、[JsonApiPlayStage.referer] 与代入 [variables] 后的 [JsonApiPlayStage.videoHeaders],
+     * 同名以后者为准. 接口的请求头不在其中. 代入后含控制字符的值 (变量来自站点返回的名称) 丢弃, 以免注入请求头.
+     */
     @Suppress("DEPRECATION")
-    private fun videoHeaders(): Map<String, String> = buildMap {
+    private fun videoHeaders(variables: Map<String, String>): Map<String, String> {
+        val merged = LinkedHashMap<String, Pair<String, String>>()
+        fun put(name: String, value: String) {
+            merged[name.lowercase()] = name to value
+        }
         put("User-Agent", searchConfig.userAgentOrNull ?: SelectorSearchConfig.VideoHeaders().userAgent)
         searchConfig.play.referer.trim().takeIf { it.isNotEmpty() }?.let { put("Referer", it) }
+        for ((name, template) in JsonApiSearchConfig.parseHeaderLines(searchConfig.play.videoHeaders)) {
+            val value = JsonApiTemplate.substitute(template, variables, JsonApiTemplate.Escaping.NONE)
+            if (value.any { it < ' ' || it == '\u007f' }) {
+                logger.warn { "JsonApiMediaSource '$mediaSourceId': video header '$name' contains control characters, dropped" }
+                continue
+            }
+            put(name, value)
+        }
+        return merged.values.associate { it }
     }
 
     // endregion
+}
+
+/**
+ * 把一个名字当作资源参与条目名过滤 ([MediaListFilters.ContainsSubjectName]).
+ */
+internal fun subjectNameCandidate(name: String): MediaListFilter.Candidate = object : MediaListFilter.Candidate {
+    override val originalTitle: String get() = name
+    override val episodeRange: EpisodeRange? get() = null
 }
 
 /**

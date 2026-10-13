@@ -13,6 +13,24 @@ package me.him188.ani.app.domain.mediasource.jsonapi
  * 各阶段请求模板里可用的变量. 正式搜索与编辑器的测试面板用同一套, 保证两边发出的请求一致.
  */
 object JsonApiVariables {
+    /** 搜索阶段请求模板可用的变量名. */
+    val SEARCH: Set<String> = setOf("keyword", "page", "pageSize")
+
+    /** 剧集列表阶段请求模板可用的变量名. */
+    val SUBJECT: Set<String> = setOf("id", "url", "name")
+
+    /** 播放阶段请求模板与视频请求头可用的变量名. */
+    val PLAY: Set<String> = setOf("id", "url", "name", "subjectId", "subjectUrl", "subjectName", "channel", "channelMatch")
+
+    /** 条目页面地址模板可用的变量名. */
+    val SUBJECT_URL: Set<String> = setOf("id")
+
+    /** 剧集页面地址模板可用的变量名. */
+    val EPISODE_URL: Set<String> = setOf("id", "subjectId")
+
+    /** 剧集显示名称模板可用的变量名. */
+    val EPISODE_NAME: Set<String> = setOf("sort", "name", "id")
+
     /**
      * 搜索阶段: `keyword`, `page`, `pageSize`.
      */

@@ -59,6 +59,12 @@ object JsonApiTemplate {
         VARIABLE.findAll(template).map { it.groupValues[1] }.distinct().toList()
 
     /**
+     * 模板里引用了但 [known] 没有的变量名, 按出现顺序. 编辑器用它标出拼错的变量; 代入时未知变量原样保留.
+     */
+    fun unknownVariables(template: String, known: Set<String>): List<String> =
+        variableNames(template).filter { it !in known }
+
+    /**
      * 从按 [template] 生成的 [text] 还原变量.
      *
      * 字面部分必须逐字相同; 每个变量匹配至少一个字符, 前面的变量尽量短 (`{a}-{b}` 对 `1-2-3` 得到 `a=1`, `b=2-3`).

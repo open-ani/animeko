@@ -20,13 +20,12 @@ import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiSearchConfig
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiSubjectInfo
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiVariables
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiVideoResult
+import me.him188.ani.app.domain.mediasource.jsonapi.subjectNameCandidate
 import me.him188.ani.app.domain.mediasource.jsonapi.toWebSearchEpisodeInfo
-import me.him188.ani.app.domain.mediasource.jsonapi.toWebSearchSubjectInfo
 import me.him188.ani.app.domain.mediasource.test.RefreshResult
 import me.him188.ani.app.domain.mediasource.test.TestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.test.TestSubjectPresentation
 import me.him188.ani.app.domain.mediasource.test.buildMatchTags
-import me.him188.ani.app.domain.mediasource.web.asCandidate
 import me.him188.ani.app.domain.mediasource.web.matchingEpisodeSort
 
 /**
@@ -84,7 +83,7 @@ sealed class JsonApiPlayTestResult : RefreshResult {
 }
 
 /**
- * 标签标出条目名是否能对上搜索关键字, 以及站点 id.
+ * 标签标出条目名或别名是否能对上搜索关键字, 站点给出的别名, 以及站点 id.
  */
 fun TestSubjectPresentation.Companion.compute(
     info: JsonApiSubjectInfo,
@@ -95,8 +94,12 @@ fun TestSubjectPresentation.Companion.compute(
     origin = null,
     tags = buildMatchTags {
         with(filterContext) {
-            emit("标题", isMatch = MediaListFilters.ContainsSubjectName.applyOn(info.toWebSearchSubjectInfo().asCandidate()))
+            val matched = (listOf(info.name) + info.aliases).any {
+                MediaListFilters.ContainsSubjectName.applyOn(subjectNameCandidate(it))
+            }
+            emit("标题", isMatch = matched)
         }
+        if (info.aliases.isNotEmpty()) emit("别名: ${info.aliases.joinToString(" / ")}")
         emit("ID: ${info.id}")
     },
 )

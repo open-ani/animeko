@@ -58,6 +58,24 @@ class JsonApiMediaSourceEngineTest {
     }
 
     @Test
+    fun `parseSubjects reads aliases from an array or a single string and leaves out the name itself`() {
+        val stage = config.search.copy(selectAliases = "$.aliases")
+        val subjects = assertNotNull(
+            engine.parseSubjects(
+                json(
+                    """[{"id": 1, "title": "A", "aliases": ["A", " a-1 ", "", "a-2", "a-1"]},
+                        {"id": 2, "title": "B", "aliases": "b-1"},
+                        {"id": 3, "title": "C"}]""",
+                ),
+                stage,
+            ),
+        )
+        assertEquals(listOf(listOf("a-1", "a-2"), listOf("b-1"), emptyList()), subjects.map { it.aliases })
+        assertTrue(engine.parseSubjects(json(SampleSite.SEARCH_RESPONSE), config.search)!!.all { it.aliases.isEmpty() })
+        assertNull(engine.parseSubjects(json("[]"), config.search.copy(selectAliases = "$[")))
+    }
+
+    @Test
     fun `parseSubjects returns null for invalid jsonpath or a template without id`() {
         assertNull(engine.parseSubjects(json("[]"), config.search.copy(selectItems = "$[")))
         assertNull(engine.parseSubjects(json("[]"), config.search.copy(subjectUrlTemplate = "https://a/anime")))
@@ -288,6 +306,17 @@ class JsonApiMediaSourceEngineTest {
         assertNull(
             engine.prepareRequest(config, config.play.request, mapOf("id" to "abc")),
         )
+    }
+
+    @Test
+    fun `prepareRequest drops the body of a GET request and substitutes variables in header values`() {
+        val request = JsonApiRequestConfig(url = "/x", method = JsonApiHttpMethod.GET, headers = "X-Id: {id}", body = """{"id": {id}}""")
+        val get = assertNotNull(engine.prepareRequest(config, request, mapOf("id" to "3")))
+        assertNull(get.body)
+        assertTrue(("X-Id" to "3") in get.headers)
+
+        val post = assertNotNull(engine.prepareRequest(config, request.copy(method = JsonApiHttpMethod.POST), mapOf("id" to "3")))
+        assertEquals("""{"id": 3}""", post.body)
     }
 
     @Test

@@ -57,7 +57,7 @@ class JsonApiMediaSourceTest {
             when {
                 url == "https://api.example.com/search" && request.method == HttpMethod.Post -> {
                     val body = request.bodyText.orEmpty()
-                    val hasResults = "芙莉莲" in body && emptySearchTerms.none { "\"keyword\":\"$it\"" in body }
+                    val hasResults = ("芙莉莲" in body || "Sousou" in body) && emptySearchTerms.none { "\"keyword\":\"$it\"" in body }
                     respondJson(if (hasResults) SampleSite.SEARCH_RESPONSE else "[]")
                 }
 
@@ -251,6 +251,29 @@ class JsonApiMediaSourceTest {
     }
 
     @Test
+    fun `fetch matches a subject by alias and names the media after the matching alias also from the cache`() = runTest {
+        val site = Site()
+        val source = createTestJsonApiMediaSource(
+            config.copy(search = config.search.copy(selectAliases = "$.aliases[*]")),
+            site.engine, cacheDao = InMemoryWebSearchSessionCacheDao(), cacheTtl = 1.hours,
+            getTimeMillis = { testScheduler.currentTime },
+        )
+        val names = listOf("Sousou no Frieren 2nd Season")
+
+        val media = source.fetchMedia(request(subjectNames = names, episode = 1))
+
+        assertEquals(4, media.size)
+        assertTrue(media.all { it.mediaId.startsWith("json-api-test.3252-") })
+        // 资源的条目名是对上的别名, 选择器下游按它过滤时才不会排除
+        assertTrue(media.all { it.properties.subjectName == "Sousou no Frieren 2nd Season" })
+
+        val cached = source.fetchMedia(request(subjectNames = names, episode = 2))
+        assertEquals(1, site.searchCount)
+        assertEquals(4, cached.size)
+        assertTrue(cached.all { it.properties.subjectName == "Sousou no Frieren 2nd Season" })
+    }
+
+    @Test
     fun `fetch filters by the requested episode`() = runTest {
         val (source, _) = createSource()
 
@@ -342,6 +365,31 @@ class JsonApiMediaSourceTest {
         val play = site.requests.last()
         assertEquals("https://api.example.com/playback", play.url.toString())
         assertEquals("""{"episode_id":47463}""", play.bodyText)
+    }
+
+    @Test
+    fun `video headers are rendered with play variables and override the referer field`() = runTest {
+        val (source, _) = createSource(
+            config.copy(
+                userAgent = "Ani-Test/1",
+                play = config.play.copy(
+                    videoHeaders = "Origin: https://example.com\nX-Episode: {id}-{channelMatch}\nreferer: https://example.com/override/\nX-Bad: a\u0001b",
+                ),
+            ),
+        )
+        val media = source.fetchMedia(request()).first { it.properties.alliance == "线路A" }
+
+        val video = assertNotNull(source.resolveApiVideo(media))
+
+        assertEquals(
+            mapOf(
+                "User-Agent" to "Ani-Test/1",
+                "referer" to "https://example.com/override/",
+                "Origin" to "https://example.com",
+                "X-Episode" to "47463-A",
+            ),
+            video.headers,
+        )
     }
 
     @Test

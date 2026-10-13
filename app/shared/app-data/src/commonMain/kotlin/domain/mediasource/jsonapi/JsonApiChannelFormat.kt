@@ -173,6 +173,10 @@ data class JsonApiSubjectInfo(
      * 条目页面地址, 由 [JsonApiSearchStage.subjectUrlTemplate] 生成. 条目的稳定标识.
      */
     val url: String,
+    /**
+     * 站点给出的别名, 由 [JsonApiSearchStage.selectAliases] 取得, 不含 [name] 本身. 只参与自动匹配的名字比较.
+     */
+    val aliases: List<String> = emptyList(),
 )
 
 /**

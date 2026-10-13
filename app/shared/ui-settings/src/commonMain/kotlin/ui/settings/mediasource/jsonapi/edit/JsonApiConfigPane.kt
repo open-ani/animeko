@@ -41,6 +41,7 @@ import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiChannelFormatGrouped
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiChannelFormatNoChannel
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiHttpMethod
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiMediaSourceArguments
+import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiVariables
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.animation.StandardEasing
@@ -89,6 +90,8 @@ import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_request_interval_s
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_request_method
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_request_url
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_request_url_supporting
+import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_select_aliases
+import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_select_aliases_supporting
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_section_api
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_select_candidate_channel
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_select_candidate_channel_supporting
@@ -107,6 +110,9 @@ import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_select_video_url_s
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_step3
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_subject_url_template
 import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_subject_url_template_supporting
+import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_unknown_variables
+import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_video_headers
+import me.him188.ani.app.ui.lang.settings_mediasource_jsonapi_video_headers_supporting
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_referer_description
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_source_user_agent
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_source_user_agent_description
@@ -198,7 +204,7 @@ internal fun JsonApiConfigurationPane(
 
         RequestConfigSection(
             state.searchRequest,
-            variables = "{keyword}, {page}, {pageSize}",
+            variables = JsonApiVariables.SEARCH.asTemplateList(),
             enabled = state.enableEdit,
             urlTestTag = JsonApiConfigPaneTestTags.SEARCH_REQUEST_URL,
             bodyTestTag = JsonApiConfigPaneTestTags.SEARCH_REQUEST_BODY,
@@ -244,10 +250,20 @@ internal fun JsonApiConfigurationPane(
                 shape = textFieldShape,
             )
             ConfigTextField(
+                state.selectAliases, { state.selectAliases = it },
+                label = stringResource(Lang.settings_mediasource_jsonapi_select_aliases),
+                itemPadding,
+                supportingText = stringResource(Lang.settings_mediasource_jsonapi_select_aliases_supporting),
+                isError = state.selectAliasesIsError,
+                enabled = state.enableEdit,
+                shape = textFieldShape,
+            )
+            ConfigTextField(
                 state.subjectUrlTemplate, { state.subjectUrlTemplate = it },
                 label = stringResource(Lang.settings_mediasource_jsonapi_subject_url_template),
                 itemPadding,
-                supportingText = stringResource(Lang.settings_mediasource_jsonapi_subject_url_template_supporting),
+                supportingText = unknownVariablesText(state.subjectUrlTemplateUnknownVariables)
+                    ?: stringResource(Lang.settings_mediasource_jsonapi_subject_url_template_supporting),
                 isError = state.subjectUrlTemplateIsError,
                 enabled = state.enableEdit,
                 shape = textFieldShape,
@@ -260,7 +276,7 @@ internal fun JsonApiConfigurationPane(
 
         RequestConfigSection(
             state.subjectRequest,
-            variables = "{id}, {url}, {name}",
+            variables = JsonApiVariables.SUBJECT.asTemplateList(),
             enabled = state.enableEdit,
             verticalSpacing = verticalSpacing,
             textFieldShape = textFieldShape,
@@ -357,7 +373,8 @@ internal fun RequestConfigSection(
             state.url, { state.url = it },
             label = stringResource(Lang.settings_mediasource_jsonapi_request_url),
             if (urlTestTag != null) Modifier.testTag(urlTestTag) else Modifier,
-            supportingText = stringResource(Lang.settings_mediasource_jsonapi_request_url_supporting, variables),
+            supportingText = unknownVariablesText(state.urlUnknownVariables)
+                ?: stringResource(Lang.settings_mediasource_jsonapi_request_url_supporting, variables),
             isError = state.urlIsError,
             enabled = enabled,
             shape = textFieldShape,
@@ -378,23 +395,40 @@ internal fun RequestConfigSection(
             state.headers, { state.headers = it },
             label = stringResource(Lang.settings_mediasource_jsonapi_request_headers),
             itemPadding,
-            supportingText = stringResource(Lang.settings_mediasource_jsonapi_request_headers_supporting),
+            supportingText = unknownVariablesText(state.headersUnknownVariables)
+                ?: stringResource(Lang.settings_mediasource_jsonapi_request_headers_supporting),
+            isError = state.headersIsError,
             enabled = enabled,
             multiline = true,
             shape = textFieldShape,
         )
-        ConfigTextField(
-            state.body, { state.body = it },
-            label = stringResource(Lang.settings_mediasource_jsonapi_request_body),
-            itemPadding.then(if (bodyTestTag != null) Modifier.testTag(bodyTestTag) else Modifier),
-            supportingText = stringResource(Lang.settings_mediasource_jsonapi_request_body_supporting, variables),
-            isError = state.bodyIsError,
-            enabled = enabled,
-            multiline = true,
-            shape = textFieldShape,
-        )
+        // GET 不发送请求体, 不显示; 已填的内容保留, 切回 POST 时还在
+        if (state.method == JsonApiHttpMethod.POST) {
+            ConfigTextField(
+                state.body, { state.body = it },
+                label = stringResource(Lang.settings_mediasource_jsonapi_request_body),
+                itemPadding.then(if (bodyTestTag != null) Modifier.testTag(bodyTestTag) else Modifier),
+                supportingText = unknownVariablesText(state.bodyUnknownVariables)
+                    ?: stringResource(Lang.settings_mediasource_jsonapi_request_body_supporting, variables),
+                isError = state.bodyIsError,
+                enabled = enabled,
+                multiline = true,
+                shape = textFieldShape,
+            )
+        }
     }
 }
+
+/**
+ * 模板里有 [unknown] 这些未知变量时的说明文字, 没有时为 `null` (用字段自己的说明).
+ */
+@Composable
+private fun unknownVariablesText(unknown: List<String>): String? {
+    if (unknown.isEmpty()) return null
+    return stringResource(Lang.settings_mediasource_jsonapi_unknown_variables, unknown.asTemplateList())
+}
+
+private fun Collection<String>.asTemplateList(): String = joinToString(", ") { "{$it}" }
 
 @Composable
 private fun JsonApiChannelFormatColumn(
@@ -517,14 +551,17 @@ private fun JsonApiEpisodeFieldsColumn(
         ConfigTextField(
             conf.nameTemplate, { conf.nameTemplate = it },
             label = stringResource(Lang.settings_mediasource_jsonapi_episode_name_template),
-            supportingText = stringResource(Lang.settings_mediasource_jsonapi_episode_name_template_supporting),
+            supportingText = unknownVariablesText(conf.nameTemplateUnknownVariables)
+                ?: stringResource(Lang.settings_mediasource_jsonapi_episode_name_template_supporting),
+            isError = conf.nameTemplateIsError,
             enabled = enabled,
             shape = textFieldShape,
         )
         ConfigTextField(
             conf.episodeUrlTemplate, { conf.episodeUrlTemplate = it },
             label = stringResource(Lang.settings_mediasource_jsonapi_episode_url_template),
-            supportingText = stringResource(Lang.settings_mediasource_jsonapi_episode_url_template_supporting),
+            supportingText = unknownVariablesText(conf.episodeUrlTemplateUnknownVariables)
+                ?: stringResource(Lang.settings_mediasource_jsonapi_episode_url_template_supporting),
             isError = conf.episodeUrlTemplateIsError,
             enabled = enabled,
             shape = textFieldShape,
@@ -563,7 +600,7 @@ internal fun JsonApiPlayStageColumn(
         }
         RequestConfigSection(
             state.playRequest,
-            variables = "{id}, {url}, {name}, {subjectId}, {subjectUrl}, {subjectName}, {channel}, {channelMatch}",
+            variables = JsonApiVariables.PLAY.asTemplateList(),
             enabled = state.enableEdit,
             verticalSpacing = verticalSpacing,
             textFieldShape = textFieldShape,
@@ -606,6 +643,17 @@ internal fun JsonApiPlayStageColumn(
             label = "Referer",
             supportingText = stringResource(Lang.settings_mediasource_selector_config_referer_description),
             enabled = state.enableEdit,
+            shape = textFieldShape,
+        )
+        ConfigTextField(
+            state.videoHeaders, { state.videoHeaders = it },
+            label = stringResource(Lang.settings_mediasource_jsonapi_video_headers),
+            itemPadding,
+            supportingText = unknownVariablesText(state.videoHeadersUnknownVariables)
+                ?: stringResource(Lang.settings_mediasource_jsonapi_video_headers_supporting, JsonApiVariables.PLAY.asTemplateList()),
+            isError = state.videoHeadersIsError,
+            enabled = state.enableEdit,
+            multiline = true,
             shape = textFieldShape,
         )
     }

@@ -17,6 +17,7 @@ import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiChannelFormat
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiChannelFormatDeclared
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiChannelFormatGrouped
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiEpisodeFields
+import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiHttpMethod
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiPlayStage
@@ -25,6 +26,7 @@ import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiSearchConfig
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiSearchStage
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiSubjectStage
 import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiTemplate
+import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiVariables
 import me.him188.ani.app.ui.settings.danmaku.isValidRegex
 import me.him188.ani.app.ui.settings.mediasource.editor.AutoMatchConfigState
 import me.him188.ani.app.ui.settings.mediasource.editor.MediaSourceConfigState
@@ -75,7 +77,7 @@ class JsonApiConfigState(
 
     private val searchStage: ConfigSection<JsonApiSearchStage> = searchConfig.sub({ it.search }, { copy(search = it) })
 
-    val searchRequest = RequestConfigState(searchStage.sub({ it.request }, { copy(request = it) }))
+    val searchRequest = RequestConfigState(searchStage.sub({ it.request }, { copy(request = it) }), JsonApiVariables.SEARCH)
 
     var pageSize: Int by searchStage.prop({ it.pageSize }, { copy(pageSize = it) })
 
@@ -85,8 +87,15 @@ class JsonApiConfigState(
     val selectNameIsError by derivedStateOf { !isValidJsonPath(selectName) }
     var selectId: String by searchStage.prop({ it.selectId }, { copy(selectId = it) })
     val selectIdIsError by derivedStateOf { !isValidJsonPath(selectId) }
+    var selectAliases: String by searchStage.prop({ it.selectAliases }, { copy(selectAliases = it) })
+    val selectAliasesIsError by derivedStateOf { !isValidOptionalJsonPath(selectAliases) }
     var subjectUrlTemplate: String by searchStage.prop({ it.subjectUrlTemplate }, { copy(subjectUrlTemplate = it) })
-    val subjectUrlTemplateIsError by derivedStateOf { !subjectUrlTemplate.contains("{id}") }
+    val subjectUrlTemplateUnknownVariables: List<String> by derivedStateOf {
+        JsonApiTemplate.unknownVariables(subjectUrlTemplate, JsonApiVariables.SUBJECT_URL)
+    }
+    val subjectUrlTemplateIsError by derivedStateOf {
+        !subjectUrlTemplate.contains("{id}") || subjectUrlTemplateUnknownVariables.isNotEmpty()
+    }
 
     // endregion
 
@@ -95,7 +104,7 @@ class JsonApiConfigState(
     private val subjectStage: ConfigSection<JsonApiSubjectStage> =
         searchConfig.sub({ it.subject }, { copy(subject = it) })
 
-    val subjectRequest = RequestConfigState(subjectStage.sub({ it.request }, { copy(request = it) }))
+    val subjectRequest = RequestConfigState(subjectStage.sub({ it.request }, { copy(request = it) }), JsonApiVariables.SUBJECT)
 
     val allChannelFormats: List<JsonApiChannelFormat<*>> get() = JsonApiChannelFormat.entries
     var channelFormatId by subjectStage.prop({ it.channelFormatId }, { copy(channelFormatId = it) })
@@ -145,8 +154,17 @@ class JsonApiConfigState(
             matchEpisodeSortFromName.isBlank() || !isValidRegex(matchEpisodeSortFromName)
         }
         var nameTemplate: String by section.prop({ it.nameTemplate }, { copy(nameTemplate = it) })
+        val nameTemplateUnknownVariables: List<String> by derivedStateOf {
+            JsonApiTemplate.unknownVariables(nameTemplate, JsonApiVariables.EPISODE_NAME)
+        }
+        val nameTemplateIsError by derivedStateOf { nameTemplateUnknownVariables.isNotEmpty() }
         var episodeUrlTemplate: String by section.prop({ it.episodeUrlTemplate }, { copy(episodeUrlTemplate = it) })
-        val episodeUrlTemplateIsError by derivedStateOf { !episodeUrlTemplate.contains("{id}") }
+        val episodeUrlTemplateUnknownVariables: List<String> by derivedStateOf {
+            JsonApiTemplate.unknownVariables(episodeUrlTemplate, JsonApiVariables.EPISODE_URL)
+        }
+        val episodeUrlTemplateIsError by derivedStateOf {
+            !episodeUrlTemplate.contains("{id}") || episodeUrlTemplateUnknownVariables.isNotEmpty()
+        }
         var selectVideoUrl: String by section.prop({ it.selectVideoUrl }, { copy(selectVideoUrl = it) })
         val selectVideoUrlIsError by derivedStateOf { !isValidOptionalJsonPath(selectVideoUrl) }
 
@@ -164,6 +182,7 @@ class JsonApiConfigState(
 
     val playRequest = RequestConfigState(
         playStage.sub({ it.request }, { copy(request = it) }),
+        JsonApiVariables.PLAY,
         isOptional = { episodes.hasVideoUrl },
     )
 
@@ -178,6 +197,11 @@ class JsonApiConfigState(
         { copy(fallbackToFirstCandidate = it) },
     )
     var referer: String by playStage.prop({ it.referer }, { copy(referer = it) })
+    var videoHeaders: String by playStage.prop({ it.videoHeaders }, { copy(videoHeaders = it) })
+    val videoHeadersUnknownVariables: List<String> by derivedStateOf {
+        JsonApiTemplate.unknownVariables(videoHeaders, JsonApiVariables.PLAY)
+    }
+    val videoHeadersIsError by derivedStateOf { videoHeadersUnknownVariables.isNotEmpty() }
 
     // endregion
 
@@ -193,32 +217,42 @@ class JsonApiConfigState(
 }
 
 /**
- * 一个阶段的请求配置.
+ * 一个阶段的请求配置. 地址、请求头与请求体里引用了 [variables] 之外的变量时标为错误: 代入时它们会原样发出去.
  *
+ * @param variables 本阶段模板可用的变量名.
  * @param isOptional 本阶段的请求可以留空 (播放阶段在剧集列表自带视频地址时), 留空不算错误.
  */
 @Stable
 class RequestConfigState(
     section: ConfigSection<JsonApiRequestConfig>,
+    private val variables: Set<String>,
     private val isOptional: () -> Boolean = { false },
 ) {
     var url: String by section.prop({ it.url }, { copy(url = it) })
-    val urlIsError by derivedStateOf { url.isBlank() && !isOptional() }
+    val urlUnknownVariables: List<String> by derivedStateOf { JsonApiTemplate.unknownVariables(url, variables) }
+    val urlIsError by derivedStateOf { (url.isBlank() && !isOptional()) || urlUnknownVariables.isNotEmpty() }
     var method by section.prop({ it.method }, { copy(method = it) })
     var headers: String by section.prop({ it.headers }, { copy(headers = it) })
+    val headersUnknownVariables: List<String> by derivedStateOf { JsonApiTemplate.unknownVariables(headers, variables) }
+    val headersIsError by derivedStateOf { headersUnknownVariables.isNotEmpty() }
     var body: String by section.prop({ it.body }, { copy(body = it) })
+    val bodyUnknownVariables: List<String> by derivedStateOf { JsonApiTemplate.unknownVariables(body, variables) }
 
     /**
-     * 请求体代入占位值后不是合法 JSON. 变量位置既可能是字符串也可能是数字, 用 `0` 代入都合法.
+     * 请求体引用了未知变量, 或代入占位值后不是合法 JSON. 变量位置既可能是字符串也可能是数字, 用 `0` 代入都合法.
+     * GET 不发送请求体, 不检查.
      */
     val bodyIsError by derivedStateOf {
-        body.isNotBlank() && !JsonApiMediaSourceEngine.isStrictJson(
-            JsonApiTemplate.substitute(
-                body,
-                JsonApiTemplate.variableNames(body).associateWith { "0" },
-                JsonApiTemplate.Escaping.NONE,
-            ),
-        )
+        method == JsonApiHttpMethod.POST && (
+                bodyUnknownVariables.isNotEmpty() ||
+                        body.isNotBlank() && !JsonApiMediaSourceEngine.isStrictJson(
+                            JsonApiTemplate.substitute(
+                                body,
+                                JsonApiTemplate.variableNames(body).associateWith { "0" },
+                                JsonApiTemplate.Escaping.NONE,
+                            ),
+                        )
+                )
     }
 }
 

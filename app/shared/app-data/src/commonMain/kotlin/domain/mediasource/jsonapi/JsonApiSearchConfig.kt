@@ -126,7 +126,8 @@ enum class JsonApiHttpMethod {
 }
 
 /**
- * 一个阶段的 HTTP 请求. [url] 与 [body] 是模板; [body] 非空时发送, 默认按 JSON 发送 (`Content-Type: application/json`).
+ * 一个阶段的 HTTP 请求. [url]、[headers] 的值与 [body] 都是模板; [body] 只在 POST 时发送, 默认按 JSON 发送
+ * (`Content-Type: application/json`).
  */
 @Immutable
 @Serializable
@@ -137,7 +138,7 @@ data class JsonApiRequestConfig(
     val url: String = "",
     val method: JsonApiHttpMethod = JsonApiHttpMethod.GET,
     /**
-     * 此请求额外的请求头, 每行一个 `Name: Value`, 与 [JsonApiSearchConfig.headers] 合并, 同名时以这里为准.
+     * 此请求额外的请求头, 每行一个 `Name: Value`, 与 [JsonApiSearchConfig.headers] 合并, 同名时以这里为准. 值里可以用本阶段的变量.
      */
     val headers: String = "",
     /**
@@ -172,6 +173,12 @@ data class JsonApiSearchStage(
      */
     @param:Language("jsonpath")
     val selectId: String = "$.id",
+    /**
+     * 相对每个条目: 别名, 可以是字符串数组或单个字符串. 为空表示站点不提供别名.
+     * 自动匹配时条目名或任一别名对上请求的条目名就算匹配, 资源的条目名取对上的那个.
+     */
+    @param:Language("jsonpath")
+    val selectAliases: String = "",
     /**
      * 条目页面地址模板, 变量 `{id}`. 它是条目的稳定标识 (浏览记忆、搜索缓存都按它记), 也用于展示.
      * 站点 id 本身就是完整地址时写 `{id}`.
@@ -315,6 +322,11 @@ data class JsonApiPlayStage(
      * 播放器请求视频时的 Referer. 可留空.
      */
     val referer: String = "",
+    /**
+     * 播放器请求视频时附带的请求头, 每行一个 `Name: Value`, 值里可以用播放阶段的变量. 只随视频请求发送, 不发给接口;
+     * 接口的 [JsonApiSearchConfig.headers] 也不发给视频主机, 密钥不流向 CDN. 与 [referer] 同名时以这里为准.
+     */
+    val videoHeaders: String = "",
 ) {
     fun isValid(): Boolean = request.isValid() && selectVideoUrl.isNotBlank()
 }

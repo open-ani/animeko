@@ -46,7 +46,10 @@ class JsonApiMediaSourceTesterTest {
         requests += request
         val url = request.url.toString()
         when {
-            url.endsWith("/search") -> respondJson(if ("芙莉莲" in request.bodyText.orEmpty()) SampleSite.SEARCH_RESPONSE else "[]")
+            url.endsWith("/search") -> {
+                val body = request.bodyText.orEmpty()
+                respondJson(if ("芙莉莲" in body || "Frieren" in body) SampleSite.SEARCH_RESPONSE else "[]")
+            }
             url.contains("/episodes?anime_id=3252") -> respondJson(episodesResponse)
             url.contains("/episodes?") -> respondJson("[]")
             url.endsWith("/playback") -> respondJson(SampleSite.PLAY_RESPONSE)
@@ -80,6 +83,24 @@ class JsonApiMediaSourceTesterTest {
         assertEquals(listOf("葬送的芙莉莲", "葬送的芙莉莲 第二季"), result.subjects.map { it.name })
         assertEquals(listOf(false, true), result.subjects.map { s -> s.tags.first { it.value == "标题" }.isMatch })
         assertEquals("https://example.com/anime/3252", result.subjects[1].subjectDetailsPageUrl)
+    }
+
+    @Test
+    fun `subjects matched through an alias are tagged as matching and list their aliases`() = runTest {
+        val tester = createTester()
+        val config = SampleSite.config
+        tester.setSearchConfig(config.copy(search = config.search.copy(selectAliases = "$.aliases[*]")))
+        tester.setSubjectQuery(
+            JsonApiMediaSourceTester.SubjectQuery("Sousou no Frieren 2nd Season", searchUseOnlyFirstWord = false, searchRemoveSpecial = true),
+        )
+        tester.setEpisodeQuery(JsonApiMediaSourceTester.EpisodeQuery(EpisodeSort(2)))
+
+        val result = assertIs<TestSubjectSearchResult.Success>(tester.subjectSelectionResultFlow.filterNotNull().first())
+
+        val second = result.subjects[1]
+        assertEquals("葬送的芙莉莲 第二季", second.name)
+        assertEquals(true, second.tags.first { it.value == "标题" }.isMatch)
+        assertTrue(second.tags.any { it.value == "别名: Sousou no Frieren 2nd Season" })
     }
 
     @Test

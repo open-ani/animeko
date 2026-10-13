@@ -109,7 +109,8 @@ open class JsonApiMediaSourceEngine(
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) {
     /**
-     * 代入变量, 得到要发送的请求. 请求体默认按 JSON 发送, 代入后必须是合法 JSON.
+     * 代入变量, 得到要发送的请求. 请求头的值按原文代入; 请求体默认按 JSON 发送, 代入后必须是合法 JSON.
+     * GET 请求不带请求体, 配置里填了也忽略: 常见的 HTTP 客户端拒绝带请求体的 GET.
      *
      * @return `null` 表示配置无效: 地址为空或无法解析, 或请求体代入后不是合法 JSON.
      */
@@ -130,8 +131,8 @@ open class JsonApiMediaSourceEngine(
         val headers = mergeHeaders(
             JsonApiSearchConfig.parseHeaderLines(config.headers),
             JsonApiSearchConfig.parseHeaderLines(request.headers),
-        )
-        val body = request.body.takeIf { it.isNotBlank() }?.let { template ->
+        ).map { (name, value) -> name to JsonApiTemplate.substitute(value, variables, Escaping.NONE) }
+        val body = request.body.takeIf { it.isNotBlank() && request.method != JsonApiHttpMethod.GET }?.let { template ->
             val rendered = JsonApiTemplate.substitute(template, variables, Escaping.JSON_STRING)
             val isJson = headers.none { (name, _) -> name.equals(HttpHeaders.ContentType, ignoreCase = true) } ||
                     headers.any { (name, value) ->
@@ -212,15 +213,22 @@ open class JsonApiMediaSourceEngine(
         val selectItems = JsonPath.compileOrNull(stage.selectItems) ?: return null
         val selectName = JsonPath.compileOrNull(stage.selectName) ?: return null
         val selectId = JsonPath.compileOrNull(stage.selectId) ?: return null
+        val selectAliases = stage.selectAliases.takeIf { it.isNotBlank() }?.let { JsonPath.compileOrNull(it) ?: return null }
         return json.resolveOrNull(selectItems).items().mapNotNull { item ->
             val id = item.resolveOrNull(selectId)?.stringValueOrNull()?.trim()?.takeIf { it.isNotEmpty() }
                 ?: return@mapNotNull null
             val name = item.resolveOrNull(selectName)?.stringValueOrNull()?.trim()?.takeIf { it.isNotEmpty() }
                 ?: return@mapNotNull null
+            val aliases = selectAliases?.let { path ->
+                item.resolveOrNull(path).items()
+                    .mapNotNull { alias -> alias.stringValueOrNull()?.trim()?.takeIf { it.isNotEmpty() && it != name } }
+                    .distinct()
+            }.orEmpty()
             JsonApiSubjectInfo(
                 id = id,
                 name = name,
                 url = JsonApiTemplate.substitute(stage.subjectUrlTemplate, mapOf("id" to id), Escaping.NONE),
+                aliases = aliases,
             )
         }
     }
