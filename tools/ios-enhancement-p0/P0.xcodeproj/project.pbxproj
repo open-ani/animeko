@@ -4,6 +4,8 @@
  classes = {};
  objectVersion = 56;
  objects = {
+ A00000000000000000000025 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../../app/ios/Animeko/EnhancedPlayerView.swift"; sourceTree = "<group>"; };
+ A00000000000000000000026 = {isa = PBXBuildFile; fileRef = A00000000000000000000025; };
  A00000000000000000000023 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../../app/ios/Animeko/VideoEnhancementRenderer.swift"; sourceTree = "<group>"; };
  A00000000000000000000024 = {isa = PBXBuildFile; fileRef = A00000000000000000000023; };
  A00000000000000000000001 = {isa = PBXProject; buildConfigurationList = A00000000000000000000010; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; knownRegions = (en, Base); mainGroup = A00000000000000000000002; productRefGroup = A00000000000000000000003; projectDirPath = ""; projectRoot = ""; targets = (A00000000000000000000004); };
@@ -13,7 +15,7 @@
  A00000000000000000000005 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Probe.swift; sourceTree = "<group>"; };
  A00000000000000000000006 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = P0.app; sourceTree = BUILT_PRODUCTS_DIR; };
  A00000000000000000000007 = {isa = PBXBuildFile; fileRef = A00000000000000000000005; };
- A00000000000000000000008 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A00000000000000000000007, A00000000000000000000024); runOnlyForDeploymentPostprocessing = 0; };
+ A00000000000000000000008 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A00000000000000000000007, A00000000000000000000024, A00000000000000000000026); runOnlyForDeploymentPostprocessing = 0; };
  A00000000000000000000009 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
  A00000000000000000000014 = {isa = PBXFileReference; lastKnownFileType = text; path = "../../utils/video-enhancement-shader-provider/src/commonMain/composeResources/files/shaders/Anime4K_Restore_CNN_S.glsl"; sourceTree = "<group>"; };
  A00000000000000000000015 = {isa = PBXBuildFile; fileRef = A00000000000000000000014; };

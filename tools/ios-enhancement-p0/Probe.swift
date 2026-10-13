@@ -89,6 +89,7 @@ final class Probe: NSObject, ObservableObject, @preconcurrency AVPictureInPictur
 
     func run() async {
         player.isMuted = CommandLine.arguments.contains("--muted")
+        if CommandLine.arguments.contains("--review-fixes") { await runReviewFixes(); return }
         if CommandLine.arguments.contains("--regressions") {
             await runBothModes()
             let bothModesReport = report
@@ -432,10 +433,81 @@ final class Probe: NSObject, ObservableObject, @preconcurrency AVPictureInPictur
         return false
     }
 
-    private func makeFixture() async throws -> URL {
+    func runReviewFixes() async {
+        running = true
+        defer { player.pause(); running = false }
+        let transforms: [(String, CGAffineTransform, SIMD2<Float>)] = [
+            ("identity", .identity, SIMD2(-1, 1)),
+            ("90 degrees", CGAffineTransform(a: 0, b: 1, c: -1, d: 0, tx: 180, ty: 0), SIMD2(1, 1)),
+            ("180 degrees", CGAffineTransform(a: -1, b: 0, c: 0, d: -1, tx: 320, ty: 180), SIMD2(1, -1)),
+            ("270 degrees", CGAffineTransform(a: 0, b: -1, c: 1, d: 0, tx: 0, ty: 320), SIMD2(-1, -1)),
+            ("mirror", CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: 320, ty: 0), SIMD2(1, 1)),
+        ]
+        for (name, transform, expected) in transforms {
+            let vertices = videoPresentationVertices(sourceSize: CGSize(width: 320, height: 180), targetSize: CGSize(width: 200, height: 200), transform: transform, aspectMode: 1)
+            let first = vertices[0]
+            record("\(abs(first.x - expected.x) < 0.001 && abs(first.y - expected.y) < 0.001 && first.z == 0 && first.w == 0 ? "PASS" : "FAIL") orientation \(name)")
+        }
+        for mode in [0, 2] {
+            let vertices = videoPresentationVertices(sourceSize: CGSize(width: 320, height: 180), targetSize: CGSize(width: 200, height: 200), transform: transforms[1].1, aspectMode: mode)
+            let expectedX: Float = mode == 0 ? 180.0 / 320.0 : 1
+            let expectedY: Float = mode == 0 ? 1 : 320.0 / 180.0
+            record("\(abs(vertices[0].x - expectedX) < 0.001 && abs(vertices[0].y - expectedY) < 0.001 ? "PASS" : "FAIL") rotated aspect mode \(mode)")
+        }
+        var fallbacks = 0
+        _ = await waitUntil { self.metalView?.window != nil }
+        let view = EnhancedPlayerView(player: player) { fallbacks += 1 }
+        view.frame = CGRect(x: 0, y: 0, width: 320, height: 180)
+        metalView?.window?.addSubview(view)
+        defer { view.close(); view.removeFromSuperview() }
+        func surface() -> MTKView? { view.subviews.compactMap { $0 as? MTKView }.first }
+        do {
+            let fixture = try await makeFixture(transform: transforms[1].1)
+            defer { try? FileManager.default.removeItem(at: fixture) }
+            player.replaceCurrentItem(with: AVPlayerItem(url: fixture))
+            view.update(mode: 1, aspect: 0)
+            player.play()
+            let attached = await waitUntil { surface() != nil || fallbacks > 0 }
+            let oldSurface = surface()
+            let productionRenderer = oldSurface?.delegate as? RawMetalRenderer
+            let rendered = await waitUntil { (productionRenderer?.completedEnhancedFrames.value ?? 0) > 0 }
+            record("rotated fixture: window=\(view.window != nil), attached=\(attached), frames=\(productionRenderer?.completedEnhancedFrames.value ?? 0), transform=\(String(describing: productionRenderer?.presentationTransform)), error=\(productionRenderer?.failure ?? "none")")
+            record("\(attached && rendered && productionRenderer?.presentationTransform == transforms[1].1 ? "PASS" : "FAIL") rotated asset metadata and enhanced GPU frame")
+            player.replaceCurrentItem(with: AVPlayerItem(url: fixture))
+            record("\(oldSurface != nil && oldSurface?.superview == nil && surface() == nil ? "PASS" : "FAIL") item replacement immediately removes old drawable surface")
+            let replaced = await waitUntil { surface() != nil }
+            record("\(replaced && surface() !== oldSurface ? "PASS" : "FAIL") replacement creates a fresh surface")
+
+            let hls = AVPlayerItem(url: URL(string: "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8")!)
+            view.update(mode: 0, aspect: 0)
+            player.replaceCurrentItem(with: hls)
+            player.play()
+            record("Loading HLS subtitle fixture")
+            let group = try await hls.asset.loadMediaSelectionGroup(for: .legible)
+            guard let group, let option = group.options.first else {
+                record("FAIL subtitle fixture has no selectable legible track")
+                return
+            }
+            hls.select(nil, in: group)
+            view.update(mode: 1, aspect: 0)
+            let hlsReady = await waitUntil { surface() != nil }
+            let before = fallbacks
+            hls.select(option, in: group)
+            let stopped = await waitUntil { fallbacks > before }
+            record("\(hlsReady && stopped && surface() == nil ? "PASS" : "FAIL") selecting subtitles removes overlay and reports native fallback")
+            let beforeEnable = fallbacks
+            view.update(mode: 1, aspect: 0)
+            let rejected = await waitUntil { fallbacks > beforeEnable }
+            record("\(rejected && surface() == nil ? "PASS" : "FAIL") already-selected subtitles prevent overlay activation")
+        } catch { record("FAIL review fixes: \(error)") }
+        record("DONE review fixes")
+    }
+
+    private func makeFixture(transform: CGAffineTransform = .identity) async throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp4")
         let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: [AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: 320, AVVideoHeightKey: 180])
+        input.transform = transform
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA, kCVPixelBufferWidthKey as String: 320, kCVPixelBufferHeightKey as String: 180])
         writer.add(input)
         guard writer.startWriting() else { throw writer.error! }

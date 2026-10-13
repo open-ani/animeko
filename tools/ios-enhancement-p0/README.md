@@ -1,6 +1,6 @@
 # iOS 视频增强测试工具
 
-独立的 iOS 测试 App，与 Animeko 共用 `app/ios/Animeko/VideoEnhancementRenderer.swift`。
+独立的 iOS 测试 App，与 Animeko 共用 `app/ios/Animeko/VideoEnhancementRenderer.swift` 和 `EnhancedPlayerView.swift`。
 验证 HLS 视频帧读取、Metal 输出、Anime4K 两档处理和缓冲生命周期。
 测试工具不覆盖正式 App 的 Kotlin/Swift 桥接和菜单生命周期。
 
@@ -16,6 +16,7 @@ xcodebuild -project tools/ios-enhancement-p0/P0.xcodeproj -scheme P0 \
 
 启动参数：
 
+- `--review-fixes --muted`：旋转、镜像与缩放坐标检查；旋转 MP4 的生产视图渲染、切集表面替换，以及 HLS 字幕选择时退出超分的检查。
 - `--regressions --muted`：静音运行两档检查，再运行性能档测试，覆盖质量档之后重跑性能档的操作顺序。
 - `--both-modes`：性能档和质量档的处理、开关、暂停与资源释放检查。
 - `--anime4k`：性能档与同尺寸图像变化检查。
@@ -52,5 +53,7 @@ iPhone 17 / iOS 27.0.1 已完成 720p SDR 两档短测；模拟器可运行上�
 帧率与 GPU 耗时是短时采样，不代表真机长期稳定性能。
 图像变化检查只确认处理改变像素，不是画质评分。
 HDR、受保护媒体、独立字幕轨、长期发热功耗与真实 PikPak 片源未验收。
+选中独立字幕轨时，增强视图回退原生播放，以保留字幕显示；烧录在视频画面中的字幕仍可随画面增强。
+字幕自动检查覆盖 Apple HLS 测试流的回退行为，不代表所有字幕格式的视觉验收。
 系统画中画使用原生 AVPlayerLayer，显示原画。
 运行报告、截图和录屏不应提交到仓库。

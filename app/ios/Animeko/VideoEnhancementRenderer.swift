@@ -9,6 +9,8 @@ final class FrameCounter: @unchecked Sendable {
 }
 
 final class RawMetalRenderer: NSObject, MTKViewDelegate {
+    var presentationTransform = CGAffineTransform.identity { didSet { needsRedraw = true } }
+    var naturalSize = CGSize.zero { didSet { needsRedraw = true } }
     var aspectMode = 0 { didSet { if oldValue != aspectMode { needsRedraw = true } } } // fit, stretch, crop
     var onEnhancedFrame: ((Int) -> Void)?
     var onFailure: ((String) -> Void)?
@@ -48,10 +50,9 @@ final class RawMetalRenderer: NSObject, MTKViewDelegate {
         #include <metal_stdlib>
         using namespace metal;
         struct V { float4 position [[position]]; float2 uv; };
-        vertex V rawVertex(uint id [[vertex_id]], constant float2 &scale [[buffer(0)]]) {
-            float2 p[6] = {float2(-1,-1),float2(1,-1),float2(-1,1),float2(-1,1),float2(1,-1),float2(1,1)};
-            V v; v.position = float4(p[id] * scale,0,1);
-            v.uv = float2((p[id].x+1)*0.5,(1-p[id].y)*0.5); return v;
+        vertex V rawVertex(uint id [[vertex_id]], constant float4 *vertices [[buffer(0)]]) {
+            V v; v.position = float4(vertices[id].xy,0,1);
+            v.uv = vertices[id].zw; return v;
         }
         fragment float4 rawFragment(V v [[stage_in]], texture2d<float> image [[texture(0)]]) {
             constexpr sampler s(coord::normalized, address::clamp_to_edge, filter::linear);
@@ -228,13 +229,12 @@ final class RawMetalRenderer: NSObject, MTKViewDelegate {
         guard let encoder = command.makeRenderCommandEncoder(descriptor: descriptor) else { failure = "render encoder unavailable"; return }
         if let retainedFrame {
             let texture = performanceEnabled ? processedTexture ?? retainedFrame.2 : retainedFrame.2
-            let sourceAspect = Float(texture.width) / Float(texture.height)
-            let targetAspect = Float(view.drawableSize.width / view.drawableSize.height)
-            var scale = SIMD2<Float>(min(1, sourceAspect / targetAspect), min(1, targetAspect / sourceAspect))
-            if aspectMode == 1 { scale = SIMD2<Float>(1, 1) }
-            if aspectMode == 2 { scale = SIMD2<Float>(max(1, sourceAspect / targetAspect), max(1, targetAspect / sourceAspect)) }
+            let size = naturalSize.width > 0 && naturalSize.height > 0 ? naturalSize : CGSize(width: texture.width, height: texture.height)
+            let vertices = videoPresentationVertices(sourceSize: size, targetSize: view.drawableSize, transform: presentationTransform, aspectMode: aspectMode)
             encoder.setRenderPipelineState(performanceEnabled ? ewaPipeline : pipeline)
-            encoder.setVertexBytes(&scale, length: MemoryLayout<SIMD2<Float>>.size, index: 0)
+            vertices.withUnsafeBytes { bytes in
+                encoder.setVertexBytes(bytes.baseAddress!, length: bytes.count, index: 0)
+            }
             encoder.setFragmentTexture(texture, index: 0)
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
         }
@@ -263,6 +263,23 @@ final class RawMetalRenderer: NSObject, MTKViewDelegate {
         command.present(drawable)
         command.commit()
         needsRedraw = false
+    }
+}
+
+/// Positions use the track's display transform; UVs remain in encoded-frame coordinates.
+func videoPresentationVertices(sourceSize: CGSize, targetSize: CGSize, transform: CGAffineTransform, aspectMode: Int) -> [SIMD4<Float>] {
+    let bounds = CGRect(origin: .zero, size: sourceSize).applying(transform)
+    let sourceAspect = bounds.width / bounds.height
+    let targetAspect = targetSize.width / targetSize.height
+    var scaleX = min(1, sourceAspect / targetAspect)
+    var scaleY = min(1, targetAspect / sourceAspect)
+    if aspectMode == 1 { scaleX = 1; scaleY = 1 }
+    if aspectMode == 2 { scaleX = max(1, sourceAspect / targetAspect); scaleY = max(1, targetAspect / sourceAspect) }
+    let corners: [CGPoint] = [.zero, CGPoint(x: 1, y: 0), CGPoint(x: 0, y: 1), CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 0), CGPoint(x: 1, y: 1)]
+    return corners.map { uv in
+        let point = CGPoint(x: uv.x * sourceSize.width, y: uv.y * sourceSize.height).applying(transform)
+        return SIMD4(Float(((point.x - bounds.minX) / bounds.width * 2 - 1) * scaleX),
+                     Float((1 - (point.y - bounds.minY) / bounds.height * 2) * scaleY), Float(uv.x), Float(uv.y))
     }
 }
 

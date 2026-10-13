@@ -11,6 +11,9 @@ final class EnhancedPlayerView: UIView {
     private var notifications: [NSObjectProtocol] = []
     private var item: AVPlayerItem?
     private var output: AVPlayerItemVideoOutput?
+    private var itemTask: Task<Void, Never>?
+    private var itemGeneration = 0
+    private var subtitleGroup: AVMediaSelectionGroup?
     private var renderer: RawMetalRenderer?
     private var metalView: MTKView?
     private var mode = 0
@@ -32,6 +35,11 @@ final class EnhancedPlayerView: UIView {
             self?.attachItem()
         }
         let center = NotificationCenter.default
+        notifications.append(center.addObserver(forName: AVPlayerItem.mediaSelectionDidChangeNotification, object: nil, queue: .main) { [weak self] notification in
+            guard let self, let changedItem = notification.object as? AVPlayerItem,
+                  changedItem === self.item else { return }
+            self.checkSubtitles()
+        })
         notifications.append(center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
             self?.metalView?.isPaused = true
         })
@@ -50,6 +58,15 @@ final class EnhancedPlayerView: UIView {
     }
 
     private func detachItem() {
+        itemGeneration += 1
+        itemTask?.cancel()
+        itemTask = nil
+        subtitleGroup = nil
+        // Removing the surface also removes its last presented drawable.
+        metalView?.isPaused = true
+        metalView?.delegate = nil
+        metalView?.removeFromSuperview()
+        metalView = nil
         if let output, let item { item.remove(output) }
         output = nil
         item = nil
@@ -60,6 +77,36 @@ final class EnhancedPlayerView: UIView {
     private func attachItem() {
         detachItem()
         guard mode != 0, renderer != nil, let item = player.currentItem else { return }
+        self.item = item
+        let generation = itemGeneration
+        itemTask = Task { @MainActor [weak self] in
+            do {
+                let group = try await item.asset.loadMediaSelectionGroup(for: .legible)
+                let tracks = try await item.asset.loadTracks(withMediaType: .video)
+                let transform = try await tracks.first?.load(.preferredTransform) ?? .identity
+                let naturalSize = try await tracks.first?.load(.naturalSize) ?? .zero
+                guard let self, !Task.isCancelled, self.itemGeneration == generation, self.item === item else { return }
+                self.subtitleGroup = group
+                guard !self.checkSubtitles() else { return }
+                self.renderer?.presentationTransform = transform
+                self.renderer?.naturalSize = naturalSize
+                self.connectOutput(item)
+            } catch {
+                guard let self, !Task.isCancelled, self.itemGeneration == generation else { return }
+                self.fallback(error.localizedDescription)
+            }
+        }
+    }
+
+    @discardableResult
+    private func checkSubtitles() -> Bool {
+        guard let item, let group = subtitleGroup,
+              item.currentMediaSelection.selectedMediaOption(in: group) != nil else { return false }
+        fallback("Selected subtitle track requires native rendering")
+        return true
+    }
+
+    private func connectOutput(_ item: AVPlayerItem) {
         let output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
             kCVPixelBufferMetalCompatibilityKey as String: true,
@@ -70,6 +117,7 @@ final class EnhancedPlayerView: UIView {
         self.item = item
         self.output = output
         renderer?.output = output
+        createSurface()
     }
 
     func update(mode: Int, aspect: Int) {
@@ -111,7 +159,6 @@ final class EnhancedPlayerView: UIView {
     }
 
     private func activate(_ renderer: RawMetalRenderer, mode: Int, request: Int) {
-        guard let device = MTLCreateSystemDefaultDevice() else { fallback("Metal unavailable"); return }
         self.renderer = renderer
         renderer.failure = nil
         renderer.performanceEnabled = true
@@ -128,6 +175,11 @@ final class EnhancedPlayerView: UIView {
             NSLog("Video enhancement mode %d: first enhanced frame completed", renderedMode)
             self.renderer?.onEnhancedFrame = nil
         }
+        attachItem()
+    }
+
+    private func createSurface() {
+        guard let renderer, let device = MTLCreateSystemDefaultDevice() else { return }
         let view = MTKView(frame: bounds, device: device)
         view.framebufferOnly = true
         view.isOpaque = false
@@ -139,15 +191,10 @@ final class EnhancedPlayerView: UIView {
         view.isUserInteractionEnabled = false
         view.isPaused = UIApplication.shared.applicationState == .background
         metalView = view
-        attachItem()
         addSubview(view)
     }
 
     private func stopEnhancement() {
-        metalView?.isPaused = true
-        metalView?.delegate = nil
-        metalView?.removeFromSuperview()
-        metalView = nil
         renderer?.onFailure = nil
         renderer?.onEnhancedFrame = nil
         detachItem()
