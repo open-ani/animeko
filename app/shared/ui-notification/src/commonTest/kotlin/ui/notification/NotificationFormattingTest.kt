@@ -11,29 +11,26 @@
 
 package me.him188.ani.app.ui.notification
 
-import kotlinx.datetime.TimeZone
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.notification.AccountSecurityEvent
 import me.him188.ani.app.data.models.notification.AppNotificationContent
-import me.him188.ani.app.data.models.notification.LoginMethod
+import me.him188.ani.app.data.models.notification.SystemNotificationEvent
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_schedule_episode
-import me.him188.ani.app.ui.lang.notification_account_bangumi_expired
-import me.him188.ani.app.ui.lang.notification_account_bangumi_expired_supporting
-import me.him188.ani.app.ui.lang.notification_account_email_bound
-import me.him188.ani.app.ui.lang.notification_account_email_changed
-import me.him188.ani.app.ui.lang.notification_account_email_unbound
-import me.him188.ani.app.ui.lang.notification_account_new_login
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound_generic
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound_supporting
 import me.him188.ani.app.ui.lang.notification_account_unknown
-import me.him188.ani.app.ui.lang.notification_login_method_email_otp
-import me.him188.ani.app.ui.lang.notification_login_method_qr_code
+import me.him188.ani.app.ui.lang.notification_report_go_to_character
+import me.him188.ani.app.ui.lang.notification_report_go_to_episode
+import me.him188.ani.app.ui.lang.notification_report_go_to_person
+import me.him188.ani.app.ui.lang.notification_report_go_to_subject
 import me.him188.ani.app.ui.lang.notification_report_result_row_title
 import me.him188.ani.app.ui.lang.notification_report_target_character_comment
 import me.him188.ani.app.ui.lang.notification_report_target_comment
 import me.him188.ani.app.ui.lang.notification_report_target_episode_comment
+import me.him188.ani.app.ui.lang.notification_system_bangumi_expired
+import me.him188.ani.app.ui.lang.notification_system_bangumi_expired_supporting
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -173,6 +170,33 @@ class NotificationFormattingTest {
     }
 
     @Test
+    fun `report result actions have labels and open their targets`() {
+        val calls = mutableListOf<String>()
+        val actions = NotificationActions.Noop.let { noop ->
+            NotificationActions(
+                onOpenEpisode = { subjectId, episodeId -> calls += "episode:$subjectId:$episodeId" },
+                onOpenSubject = { subjectId, placeholder -> calls += "subject:$subjectId:${placeholder?.nameCN}" },
+                onOpenPerson = { calls += "person:$it" },
+                onOpenCharacter = { calls += "character:$it" },
+                onReauthorizeBangumi = noop.onReauthorizeBangumi,
+                onOpenAccountSettings = noop.onOpenAccountSettings,
+            )
+        }
+        val content = createTestReportResult().content as AppNotificationContent.ReportResult
+        val cases = listOf(
+            ReportResultAction.OpenEpisode(1, 2) to Lang.notification_report_go_to_episode,
+            ReportResultAction.OpenSubject(3) to Lang.notification_report_go_to_subject,
+            ReportResultAction.OpenPerson(4) to Lang.notification_report_go_to_person,
+            ReportResultAction.OpenCharacter(5) to Lang.notification_report_go_to_character,
+        )
+        for ((action, label) in cases) {
+            assertEquals(label, action.labelRes)
+            actions.perform(action, content)
+        }
+        assertEquals(listOf("episode:1:2", "subject:3:葬送的芙莉莲", "person:4", "character:5"), calls)
+    }
+
+    @Test
     fun `unknown target type shows a generic line and no action`() {
         val content = createTestReportResult().content as AppNotificationContent.ReportResult
         val unknown = content.copy(targetType = null, personId = 7, characterId = 8, targetName = "芙莉莲")
@@ -196,63 +220,15 @@ class NotificationFormattingTest {
 
     private fun accountSecurity(
         event: AccountSecurityEvent,
-        loginMethod: LoginMethod? = null,
-        clientPlatform: String? = null,
-        email: String? = null,
         provider: String? = null,
-    ) = createTestAccountSecurity(
-        event = event,
-        loginMethod = loginMethod,
-        clientPlatform = clientPlatform,
-        email = email,
-        provider = provider,
-    ).content as AppNotificationContent.AccountSecurity
-
-    @Test
-    fun `new login row shows platform and login method`() {
-        val text = accountSecurityRowText(
-            accountSecurity(AccountSecurityEvent.NEW_LOGIN, LoginMethod.QR_CODE, "macos-aarch64"),
-        )
-        assertEquals(NotificationText.Res(Lang.notification_account_new_login), text.headline)
-        assertEquals(
-            NotificationText.Words(listOf(plain("macOS"), NotificationText.Res(Lang.notification_login_method_qr_code))),
-            text.supporting,
-        )
-    }
-
-    @Test
-    fun `new login row omits unknown parts`() {
-        // 只有登录方式时首字母大写
-        assertEquals(
-            NotificationText.Capitalized(NotificationText.Res(Lang.notification_login_method_email_otp)),
-            accountSecurityRowText(
-                accountSecurity(AccountSecurityEvent.NEW_LOGIN, LoginMethod.EMAIL_OTP, "freebsd-x86_64"),
-            ).supporting,
-        )
-        assertEquals(
-            plain("Android TV"),
-            accountSecurityRowText(
-                accountSecurity(AccountSecurityEvent.NEW_LOGIN, LoginMethod.UNKNOWN, "android-tv-arm64-v8a"),
-            ).supporting,
-        )
-        assertNull(accountSecurityRowText(accountSecurity(AccountSecurityEvent.NEW_LOGIN)).supporting)
-    }
-
-    @Test
-    fun `email rows show masked email`() {
-        for ((event, title) in listOf(
-            AccountSecurityEvent.EMAIL_BOUND to Lang.notification_account_email_bound,
-            AccountSecurityEvent.EMAIL_CHANGED to Lang.notification_account_email_changed,
-            AccountSecurityEvent.EMAIL_UNBOUND to Lang.notification_account_email_unbound,
-        )) {
-            val text = accountSecurityRowText(accountSecurity(event, email = "a***@example.com"))
-            assertEquals(NotificationRowText(NotificationText.Res(title), plain("a***@example.com")), text)
-        }
-    }
+    ): AppNotificationContent.AccountSecurity =
+        createTestAccountSecurity(event = event, provider = provider).content as AppNotificationContent.AccountSecurity
 
     @Test
     fun `third party unbound row shows provider`() {
-        val text = accountSecurityRowText(accountSecurity(AccountSecurityEvent.THIRD_PARTY_UNBOUND, provider = "github"))
+        val text = accountSecurityRowText(
+            accountSecurity(AccountSecurityEvent.THIRD_PARTY_UNBOUND, provider = "github"),
+        )
         assertEquals(
             NotificationRowText(
                 NotificationText.Res(Lang.notification_account_third_party_unbound, listOf(plain("GitHub"))),
@@ -282,69 +258,53 @@ class NotificationFormattingTest {
     }
 
     @Test
-    fun `bangumi authorization expired row`() {
-        assertEquals(
-            NotificationRowText(
-                NotificationText.Res(Lang.notification_account_bangumi_expired),
-                NotificationText.Res(Lang.notification_account_bangumi_expired_supporting),
-            ),
-            accountSecurityRowText(accountSecurity(AccountSecurityEvent.BANGUMI_AUTHORIZATION_EXPIRED)),
-        )
-    }
-
-    @Test
     fun `unknown event row is a generic alert without supporting text`() {
         assertEquals(
             NotificationRowText(NotificationText.Res(Lang.notification_account_unknown), supporting = null),
-            accountSecurityRowText(accountSecurity(AccountSecurityEvent.UNKNOWN, email = "a***@example.com")),
+            accountSecurityRowText(accountSecurity(AccountSecurityEvent.UNKNOWN, provider = "github")),
         )
     }
 
     @Test
-    fun `account security action`() {
-        assertEquals(
-            AccountSecurityAction.REAUTHORIZE_BANGUMI,
-            accountSecurityAction(AccountSecurityEvent.BANGUMI_AUTHORIZATION_EXPIRED),
-        )
-        for (event in AccountSecurityEvent.entries - AccountSecurityEvent.BANGUMI_AUTHORIZATION_EXPIRED) {
-            assertEquals(AccountSecurityAction.ACCOUNT_SETTINGS, accountSecurityAction(event))
+    fun `account security opens account settings and other types open the detail`() {
+        for (event in AccountSecurityEvent.entries) {
+            assertEquals(NotificationOpenTarget.ACCOUNT_SETTINGS, notificationOpenTarget(accountSecurity(event)))
         }
-    }
-
-    @Test
-    fun `client platform display names`() {
-        assertEquals("macOS", clientPlatformDisplayName("macos-aarch64"))
-        assertEquals("macOS", clientPlatformDisplayName("macos-x86_64"))
-        assertEquals("Windows", clientPlatformDisplayName("windows-x86_64"))
-        assertEquals("Linux", clientPlatformDisplayName("linux-x86_64"))
-        assertEquals("Android", clientPlatformDisplayName("android-arm64-v8a"))
-        assertEquals("Android", clientPlatformDisplayName("android-armeabi-v7a"))
-        assertEquals("Android TV", clientPlatformDisplayName("android-tv-arm64-v8a"))
-        assertEquals("iOS", clientPlatformDisplayName("ios-aarch64"))
-    }
-
-    @Test
-    fun `client platform without architecture or not normalized`() {
-        assertEquals("macOS", clientPlatformDisplayName("macos"))
-        assertEquals("Android TV", clientPlatformDisplayName("android-tv"))
-        assertEquals("Android TV", clientPlatformDisplayName(" Android TV arm64-v8a "))
-    }
-
-    @Test
-    fun `unknown client platform is omitted`() {
-        assertNull(clientPlatformDisplayName("freebsd-x86_64"))
-        assertNull(clientPlatformDisplayName("iosevka"))
-        assertNull(clientPlatformDisplayName("windowsphone-arm"))
-        assertNull(clientPlatformDisplayName(" "))
-        assertNull(clientPlatformDisplayName(null))
-        assertEquals(
-            NotificationText.Capitalized(NotificationText.Res(Lang.notification_login_method_qr_code)),
-            loginSummaryText("freebsd-x86_64", LoginMethod.QR_CODE),
-        )
-        assertNull(loginSummaryText("freebsd-x86_64", null))
+        assertEquals(NotificationOpenTarget.DETAIL, notificationOpenTarget(createTestReportResult().content))
+        assertEquals(NotificationOpenTarget.DETAIL, notificationOpenTarget(createTestSystemNotification().content))
+        assertEquals(NotificationOpenTarget.DETAIL, notificationOpenTarget(createTestBangumiExpired().content))
     }
 
     // endregion
+
+    // region system
+
+    @Test
+    fun `bangumi authorization expired row uses client text`() {
+        val content = AppNotificationContent.System(
+            title = "服务端标题",
+            body = "服务端正文",
+            event = SystemNotificationEvent.BANGUMI_AUTHORIZATION_EXPIRED,
+        )
+        assertEquals(
+            NotificationRowText(
+                NotificationText.Res(Lang.notification_system_bangumi_expired),
+                NotificationText.Res(Lang.notification_system_bangumi_expired_supporting),
+            ),
+            notificationRowText(content, useOriginalTitle = false),
+        )
+    }
+
+    @Test
+    fun `only bangumi authorization expired has an inline action`() {
+        assertEquals(
+            listOf(NotificationInlineAction.REAUTHORIZE_BANGUMI),
+            notificationInlineActions(createTestBangumiExpired().content),
+        )
+        assertEquals(emptyList(), notificationInlineActions(createTestSystemNotification().content))
+        assertEquals(emptyList(), notificationInlineActions(createTestReportResult().content))
+        assertEquals(emptyList(), notificationInlineActions(createTestAccountSecurity().content))
+    }
 
     @Test
     fun `system row uses title and first non blank line of body`() {
@@ -356,9 +316,5 @@ class NotificationFormattingTest {
         assertNull(notificationRowText(AppNotificationContent.System("标题", " \n "), false).supporting)
     }
 
-    @Test
-    fun `absolute date time`() {
-        assertEquals("2026-10-13 12:00", formatAbsoluteDateTime(TestNotificationNowMillis, TimeZone.UTC))
-        assertEquals("2026-10-13 20:00", formatAbsoluteDateTime(TestNotificationNowMillis, TimeZone.of("Asia/Shanghai")))
-    }
+    // endregion
 }

@@ -30,6 +30,7 @@ import kotlinx.serialization.encoding.*
  * @param handledAtMillis 处理时间 (epoch 毫秒)
  * @param contentRemoved 处理时是否删除了被举报的评论
  * @param contentSnapshot 举报时提交的评论快照, 格式为 `昵称：正文` (全角冒号), 最多 500 字
+ * @param contentCreatedAtMillis 被举报评论的发表时间 (epoch 毫秒); 条目评价为评价的更新时间. 评论已不存在时为 `null`
  * @param subjectId 评论所在条目 (剧集评论与条目评价)
  * @param subjectName 条目原名
  * @param subjectNameCn 条目中文名, 可能为空串
@@ -60,6 +61,9 @@ data class AniNotificationReportResult (
 
     /* 举报时提交的评论快照, 格式为 `昵称：正文` (全角冒号), 最多 500 字 */
     @SerialName(value = "contentSnapshot") val contentSnapshot: kotlin.String? = null,
+
+    /* 被举报评论的发表时间 (epoch 毫秒); 条目评价为评价的更新时间. 评论已不存在时为 `null` */
+    @SerialName(value = "contentCreatedAtMillis") val contentCreatedAtMillis: kotlin.Long? = null,
 
     /* 评论所在条目 (剧集评论与条目评价) */
     @SerialName(value = "subjectId") val subjectId: kotlin.Long? = null,

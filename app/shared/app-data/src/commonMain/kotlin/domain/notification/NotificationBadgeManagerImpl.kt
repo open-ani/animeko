@@ -17,11 +17,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -29,6 +33,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
 import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.models.notification.NotificationUnreadSummary
+import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.network.AniNotificationService
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryException
@@ -51,6 +56,7 @@ import kotlin.time.Duration.Companion.minutes
  * - 进入前台时刷新. 登录用户之后每 [pollInterval] 刷新一次, 直到进入后台; 游客只刷新这一次.
  * - 登录状态变化时刷新. 退出登录时立即清空未读数.
  * - [SessionEvent.NewLogin] 之后刷新. 刚登录时 HTTP 客户端可能还在用旧的 token, 所以登录后的第一次请求遇到 401 会重试.
+ * - 本机显示的通知类型 ([NotificationSettings.shownTypes]) 变化时刷新. 未读数只统计本机显示的类型.
  *
  * [requestRefresh] 不论前后台都会刷新. 同一时刻最多一个请求, 请求期间收到的刷新请求合并为结束后的一次.
  *
@@ -64,6 +70,7 @@ class NotificationBadgeManagerImpl(
     private val notificationService: AniNotificationService,
     private val sessionStateProvider: SessionStateProvider,
     private val scope: CoroutineScope,
+    private val notificationSettings: Flow<NotificationSettings> = flowOf(NotificationSettings.Default),
     private val pollInterval: Duration = 5.minutes,
 ) : NotificationBadgeManager {
     private val logger = thisLogger()
@@ -86,6 +93,12 @@ class NotificationBadgeManagerImpl(
                 .map { Access.of(it) }
                 .distinctUntilChanged()
                 .collectLatest { access -> serve(access) }
+        }
+        scope.launch(CoroutineName("NotificationBadgeManager.shownTypes")) {
+            shownTypes()
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { requestRefresh() }
         }
         scope.launch(CoroutineName("NotificationBadgeManager.newLogin")) {
             sessionStateProvider.eventFlow.collect { event ->
@@ -145,8 +158,9 @@ class NotificationBadgeManagerImpl(
     private suspend fun refresh(access: Access) {
         if (access == Access.UNAVAILABLE) return
         val retryAuthorization = access == Access.USER && retryAuthorizationOnNextFetch.getAndUpdate { false }
+        val types = shownTypes().first()
         val summary = try {
-            getUnreadSummary(retryAuthorization)
+            getUnreadSummary(types, retryAuthorization)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -159,7 +173,7 @@ class NotificationBadgeManagerImpl(
         }
         _state.value = if (access == Access.USER) {
             NotificationBadgeState(
-                unreadCount = summary.unreadCounts.filterKeys { it in NotificationType.SUPPORTED }.values.sum(),
+                unreadCount = summary.unreadCounts.filterKeys { it in types }.values.sum(),
                 hasUnreadAnnouncements = summary.unreadAnnouncementCount > 0,
                 unreadAnnouncementCount = summary.unreadAnnouncementCount,
                 latestAnnouncement = summary.latestAnnouncement,
@@ -169,11 +183,20 @@ class NotificationBadgeManagerImpl(
         }
     }
 
-    private suspend fun getUnreadSummary(retryAuthorization: Boolean): NotificationUnreadSummary {
+    /**
+     * 客户端能渲染且本机显示的通知类型.
+     */
+    private fun shownTypes(): Flow<Set<NotificationType>> =
+        notificationSettings.map { it.shownTypes(NotificationType.SUPPORTED) }
+
+    private suspend fun getUnreadSummary(
+        types: Set<NotificationType>,
+        retryAuthorization: Boolean,
+    ): NotificationUnreadSummary {
         var retries = 0
         while (true) {
             try {
-                return notificationService.getUnreadSummary(NotificationType.SUPPORTED)
+                return notificationService.getUnreadSummary(types)
             } catch (e: RepositoryAuthorizationException) {
                 if (!retryAuthorization || retries >= MAX_AUTHORIZATION_RETRIES) throw e
                 retries++

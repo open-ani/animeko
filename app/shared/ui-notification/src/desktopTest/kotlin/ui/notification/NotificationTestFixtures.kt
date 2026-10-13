@@ -16,28 +16,30 @@ import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.paging.LoadState
-import androidx.paging.LoadStates
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import java.util.Locale
-import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.models.notification.Announcement
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
-import me.him188.ani.app.data.models.notification.NotificationGroup
-
+import me.him188.ani.app.data.models.notification.NotificationType
+import me.him188.ani.app.data.persistent.MemoryDataStore
+import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.data.repository.notification.NotificationRepository
+import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.notification.NotificationBadgeManager
 import me.him188.ani.app.domain.session.InvalidSessionReason
 import me.him188.ani.app.domain.session.SessionEvent
@@ -48,49 +50,74 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.Koin
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
+import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * 与真实的 `Pager` 一样在加载完成后发出 [LoadState.NotLoading]. 不带状态的 `PagingData.from` 会让列表一直处于首次加载中.
- */
-private val AllLoaded = LoadStates(
-    refresh = LoadState.NotLoading(endOfPaginationReached = true),
-    prepend = LoadState.NotLoading(endOfPaginationReached = true),
-    append = LoadState.NotLoading(endOfPaginationReached = true),
-)
-
-/**
+ * 模拟服务端的通知和公告. 列表每次加载都读取当时的数据, 标记已读会修改数据中的已读状态, 与服务端一样.
+ *
  * @param notifications 初始的通知. 之后可以修改 [notifications], 刷新列表后生效.
+ * @param announcements 初始的公告, 按服务端的顺序排列 (置顶在前).
+ * @param announcementPageSize 公告列表每页的条数.
  */
 class FakeNotificationRepository(
     notifications: List<AppNotification> = TestNotifications,
-    private val announcements: List<Announcement> = TestAnnouncements,
+    announcements: List<Announcement> = TestAnnouncements,
+    private val announcementPageSize: Int = 30,
 ) : NotificationRepository {
     @Volatile
     var notifications: List<AppNotification> = notifications
 
+    @Volatile
+    var announcements: List<Announcement> = announcements
+
     val markedRead = CopyOnWriteArrayList<List<String>>()
-    val markAllCalls = CopyOnWriteArrayList<Pair<NotificationGroup, Long?>>()
+    val markAllCalls = CopyOnWriteArrayList<Pair<Set<NotificationType>, Long?>>()
     val markedAnnouncementsRead = CopyOnWriteArrayList<List<String>>()
-    val markAllAnnouncementsCalls = AtomicInteger()
     val markAllAnnouncementsBefore = CopyOnWriteArrayList<Long?>()
 
     /**
-     * 通知列表的加载次数. 首次加载和每次刷新各一次.
+     * 接下来这么多次 [markAllAnnouncementsRead] 会以网络错误失败.
      */
-    val notificationLoads = AtomicInteger()
+    val markAllAnnouncementsFailures = AtomicInteger()
+
+    /**
+     * 每次加载通知列表时请求的类型. 首次加载和每次刷新各一次.
+     */
+    val notificationLoadTypes = CopyOnWriteArrayList<Set<NotificationType>>()
+
+    /**
+     * 通知列表的加载次数.
+     */
+    val notificationLoads get() = notificationLoadTypes.size
+
+    /**
+     * 公告列表加载的页数. 首次加载、每次刷新和加载下一页各一次.
+     */
+    val announcementLoads = AtomicInteger()
+
+    /**
+     * 公告列表加载从某个位置开始的一页之前, 等待对应的 [CompletableDeferred] 完成. 用于控制下一页的加载时机.
+     */
+    val announcementPageGates = ConcurrentHashMap<Int, CompletableDeferred<Unit>>()
+
+    @Volatile
+    private var announcementsSource: PagingSource<Int, Announcement>? = null
 
     /**
      * 与真实的分页一样可以刷新: 每次加载都读取当时的 [notifications], 全部放在一页中.
      */
-    override fun notificationsPager(group: NotificationGroup): Flow<PagingData<AppNotification>> =
+    override fun notificationsPager(types: Set<NotificationType>): Flow<PagingData<AppNotification>> =
         Pager(PagingConfig(pageSize = 30)) {
             object : PagingSource<Int, AppNotification>() {
                 override fun getRefreshKey(state: PagingState<Int, AppNotification>): Int? = null
 
                 override suspend fun load(params: LoadParams<Int>): LoadResult<Int, AppNotification> {
-                    notificationLoads.incrementAndGet()
+                    notificationLoadTypes += types
                     return LoadResult.Page(
-                        notifications.filter { it.type in group.types },
+                        notifications.filter { it.type in types },
                         prevKey = null,
                         nextKey = null,
                     )
@@ -105,23 +132,68 @@ class FakeNotificationRepository(
         markedRead += ids
     }
 
-    override suspend fun markAllNotificationsRead(group: NotificationGroup, beforeMillis: Long?) {
-        markAllCalls += group to beforeMillis
+    override suspend fun markAllNotificationsRead(types: Set<NotificationType>, beforeMillis: Long?) {
+        markAllCalls += types to beforeMillis
     }
 
+    /**
+     * 按 [announcementPageSize] 分页, key 为起始位置.
+     */
     override fun announcementsPager(): Flow<PagingData<Announcement>> =
-        flowOf(PagingData.from(announcements, AllLoaded))
+        Pager(
+            PagingConfig(
+                pageSize = announcementPageSize,
+                prefetchDistance = 1,
+                initialLoadSize = announcementPageSize,
+                enablePlaceholders = false,
+            ),
+        ) {
+            object : PagingSource<Int, Announcement>() {
+                override fun getRefreshKey(state: PagingState<Int, Announcement>): Int? = null
+
+                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Announcement> {
+                    val offset = params.key ?: 0
+                    announcementPageGates[offset]?.await()
+                    announcementLoads.incrementAndGet()
+                    val all = announcements
+                    val end = minOf(offset + announcementPageSize, all.size)
+                    return LoadResult.Page(
+                        all.subList(offset, end),
+                        prevKey = null,
+                        nextKey = end.takeIf { it < all.size },
+                    )
+                }
+            }.also { announcementsSource = it }
+        }.flow
+
+    /**
+     * 重新加载公告列表, 与下拉刷新相同.
+     */
+    fun refreshAnnouncements() {
+        announcementsSource?.invalidate()
+    }
 
     override suspend fun getAnnouncement(id: String): Announcement? =
         announcements.firstOrNull { it.id == id }
 
     override suspend fun markAnnouncementsRead(ids: List<String>) {
         markedAnnouncementsRead += ids
+        announcements = announcements.map { if (it.id in ids && it.read != null) it.copy(read = true) else it }
     }
 
+    /**
+     * 先修改数据再记录到 [markAllAnnouncementsBefore], 所以测试看到记录时, 之后加载的列表已经是标记后的状态.
+     */
     override suspend fun markAllAnnouncementsRead(beforeMillis: Long?) {
+        if (markAllAnnouncementsFailures.getAndUpdate { maxOf(it - 1, 0) } > 0) {
+            markAllAnnouncementsBefore += beforeMillis
+            throw RepositoryNetworkException()
+        }
+        announcements = announcements.map {
+            val covered = beforeMillis == null || it.publishedAtMillis <= beforeMillis
+            if (it.read != null && covered) it.copy(read = true) else it
+        }
         markAllAnnouncementsBefore += beforeMillis
-        markAllAnnouncementsCalls.incrementAndGet()
     }
 }
 
@@ -156,15 +228,22 @@ fun notificationTestKoin(
     repository: NotificationRepository = FakeNotificationRepository(),
     badgeManager: NotificationBadgeManager = FakeNotificationBadgeManager(),
     sessionStateProvider: SessionStateProvider = FakeSessionStateProvider(),
+    settingsRepository: SettingsRepository = createTestSettingsRepository(),
 ): Koin = koinApplication {
     modules(
         module {
             single<NotificationRepository> { repository }
             single<NotificationBadgeManager> { badgeManager }
             single<SessionStateProvider> { sessionStateProvider }
+            single<SettingsRepository> { settingsRepository }
         },
     )
 }.koin
+
+/**
+ * 内存中的设置, 初始为默认值.
+ */
+fun createTestSettingsRepository(): SettingsRepository = PreferencesRepositoryImpl(MemoryDataStore(emptyPreferences()))
 
 /**
  * 预览环境, 并把时间固定为 [TestNotificationTimeContext].
@@ -214,3 +293,12 @@ inline fun <T> withLocale(locale: Locale, block: () -> T): T {
  * 在简体中文环境下执行 [block], 之后恢复原来的 locale.
  */
 inline fun <T> withSimplifiedChinese(block: () -> T): T = withLocale(Locale.SIMPLIFIED_CHINESE, block)
+
+/**
+ * 文本节点排版时实际使用的字重.
+ */
+fun SemanticsNodeInteraction.textFontWeight(): FontWeight? {
+    val results = mutableListOf<TextLayoutResult>()
+    fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+    return results.single().layoutInput.style.fontWeight
+}

@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.notification
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -20,6 +21,7 @@ import me.him188.ani.app.data.models.notification.AnnouncementTag
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
 import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.models.notification.NotificationUnreadSummary
+import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.network.AniNotificationService
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryNetworkException
@@ -104,9 +106,10 @@ class NotificationBadgeManagerImplTest {
 
     private val session = FakeSessionStateProvider()
     private val service = FakeNotificationService { userSummary }
+    private val settings = MutableStateFlow(NotificationSettings.Default)
 
     private fun TestScope.startManager(): NotificationBadgeManagerImpl =
-        NotificationBadgeManagerImpl(service, session, backgroundScope).also {
+        NotificationBadgeManagerImpl(service, session, backgroundScope, notificationSettings = settings).also {
             it.start()
             runCurrent()
         }
@@ -348,5 +351,49 @@ class NotificationBadgeManagerImplTest {
 
         assertEquals(0, service.calls)
         assertEquals(NotificationBadgeState.Empty, manager.state.value)
+    }
+
+    @Test
+    fun `switched off types are neither requested nor counted`() = runTest {
+        session.set(loggedIn)
+        settings.value = NotificationSettings(showReportResults = false)
+        val manager = startManager()
+
+        manager.setAppForeground(true)
+        runCurrent()
+
+        assertEquals(
+            listOf(setOf(NotificationType.SYSTEM, NotificationType.ACCOUNT_SECURITY)),
+            service.requestedTypes,
+        )
+        // 服务端即使返回了关闭的类型, 也不计入
+        assertEquals(userState.copy(unreadCount = 2), manager.state.value)
+    }
+
+    @Test
+    fun `changing the shown types refreshes once`() = runTest {
+        session.set(loggedIn)
+        val manager = startManager()
+        manager.setAppForeground(true)
+        runCurrent()
+        assertEquals(1, service.calls)
+        assertEquals(userState, manager.state.value)
+
+        settings.value = NotificationSettings(showReportResults = false)
+        runCurrent()
+        assertEquals(2, service.calls)
+        assertEquals(setOf(NotificationType.SYSTEM, NotificationType.ACCOUNT_SECURITY), service.requestedTypes.last())
+        assertEquals(2, manager.state.value.unreadCount)
+
+        // 公告红点的设置不影响请求的类型
+        settings.value = settings.value.copy(showAnnouncementDot = false)
+        runCurrent()
+        assertEquals(2, service.calls)
+
+        settings.value = NotificationSettings.Default
+        runCurrent()
+        assertEquals(3, service.calls)
+        assertEquals(NotificationType.SUPPORTED, service.requestedTypes.last())
+        assertEquals(userState, manager.state.value)
     }
 }

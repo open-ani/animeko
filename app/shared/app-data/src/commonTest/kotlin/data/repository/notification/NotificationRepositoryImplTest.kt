@@ -42,7 +42,7 @@ class NotificationRepositoryImplTest {
                 else -> error("Unexpected cursor")
             }
         }
-        val source = server.repository().notificationsPagingSource(NotificationGroup.NOTICE)
+        val source = server.repository().notificationsPagingSource(NotificationGroup.NOTICE.types)
 
         val first = assertIs<PagingSource.LoadResult.Page<String, AppNotification>>(source.load(refresh(90)))
         assertEquals(listOf("n1", "n2"), first.data.map { it.id })
@@ -66,7 +66,7 @@ class NotificationRepositoryImplTest {
         val server = NotificationTestServer { respondJson("""{"items":[]}""") }
         val repository = server.repository()
 
-        repository.notificationsPagingSource(NotificationGroup.NOTICE).load(refresh(300))
+        repository.notificationsPagingSource(NotificationGroup.NOTICE.types).load(refresh(300))
         repository.announcementsPagingSource().load(refresh(300))
 
         assertEquals(listOf("100", "100"), server.requests.map { it.url.parameters["limit"] })
@@ -75,7 +75,7 @@ class NotificationRepositoryImplTest {
     @Test
     fun `refresh always starts from the first page`() = runTest {
         val server = NotificationTestServer { respondJson("""{"items":[]}""") }
-        val source = server.repository().notificationsPagingSource(NotificationGroup.NOTICE)
+        val source = server.repository().notificationsPagingSource(NotificationGroup.NOTICE.types)
 
         assertNull(source.getRefreshKey(PagingState(emptyList(), null, PagingConfig(30), 0)))
     }
@@ -86,7 +86,7 @@ class NotificationRepositoryImplTest {
         val repository = server.repository()
 
         val notifications = assertIs<PagingSource.LoadResult.Error<String, AppNotification>>(
-            repository.notificationsPagingSource(NotificationGroup.NOTICE).load(refresh(30)),
+            repository.notificationsPagingSource(NotificationGroup.NOTICE.types).load(refresh(30)),
         )
         assertIs<RepositoryServiceUnavailableException>(notifications.repositoryException)
         val announcements = assertIs<PagingSource.LoadResult.Error<String, Announcement>>(
@@ -179,7 +179,7 @@ class NotificationRepositoryImplTest {
         val server = NotificationTestServer()
         val repository = server.repository()
 
-        repository.markAllNotificationsRead(NotificationGroup.NOTICE, beforeMillis = 42)
+        repository.markAllNotificationsRead(NotificationGroup.NOTICE.types, beforeMillis = 42)
         repository.markAllAnnouncementsRead(beforeMillis = 7)
 
         val (notifications, announcements) = server.requests

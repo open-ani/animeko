@@ -81,7 +81,7 @@ open class AnnouncementsAniApi : ApiClient {
 
     /**
      * List announcements
-     * 已发布的公告, 置顶的在前, 再按发布时间倒序. 登录时带每条的已读状态.
+     * 已发布且未过期的公告, 置顶的在前, 再按发布时间倒序. 登录时带每条的已读状态.
      * @param after 上一页的 &#x60;nextCursor&#x60; (optional)
      * @param limit  (optional)
      * @return AniAnnouncementPage

@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.notification
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,17 +19,12 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -38,6 +32,7 @@ import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,7 +57,6 @@ import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.adaptive.ListDetailLayoutParameters
 import me.him188.ani.app.ui.adaptive.PaneScope
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.lang.Lang
@@ -71,7 +65,6 @@ import me.him188.ani.app.ui.lang.notification_announcement_detail_title
 import me.him188.ani.app.ui.lang.notification_announcement_pinned
 import me.him188.ani.app.ui.lang.notification_announcements_empty
 import me.him188.ani.app.ui.lang.notification_announcements_title
-import me.him188.ani.app.ui.lang.notification_mark_all_read
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.isLoadingFirstPage
 import me.him188.ani.app.ui.search.rememberLoadErrorState
@@ -79,6 +72,8 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * 公告列表. 窄屏点击公告时调用 [onNavigateToDetail]; 宽屏为双栏, 详情显示在右侧.
+ *
+ * 登录用户进入列表即已读, 见 [AnnouncementsViewModel].
  */
 @Composable
 fun AnnouncementsScreen(
@@ -93,16 +88,19 @@ fun AnnouncementsScreen(
     val items = vm.announcementsPager.collectAsLazyPagingItemsWithLifecycle()
     val access by vm.access.collectAsStateWithLifecycle()
     val readOverlay by vm.readOverlay.collectAsStateWithLifecycle()
-    val asyncHandler = rememberAsyncHandler()
+
+    val loadState = items.loadState
+    LaunchedEffect(loadState) {
+        if (loadState.refresh is LoadState.NotLoading) {
+            vm.markLoadedAnnouncementsRead()
+        }
+    }
 
     AnnouncementsScreen(
         items = items,
         access = access,
         readOverlay = readOverlay,
         onOpenAnnouncement = vm::markRead,
-        onMarkAllRead = { newestPublishedAtMillis ->
-            asyncHandler.launch { vm.markAllRead(newestPublishedAtMillis) }
-        },
         onRefresh = {
             items.refresh()
             vm.refreshBadge()
@@ -118,7 +116,6 @@ fun AnnouncementsScreen(
 
 /**
  * @param onOpenAnnouncement 打开一条公告时调用 (用于标为已读), 之后再导航到详情.
- * @param onMarkAllRead 参数为已加载的最新一条公告的发布时间.
  */
 @Composable
 fun AnnouncementsScreen(
@@ -126,7 +123,6 @@ fun AnnouncementsScreen(
     access: NotificationAccess,
     readOverlay: ReadOverlay,
     onOpenAnnouncement: (Announcement) -> Unit,
-    onMarkAllRead: (newestPublishedAtMillis: Long) -> Unit,
     onRefresh: () -> Unit,
     onNavigateToDetail: (announcementId: String) -> Unit,
     onLogin: () -> Unit,
@@ -152,9 +148,6 @@ fun AnnouncementsScreen(
     }
 
     val loadedItems = items.itemSnapshotList.items
-    val newestPublishedAtMillis = loadedItems.maxOfOrNull { it.publishedAtMillis }
-    val canMarkAllRead = access == NotificationAccess.AUTHORIZED && newestPublishedAtMillis != null &&
-            loadedItems.any { readOverlay.isRead(it) == false }
 
     Surface(modifier, color = AniThemeDefaults.pageContentBackgroundColor) {
         AniListDetailPaneScaffold(
@@ -163,33 +156,19 @@ fun AnnouncementsScreen(
                 AniTopAppBar(
                     title = { AniTopAppBarDefaults.Title(stringResource(Lang.notification_announcements_title)) },
                     navigationIcon = navigationIcon,
-                    actions = {
-                        if (access == NotificationAccess.AUTHORIZED) {
-                            IconButton(
-                                onClick = { newestPublishedAtMillis?.let(onMarkAllRead) },
-                                Modifier.testTag(AnnouncementTestTags.MARK_ALL_READ),
-                                enabled = canMarkAllRead,
-                            ) {
-                                Icon(Icons.Rounded.DoneAll, stringResource(Lang.notification_mark_all_read))
-                            }
-                        }
-                    },
                     windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                 )
             },
             listPaneContent = {
-                // 只有列表行显示相对时间
-                ProvideNotificationNow {
-                    AnnouncementList(
-                        items = items,
-                        access = access,
-                        readOverlay = readOverlay,
-                        selectedId = if (listDetailLayoutParameters.highlightSelectedItem) selectedId else null,
-                        onClickAnnouncement = ::openAnnouncement,
-                        onRefresh = onRefresh,
-                        onLogin = onLogin,
-                    )
-                }
+                AnnouncementList(
+                    items = items,
+                    access = access,
+                    readOverlay = readOverlay,
+                    selectedId = if (listDetailLayoutParameters.highlightSelectedItem) selectedId else null,
+                    onClickAnnouncement = ::openAnnouncement,
+                    onRefresh = onRefresh,
+                    onLogin = onLogin,
+                )
             },
             detailPane = {
                 val announcement = selectedId?.let { id -> loadedItems.firstOrNull { it.id == id } }
@@ -208,7 +187,10 @@ fun AnnouncementsScreen(
                     if (announcement == null) {
                         NotificationHintText(
                             stringResource(Lang.notification_announcement_detail_placeholder),
-                            Modifier.testTag(AnnouncementTestTags.DETAIL_PLACEHOLDER),
+                            Modifier
+                                .paneContentPadding()
+                                .detailContentWidth()
+                                .testTag(AnnouncementTestTags.DETAIL_PLACEHOLDER),
                         )
                     } else {
                         AnnouncementDetailContent(
@@ -346,13 +328,7 @@ fun AnnouncementDetailContent(
     announcement: Announcement,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier
-            .testTag(AnnouncementTestTags.DETAIL)
-            .verticalScroll(rememberScrollState())
-            .widthIn(max = 640.dp)
-            .padding(top = 4.dp, bottom = 16.dp),
-    ) {
+    DetailContentColumn(AnnouncementTestTags.DETAIL, modifier) {
         LinkedTextDetail(
             title = announcement.title,
             timeMillis = announcement.publishedAtMillis,

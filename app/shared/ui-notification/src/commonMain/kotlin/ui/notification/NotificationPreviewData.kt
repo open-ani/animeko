@@ -18,8 +18,8 @@ import me.him188.ani.app.data.models.notification.Announcement
 import me.him188.ani.app.data.models.notification.AnnouncementTag
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
-import me.him188.ani.app.data.models.notification.LoginMethod
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
+import me.him188.ani.app.data.models.notification.SystemNotificationEvent
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -41,7 +41,8 @@ val TestNotificationTimeContext = NotificationTimeContext(
     timeZoneOverride = UtcOffset(hours = 8).asTimeZone(),
 )
 
-private const val HOUR_MILLIS = 3_600_000L
+private const val MINUTE_MILLIS = 60_000L
+private const val HOUR_MILLIS = 60 * MINUTE_MILLIS
 private const val DAY_MILLIS = 24 * HOUR_MILLIS
 
 @TestOnly
@@ -53,6 +54,7 @@ fun createTestReportResult(
     createdAtMillis: Long = TestNotificationNowMillis - 2 * HOUR_MILLIS,
     contentRemoved: Boolean = true,
     contentSnapshot: String? = "星野：最后一集芙莉莲会和费伦分开",
+    contentCreatedAtMillis: Long? = createdAtMillis - DAY_MILLIS - 22 * MINUTE_MILLIS,
     subjectId: Long? = 400602,
     subjectName: String? = "葬送のフリーレン",
     subjectNameCn: String? = "葬送的芙莉莲",
@@ -72,6 +74,7 @@ fun createTestReportResult(
         handledAtMillis = createdAtMillis,
         contentRemoved = contentRemoved,
         contentSnapshot = contentSnapshot,
+        contentCreatedAtMillis = contentCreatedAtMillis,
         subjectId = subjectId,
         subjectName = subjectName,
         subjectNameCn = subjectNameCn,
@@ -87,12 +90,9 @@ fun createTestReportResult(
 fun createTestAccountSecurity(
     id: String = "security-1",
     read: Boolean = false,
-    event: AccountSecurityEvent = AccountSecurityEvent.NEW_LOGIN,
+    event: AccountSecurityEvent = AccountSecurityEvent.THIRD_PARTY_UNBOUND,
     createdAtMillis: Long = TestNotificationNowMillis - DAY_MILLIS - 3 * HOUR_MILLIS,
-    loginMethod: LoginMethod? = LoginMethod.QR_CODE,
-    clientPlatform: String? = "macos-aarch64",
-    email: String? = null,
-    provider: String? = null,
+    provider: String? = "github",
 ): AppNotification = AppNotification(
     id = id,
     createdAtMillis = createdAtMillis,
@@ -101,11 +101,6 @@ fun createTestAccountSecurity(
         event = event,
         rawEvent = event.wireValue ?: "future_event",
         occurredAtMillis = createdAtMillis,
-        loginMethod = loginMethod,
-        clientPlatform = clientPlatform,
-        clientVersion = "5.3.0",
-        deviceName = null,
-        email = email,
         provider = provider,
     ),
 )
@@ -118,11 +113,30 @@ fun createTestSystemNotification(
     title: String = "欢迎加入 Animeko",
     body: String = "绑定 Bangumi 账号后可同步追番进度与收藏。\n详情见 https://myani.org/help",
     linkUrl: String? = "https://myani.org",
+    event: SystemNotificationEvent? = null,
 ): AppNotification = AppNotification(
     id = id,
     createdAtMillis = createdAtMillis,
     read = read,
-    content = AppNotificationContent.System(title, body, linkUrl),
+    content = AppNotificationContent.System(title, body, linkUrl, event),
+)
+
+/**
+ * Bangumi 授权过期的系统消息. 标题和正文是服务端为不认识这个事件的客户端准备的.
+ */
+@TestOnly
+fun createTestBangumiExpired(
+    id: String = "bangumi-expired",
+    read: Boolean = false,
+    createdAtMillis: Long = TestNotificationNowMillis - 2 * DAY_MILLIS,
+): AppNotification = createTestSystemNotification(
+    id = id,
+    read = read,
+    createdAtMillis = createdAtMillis,
+    title = "Bangumi 授权已过期",
+    body = "追番进度已停止同步，重新授权后自动恢复。",
+    linkUrl = null,
+    event = SystemNotificationEvent.BANGUMI_AUTHORIZATION_EXPIRED,
 )
 
 @TestOnly
@@ -153,13 +167,7 @@ val TestNotifications: List<AppNotification>
     get() = listOf(
         createTestReportResult(),
         createTestAccountSecurity(),
-        createTestAccountSecurity(
-            id = "security-2",
-            event = AccountSecurityEvent.BANGUMI_AUTHORIZATION_EXPIRED,
-            createdAtMillis = TestNotificationNowMillis - 2 * DAY_MILLIS,
-            loginMethod = null,
-            clientPlatform = null,
-        ),
+        createTestBangumiExpired(),
         createTestReportResult(
             id = "report-2",
             read = true,
@@ -169,13 +177,11 @@ val TestNotifications: List<AppNotification>
             episodeSort = "5",
         ),
         createTestAccountSecurity(
-            id = "security-3",
+            id = "security-2",
             read = true,
-            event = AccountSecurityEvent.EMAIL_CHANGED,
+            event = AccountSecurityEvent.UNKNOWN,
             createdAtMillis = TestNotificationNowMillis - 25 * DAY_MILLIS,
-            loginMethod = null,
-            clientPlatform = null,
-            email = "a***@example.com",
+            provider = null,
         ),
         createTestSystemNotification(),
     )

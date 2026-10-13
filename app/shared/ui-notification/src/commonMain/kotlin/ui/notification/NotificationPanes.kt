@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.notification
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +36,7 @@ import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
  * 宽屏双栏中的详情栏: 透明顶栏和内容. 详情栏本身的背景由 `AniListDetailPaneScaffold` 绘制.
  *
  * @param onNavigateBack 窗口变窄 (只显示详情栏) 时的返回按钮. 为 `null` 时不显示.
+ * @param actions 顶栏右侧的操作.
  * @param content 需要自行使用 [PaneScope.paneContentPadding] 和 [PaneScope.paneWindowInsetsPadding].
  */
 @Composable
@@ -42,6 +44,7 @@ internal fun PaneScope.NotificationDetailPaneLayout(
     title: String,
     onNavigateBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    actions: @Composable RowScope.() -> Unit = {},
     content: @Composable PaneScope.() -> Unit,
 ) {
     Column(modifier.fillMaxSize()) {
@@ -52,6 +55,7 @@ internal fun PaneScope.NotificationDetailPaneLayout(
                     BackNavigationIconButton(onNavigateBack)
                 }
             },
+            actions = actions,
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent,
                 scrolledContainerColor = Color.Transparent,

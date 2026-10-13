@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -28,10 +30,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,34 +49,17 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
-import me.him188.ani.app.data.models.notification.AccountSecurityEvent
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
+import me.him188.ani.app.data.models.notification.SystemNotificationEvent
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.notification_account_bangumi_expired_description
-import me.him188.ani.app.ui.lang.notification_account_client_version
-import me.him188.ani.app.ui.lang.notification_account_device
-import me.him188.ani.app.ui.lang.notification_account_email
-import me.him188.ani.app.ui.lang.notification_account_email_bound_description
-import me.him188.ani.app.ui.lang.notification_account_email_changed_description
-import me.him188.ani.app.ui.lang.notification_account_email_unbound_description
-import me.him188.ani.app.ui.lang.notification_account_login_method
-import me.him188.ani.app.ui.lang.notification_account_new_login_description
-import me.him188.ani.app.ui.lang.notification_account_new_login_hint
-import me.him188.ani.app.ui.lang.notification_account_platform
-import me.him188.ani.app.ui.lang.notification_account_provider
-import me.him188.ani.app.ui.lang.notification_account_reauthorize
-import me.him188.ani.app.ui.lang.notification_account_security_detail_title
-import me.him188.ani.app.ui.lang.notification_account_settings
-import me.him188.ani.app.ui.lang.notification_account_third_party_unbound_description
-import me.him188.ani.app.ui.lang.notification_account_time
-import me.him188.ani.app.ui.lang.notification_account_unknown_description
 import me.him188.ani.app.ui.lang.notification_report_go_to_character
 import me.him188.ani.app.ui.lang.notification_report_go_to_episode
 import me.him188.ani.app.ui.lang.notification_report_go_to_person
@@ -86,24 +71,64 @@ import me.him188.ani.app.ui.lang.notification_report_outcome_removed
 import me.him188.ani.app.ui.lang.notification_report_privacy_footnote
 import me.him188.ani.app.ui.lang.notification_report_reason
 import me.him188.ani.app.ui.lang.notification_report_reported_at
-import me.him188.ani.app.ui.lang.notification_report_result_description
+import me.him188.ani.app.ui.lang.notification_report_result_description_handled
+import me.him188.ani.app.ui.lang.notification_report_result_description_removed
 import me.him188.ani.app.ui.lang.notification_report_result_detail_title
 import me.him188.ani.app.ui.lang.notification_report_result_upheld
 import me.him188.ani.app.ui.lang.notification_report_snapshot_footnote
 import me.him188.ani.app.ui.lang.notification_report_snapshot_title
 import me.him188.ani.app.ui.lang.notification_report_target
+import me.him188.ani.app.ui.lang.notification_system_bangumi_expired
+import me.him188.ani.app.ui.lang.notification_system_bangumi_expired_supporting
+import me.him188.ani.app.ui.lang.notification_system_bangumi_reauthorize
 import me.him188.ani.app.ui.lang.notification_system_detail_title
+import me.him188.ani.app.ui.lang.notification_title
 import me.him188.ani.app.ui.lang.notification_view_details
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * 详情内容的最大宽度. 宽屏中详情栏更宽时内容靠左.
+ * 详情内容的最大宽度.
  */
 private val DetailContentMaxWidth = 640.dp
 
 /**
- * 举报结果详情底部的跳转按钮的目标. 缺少目标的 ID 时没有按钮.
+ * 详情内容的宽度: 最宽 [DetailContentMaxWidth], 可用宽度更大时 (宽屏) 水平居中, 否则 (手机) 填满.
+ *
+ * 通知和公告的详情、加载失败、找不到和未选择时的提示都使用这个宽度, 让它们在宽屏中位于同一列.
+ */
+internal fun Modifier.detailContentWidth(): Modifier =
+    fillMaxWidth()
+        .wrapContentWidth(Alignment.CenterHorizontally)
+        .widthIn(max = DetailContentMaxWidth)
+        .fillMaxWidth()
+
+/**
+ * 可纵向滚动的详情内容. 整个区域都可以滚动, 内容列的宽度由 [detailContentWidth] 决定.
+ *
+ * @param testTag 内容列的测试标签.
+ */
+@Composable
+internal fun DetailContentColumn(
+    testTag: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Box(modifier.verticalScroll(rememberScrollState())) {
+        Column(
+            Modifier
+                .detailContentWidth()
+                .testTag(testTag)
+                .padding(top = 4.dp, bottom = 16.dp),
+            content = content,
+        )
+    }
+}
+
+/**
+ * 举报结果详情的跳转按钮的目标. 缺少目标的 ID 时没有按钮.
+ *
+ * 按钮通常在详情底部; 宽屏双栏中是详情栏顶栏的图标按钮, 见 [NotificationDetailTopBarActions].
  */
 @Immutable
 sealed interface ReportResultAction {
@@ -140,23 +165,35 @@ fun reportResultAction(content: AppNotificationContent.ReportResult): ReportResu
             content.characterId?.let { ReportResultAction.OpenCharacter(it.toInt()) }
     }
 
-/**
- * 账号安全详情底部的按钮. Bangumi 授权过期时去重新授权, 其他事件去账号设置.
- */
-enum class AccountSecurityAction {
-    REAUTHORIZE_BANGUMI,
-    ACCOUNT_SETTINGS,
-}
+val ReportResultAction.labelRes: StringResource
+    get() = when (this) {
+        is ReportResultAction.OpenEpisode -> Lang.notification_report_go_to_episode
+        is ReportResultAction.OpenSubject -> Lang.notification_report_go_to_subject
+        is ReportResultAction.OpenPerson -> Lang.notification_report_go_to_person
+        is ReportResultAction.OpenCharacter -> Lang.notification_report_go_to_character
+    }
 
-fun accountSecurityAction(event: AccountSecurityEvent): AccountSecurityAction = when (event) {
-    AccountSecurityEvent.BANGUMI_AUTHORIZATION_EXPIRED -> AccountSecurityAction.REAUTHORIZE_BANGUMI
-    AccountSecurityEvent.NEW_LOGIN,
-    AccountSecurityEvent.EMAIL_BOUND,
-    AccountSecurityEvent.EMAIL_CHANGED,
-    AccountSecurityEvent.EMAIL_UNBOUND,
-    AccountSecurityEvent.THIRD_PARTY_UNBOUND,
-    AccountSecurityEvent.UNKNOWN,
-        -> AccountSecurityAction.ACCOUNT_SETTINGS
+/**
+ * 执行 [action]. 打开条目时用 [content] 中的条目名作为页面加载完成前的占位.
+ */
+fun NotificationActions.perform(
+    action: ReportResultAction,
+    content: AppNotificationContent.ReportResult,
+) {
+    when (action) {
+        is ReportResultAction.OpenEpisode -> onOpenEpisode(action.subjectId, action.episodeId)
+        is ReportResultAction.OpenSubject -> onOpenSubject(
+            action.subjectId,
+            SubjectDetailPlaceholder(
+                id = action.subjectId,
+                name = content.subjectName.orEmpty(),
+                nameCN = content.subjectNameCn.orEmpty(),
+            ),
+        )
+
+        is ReportResultAction.OpenPerson -> onOpenPerson(action.personId)
+        is ReportResultAction.OpenCharacter -> onOpenCharacter(action.characterId)
+    }
 }
 
 /**
@@ -165,31 +202,55 @@ fun accountSecurityAction(event: AccountSecurityEvent): AccountSecurityAction = 
 @Composable
 fun notificationDetailTitle(content: AppNotificationContent): String = when (content) {
     is AppNotificationContent.ReportResult -> stringResource(Lang.notification_report_result_detail_title)
-    is AppNotificationContent.AccountSecurity -> stringResource(Lang.notification_account_security_detail_title)
+    is AppNotificationContent.AccountSecurity -> stringResource(Lang.notification_title)
     is AppNotificationContent.System -> stringResource(Lang.notification_system_detail_title)
 }
 
 /**
  * 一条通知的详情内容 (不含顶栏). 自带纵向滚动.
+ *
+ * 账号安全通知没有详情 (见 [NotificationOpenTarget]), 不显示内容.
+ *
+ * @param reportActionInTopBar 举报结果的跳转按钮由顶栏的 [NotificationDetailTopBarActions] 显示, 此时内容底部没有这个按钮.
+ * 用于宽屏双栏.
  */
 @Composable
 fun NotificationDetailContent(
     notification: AppNotification,
-    actions: NotificationDetailActions,
+    actions: NotificationActions,
     modifier: Modifier = Modifier,
+    reportActionInTopBar: Boolean = false,
 ) {
-    Column(
-        modifier
-            .testTag(NotificationTestTags.DETAIL)
-            .verticalScroll(rememberScrollState())
-            .widthIn(max = DetailContentMaxWidth)
-            .padding(top = 4.dp, bottom = 16.dp),
-    ) {
+    DetailContentColumn(NotificationTestTags.DETAIL, modifier) {
         when (val content = notification.content) {
-            is AppNotificationContent.ReportResult -> ReportResultDetail(content, actions)
-            is AppNotificationContent.AccountSecurity -> AccountSecurityDetail(content, actions)
-            is AppNotificationContent.System -> SystemNotificationDetail(content, notification.createdAtMillis)
+            is AppNotificationContent.ReportResult -> ReportResultDetail(content, actions, reportActionInTopBar)
+            is AppNotificationContent.AccountSecurity -> {}
+            is AppNotificationContent.System -> SystemNotificationDetail(content, notification.createdAtMillis, actions)
         }
+    }
+}
+
+/**
+ * 详情栏顶栏中的操作: 举报结果的跳转按钮 (见 [ReportResultAction]), 显示为图标按钮. 其他通知没有.
+ *
+ * 与 `NotificationDetailContent(reportActionInTopBar = true)` 一起使用.
+ */
+@Composable
+fun NotificationDetailTopBarActions(
+    notification: AppNotification,
+    actions: NotificationActions,
+) {
+    val content = notification.content as? AppNotificationContent.ReportResult ?: return
+    val action = reportResultAction(content) ?: return
+    IconButton(
+        onClick = { actions.perform(action, content) },
+        Modifier.testTag(NotificationTestTags.DETAIL_TOP_BAR_ACTION),
+    ) {
+        Icon(
+            Icons.AutoMirrored.Rounded.OpenInNew,
+            contentDescription = stringResource(action.labelRes),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -289,13 +350,17 @@ private fun DetailActionButton(
 @Composable
 private fun ReportResultDetail(
     content: AppNotificationContent.ReportResult,
-    actions: NotificationDetailActions,
+    actions: NotificationActions,
+    actionInTopBar: Boolean,
 ) {
     val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
     DetailHeader(
-        Icons.Rounded.CheckCircle,
+        Icons.Outlined.TaskAlt,
         title = stringResource(Lang.notification_report_result_upheld),
-        description = stringResource(Lang.notification_report_result_description),
+        description = stringResource(
+            if (content.contentRemoved) Lang.notification_report_result_description_removed
+            else Lang.notification_report_result_description_handled,
+        ),
     )
 
     DetailField(
@@ -329,7 +394,7 @@ private fun ReportResultDetail(
     // 举报时可以不附带快照
     val snapshot = content.contentSnapshot?.takeIf { it.isNotBlank() }
     if (snapshot != null) {
-        ReportSnapshotSection(remember(snapshot) { parseReportSnapshot(snapshot) })
+        ReportSnapshotSection(remember(snapshot) { parseReportSnapshot(snapshot) }, content.contentCreatedAtMillis)
     }
 
     val privacyFootnote = stringResource(Lang.notification_report_privacy_footnote)
@@ -341,46 +406,21 @@ private fun ReportResultDetail(
         },
     )
 
-    when (val action = reportResultAction(content)) {
-        is ReportResultAction.OpenEpisode -> DetailActionButton(
-            stringResource(Lang.notification_report_go_to_episode),
-            onClick = { actions.onOpenEpisode(action.subjectId, action.episodeId) },
+    val action = reportResultAction(content)
+    if (action != null && !actionInTopBar) {
+        DetailActionButton(
+            stringResource(action.labelRes),
+            onClick = { actions.perform(action, content) },
             Modifier.testTag(NotificationTestTags.DETAIL_ACTION),
         )
-
-        is ReportResultAction.OpenSubject -> DetailActionButton(
-            stringResource(Lang.notification_report_go_to_subject),
-            onClick = {
-                actions.onOpenSubject(
-                    action.subjectId,
-                    SubjectDetailPlaceholder(
-                        id = action.subjectId,
-                        name = content.subjectName.orEmpty(),
-                        nameCN = content.subjectNameCn.orEmpty(),
-                    ),
-                )
-            },
-            Modifier.testTag(NotificationTestTags.DETAIL_ACTION),
-        )
-
-        is ReportResultAction.OpenPerson -> DetailActionButton(
-            stringResource(Lang.notification_report_go_to_person),
-            onClick = { actions.onOpenPerson(action.personId) },
-            Modifier.testTag(NotificationTestTags.DETAIL_ACTION),
-        )
-
-        is ReportResultAction.OpenCharacter -> DetailActionButton(
-            stringResource(Lang.notification_report_go_to_character),
-            onClick = { actions.onOpenCharacter(action.characterId) },
-            Modifier.testTag(NotificationTestTags.DETAIL_ACTION),
-        )
-
-        null -> {}
     }
 }
 
+/**
+ * @param createdAtMillis 被举报评论的发表时间, 显示在昵称后面.
+ */
 @Composable
-private fun ReportSnapshotSection(snapshot: ReportSnapshot) {
+private fun ReportSnapshotSection(snapshot: ReportSnapshot, createdAtMillis: Long?) {
     DetailDivider()
     Column(
         Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -411,13 +451,32 @@ private fun ReportSnapshotSection(snapshot: ReportSnapshot) {
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                if (author != null) {
-                    Text(
-                        author,
-                        Modifier.testTag(NotificationTestTags.REPORT_SNAPSHOT_AUTHOR),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                    )
+                if (author != null || createdAtMillis != null) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (author != null) {
+                            Text(
+                                author,
+                                Modifier.weight(1f, fill = false).testTag(NotificationTestTags.REPORT_SNAPSHOT_AUTHOR),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (createdAtMillis != null) {
+                            Text(
+                                formatNotificationDetailTime(createdAtMillis),
+                                Modifier.testTag(NotificationTestTags.REPORT_SNAPSHOT_TIME),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Normal,
+                                color = MaterialTheme.colorScheme.outline,
+                                maxLines = 1,
+                            )
+                        }
+                    }
                 }
                 Text(
                     snapshot.text,
@@ -430,85 +489,40 @@ private fun ReportSnapshotSection(snapshot: ReportSnapshot) {
     }
 }
 
-@Composable
-private fun AccountSecurityDetail(
-    content: AppNotificationContent.AccountSecurity,
-    actions: NotificationDetailActions,
-) {
-    DetailHeader(
-        Icons.Rounded.Shield,
-        title = accountSecurityTitle(content).resolve(),
-        description = stringResource(content.event.descriptionRes),
-    )
-
-    DetailField(
-        stringResource(Lang.notification_account_time),
-        formatNotificationDetailTime(content.occurredAtMillis),
-    )
-    content.deviceName?.takeIf { it.isNotBlank() }?.let {
-        DetailField(stringResource(Lang.notification_account_device), it)
-    }
-    clientPlatformDisplayName(content.clientPlatform)?.let {
-        DetailField(stringResource(Lang.notification_account_platform), it)
-    }
-    content.clientVersion?.takeIf { it.isNotBlank() }?.let {
-        DetailField(stringResource(Lang.notification_account_client_version), it)
-    }
-    loginMethodText(content.loginMethod)?.let {
-        DetailField(stringResource(Lang.notification_account_login_method), it.resolve())
-    }
-    content.email?.takeIf { it.isNotBlank() }?.let {
-        DetailField(stringResource(Lang.notification_account_email), it)
-    }
-    providerDisplayName(content.provider)?.let {
-        DetailField(stringResource(Lang.notification_account_provider), it)
-    }
-
-    if (content.event == AccountSecurityEvent.NEW_LOGIN) {
-        DetailFootnote(stringResource(Lang.notification_account_new_login_hint))
-    } else {
-        DetailDivider()
-    }
-
-    Spacer(Modifier.height(4.dp))
-    when (accountSecurityAction(content.event)) {
-        AccountSecurityAction.REAUTHORIZE_BANGUMI -> DetailActionButton(
-            stringResource(Lang.notification_account_reauthorize),
-            onClick = actions.onReauthorizeBangumi,
-            Modifier.testTag(NotificationTestTags.DETAIL_ACTION),
-        )
-
-        AccountSecurityAction.ACCOUNT_SETTINGS -> DetailActionButton(
-            stringResource(Lang.notification_account_settings),
-            onClick = actions.onOpenAccountSettings,
-            Modifier.testTag(NotificationTestTags.DETAIL_ACTION),
-        )
-    }
-}
-
-private val AccountSecurityEvent.descriptionRes: StringResource
-    get() = when (this) {
-        AccountSecurityEvent.NEW_LOGIN -> Lang.notification_account_new_login_description
-        AccountSecurityEvent.EMAIL_BOUND -> Lang.notification_account_email_bound_description
-        AccountSecurityEvent.EMAIL_CHANGED -> Lang.notification_account_email_changed_description
-        AccountSecurityEvent.EMAIL_UNBOUND -> Lang.notification_account_email_unbound_description
-        AccountSecurityEvent.THIRD_PARTY_UNBOUND -> Lang.notification_account_third_party_unbound_description
-        AccountSecurityEvent.BANGUMI_AUTHORIZATION_EXPIRED -> Lang.notification_account_bangumi_expired_description
-        AccountSecurityEvent.UNKNOWN -> Lang.notification_account_unknown_description
-    }
-
+/**
+ * 系统消息. 认识的事件使用客户端的文案和操作, 否则为服务端的标题、正文和链接.
+ */
 @Composable
 private fun SystemNotificationDetail(
     content: AppNotificationContent.System,
     createdAtMillis: Long,
+    actions: NotificationActions,
 ) {
-    LinkedTextDetail(
-        title = content.title,
-        timeMillis = createdAtMillis,
-        body = content.body,
-        linkUrl = content.linkUrl,
-        linkTestTag = NotificationTestTags.DETAIL_LINK,
-    )
+    when (content.event) {
+        SystemNotificationEvent.BANGUMI_AUTHORIZATION_EXPIRED -> {
+            LinkedTextDetail(
+                title = stringResource(Lang.notification_system_bangumi_expired),
+                timeMillis = createdAtMillis,
+                body = stringResource(Lang.notification_system_bangumi_expired_supporting),
+                linkUrl = null,
+                linkTestTag = NotificationTestTags.DETAIL_LINK,
+            )
+            Spacer(Modifier.height(4.dp))
+            DetailActionButton(
+                stringResource(Lang.notification_system_bangumi_reauthorize),
+                onClick = actions.onReauthorizeBangumi,
+                Modifier.testTag(NotificationTestTags.DETAIL_ACTION),
+            )
+        }
+
+        null -> LinkedTextDetail(
+            title = content.title,
+            timeMillis = createdAtMillis,
+            body = content.body,
+            linkUrl = content.linkUrl,
+            linkTestTag = NotificationTestTags.DETAIL_LINK,
+        )
+    }
 }
 
 /**

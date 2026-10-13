@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.settings.notification
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +17,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,12 +37,13 @@ import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.notification_settings
+import me.him188.ani.app.ui.lang.notification_settings_account_security_item
 import me.him188.ani.app.ui.lang.notification_settings_announcement_description
 import me.him188.ani.app.ui.lang.notification_settings_announcement_item
 import me.him188.ani.app.ui.lang.notification_settings_group_announcements
 import me.him188.ani.app.ui.lang.notification_settings_group_system
-import me.him188.ani.app.ui.lang.notification_settings_system_description
-import me.him188.ani.app.ui.lang.notification_settings_system_item
+import me.him188.ani.app.ui.lang.notification_settings_report_result_item
+import me.him188.ani.app.ui.lang.notification_settings_system_group_description
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
 import me.him188.ani.app.ui.settings.framework.SettingsState
@@ -61,8 +65,10 @@ class NotificationSettingsViewModel(
 }
 
 object NotificationSettingsTestTags {
-    const val SYSTEM = "notification-settings-system"
+    const val REPORT_RESULT = "notification-settings-report-result"
+    const val ACCOUNT_SECURITY = "notification-settings-account-security"
     const val ANNOUNCEMENT = "notification-settings-announcement"
+    const val GROUP_DIVIDER = "notification-settings-group-divider"
 }
 
 /**
@@ -100,29 +106,46 @@ fun NotificationSettingsScreen(
 }
 
 /**
- * 系统通知总是开启; 公告只控制头像上的红点.
+ * 举报结果和账号安全各有一个开关, 关闭后本机不显示也不统计这类通知; 系统消息没有开关. 公告只控制头像上的红点.
+ *
+ * 两组之间有一条通栏的分隔线.
  */
 @Composable
 fun SettingsScope.NotificationSettingsGroups(state: SettingsState<NotificationSettings>) {
     val settings by state
-    Group(title = { Text(stringResource(Lang.notification_settings_group_system)) }, useThinHeader = true) {
-        SwitchItem(
-            checked = true,
-            onCheckedChange = {},
-            title = { Text(stringResource(Lang.notification_settings_system_item)) },
-            Modifier.testTag(NotificationSettingsTestTags.SYSTEM),
-            description = { Text(stringResource(Lang.notification_settings_system_description)) },
-            enabled = false,
+    // 不使用外层的组间距, 分隔线与两组的距离只来自组自身的内边距
+    Column {
+        Group(
+            title = { Text(stringResource(Lang.notification_settings_group_system)) },
+            description = { Text(stringResource(Lang.notification_settings_system_group_description)) },
+            useThinHeader = true,
+        ) {
+            SwitchItem(
+                checked = settings.showReportResults,
+                onCheckedChange = { state.update(settings.copy(showReportResults = it)) },
+                title = { Text(stringResource(Lang.notification_settings_report_result_item)) },
+                Modifier.testTag(NotificationSettingsTestTags.REPORT_RESULT),
+            )
+            SwitchItem(
+                checked = settings.showAccountSecurity,
+                onCheckedChange = { state.update(settings.copy(showAccountSecurity = it)) },
+                title = { Text(stringResource(Lang.notification_settings_account_security_item)) },
+                Modifier.testTag(NotificationSettingsTestTags.ACCOUNT_SECURITY),
+            )
+        }
+        HorizontalDivider(
+            Modifier.testTag(NotificationSettingsTestTags.GROUP_DIVIDER),
+            color = MaterialTheme.colorScheme.outlineVariant,
         )
-    }
-    Group(title = { Text(stringResource(Lang.notification_settings_group_announcements)) }, useThinHeader = true) {
-        SwitchItem(
-            checked = settings.showAnnouncementDot,
-            onCheckedChange = { state.update(settings.copy(showAnnouncementDot = it)) },
-            title = { Text(stringResource(Lang.notification_settings_announcement_item)) },
-            Modifier.testTag(NotificationSettingsTestTags.ANNOUNCEMENT),
-            description = { Text(stringResource(Lang.notification_settings_announcement_description)) },
-        )
+        Group(title = { Text(stringResource(Lang.notification_settings_group_announcements)) }, useThinHeader = true) {
+            SwitchItem(
+                checked = settings.showAnnouncementDot,
+                onCheckedChange = { state.update(settings.copy(showAnnouncementDot = it)) },
+                title = { Text(stringResource(Lang.notification_settings_announcement_item)) },
+                Modifier.testTag(NotificationSettingsTestTags.ANNOUNCEMENT),
+                description = { Text(stringResource(Lang.notification_settings_announcement_description)) },
+            )
+        }
     }
 }
 

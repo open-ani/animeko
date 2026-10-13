@@ -30,22 +30,16 @@ sealed interface NotificationText {
     ) : NotificationText
 
     /**
-     * 不需要本地化的文本, 例如条目名、打码的邮箱、品牌名.
+     * 不需要本地化的文本, 例如条目名、品牌名.
      */
     @Immutable
     data class Plain(val text: String) : NotificationText
 
     /**
-     * 用一个空格连接的几个部分, 例如 "macOS 扫码登录", "葬送的芙莉莲 第 12 话".
+     * 用一个空格连接的几个部分, 例如 "葬送的芙莉莲 第 12 话".
      */
     @Immutable
     data class Words(val parts: List<NotificationText>) : NotificationText
-
-    /**
-     * 首字母大写的 [text]. 英文中有的短语在句中小写, 单独出现时要大写开头, 例如登录方式 "email code sign-in". 对中文没有影响.
-     */
-    @Immutable
-    data class Capitalized(val text: NotificationText) : NotificationText
 }
 
 @Composable
@@ -64,8 +58,6 @@ fun NotificationText.resolve(): String = when (this) {
         val resolvedParts = parts.map { it.resolve() }
         resolvedParts.joinToString(" ")
     }
-
-    is NotificationText.Capitalized -> text.resolve().capitalizeFirst()
 }
 
 /**
@@ -83,7 +75,4 @@ suspend fun NotificationText.resolveString(): String = when (this) {
     }
 
     is NotificationText.Words -> parts.map { it.resolveString() }.joinToString(" ")
-    is NotificationText.Capitalized -> text.resolveString().capitalizeFirst()
 }
-
-private fun String.capitalizeFirst(): String = replaceFirstChar { it.titlecase() }

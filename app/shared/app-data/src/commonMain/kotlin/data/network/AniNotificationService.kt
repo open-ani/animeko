@@ -19,9 +19,9 @@ import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.notification.AccountSecurityEvent
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
-import me.him188.ani.app.data.models.notification.LoginMethod
 import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.models.notification.NotificationUnreadSummary
+import me.him188.ani.app.data.models.notification.SystemNotificationEvent
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.client.apis.NotificationsAniApi
@@ -45,7 +45,8 @@ import kotlin.coroutines.CoroutineContext
  * 当前用户的站内通知.
  *
  * 列表和未读数接口必须带上 `types`: 服务端只返回和统计这些类型, 而不传表示全部类型, 会包含本客户端不能渲染的新类型.
- * 所以这里的 `types` 参数都不可省略, 调用方传 [NotificationType.SUPPORTED] 或其中一个分组的类型.
+ * 所以这里的 `types` 参数都不可省略, 调用方传 [NotificationType.SUPPORTED] 或其中一个分组的类型, 再去掉本机关闭的类型.
+ * `types` 为空时不会请求全部类型: 列表为空, 未读数为空, "全部标为已读" 什么也不做.
  */
 open class AniNotificationService(
     private val notificationsApi: ApiInvoker<NotificationsAniApi>,
@@ -66,6 +67,7 @@ open class AniNotificationService(
         after: String?,
         limit: Int,
     ): CursorPage<AppNotification> = withContext(ioDispatcher) {
+        if (types.isEmpty()) return@withContext CursorPage(emptyList(), nextCursor = null)
         val page = try {
             notificationsApi.invoke {
                 listNotifications(types = types.toAniNotificationTypes(), after = after, limit = limit).body()
@@ -104,13 +106,15 @@ open class AniNotificationService(
 
     /**
      * [types] 的未读数, 以及公告的未读数和第一条公告. 游客也可以调用, 此时没有通知未读数.
+     *
+     * [NotificationUnreadSummary.unreadCounts] 只包含 [types] 中的类型.
      */
     open suspend fun getUnreadSummary(types: Set<NotificationType>): NotificationUnreadSummary =
         withContext(ioDispatcher) {
             try {
                 notificationsApi.invoke {
                     getNotificationUnreadSummary(types = types.toAniNotificationTypes()).body()
-                }.toNotificationUnreadSummary()
+                }.toNotificationUnreadSummary(types)
             } catch (e: Exception) {
                 throw RepositoryException.wrapOrThrowCancellation(e)
             }
@@ -139,6 +143,7 @@ open class AniNotificationService(
         types: Set<NotificationType>,
         beforeMillis: Long?,
     ): Unit = withContext(ioDispatcher) {
+        if (types.isEmpty()) return@withContext
         try {
             notificationsApi.invoke {
                 // 服务端要求请求体至少是 `{}`, 所以总是传请求对象
@@ -196,6 +201,7 @@ private fun AniNotificationSystem.toSystem() = AppNotificationContent.System(
     title = title,
     body = body,
     linkUrl = linkUrl,
+    event = SystemNotificationEvent.fromWireValue(event),
 )
 
 private fun AniNotificationReportResult.toReportResult() = AppNotificationContent.ReportResult(
@@ -206,6 +212,7 @@ private fun AniNotificationReportResult.toReportResult() = AppNotificationConten
     handledAtMillis = handledAtMillis,
     contentRemoved = contentRemoved,
     contentSnapshot = contentSnapshot,
+    contentCreatedAtMillis = contentCreatedAtMillis,
     subjectId = subjectId,
     subjectName = subjectName,
     subjectNameCn = subjectNameCn,
@@ -220,18 +227,19 @@ private fun AniNotificationAccountSecurity.toAccountSecurity() = AppNotification
     event = AccountSecurityEvent.fromWireValue(event),
     rawEvent = event,
     occurredAtMillis = occurredAtMillis,
-    loginMethod = LoginMethod.fromWireValue(loginMethod),
-    clientPlatform = clientPlatform,
-    clientVersion = clientVersion,
-    deviceName = deviceName,
-    email = email,
     provider = provider,
 )
 
-internal fun AniNotificationUnreadSummary.toNotificationUnreadSummary() = NotificationUnreadSummary(
+/**
+ * @param types 请求的类型. 不在其中的计数被丢弃.
+ */
+internal fun AniNotificationUnreadSummary.toNotificationUnreadSummary(
+    types: Set<NotificationType>,
+): NotificationUnreadSummary = NotificationUnreadSummary(
     unreadCounts = buildMap {
         for (count in counts) {
             val type = count.type.toNotificationType()
+            if (type !in types) continue
             put(type, (get(type) ?: 0) + count.count)
         }
     },

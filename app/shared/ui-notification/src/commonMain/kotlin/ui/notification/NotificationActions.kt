@@ -17,10 +17,10 @@ import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 
 /**
- * 通知详情中可以跳转的位置.
+ * 通知可以跳转的位置: 详情底部的按钮, 列表行的操作 (见 [NotificationInlineAction]), 以及点击账号安全通知时去的账号设置.
  */
 @Immutable
-class NotificationDetailActions(
+class NotificationActions(
     val onOpenEpisode: (subjectId: Int, episodeId: Int) -> Unit,
     val onOpenSubject: (subjectId: Int, placeholder: SubjectDetailPlaceholder?) -> Unit,
     val onOpenPerson: (personId: Int) -> Unit,
@@ -29,7 +29,7 @@ class NotificationDetailActions(
     val onOpenAccountSettings: () -> Unit,
 ) {
     companion object {
-        val Noop = NotificationDetailActions(
+        val Noop = NotificationActions(
             onOpenEpisode = { _, _ -> },
             onOpenSubject = { _, _ -> },
             onOpenPerson = {},
@@ -41,8 +41,8 @@ class NotificationDetailActions(
 }
 
 @Composable
-fun rememberNotificationDetailActions(navigator: AniNavigator): NotificationDetailActions = remember(navigator) {
-    NotificationDetailActions(
+fun rememberNotificationActions(navigator: AniNavigator): NotificationActions = remember(navigator) {
+    NotificationActions(
         onOpenEpisode = { subjectId, episodeId -> navigator.navigateEpisodeDetails(subjectId, episodeId) },
         onOpenSubject = { subjectId, placeholder -> navigator.navigateSubjectDetails(subjectId, placeholder) },
         onOpenPerson = { navigator.navigatePersonDetails(it) },

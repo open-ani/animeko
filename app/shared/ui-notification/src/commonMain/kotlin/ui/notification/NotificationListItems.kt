@@ -14,11 +14,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,9 +38,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,18 +66,28 @@ import me.him188.ani.app.ui.lang.notification_unread
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * 通知和公告列表项的尺寸. 遵循 M3 列表项: 两行项最小高度 72dp, 三行项 88dp, 上下 10dp, 左右 16dp, 元素间距 12dp.
+ * 通知和公告列表项的尺寸. 遵循 M3 列表项: 单行项最小高度 56dp, 上下 8dp; 两行项 72dp, 三行项 88dp, 上下 10dp.
+ * 左右 16dp, 元素间距 12dp.
  */
 @Stable
 object NotificationListItemDefaults {
+    val OneLineMinHeight = 56.dp
     val TwoLineMinHeight = 72.dp
     val ThreeLineMinHeight = 88.dp
+    val OneLineVerticalPadding = 8.dp
     val VerticalPadding = 10.dp
     val HorizontalPadding = 16.dp
     val Spacing = 12.dp
     val LeadingSize = 40.dp
     val LeadingIconSize = 20.dp
     val UnreadDotSize = 8.dp
+
+    /**
+     * 行内操作按钮: 高 40dp, 左右内边距 12dp. 按钮之间相隔 4dp, 与上方文本相隔 4dp.
+     */
+    val InlineActionHeight = 40.dp
+    val InlineActionHorizontalPadding = 12.dp
+    val InlineActionSpacing = 4.dp
 
     /**
      * 宽屏双栏时选中项的圆角.
@@ -83,6 +98,20 @@ object NotificationListItemDefaults {
      * 宽屏双栏时列表项之间的空隙. 双栏不使用分隔线.
      */
     val TwoPaneItemSpacing = 2.dp
+
+    /**
+     * 有 [lines] 行文本 (行内操作按钮也算一行) 的列表项的最小高度.
+     */
+    fun minHeight(lines: Int): Dp = when {
+        lines <= 1 -> OneLineMinHeight
+        lines == 2 -> TwoLineMinHeight
+        else -> ThreeLineMinHeight
+    }
+
+    /**
+     * 有 [lines] 行文本 (行内操作按钮也算一行) 的列表项的上下内边距.
+     */
+    fun verticalPadding(lines: Int): Dp = if (lines <= 1) OneLineVerticalPadding else VerticalPadding
 
     fun iconFor(type: NotificationType): ImageVector = when (type) {
         NotificationType.REPORT_RESULT -> Icons.Rounded.Flag
@@ -158,9 +187,13 @@ fun UnreadDot(
 /**
  * 通知列表的一行: 左侧类型图标, 第一行为标题、时间和未读标记, 第二行为辅助文本.
  *
+ * 有 [actions] 时第三行为操作按钮, 整行顶部对齐. 点击按钮只执行按钮的操作, 点击行的其他位置调用 [onClick].
+ * 最小高度和上下内边距按行数取 [NotificationListItemDefaults.minHeight] 和 [NotificationListItemDefaults.verticalPadding].
+ *
  * @param supporting 为 `null` 时只显示标题行.
  * @param read 已读项整体弱化, 不显示未读标记.
  * @param selected 宽屏双栏时当前正在右侧展示的项.
+ * @param actions 行内操作, 通常是几个 [NotificationInlineActionButton]. 按钮文字与辅助文本左对齐.
  */
 @Composable
 fun NotificationListItem(
@@ -172,9 +205,11 @@ fun NotificationListItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
+    actions: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val colors = listItemColors(read = read, selected = selected)
     val unreadText = stringResource(Lang.notification_unread)
+    val lines = 1 + (if (supporting != null) 1 else 0) + (if (actions != null) 1 else 0)
     Row(
         modifier
             .fillMaxWidth()
@@ -184,13 +219,13 @@ fun NotificationListItem(
             .semantics {
                 if (!read) stateDescription = unreadText
             }
-            .heightIn(min = NotificationListItemDefaults.TwoLineMinHeight)
+            .heightIn(min = NotificationListItemDefaults.minHeight(lines))
             .padding(
                 horizontal = NotificationListItemDefaults.HorizontalPadding,
-                vertical = NotificationListItemDefaults.VerticalPadding,
+                vertical = NotificationListItemDefaults.verticalPadding(lines),
             ),
         horizontalArrangement = Arrangement.spacedBy(NotificationListItemDefaults.Spacing),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = if (actions != null) Alignment.Top else Alignment.CenterVertically,
     ) {
         Box(
             Modifier
@@ -223,6 +258,7 @@ fun NotificationListItem(
                 Text(
                     time,
                     color = colors.trailing,
+                    fontWeight = FontWeight.Normal,
                     maxLines = 1,
                     style = MaterialTheme.typography.labelSmall,
                 )
@@ -239,7 +275,36 @@ fun NotificationListItem(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
+            if (actions != null) {
+                Row(
+                    Modifier
+                        .padding(top = NotificationListItemDefaults.InlineActionSpacing)
+                        // 抵消按钮的内边距, 让文字与上方文本对齐
+                        .offset(x = -NotificationListItemDefaults.InlineActionHorizontalPadding),
+                    horizontalArrangement = Arrangement.spacedBy(NotificationListItemDefaults.InlineActionSpacing),
+                    verticalAlignment = Alignment.CenterVertically,
+                    content = actions,
+                )
+            }
         }
+    }
+}
+
+/**
+ * 通知列表行内的文字按钮, 用于 [NotificationListItem] 的 `actions`.
+ */
+@Composable
+fun NotificationInlineActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TextButton(
+        onClick,
+        modifier.height(NotificationListItemDefaults.InlineActionHeight),
+        contentPadding = PaddingValues(horizontal = NotificationListItemDefaults.InlineActionHorizontalPadding),
+    ) {
+        Text(text, style = MaterialTheme.typography.labelLarge)
     }
 }
 
@@ -357,6 +422,7 @@ fun AnnouncementEntryItem(
             Text(
                 stringResource(Lang.notification_announcement_overline),
                 color = scheme.onSurfaceVariant,
+                fontWeight = FontWeight.Normal,
                 style = MaterialTheme.typography.labelSmall,
             )
             Text(
@@ -384,7 +450,8 @@ fun AnnouncementEntryItem(
 }
 
 /**
- * 公告列表的一行 (三行): 第一行为置顶图标、分类、日期和未读标记, 第二行标题, 第三行正文的第一行.
+ * 公告列表的一行 (三行): 第一行为置顶图标、分类、日期和未读标记, 第二行标题, 第三行正文的第一行. 正文为空时只有两行.
+ * 日期不用相对时间, 见 [announcementRowTime].
  *
  * @param read 游客没有已读状态, 为 `null`: 不弱化也不显示未读标记.
  */
@@ -404,6 +471,8 @@ fun AnnouncementListItem(
         else -> scheme.primary
     }
     val unreadText = stringResource(Lang.notification_unread)
+    val firstLine = remember(announcement.body) { firstLineOf(announcement.body) }
+    val lines = if (firstLine != null) 3 else 2
     Column(
         modifier
             .fillMaxWidth()
@@ -413,10 +482,10 @@ fun AnnouncementListItem(
             .semantics {
                 if (read == false) stateDescription = unreadText
             }
-            .heightIn(min = NotificationListItemDefaults.ThreeLineMinHeight)
+            .heightIn(min = NotificationListItemDefaults.minHeight(lines))
             .padding(
                 horizontal = NotificationListItemDefaults.HorizontalPadding,
-                vertical = NotificationListItemDefaults.VerticalPadding,
+                vertical = NotificationListItemDefaults.verticalPadding(lines),
             ),
         verticalArrangement = Arrangement.Center,
     ) {
@@ -441,9 +510,10 @@ fun AnnouncementListItem(
             )
             Spacer(Modifier.weight(1f).width(NotificationListItemDefaults.Spacing))
             Text(
-                formatNotificationRowTime(announcement.publishedAtMillis),
+                formatAnnouncementRowTime(announcement.publishedAtMillis),
                 Modifier.padding(start = NotificationListItemDefaults.Spacing),
                 color = colors.trailing,
+                fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 style = MaterialTheme.typography.labelSmall,
             )
@@ -463,7 +533,7 @@ fun AnnouncementListItem(
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodyLarge,
         )
-        firstLineOf(announcement.body)?.let { firstLine ->
+        if (firstLine != null) {
             Text(
                 firstLine,
                 color = colors.supporting,

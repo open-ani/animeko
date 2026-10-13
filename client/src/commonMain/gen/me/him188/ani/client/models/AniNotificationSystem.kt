@@ -27,6 +27,7 @@ import kotlinx.serialization.encoding.*
  * @param title
  * @param body 纯文本, 保留换行
  * @param linkUrl http(s) 链接
+ * @param event 事件. 已知: `bangumi_authorization_expired`. 客户端对已知事件用自己的文案和操作展示; 未知事件或为 `null` 时展示 `title` 和 `body`
  */
 @Serializable
 
@@ -38,7 +39,10 @@ data class AniNotificationSystem (
     @SerialName(value = "body") @Required val body: kotlin.String,
 
     /* http(s) 链接 */
-    @SerialName(value = "linkUrl") val linkUrl: kotlin.String? = null
+    @SerialName(value = "linkUrl") val linkUrl: kotlin.String? = null,
+
+    /* 事件. 已知: `bangumi_authorization_expired`. 客户端对已知事件用自己的文案和操作展示; 未知事件或为 `null` 时展示 `title` 和 `body` */
+    @SerialName(value = "event") val event: kotlin.String? = null
 
 ) {
 

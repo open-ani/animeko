@@ -25,9 +25,9 @@ import me.him188.ani.app.data.models.notification.Announcement
 import me.him188.ani.app.data.models.notification.AnnouncementTag
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
-import me.him188.ani.app.data.models.notification.LoginMethod
 import me.him188.ani.app.data.models.notification.NotificationGroup
 import me.him188.ani.app.data.models.notification.NotificationType
+import me.him188.ani.app.data.models.notification.SystemNotificationEvent
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
@@ -61,6 +61,7 @@ class AniNotificationServiceTest {
                         handledAtMillis = 950,
                         contentRemoved = true,
                         contentSnapshot = "小明：剧透",
+                        contentCreatedAtMillis = 880,
                         subjectId = 400602,
                         subjectName = "Sousou no Frieren",
                         subjectNameCn = "葬送的芙莉莲",
@@ -73,13 +74,10 @@ class AniNotificationServiceTest {
                     createdAtMillis = 999,
                     read = true,
                     content = AppNotificationContent.AccountSecurity(
-                        event = AccountSecurityEvent.NEW_LOGIN,
-                        rawEvent = "new_login",
+                        event = AccountSecurityEvent.THIRD_PARTY_UNBOUND,
+                        rawEvent = "third_party_unbound",
                         occurredAtMillis = 998,
-                        loginMethod = LoginMethod.QR_CODE,
-                        clientPlatform = "android-tv-arm64-v8a",
-                        clientVersion = "5.3.0",
-                        deviceName = "Living room TV",
+                        provider = "bangumi",
                     ),
                 ),
                 AppNotification(
@@ -142,16 +140,76 @@ class AniNotificationServiceTest {
         val unknownEvent = assertIs<AppNotificationContent.AccountSecurity>(items[1].content)
         assertEquals(AccountSecurityEvent.UNKNOWN, unknownEvent.event)
         assertEquals("password_changed", unknownEvent.rawEvent)
-        assertEquals(LoginMethod.UNKNOWN, unknownEvent.loginMethod)
 
-        val emailBound = assertIs<AppNotificationContent.AccountSecurity>(items[2].content)
-        assertEquals(AccountSecurityEvent.EMAIL_BOUND, emailBound.event)
-        assertNull(emailBound.loginMethod)
-        assertEquals("a***@example.com", emailBound.email)
+        // 不认识的系统消息事件展示服务端的标题和正文
+        assertEquals(
+            AppNotificationContent.System(title = "标题", body = "正文", event = null),
+            items[2].content,
+        )
 
         val unbound = assertIs<AppNotificationContent.AccountSecurity>(items[3].content)
         assertEquals(AccountSecurityEvent.THIRD_PARTY_UNBOUND, unbound.event)
         assertEquals("github", unbound.provider)
+    }
+
+    @Test
+    fun `system notification maps known events`() = runTest {
+        val server = NotificationTestServer {
+            respondJson(
+                """
+                {"items":[
+                  {"id":"s1","type":"system","createdAtMillis":2,"read":false,
+                   "system":{"title":"Bangumi 授权已过期","body":"正文","event":"bangumi_authorization_expired"}},
+                  {"id":"s2","type":"system","createdAtMillis":1,"read":false,"system":{"title":"标题","body":"正文"}}
+                ]}
+                """.trimIndent(),
+            )
+        }
+
+        val items = server.notificationService.listNotifications(noticeTypes, after = null, limit = 30).items
+
+        assertEquals(
+            listOf(SystemNotificationEvent.BANGUMI_AUTHORIZATION_EXPIRED, null),
+            items.map { assertIs<AppNotificationContent.System>(it.content).event },
+        )
+        assertEquals("Bangumi 授权已过期", assertIs<AppNotificationContent.System>(items[0].content).title)
+    }
+
+    @Test
+    fun `empty types never request all types`() = runTest {
+        val server = NotificationTestServer { respondJson("""{"items":[]}""") }
+
+        val page = server.notificationService.listNotifications(emptySet(), after = null, limit = 30)
+        server.notificationService.markAllNotificationsRead(emptySet(), beforeMillis = 1000)
+
+        assertEquals(emptyList(), page.items)
+        assertNull(page.nextCursor)
+        assertTrue(server.requests.isEmpty())
+    }
+
+    @Test
+    fun `unread summary only keeps the requested types`() = runTest {
+        val server = NotificationTestServer {
+            respondJson(
+                """
+                {"counts":[{"type":"system","count":2},{"type":"report_result","count":3},
+                {"type":"account_security","count":4}],"unreadAnnouncementCount":0}
+                """.trimIndent(),
+            )
+        }
+
+        val summary = server.notificationService.getUnreadSummary(
+            setOf(NotificationType.SYSTEM, NotificationType.ACCOUNT_SECURITY),
+        )
+
+        assertEquals(
+            mapOf(NotificationType.SYSTEM to 2, NotificationType.ACCOUNT_SECURITY to 4),
+            summary.unreadCounts,
+        )
+        assertEquals(
+            listOf("system,account_security"),
+            server.requests.single().url.parameters.getAll("types"),
+        )
     }
 
     @Test
@@ -289,11 +347,11 @@ class AniNotificationServiceTest {
             {"items":[
               {"id":"n1","type":"report_result","createdAtMillis":1000,"read":false,
                "reportResult":{"targetType":"episode_comment","reason":"spoiler","reportedAtMillis":900,
-               "handledAtMillis":950,"contentRemoved":true,"contentSnapshot":"小明：剧透","subjectId":400602,
-               "subjectName":"Sousou no Frieren","subjectNameCn":"葬送的芙莉莲","episodeId":1227087,"episodeSort":"12"}},
+               "handledAtMillis":950,"contentRemoved":true,"contentSnapshot":"小明：剧透","contentCreatedAtMillis":880,
+               "subjectId":400602,"subjectName":"Sousou no Frieren","subjectNameCn":"葬送的芙莉莲","episodeId":1227087,
+               "episodeSort":"12"}},
               {"id":"n2","type":"account_security","createdAtMillis":999,"read":true,
-               "accountSecurity":{"event":"new_login","occurredAtMillis":998,"loginMethod":"qr_code",
-               "clientPlatform":"android-tv-arm64-v8a","clientVersion":"5.3.0","deviceName":"Living room TV"}},
+               "accountSecurity":{"event":"third_party_unbound","occurredAtMillis":998,"provider":"bangumi"}},
               {"id":"n3","type":"system","createdAtMillis":998,"read":false,
                "system":{"title":"维护通知","body":"第一行\n第二行","linkUrl":"https://example.com"}},
               {"id":"n4","type":"report_result","createdAtMillis":997,"read":false,
@@ -308,9 +366,9 @@ class AniNotificationServiceTest {
                "reportResult":{"targetType":"danmaku","reason":"impersonation","reportedAtMillis":1,
                "handledAtMillis":2,"contentRemoved":false}},
               {"id":"u2","type":"account_security","createdAtMillis":3,"read":false,
-               "accountSecurity":{"event":"password_changed","occurredAtMillis":3,"loginMethod":"passkey"}},
-              {"id":"u3","type":"account_security","createdAtMillis":2,"read":false,
-               "accountSecurity":{"event":"email_bound","occurredAtMillis":2,"email":"a***@example.com"}},
+               "accountSecurity":{"event":"password_changed","occurredAtMillis":3,"futureField":"x"}},
+              {"id":"u3","type":"system","createdAtMillis":2,"read":false,
+               "system":{"title":"标题","body":"正文","event":"future_event"}},
               {"id":"u4","type":"account_security","createdAtMillis":1,"read":false,
                "accountSecurity":{"event":"third_party_unbound","occurredAtMillis":1,"provider":"github","futureField":1}}
             ]}

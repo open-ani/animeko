@@ -48,7 +48,7 @@ private fun PreviewNotificationCenter() = PreviewHost {
         onNavigateToAnnouncements = {},
         onNavigateToSettings = {},
         onLogin = {},
-        detailActions = NotificationDetailActions.Noop,
+        actions = NotificationActions.Noop,
     )
 }
 
@@ -74,7 +74,7 @@ private fun PreviewNotificationCenterGuest() = PreviewHost {
         onNavigateToAnnouncements = {},
         onNavigateToSettings = {},
         onLogin = {},
-        detailActions = NotificationDetailActions.Noop,
+        actions = NotificationActions.Noop,
     )
 }
 
@@ -84,7 +84,7 @@ private fun PreviewReportResultDetail() = PreviewHost {
     Surface {
         NotificationDetailScreen(
             state = DetailLoadState.Loaded(createTestReportResult()),
-            actions = NotificationDetailActions.Noop,
+            actions = NotificationActions.Noop,
             onRetry = {},
         )
     }
@@ -92,11 +92,11 @@ private fun PreviewReportResultDetail() = PreviewHost {
 
 @Composable
 @Preview
-private fun PreviewAccountSecurityDetail() = PreviewHost {
+private fun PreviewBangumiExpiredDetail() = PreviewHost {
     Surface {
         NotificationDetailScreen(
-            state = DetailLoadState.Loaded(createTestAccountSecurity()),
-            actions = NotificationDetailActions.Noop,
+            state = DetailLoadState.Loaded(createTestBangumiExpired()),
+            actions = NotificationActions.Noop,
             onRetry = {},
         )
     }
@@ -108,7 +108,7 @@ private fun PreviewSystemDetail() = PreviewHost {
     Surface {
         NotificationDetailScreen(
             state = DetailLoadState.Loaded(createTestSystemNotification()),
-            actions = NotificationDetailActions.Noop,
+            actions = NotificationActions.Noop,
             onRetry = {},
         )
     }
@@ -122,7 +122,6 @@ private fun PreviewAnnouncements() = PreviewHost {
         access = NotificationAccess.AUTHORIZED,
         readOverlay = ReadOverlay.Empty,
         onOpenAnnouncement = {},
-        onMarkAllRead = {},
         onRefresh = {},
         onNavigateToDetail = {},
         onLogin = {},

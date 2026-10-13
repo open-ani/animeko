@@ -13,7 +13,7 @@ import androidx.paging.PagingData
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.notification.Announcement
 import me.him188.ani.app.data.models.notification.AppNotification
-import me.him188.ani.app.data.models.notification.NotificationGroup
+import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryException
 
@@ -28,9 +28,11 @@ import me.him188.ani.app.data.repository.RepositoryException
  */
 interface NotificationRepository {
     /**
-     * [group] 中各类型的通知, 按创建时间倒序. 需要登录.
+     * [types] 中的通知, 按创建时间倒序. 需要登录. [types] 为空时列表为空.
+     *
+     * 调用方传入一个分组的类型, 再去掉本机设置关闭的类型, 见 [me.him188.ani.app.data.models.preference.NotificationSettings].
      */
-    fun notificationsPager(group: NotificationGroup): Flow<PagingData<AppNotification>>
+    fun notificationsPager(types: Set<NotificationType>): Flow<PagingData<AppNotification>>
 
     /**
      * 获取一条通知. 通知不存在或不属于当前用户时返回 `null`. 列表中出现过的通知之后也可能不存在.
@@ -43,11 +45,12 @@ interface NotificationRepository {
     suspend fun markNotificationsRead(ids: List<String>)
 
     /**
-     * 把 [group] 中创建时间不晚于 [beforeMillis] 的通知全部标为已读. [beforeMillis] 为 `null` 时为服务端的当前时间.
+     * 把 [types] 中创建时间不晚于 [beforeMillis] 的通知全部标为已读. [beforeMillis] 为 `null` 时为服务端的当前时间.
+     * [types] 为空时什么也不做.
      *
-     * 传入列表中最新一条的创建时间, 可以避免把用户还没看到的新通知也标为已读.
+     * 传入列表中最新一条的创建时间和列表加载时使用的类型, 可以避免把用户还没看到的通知也标为已读.
      */
-    suspend fun markAllNotificationsRead(group: NotificationGroup, beforeMillis: Long?)
+    suspend fun markAllNotificationsRead(types: Set<NotificationType>, beforeMillis: Long?)
 
     /**
      * 公告, 置顶优先, 然后按发布时间倒序. 游客也可以访问, 此时 [Announcement.read] 为 `null`.

@@ -91,7 +91,7 @@ import me.him188.ani.app.ui.notification.NotificationCenterViewModel
 import me.him188.ani.app.ui.notification.NotificationDetailScreen
 import me.him188.ani.app.ui.notification.NotificationDetailViewModel
 import me.him188.ani.app.ui.notification.NotificationForegroundObserver
-import me.him188.ani.app.ui.notification.rememberNotificationDetailActions
+import me.him188.ani.app.ui.notification.rememberNotificationActions
 import me.him188.ani.app.ui.oauth.OAuthAuthorizeScreen
 import me.him188.ani.app.ui.oauth.OAuthAuthorizeViewModel
 import me.him188.ani.app.ui.playback.PlaybackHistoryScreen
@@ -485,7 +485,7 @@ private fun AniAppContentImpl(
                     onNavigateToAnnouncements = { aniNavigator.navigateAnnouncements() },
                     onNavigateToSettings = { aniNavigator.navigateNotificationSettings() },
                     onLogin = { aniNavigator.navigateEmailLoginStart() },
-                    detailActions = rememberNotificationDetailActions(aniNavigator),
+                    actions = rememberNotificationActions(aniNavigator),
                     modifier = Modifier.fillMaxSize(),
                     navigationIcon = {
                         BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
@@ -496,7 +496,7 @@ private fun AniAppContentImpl(
             entry<NavRoutes.NotificationDetail> { route ->
                 NotificationDetailScreen(
                     vm = viewModel(key = route.toString()) { NotificationDetailViewModel(route.notificationId) },
-                    actions = rememberNotificationDetailActions(aniNavigator),
+                    actions = rememberNotificationActions(aniNavigator),
                     modifier = Modifier.fillMaxSize(),
                     navigationIcon = {
                         BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })

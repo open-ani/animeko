@@ -16,6 +16,8 @@
     <string name="notification_time_yesterday">昨天</string>
     <string name="notification_time_month_day">%2$s 月 %3$s 日</string>
     <string name="notification_time_date">%1$s/%2$s/%3$s</string>
+    <string name="notification_time_detail_month_day_time">%2$s 月 %3$s 日 %5$s</string>
+    <string name="notification_time_detail_date_time">%1$s 年 %2$s 月 %3$s 日 %5$s</string>
 
     <string name="notification_announcement_overline">公告</string>
     <string name="notification_announcements_title">公告</string>
@@ -32,7 +34,8 @@
     <string name="notification_report_result_row_title">你举报的评论已处理</string>
     <string name="notification_report_result_detail_title">举报结果</string>
     <string name="notification_report_result_upheld">举报成立</string>
-    <string name="notification_report_result_description">感谢你的举报，我们已处理这条评论。</string>
+    <string name="notification_report_result_description_removed">经审核，该评论违反社区规则，已被删除。感谢你的举报。</string>
+    <string name="notification_report_result_description_handled">经审核，该评论违反社区规则，已处理。感谢你的举报。</string>
     <string name="notification_report_reason">举报原因</string>
     <string name="notification_report_target">举报对象</string>
     <string name="notification_report_reported_at">举报时间</string>
@@ -41,8 +44,8 @@
     <string name="notification_report_outcome_removed">评论已删除</string>
     <string name="notification_report_outcome_handled">已处理</string>
     <string name="notification_report_snapshot_title">被举报内容（举报时的快照）</string>
-    <string name="notification_report_snapshot_footnote">以上为举报时的评论快照。%1$s</string>
-    <string name="notification_report_privacy_footnote">被举报者不会知道举报人是谁。</string>
+    <string name="notification_report_snapshot_footnote">评论可能已被作者编辑或删除，审核以你举报时的快照为准。%1$s</string>
+    <string name="notification_report_privacy_footnote">举报人身份不会告知对方。</string>
     <string name="notification_report_target_episode_comment">剧集评论</string>
     <string name="notification_report_target_subject_review">条目评论</string>
     <string name="notification_report_target_person_comment">人物评论</string>
@@ -53,44 +56,20 @@
     <string name="notification_report_go_to_person">前往人物</string>
     <string name="notification_report_go_to_character">前往角色</string>
 
-    <string name="notification_account_security_detail_title">账号安全</string>
-    <string name="notification_account_new_login">新设备登录</string>
-    <string name="notification_account_email_bound">已绑定登录邮箱</string>
-    <string name="notification_account_email_changed">登录邮箱已更换</string>
-    <string name="notification_account_email_unbound">已解绑登录邮箱</string>
     <string name="notification_account_third_party_unbound">%1$s 账号已解绑</string>
     <string name="notification_account_third_party_unbound_generic">第三方账号已解绑</string>
     <string name="notification_account_third_party_unbound_supporting">该账号已登录另一个 Animeko 账号</string>
-    <string name="notification_account_bangumi_expired">Bangumi 授权已过期</string>
-    <string name="notification_account_bangumi_expired_supporting">重新授权后才能继续同步收藏</string>
     <string name="notification_account_unknown">账号安全提醒</string>
-    <string name="notification_account_new_login_description">你的账号在一台没有用过的设备上登录了。</string>
-    <string name="notification_account_new_login_hint">如果这不是你本人操作，请尽快检查账号安全设置。</string>
-    <string name="notification_account_email_bound_description">你的账号绑定了登录邮箱。</string>
-    <string name="notification_account_email_changed_description">你的账号更换了登录邮箱。</string>
-    <string name="notification_account_email_unbound_description">你的账号解绑了登录邮箱。</string>
-    <string name="notification_account_third_party_unbound_description">这个第三方账号登录了另一个 Animeko 账号，因此已从你的账号解绑。</string>
-    <string name="notification_account_bangumi_expired_description">Bangumi 授权已失效。重新授权后才能继续与 Bangumi 同步收藏。</string>
-    <string name="notification_account_unknown_description">你的账号发生了一项与安全相关的变动。</string>
-    <string name="notification_account_time">时间</string>
-    <string name="notification_account_device">设备</string>
-    <string name="notification_account_platform">平台</string>
-    <string name="notification_account_client_version">客户端版本</string>
-    <string name="notification_account_login_method">登录方式</string>
-    <string name="notification_account_email">邮箱</string>
-    <string name="notification_account_provider">第三方账号</string>
-    <string name="notification_account_reauthorize">重新授权</string>
-    <string name="notification_account_settings">账号设置</string>
-    <string name="notification_login_method_email_otp">邮箱验证码登录</string>
-    <string name="notification_login_method_github">GitHub 登录</string>
-    <string name="notification_login_method_bangumi">Bangumi 登录</string>
-    <string name="notification_login_method_qr_code">扫码登录</string>
 
     <string name="notification_system_detail_title">系统通知</string>
+    <string name="notification_system_bangumi_expired">Bangumi 授权已过期</string>
+    <string name="notification_system_bangumi_expired_supporting">追番进度已停止同步，重新授权后自动恢复。</string>
+    <string name="notification_system_bangumi_reauthorize">重新授权</string>
 
     <string name="notification_settings_group_system">系统</string>
-    <string name="notification_settings_system_item">你的举报结果与账号安全</string>
-    <string name="notification_settings_system_description">始终开启</string>
+    <string name="notification_settings_system_group_description">关闭后，对应的通知不会在本设备显示，也不计入未读。</string>
+    <string name="notification_settings_report_result_item">你举报的评论有处理结果</string>
+    <string name="notification_settings_account_security_item">你的账号有安全提醒</string>
     <string name="notification_settings_group_announcements">公告</string>
     <string name="notification_settings_announcement_item">你收到新公告</string>
     <string name="notification_settings_announcement_description">关闭后新公告不会在头像上显示红点。</string>

@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,7 +44,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun NotificationDetailScreen(
     vm: NotificationDetailViewModel,
-    actions: NotificationDetailActions,
+    actions: NotificationActions,
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -64,7 +63,7 @@ fun NotificationDetailScreen(
 @Composable
 fun NotificationDetailScreen(
     state: DetailLoadState<AppNotification>,
-    actions: NotificationDetailActions,
+    actions: NotificationActions,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
@@ -166,13 +165,19 @@ private fun <T> DetailScaffold(
 
             DetailLoadState.NotFound -> NotificationHintText(
                 notFoundText,
-                Modifier.padding(paddingValues).testTag(notFoundTestTag),
+                Modifier
+                    .padding(paddingValues)
+                    .detailContentWidth()
+                    .testTag(notFoundTestTag),
             )
 
             is DetailLoadState.Failed -> LoadErrorCard(
                 state.error,
                 onRetry = onRetry,
-                Modifier.padding(paddingValues).padding(16.dp).fillMaxWidth(),
+                Modifier
+                    .padding(paddingValues)
+                    .padding(16.dp)
+                    .detailContentWidth(),
             )
 
             is DetailLoadState.Loaded -> content(state.value, contentModifier)

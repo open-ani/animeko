@@ -13,6 +13,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import androidx.paging.map
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -32,12 +34,17 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.data.models.notification.Announcement
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
 import me.him188.ani.app.data.models.notification.NotificationGroup
+import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.repository.notification.NotificationRepository
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.notification.NotificationBadgeManager
 import me.him188.ani.app.domain.session.InvalidSessionReason
@@ -88,7 +95,8 @@ private fun SessionStateProvider.accessFlow(): Flow<NotificationAccess> =
 /**
  * 通知中心.
  *
- * - 列表按 [selectedGroup] 分页加载, 游客时为空.
+ * - 列表按 [selectedGroup] 中本机显示的类型 ([me.him188.ani.app.data.models.preference.NotificationSettings.shownTypes])
+ *   分页加载, 游客时为空. 通知设置变化时重新加载.
  * - 标记已读先更新 [readOverlay], 再请求服务端; 失败时撤销本地标记. 请求结束后 (无论成败) 请求刷新未读数.
  */
 @Stable
@@ -98,6 +106,7 @@ class NotificationCenterViewModel(
     private val repository: NotificationRepository by koin.inject()
     private val badgeManager: NotificationBadgeManager by koin.inject()
     private val sessionStateProvider: SessionStateProvider by koin.inject()
+    private val settingsRepository: SettingsRepository by koin.inject()
 
     /**
      * 通知中心展示的分组. 多于一个时显示标签页.
@@ -110,12 +119,20 @@ class NotificationCenterViewModel(
     val access: StateFlow<NotificationAccess> = sessionStateProvider.accessFlow()
         .stateIn(backgroundScope, SharingStarted.Eagerly, NotificationAccess.LOADING)
 
+    /**
+     * 当前分组中本机显示的类型. 列表和 "全部标为已读" 都只针对这些类型.
+     */
+    private val shownTypes: Flow<Set<NotificationType>> =
+        combine(selectedGroupFlow, settingsRepository.notificationSettings.flow) { group, settings ->
+            settings.shownTypes(group.types)
+        }.distinctUntilChanged()
+
     val notificationsPager: Flow<PagingData<AppNotification>> =
-        combine(access, selectedGroupFlow) { access, group -> access to group }
+        combine(access, shownTypes) { access, types -> access to types }
             .distinctUntilChanged()
-            .flatMapLatest { (access, group) ->
+            .flatMapLatest { (access, types) ->
                 if (access == NotificationAccess.AUTHORIZED) {
-                    repository.notificationsPager(group)
+                    repository.notificationsPager(types)
                 } else {
                     flowOf(PagingData.empty())
                 }
@@ -125,7 +142,7 @@ class NotificationCenterViewModel(
     private val readOverlayFlow = MutableStateFlow(ReadOverlay.Empty)
 
     /**
-     * 本地叠加的已读状态. "全部标为已读" 只作用于当时的分组, 切换分组时重置. 登录状态变化时整个重置:
+     * 本地叠加的已读状态. "全部标为已读" 只作用于当时的类型, 切换分组或通知设置改变显示的类型时重置. 登录状态变化时整个重置:
      * 列表会重新加载, 已读状态以服务端为准, 而上一个用户的本地标记会让新用户的未读通知显示为已读, 点击也不会再标记.
      */
     val readOverlay: StateFlow<ReadOverlay> = readOverlayFlow.asStateFlow()
@@ -135,6 +152,9 @@ class NotificationCenterViewModel(
     init {
         badgeManager.requestRefresh()
         resetReadOverlayOnAccessChange(access, readOverlayFlow)
+        shownTypes.drop(1)
+            .onEach { readOverlayFlow.update { it.copy(allReadUpToMillis = null) } }
+            .launchIn(backgroundScope)
     }
 
     fun selectGroup(group: NotificationGroup) {
@@ -165,7 +185,7 @@ class NotificationCenterViewModel(
     }
 
     /**
-     * 把当前分组中不晚于 [newestCreatedAtMillis] 的通知全部标为已读. 传入已加载的最新一条的创建时间,
+     * 把当前显示的类型中不晚于 [newestCreatedAtMillis] 的通知全部标为已读. 传入已加载的最新一条的创建时间,
      * 以免把用户还没看到的通知也标为已读.
      *
      * 请求在 ViewModel 的作用域中进行: 调用方的协程被取消 (例如离开页面) 时, 已经发出的请求仍会完成.
@@ -173,9 +193,9 @@ class NotificationCenterViewModel(
      * @throws me.him188.ani.app.data.repository.RepositoryException 请求失败时. 此时撤销本地标记.
      */
     suspend fun markAllRead(newestCreatedAtMillis: Long) {
-        val group = selectedGroupFlow.value
+        val types = shownTypes.first()
         markAllReadInBackground(readOverlayFlow, badgeManager, upToMillis = newestCreatedAtMillis) {
-            repository.markAllNotificationsRead(group, beforeMillis = newestCreatedAtMillis)
+            repository.markAllNotificationsRead(types, beforeMillis = newestCreatedAtMillis)
         }
     }
 
@@ -186,6 +206,10 @@ class NotificationCenterViewModel(
 
 /**
  * 公告列表. 游客也能浏览, 但没有已读状态, 也不能标记已读.
+ *
+ * 登录用户进入列表即已读: 列表每加载完一页, 就把发布时间不晚于已加载的最新一条的公告全部标为已读, 并刷新未读数.
+ * 列表仍显示进入前的未读标记, 让用户看出哪些是新的: 每条公告保持本次浏览中第一次加载到它时服务端的已读状态, 刷新列表也不变.
+ * 所以之后才加载到的公告 (例如下一页) 显示加载时服务端的状态, 发布时间不晚于已标记时间的公告这时已经是已读.
  */
 @Stable
 class AnnouncementsViewModel(
@@ -198,6 +222,8 @@ class AnnouncementsViewModel(
     val access: StateFlow<NotificationAccess> = sessionStateProvider.accessFlow()
         .stateIn(backgroundScope, SharingStarted.Eagerly, NotificationAccess.LOADING)
 
+    private val visitFlow = MutableStateFlow<AnnouncementsVisit?>(null)
+
     /**
      * 登录状态变化时重新加载, 以获得对应用户的已读状态.
      */
@@ -206,7 +232,9 @@ class AnnouncementsViewModel(
             if (access == NotificationAccess.LOADING) {
                 flowOf(PagingData.empty())
             } else {
-                repository.announcementsPager()
+                val visit = AnnouncementsVisit(markAsRead = access == NotificationAccess.AUTHORIZED)
+                visitFlow.value = visit
+                repository.announcementsPager().map { data -> data.map { visit.onLoaded(it) } }
             }
         }
         .cachedIn(backgroundScope)
@@ -214,7 +242,7 @@ class AnnouncementsViewModel(
     private val readOverlayFlow = MutableStateFlow(ReadOverlay.Empty)
 
     /**
-     * 本地叠加的已读状态. 登录状态变化时重置, 原因见 [NotificationCenterViewModel.readOverlay].
+     * 本地叠加的已读状态, 记录本次浏览中点击过的公告. 登录状态变化时重置, 原因见 [NotificationCenterViewModel.readOverlay].
      */
     val readOverlay: StateFlow<ReadOverlay> = readOverlayFlow.asStateFlow()
 
@@ -223,12 +251,42 @@ class AnnouncementsViewModel(
     }
 
     /**
-     * 打开一条公告时调用. 游客 ([Announcement.read] 为 `null`) 和已读的公告不做任何事.
+     * 列表加载完一页后调用. 登录用户把发布时间不晚于已加载的最新一条的公告全部标为已读, 并刷新未读数.
+     * 已经标记过的时间不再请求; 请求失败时, 下次调用会重试.
+     */
+    fun markLoadedAnnouncementsRead() {
+        val visit = visitFlow.value ?: return
+        if (!visit.markAsRead) return
+        backgroundScope.launch {
+            visit.markMutex.withLock {
+                val newest = visit.newestLoadedMillis.value ?: return@launch
+                val marked = visit.markedUpToMillis.value
+                if (marked != null && newest <= marked) return@launch
+                visit.markedUpToMillis.value = newest
+                try {
+                    repository.markAllAnnouncementsRead(beforeMillis = newest)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    visit.markedUpToMillis.value = marked
+                    logger.warn(e) { "Failed to mark announcements up to $newest as read" }
+                } finally {
+                    // 请求可能已经到达服务端, 即使随后被取消
+                    badgeManager.requestRefresh()
+                }
+            }
+        }
+    }
+
+    /**
+     * 打开一条公告时调用, 在本地把它显示为已读. 游客 ([Announcement.read] 为 `null`) 和已读的公告不做任何事.
+     * 进入列表时已经标为已读的公告不再请求服务端.
      */
     fun markRead(announcement: Announcement) {
         if (access.value != NotificationAccess.AUTHORIZED) return
         if (readOverlayFlow.value.isRead(announcement) != false) return
         readOverlayFlow.update { it.withRead(announcement.id) }
+        if (visitFlow.value?.isMarkedRead(announcement) == true) return
         backgroundScope.launch {
             try {
                 repository.markAnnouncementsRead(listOf(announcement.id))
@@ -244,21 +302,48 @@ class AnnouncementsViewModel(
         }
     }
 
-    /**
-     * 把发布时间不晚于 [newestPublishedAtMillis] (已加载的最新一条) 的公告标为已读, 本地和服务端用同一个界限.
-     *
-     * 请求在 ViewModel 的作用域中进行: 调用方的协程被取消 (例如离开页面) 时, 已经发出的请求仍会完成.
-     *
-     * @throws me.him188.ani.app.data.repository.RepositoryException 请求失败时. 此时撤销本地标记.
-     */
-    suspend fun markAllRead(newestPublishedAtMillis: Long) {
-        markAllReadInBackground(readOverlayFlow, badgeManager, upToMillis = newestPublishedAtMillis) {
-            repository.markAllAnnouncementsRead(beforeMillis = newestPublishedAtMillis)
-        }
-    }
-
     fun refreshBadge() {
         badgeManager.requestRefresh()
+    }
+}
+
+/**
+ * 同一登录状态下的一次浏览. 登录状态变化时公告列表重新加载, 开始新的一次浏览.
+ *
+ * @property markAsRead 是否把加载到的公告标为已读. 只有登录用户有已读状态.
+ */
+private class AnnouncementsVisit(val markAsRead: Boolean) {
+    /**
+     * 每条公告第一次加载到时服务端的已读状态.
+     */
+    private val firstSeenRead = MutableStateFlow<Map<String, Boolean?>>(emptyMap())
+
+    /**
+     * 已加载的公告中最新的发布时间. 尚未加载到公告时为 `null`.
+     */
+    val newestLoadedMillis = MutableStateFlow<Long?>(null)
+
+    /**
+     * 已经在服务端标为已读 (或请求正在进行) 的发布时间上限. 只在持有 [markMutex] 时修改.
+     */
+    val markedUpToMillis = MutableStateFlow<Long?>(null)
+    val markMutex = Mutex()
+
+    /**
+     * 记录加载到的 [announcement], 返回第一次加载到它时的已读状态.
+     */
+    fun onLoaded(announcement: Announcement): Announcement {
+        newestLoadedMillis.update { maxOf(it ?: Long.MIN_VALUE, announcement.publishedAtMillis) }
+        val firstSeen = firstSeenRead.updateAndGet {
+            if (announcement.id in it) it else it + (announcement.id to announcement.read)
+        }
+        val read = firstSeen.getValue(announcement.id)
+        return if (read == announcement.read) announcement else announcement.copy(read = read)
+    }
+
+    fun isMarkedRead(announcement: Announcement): Boolean {
+        val markedUpTo = markedUpToMillis.value ?: return false
+        return announcement.publishedAtMillis <= markedUpTo
     }
 }
 

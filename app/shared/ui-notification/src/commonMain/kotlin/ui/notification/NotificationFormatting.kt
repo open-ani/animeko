@@ -10,16 +10,12 @@
 package me.him188.ani.app.ui.notification
 
 import androidx.compose.runtime.Immutable
-import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.format.char
-import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.models.comment.CommentReportReason
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.notification.AccountSecurityEvent
 import me.him188.ani.app.data.models.notification.AnnouncementTag
 import me.him188.ani.app.data.models.notification.AppNotificationContent
-import me.him188.ani.app.data.models.notification.LoginMethod
+import me.him188.ani.app.data.models.notification.SystemNotificationEvent
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_report_reason_harassment
 import me.him188.ani.app.ui.lang.comment_report_reason_illegal
@@ -28,12 +24,6 @@ import me.him188.ani.app.ui.lang.comment_report_reason_other
 import me.him188.ani.app.ui.lang.comment_report_reason_spam
 import me.him188.ani.app.ui.lang.comment_report_reason_spoiler
 import me.him188.ani.app.ui.lang.exploration_schedule_episode
-import me.him188.ani.app.ui.lang.notification_account_bangumi_expired
-import me.him188.ani.app.ui.lang.notification_account_bangumi_expired_supporting
-import me.him188.ani.app.ui.lang.notification_account_email_bound
-import me.him188.ani.app.ui.lang.notification_account_email_changed
-import me.him188.ani.app.ui.lang.notification_account_email_unbound
-import me.him188.ani.app.ui.lang.notification_account_new_login
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound_generic
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound_supporting
@@ -42,18 +32,16 @@ import me.him188.ani.app.ui.lang.notification_announcement_tag_community
 import me.him188.ani.app.ui.lang.notification_announcement_tag_general
 import me.him188.ani.app.ui.lang.notification_announcement_tag_maintenance
 import me.him188.ani.app.ui.lang.notification_announcement_tag_release
-import me.him188.ani.app.ui.lang.notification_login_method_bangumi
-import me.him188.ani.app.ui.lang.notification_login_method_email_otp
-import me.him188.ani.app.ui.lang.notification_login_method_github
-import me.him188.ani.app.ui.lang.notification_login_method_qr_code
 import me.him188.ani.app.ui.lang.notification_report_result_row_title
 import me.him188.ani.app.ui.lang.notification_report_target_character_comment
 import me.him188.ani.app.ui.lang.notification_report_target_comment
 import me.him188.ani.app.ui.lang.notification_report_target_episode_comment
 import me.him188.ani.app.ui.lang.notification_report_target_person_comment
 import me.him188.ani.app.ui.lang.notification_report_target_subject_review
+import me.him188.ani.app.ui.lang.notification_system_bangumi_expired
+import me.him188.ani.app.ui.lang.notification_system_bangumi_expired_supporting
+import me.him188.ani.app.ui.lang.notification_system_bangumi_reauthorize
 import org.jetbrains.compose.resources.StringResource
-import kotlin.time.Instant
 
 /**
  * 通知列表一行的两行文本: [headline] 说明发生了什么, [supporting] 说明对象或细节.
@@ -84,10 +72,74 @@ fun notificationRowText(
 
     is AppNotificationContent.AccountSecurity -> accountSecurityRowText(content)
 
-    is AppNotificationContent.System -> NotificationRowText(
+    is AppNotificationContent.System -> systemRowText(content)
+}
+
+/**
+ * 系统消息的行文本. 认识的事件使用客户端的文案, 否则为服务端的标题和正文的第一行.
+ */
+fun systemRowText(content: AppNotificationContent.System): NotificationRowText = when (content.event) {
+    SystemNotificationEvent.BANGUMI_AUTHORIZATION_EXPIRED -> NotificationRowText(
+        headline = NotificationText.Res(Lang.notification_system_bangumi_expired),
+        supporting = NotificationText.Res(Lang.notification_system_bangumi_expired_supporting),
+    )
+
+    null -> NotificationRowText(
         headline = NotificationText.Plain(content.title),
         supporting = firstLineOf(content.body)?.let { NotificationText.Plain(it) },
     )
+}
+
+/**
+ * 列表行中可以直接执行的操作, 显示在行文本下方.
+ */
+enum class NotificationInlineAction {
+    /**
+     * 重新授权 Bangumi.
+     */
+    REAUTHORIZE_BANGUMI,
+}
+
+val NotificationInlineAction.labelRes: StringResource
+    get() = when (this) {
+        NotificationInlineAction.REAUTHORIZE_BANGUMI -> Lang.notification_system_bangumi_reauthorize
+    }
+
+/**
+ * 列表行的操作. 没有操作的行返回空列表.
+ */
+fun notificationInlineActions(content: AppNotificationContent): List<NotificationInlineAction> = when (content) {
+    is AppNotificationContent.System -> when (content.event) {
+        SystemNotificationEvent.BANGUMI_AUTHORIZATION_EXPIRED -> listOf(NotificationInlineAction.REAUTHORIZE_BANGUMI)
+        null -> emptyList()
+    }
+
+    is AppNotificationContent.ReportResult,
+    is AppNotificationContent.AccountSecurity,
+        -> emptyList()
+}
+
+/**
+ * 点击列表行时打开的位置.
+ */
+enum class NotificationOpenTarget {
+    /**
+     * 通知详情. 窄屏为单独的页面, 宽屏显示在列表右侧.
+     */
+    DETAIL,
+
+    /**
+     * 账号设置. 账号安全通知没有详情, 相关的操作都在账号设置中.
+     */
+    ACCOUNT_SETTINGS,
+}
+
+fun notificationOpenTarget(content: AppNotificationContent): NotificationOpenTarget = when (content) {
+    is AppNotificationContent.ReportResult,
+    is AppNotificationContent.System,
+        -> NotificationOpenTarget.DETAIL
+
+    is AppNotificationContent.AccountSecurity -> NotificationOpenTarget.ACCOUNT_SETTINGS
 }
 
 /**
@@ -196,37 +248,11 @@ fun parseReportSnapshot(snapshot: String): ReportSnapshot {
 /**
  * 账号安全通知的行文本. 不认识的事件为通用的 "账号安全提醒".
  */
-fun accountSecurityRowText(content: AppNotificationContent.AccountSecurity): NotificationRowText {
-    val email = content.email?.takeIf { it.isNotBlank() }?.let { NotificationText.Plain(it) }
-    return when (content.event) {
-        AccountSecurityEvent.NEW_LOGIN -> NotificationRowText(
-            headline = NotificationText.Res(Lang.notification_account_new_login),
-            supporting = loginSummaryText(content.clientPlatform, content.loginMethod),
-        )
-
-        AccountSecurityEvent.EMAIL_BOUND -> NotificationRowText(
-            headline = NotificationText.Res(Lang.notification_account_email_bound),
-            supporting = email,
-        )
-
-        AccountSecurityEvent.EMAIL_CHANGED -> NotificationRowText(
-            headline = NotificationText.Res(Lang.notification_account_email_changed),
-            supporting = email,
-        )
-
-        AccountSecurityEvent.EMAIL_UNBOUND -> NotificationRowText(
-            headline = NotificationText.Res(Lang.notification_account_email_unbound),
-            supporting = email,
-        )
-
+fun accountSecurityRowText(content: AppNotificationContent.AccountSecurity): NotificationRowText =
+    when (content.event) {
         AccountSecurityEvent.THIRD_PARTY_UNBOUND -> NotificationRowText(
             headline = thirdPartyUnboundTitle(content.provider),
             supporting = NotificationText.Res(Lang.notification_account_third_party_unbound_supporting),
-        )
-
-        AccountSecurityEvent.BANGUMI_AUTHORIZATION_EXPIRED -> NotificationRowText(
-            headline = NotificationText.Res(Lang.notification_account_bangumi_expired),
-            supporting = NotificationText.Res(Lang.notification_account_bangumi_expired_supporting),
         )
 
         AccountSecurityEvent.UNKNOWN -> NotificationRowText(
@@ -234,13 +260,6 @@ fun accountSecurityRowText(content: AppNotificationContent.AccountSecurity): Not
             supporting = null,
         )
     }
-}
-
-/**
- * 账号安全事件的标题, 与列表行的标题相同.
- */
-fun accountSecurityTitle(content: AppNotificationContent.AccountSecurity): NotificationText =
-    accountSecurityRowText(content).headline
 
 private fun thirdPartyUnboundTitle(provider: String?): NotificationText {
     val name = providerDisplayName(provider)
@@ -250,53 +269,6 @@ private fun thirdPartyUnboundTitle(provider: String?): NotificationText {
         listOf(NotificationText.Plain(name)),
     )
 }
-
-/**
- * "平台 + 登录方式", 例如 "macOS 扫码登录". 不认识或缺少的部分省略, 都没有时返回 `null`.
- * 只有登录方式时与 [loginMethodText] 相同.
- */
-fun loginSummaryText(clientPlatform: String?, loginMethod: LoginMethod?): NotificationText? {
-    val platform = clientPlatformDisplayName(clientPlatform)?.let { NotificationText.Plain(it) }
-    val method = loginMethod?.labelRes?.let { NotificationText.Res(it) }
-    return when {
-        platform != null && method != null -> NotificationText.Words(listOf(platform, method))
-        platform != null -> platform
-        else -> loginMethodText(loginMethod)
-    }
-}
-
-/**
- * 单独显示的登录方式. 英文的登录方式跟在平台名后面时小写, 单独显示时首字母大写. 不认识或缺少时返回 `null`.
- */
-fun loginMethodText(loginMethod: LoginMethod?): NotificationText? =
-    loginMethod?.labelRes?.let { NotificationText.Capitalized(NotificationText.Res(it)) }
-
-/**
- * 新设备登录的平台名, 例如 `macos-aarch64` 为 "macOS", `android-tv-arm64-v8a` 为 "Android TV".
- *
- * [platform] 是服务端下发的 `<系统>-<架构>`: 小写, 空白换成 `-`. 不认识的系统返回 `null`.
- */
-fun clientPlatformDisplayName(platform: String?): String? {
-    val normalized = platform?.trim()?.lowercase()?.replace(Whitespaces, "-")?.takeIf { it.isNotEmpty() }
-        ?: return null
-    return ClientPlatformNames.firstOrNull { (system, _) ->
-        normalized == system || normalized.startsWith("$system-")
-    }?.second
-}
-
-private val Whitespaces = Regex("""\s+""")
-
-/**
- * 系统与平台名. 按顺序匹配, `android-tv` 在 `android` 之前.
- */
-private val ClientPlatformNames = listOf(
-    "android-tv" to "Android TV",
-    "android" to "Android",
-    "ios" to "iOS",
-    "macos" to "macOS",
-    "windows" to "Windows",
-    "linux" to "Linux",
-)
 
 /**
  * 第三方平台名. 不认识的平台返回 `null`, 由调用方显示通用文案或省略.
@@ -313,15 +285,6 @@ fun providerDisplayName(provider: String?): String? =
  */
 fun firstLineOf(body: String): String? =
     body.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() }
-
-val LoginMethod.labelRes: StringResource?
-    get() = when (this) {
-        LoginMethod.EMAIL_OTP -> Lang.notification_login_method_email_otp
-        LoginMethod.GITHUB -> Lang.notification_login_method_github
-        LoginMethod.BANGUMI -> Lang.notification_login_method_bangumi
-        LoginMethod.QR_CODE -> Lang.notification_login_method_qr_code
-        LoginMethod.UNKNOWN -> null
-    }
 
 val CommentReportTargetType.labelRes: StringResource
     get() = when (this) {
@@ -356,23 +319,3 @@ val AnnouncementTag.labelRes: StringResource
         AnnouncementTag.UNKNOWN,
             -> Lang.notification_announcement_tag_general
     }
-
-private val AbsoluteDateTimeFormat = LocalDateTime.Format {
-    year()
-    char('-')
-    monthNumber()
-    char('-')
-    day()
-    char(' ')
-    hour()
-    char(':')
-    minute()
-}
-
-/**
- * 详情页使用的绝对时间, 例如 `2026-10-12 21:30`.
- */
-fun formatAbsoluteDateTime(
-    millis: Long,
-    timeZone: TimeZone = TimeZone.currentSystemDefault(),
-): String = AbsoluteDateTimeFormat.format(Instant.fromEpochMilliseconds(millis).toLocalDateTime(timeZone))

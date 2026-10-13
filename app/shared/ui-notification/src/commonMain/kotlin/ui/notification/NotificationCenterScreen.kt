@@ -82,15 +82,15 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * 通知中心.
  *
- * 窄屏只显示列表, 点击通知时调用 [onNavigateToDetail] 打开单独的详情页; 宽屏为双栏, 详情显示在右侧.
- * 打开一条通知会立即把它标为已读.
+ * 点击通知时按 [notificationOpenTarget] 打开: 详情在窄屏调用 [onNavigateToDetail] 打开单独的页面, 宽屏为双栏, 显示在右侧;
+ * 账号设置在窄屏和宽屏都调用 [NotificationActions.onOpenAccountSettings]. 打开一条通知或执行它的行内操作都会立即把它标为已读.
  *
  * 列表不会自动加载新到的通知, 而未读数由后台定时刷新. 所以 "全部标为已读" 之后, 以及未读数增加到超过列表中的未读通知时,
  * 重新加载列表, 让新通知显示出来: "全部标为已读" 只标记已加载的通知.
  *
  * @param onNavigateToDetail 窄屏打开通知详情.
  * @param onLogin 游客点击登录.
- * @param detailActions 宽屏详情栏中的跳转.
+ * @param actions 宽屏详情栏、列表行的操作和账号安全通知的跳转.
  */
 @Composable
 fun NotificationCenterScreen(
@@ -99,7 +99,7 @@ fun NotificationCenterScreen(
     onNavigateToAnnouncements: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onLogin: () -> Unit,
-    detailActions: NotificationDetailActions,
+    actions: NotificationActions,
     modifier: Modifier = Modifier,
     navigator: ThreePaneScaffoldNavigator<String> = rememberListDetailPaneScaffoldNavigator<String>(),
     navigationIcon: @Composable () -> Unit = {},
@@ -149,7 +149,7 @@ fun NotificationCenterScreen(
         onNavigateToAnnouncements = onNavigateToAnnouncements,
         onNavigateToSettings = onNavigateToSettings,
         onLogin = onLogin,
-        detailActions = detailActions,
+        actions = actions,
         modifier = modifier,
         navigator = navigator,
         navigationIcon = navigationIcon,
@@ -158,7 +158,7 @@ fun NotificationCenterScreen(
 }
 
 /**
- * @param onOpenNotification 打开一条通知时调用 (用于标为已读), 之后再导航到详情.
+ * @param onOpenNotification 打开一条通知或执行它的行内操作时调用 (用于标为已读), 之后再导航.
  * @param onMarkAllRead 参数为已加载的最新一条通知的创建时间.
  */
 @Composable
@@ -177,7 +177,7 @@ fun NotificationCenterScreen(
     onNavigateToAnnouncements: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onLogin: () -> Unit,
-    detailActions: NotificationDetailActions,
+    actions: NotificationActions,
     modifier: Modifier = Modifier,
     navigator: ThreePaneScaffoldNavigator<String> = rememberListDetailPaneScaffoldNavigator<String>(),
     navigationIcon: @Composable () -> Unit = {},
@@ -189,13 +189,24 @@ fun NotificationCenterScreen(
 
     fun openNotification(notification: AppNotification) {
         onOpenNotification(notification)
-        if (layoutParameters.preferSinglePane) {
-            onNavigateToDetail(notification.id)
-        } else {
-            selectedId = notification.id
-            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, notification.id)
+        when (notificationOpenTarget(notification.content)) {
+            NotificationOpenTarget.ACCOUNT_SETTINGS -> actions.onOpenAccountSettings()
+
+            NotificationOpenTarget.DETAIL -> if (layoutParameters.preferSinglePane) {
+                onNavigateToDetail(notification.id)
+            } else {
+                selectedId = notification.id
+                coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                    navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, notification.id)
+                }
             }
+        }
+    }
+
+    fun performInlineAction(notification: AppNotification, action: NotificationInlineAction) {
+        onOpenNotification(notification)
+        when (action) {
+            NotificationInlineAction.REAUTHORIZE_BANGUMI -> actions.onReauthorizeBangumi()
         }
     }
 
@@ -239,6 +250,7 @@ fun NotificationCenterScreen(
                         onSelectGroup = onSelectGroup,
                         selectedId = if (listDetailLayoutParameters.highlightSelectedItem) selectedId else null,
                         onClickNotification = ::openNotification,
+                        onInlineAction = ::performInlineAction,
                         onClickAnnouncements = onNavigateToAnnouncements,
                         onRefresh = onRefresh,
                         onLogin = onLogin,
@@ -247,6 +259,8 @@ fun NotificationCenterScreen(
             },
             detailPane = {
                 val notification = selectedId?.let { id -> loadedItems.firstOrNull { it.id == id } }
+                // 与列表并排时, 举报结果的跳转按钮在顶栏; 只显示详情栏时与单独的详情页一样在底部
+                val reportActionInTopBar = !isSinglePane
                 NotificationDetailPaneLayout(
                     title = notification?.let { notificationDetailTitle(it.content) }.orEmpty(),
                     onNavigateBack = if (isSinglePane && navigator.canNavigateBack()) {
@@ -258,17 +272,26 @@ fun NotificationCenterScreen(
                     } else {
                         null
                     },
+                    actions = {
+                        if (notification != null && reportActionInTopBar) {
+                            NotificationDetailTopBarActions(notification, actions)
+                        }
+                    },
                 ) {
                     if (notification == null) {
                         NotificationHintText(
                             stringResource(Lang.notification_detail_placeholder),
-                            Modifier.testTag(NotificationTestTags.DETAIL_PLACEHOLDER),
+                            Modifier
+                                .paneContentPadding()
+                                .detailContentWidth()
+                                .testTag(NotificationTestTags.DETAIL_PLACEHOLDER),
                         )
                     } else {
                         NotificationDetailContent(
                             notification,
-                            detailActions,
+                            actions,
                             Modifier.paneContentPadding().paneWindowInsetsPadding(),
+                            reportActionInTopBar = reportActionInTopBar,
                         )
                     }
                 }
@@ -290,6 +313,7 @@ private fun PaneScope.NotificationCenterList(
     onSelectGroup: (NotificationGroup) -> Unit,
     selectedId: String?,
     onClickNotification: (AppNotification) -> Unit,
+    onInlineAction: (AppNotification, NotificationInlineAction) -> Unit,
     onClickAnnouncements: () -> Unit,
     onRefresh: () -> Unit,
     onLogin: () -> Unit,
@@ -351,6 +375,7 @@ private fun PaneScope.NotificationCenterList(
                 singlePane = isSinglePane,
                 selectedId = selectedId,
                 onClickNotification = onClickNotification,
+                onInlineAction = onInlineAction,
                 onLogin = onLogin,
             )
         }
@@ -364,6 +389,7 @@ private fun LazyListScope.notificationItems(
     singlePane: Boolean,
     selectedId: String?,
     onClickNotification: (AppNotification) -> Unit,
+    onInlineAction: (AppNotification, NotificationInlineAction) -> Unit,
     onLogin: () -> Unit,
 ) {
     when (access) {
@@ -425,6 +451,7 @@ private fun LazyListScope.notificationItems(
                 read = readOverlay.isRead(notification),
                 selected = notification.id == selectedId,
                 onClick = { onClickNotification(notification) },
+                onInlineAction = { onInlineAction(notification, it) },
             )
         }
         if (index < items.itemCount - 1) {
@@ -463,12 +490,14 @@ private fun NotificationRow(
     read: Boolean,
     selected: Boolean,
     onClick: () -> Unit,
+    onInlineAction: (NotificationInlineAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
     val rowText = remember(notification.content, useOriginalTitle) {
         notificationRowText(notification.content, useOriginalTitle)
     }
+    val inlineActions = remember(notification.content) { notificationInlineActions(notification.content) }
     NotificationListItem(
         headline = rowText.headline.resolve(),
         supporting = rowText.supporting?.resolve(),
@@ -478,6 +507,19 @@ private fun NotificationRow(
         onClick = onClick,
         modifier = modifier.testTag(NotificationTestTags.item(notification.id)),
         selected = selected,
+        actions = if (inlineActions.isEmpty()) {
+            null
+        } else {
+            {
+                for (action in inlineActions) {
+                    NotificationInlineActionButton(
+                        stringResource(action.labelRes),
+                        onClick = { onInlineAction(action) },
+                        Modifier.testTag(NotificationTestTags.INLINE_ACTION),
+                    )
+                }
+            }
+        },
     )
 }
 

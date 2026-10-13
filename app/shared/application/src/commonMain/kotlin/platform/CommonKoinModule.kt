@@ -304,6 +304,7 @@ private fun KoinApplication.otherModules(
             notificationService = get(),
             sessionStateProvider = get(),
             scope = coroutineScope,
+            notificationSettings = get<SettingsRepository>().notificationSettings.flow,
         ).also { it.start() }
     }
     single<AniPersonCommentService> {

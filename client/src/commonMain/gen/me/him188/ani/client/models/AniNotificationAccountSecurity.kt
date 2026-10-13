@@ -24,39 +24,19 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
- * @param event 事件. 已知: `new_login`, `email_bound`, `email_changed`, `email_unbound`, `third_party_unbound`, `bangumi_authorization_expired`
+ * @param event 事件. 已知: `third_party_unbound`
  * @param occurredAtMillis 事件发生时间 (epoch 毫秒)
- * @param loginMethod 登录方式 (`new_login`). 已知: `email_otp`, `github`, `bangumi`, `qr_code`
- * @param clientPlatform 登录设备的平台, 如 `macos-aarch64` (`new_login`)
- * @param clientVersion 登录设备的客户端版本 (`new_login`)
- * @param deviceName 登录设备的名称, 扫码登录时由该设备提供 (`new_login`)
- * @param email 打码的邮箱, 如 `a***@example.com` (`email_*`)
  * @param provider 第三方平台 (`third_party_unbound`). 已知: `github`, `bangumi`
  */
 @Serializable
 
 data class AniNotificationAccountSecurity (
 
-    /* 事件. 已知: `new_login`, `email_bound`, `email_changed`, `email_unbound`, `third_party_unbound`, `bangumi_authorization_expired` */
+    /* 事件. 已知: `third_party_unbound` */
     @SerialName(value = "event") @Required val event: kotlin.String,
 
     /* 事件发生时间 (epoch 毫秒) */
     @SerialName(value = "occurredAtMillis") @Required val occurredAtMillis: kotlin.Long,
-
-    /* 登录方式 (`new_login`). 已知: `email_otp`, `github`, `bangumi`, `qr_code` */
-    @SerialName(value = "loginMethod") val loginMethod: kotlin.String? = null,
-
-    /* 登录设备的平台, 如 `macos-aarch64` (`new_login`) */
-    @SerialName(value = "clientPlatform") val clientPlatform: kotlin.String? = null,
-
-    /* 登录设备的客户端版本 (`new_login`) */
-    @SerialName(value = "clientVersion") val clientVersion: kotlin.String? = null,
-
-    /* 登录设备的名称, 扫码登录时由该设备提供 (`new_login`) */
-    @SerialName(value = "deviceName") val deviceName: kotlin.String? = null,
-
-    /* 打码的邮箱, 如 `a***@example.com` (`email_*`) */
-    @SerialName(value = "email") val email: kotlin.String? = null,
 
     /* 第三方平台 (`third_party_unbound`). 已知: `github`, `bangumi` */
     @SerialName(value = "provider") val provider: kotlin.String? = null

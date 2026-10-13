@@ -48,6 +48,7 @@ sealed class AppNotificationContent {
      * @property handledAtMillis 审核处理的时间.
      * @property contentRemoved 这次处理是否删除了被举报的评论.
      * @property contentSnapshot 举报时保存的评论快照, 格式为 `昵称：正文` (全角冒号), 可能被截断.
+     * @property contentCreatedAtMillis 被举报评论的发表时间. 没有时为 `null`.
      * @property episodeSort 剧集序号的展示文本, 不补零, 例如 `12`, `12.5`, `SP1`.
      * @property personId 人物评论所属的人物.
      * @property characterId 角色评论所属的角色.
@@ -61,6 +62,7 @@ sealed class AppNotificationContent {
         val handledAtMillis: Long,
         val contentRemoved: Boolean,
         val contentSnapshot: String? = null,
+        val contentCreatedAtMillis: Long? = null,
         val subjectId: Long? = null,
         val subjectName: String? = null,
         val subjectNameCn: String? = null,
@@ -77,10 +79,6 @@ sealed class AppNotificationContent {
      * 账号安全事件.
      *
      * @property event 已知事件. 客户端不认识的事件为 [AccountSecurityEvent.UNKNOWN], 原始值见 [rawEvent].
-     * @property loginMethod 登录方式, 只有 [AccountSecurityEvent.NEW_LOGIN] 有. 不认识的值为 [LoginMethod.UNKNOWN].
-     * @property clientPlatform 登录设备的平台, 例如 `macos-aarch64`, `android-tv-arm64-v8a`.
-     * @property deviceName 扫码登录时登录设备上报的名字.
-     * @property email 打码后的邮箱, 例如 `a***@example.com`.
      * @property provider 第三方平台, 已知值为 `github` 和 `bangumi`.
      */
     @Immutable
@@ -88,27 +86,26 @@ sealed class AppNotificationContent {
         val event: AccountSecurityEvent,
         val rawEvent: String,
         val occurredAtMillis: Long,
-        val loginMethod: LoginMethod? = null,
-        val clientPlatform: String? = null,
-        val clientVersion: String? = null,
-        val deviceName: String? = null,
-        val email: String? = null,
         val provider: String? = null,
     ) : AppNotificationContent() {
         override val type: NotificationType get() = NotificationType.ACCOUNT_SECURITY
     }
 
     /**
-     * 管理员发给用户的系统消息.
+     * 系统消息: 管理员发给用户的消息, 或服务端发出的提醒.
+     *
+     * [title] 和 [body] 总是有内容. 客户端认识 [event] 时使用自己的文案和操作, 否则展示 [title] 和 [body].
      *
      * @property body 纯文本, 保留换行. 其中的网址由客户端自动转换为链接.
      * @property linkUrl 可选的 http(s) 链接.
+     * @property event 已知事件. 没有事件或客户端不认识时为 `null`.
      */
     @Immutable
     data class System(
         val title: String,
         val body: String,
         val linkUrl: String? = null,
+        val event: SystemNotificationEvent? = null,
     ) : AppNotificationContent() {
         override val type: NotificationType get() = NotificationType.SYSTEM
     }
@@ -120,20 +117,10 @@ sealed class AppNotificationContent {
  * @property wireValue 服务端协议中的取值. [UNKNOWN] 没有对应的取值.
  */
 enum class AccountSecurityEvent(val wireValue: String?) {
-    NEW_LOGIN("new_login"),
-    EMAIL_BOUND("email_bound"),
-    EMAIL_CHANGED("email_changed"),
-    EMAIL_UNBOUND("email_unbound"),
-
     /**
      * 用户的第三方账号 (见 [AppNotificationContent.AccountSecurity.provider]) 登录了另一个 Animeko 账号, 因此从当前账号解绑.
      */
     THIRD_PARTY_UNBOUND("third_party_unbound"),
-
-    /**
-     * Bangumi 拒绝刷新授权, 需要用户重新授权.
-     */
-    BANGUMI_AUTHORIZATION_EXPIRED("bangumi_authorization_expired"),
     UNKNOWN(null),
     ;
 
@@ -144,25 +131,22 @@ enum class AccountSecurityEvent(val wireValue: String?) {
 }
 
 /**
- * 登录方式. 服务端以字符串下发, 客户端不认识的值映射为 [UNKNOWN].
+ * 客户端有专门展示方式的系统消息事件. 服务端以字符串下发, 以后可能增加新的事件.
  *
- * @property wireValue 服务端协议中的取值. [UNKNOWN] 没有对应的取值.
+ * @property wireValue 服务端协议中的取值.
  */
-enum class LoginMethod(val wireValue: String?) {
-    EMAIL_OTP("email_otp"),
-    GITHUB("github"),
-    BANGUMI("bangumi"),
-    QR_CODE("qr_code"),
-    UNKNOWN(null),
+enum class SystemNotificationEvent(val wireValue: String) {
+    /**
+     * Bangumi 授权已过期, 需要用户重新授权.
+     */
+    BANGUMI_AUTHORIZATION_EXPIRED("bangumi_authorization_expired"),
     ;
 
     companion object {
         /**
-         * @return [value] 为 `null` 时返回 `null`.
+         * @return [value] 为 `null` 或客户端不认识时返回 `null`.
          */
-        fun fromWireValue(value: String?): LoginMethod? {
-            if (value == null) return null
-            return entries.firstOrNull { it.wireValue == value } ?: UNKNOWN
-        }
+        fun fromWireValue(value: String?): SystemNotificationEvent? =
+            entries.firstOrNull { it.wireValue == value }
     }
 }
