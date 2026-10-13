@@ -84,7 +84,7 @@ class MediaSelectorOrchestrationCharacterizationTest {
     }
 
     @Test
-    fun `completed Web sources with mismatched preference wait for exact phase instead of cancelling selection`() = runFetchMediaSelectorTestSuite {
+    fun `completed Web sources with mismatched preference fall back to exact match instead of cancelling selection`() = runFetchMediaSelectorTestSuite {
         initSubject()
         preferenceApi.savedUserPreference.value = MediaPreference.Any.copy(alliance = "组A")
         preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
@@ -99,12 +99,9 @@ class MediaSelectorOrchestrationCharacterizationTest {
             sources.web1.complete(media(kind = WEB, alliance = "组B", subjectName = initApi.subjectName))
             sources.web2.complete(media(kind = WEB, alliance = "组B", subjectName = initApi.subjectName))
             testScope().runCurrent()
-            assertFalse(job.isCompleted)
-            assertNull(selector.selected.value)
             assertEquals(2, selector.filteredCandidatesMedia.first().size)
             assertEquals(emptyList(), selector.preferredCandidatesMedia.first())
-            testScope().advanceTimeBy(5.seconds)
-            testScope().runCurrent()
+            // Every source has finished, so the exact fallback does not wait for the deadline.
             assertSelectedSource(sources.web1)
             job.assertCompleted()
         }

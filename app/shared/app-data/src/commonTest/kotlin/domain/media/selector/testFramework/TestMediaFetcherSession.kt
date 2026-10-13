@@ -17,6 +17,11 @@ import me.him188.ani.app.domain.media.fetch.MediaFetcherConfig
 import me.him188.ani.app.domain.media.fetch.MediaSourceMediaFetcher
 import me.him188.ani.app.domain.media.selector.testFramework.MediaSelectorTestSuite.Companion.SOURCE_DMHY
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
+import me.him188.ani.app.domain.mediasource.web.BlockReason
+import me.him188.ani.app.domain.mediasource.web.BlockedException
+import me.him188.ani.app.domain.mediasource.web.PageExpectation
+import me.him188.ani.app.domain.mediasource.web.SolveRequest
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.paging.SinglePagePagedSource
@@ -32,6 +37,8 @@ import kotlin.jvm.JvmName
 import kotlin.properties.PropertyDelegateProvider
 import kotlin.properties.ReadOnlyProperty
 import kotlin.random.Random
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * 一个测试的 [MediaFetchSession]
@@ -147,6 +154,24 @@ class Handle(
                 )
             },
         )
+        return this
+    }
+
+    /** Ends the query as rate limited. The fetcher retries it once after [retryAfter]. */
+    fun rateLimit(retryAfter: Duration = 30.seconds) = block(BlockReason.RateLimited(retryAfter))
+
+    /** Ends the query as blocked by a captcha, which only the user can solve. */
+    fun requireCaptcha() = block(BlockReason.Captcha(WebCaptchaKind.Cloudflare))
+
+    private fun block(reason: BlockReason): Handle {
+        check(result.isActive)
+        val request = SolveRequest(
+            mediaSourceId = instance.mediaSourceId,
+            pageUrl = "https://example.com/search",
+            kind = WebCaptchaKind.Cloudflare,
+            expectation = PageExpectation.AnyContent,
+        )
+        result.completeExceptionally(BlockedException(reason, request))
         return this
     }
 }
