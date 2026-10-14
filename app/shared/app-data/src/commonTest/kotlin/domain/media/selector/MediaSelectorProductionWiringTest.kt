@@ -175,6 +175,7 @@ class MediaSelectorProductionWiringTest {
                 override val analyticsSettings get() = error("not used")
                 override val debugSettings get() = error("not used")
                 override val watchTogetherSettings get() = error("not used")
+                override val notificationSettings get() = error("not used")
             }
 
             startKoin {

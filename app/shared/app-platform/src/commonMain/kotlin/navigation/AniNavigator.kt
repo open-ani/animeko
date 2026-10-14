@@ -224,6 +224,35 @@ interface AniNavigator {
     fun navigateBangumiMerge() {
         navigate(NavRoutes.BangumiMerge)
     }
+
+    fun navigateNotifications() {
+        navigate(NavRoutes.Notifications)
+    }
+
+    /**
+     * @param notificationId 见 [NavRoutes.NotificationDetail.notificationId]
+     */
+    fun navigateNotificationDetail(notificationId: String) {
+        // 避免同一条通知在栈中重复出现
+        popBackStack(NavRoutes.NotificationDetail(notificationId), inclusive = true)
+        navigate(NavRoutes.NotificationDetail(notificationId))
+    }
+
+    fun navigateAnnouncements() {
+        navigate(NavRoutes.Announcements)
+    }
+
+    /**
+     * @param announcementId 见 [NavRoutes.AnnouncementDetail.announcementId]
+     */
+    fun navigateAnnouncementDetail(announcementId: String) {
+        popBackStack(NavRoutes.AnnouncementDetail(announcementId), inclusive = true)
+        navigate(NavRoutes.AnnouncementDetail(announcementId))
+    }
+
+    fun navigateNotificationSettings() {
+        navigate(NavRoutes.NotificationSettings)
+    }
 }
 
 fun AniNavigator(): AniNavigator = AniNavigatorImpl()

@@ -1,0 +1,85 @@
+<resources>
+    <string name="notification_title">Notifications</string>
+    <string name="notification_mark_all_read">Mark all as read</string>
+    <string name="notification_settings">Notification settings</string>
+    <string name="notification_unread">Unread</string>
+    <string name="notification_has_unread">Unread notifications</string>
+    <string name="notification_unread_count">%1$d unread</string>
+    <string name="notification_empty">No notifications yet</string>
+    <string name="notification_empty_supporting">Results of your reports and account alerts will appear here</string>
+    <string name="notification_interaction_empty">No interactions yet</string>
+    <string name="notification_interaction_empty_supporting">Replies, mentions and reactions to your comments will appear here</string>
+    <string name="notification_detail_placeholder">Select a notification to see the details</string>
+    <string name="notification_not_found">This notification doesn’t exist</string>
+    <string name="notification_group_notice">Notices</string>
+    <string name="notification_group_interaction">Interactions</string>
+    <string name="notification_view_details">View details</string>
+    <string name="notification_update_hint">This version may not be able to show this notification in full. Update Animeko to see all of it.</string>
+    <string name="notification_check_update">Check for updates</string>
+    <string name="notification_update_banner">Some notifications need a newer version to show in full</string>
+    <string name="notification_update_banner_action">Update</string>
+
+    <string name="notification_time_just_now">Just now</string>
+    <string name="notification_time_minutes_ago">%1$s min ago</string>
+    <string name="notification_time_hours_ago">%1$s hr ago</string>
+    <string name="notification_time_yesterday">Yesterday</string>
+    <string name="notification_time_month_day">%4$s %3$s</string>
+    <string name="notification_time_date">%4$s %3$s, %1$s</string>
+    <string name="notification_time_detail_month_day_time">%4$s %3$s, %5$s</string>
+    <string name="notification_time_detail_date_time">%4$s %3$s, %1$s, %5$s</string>
+
+    <string name="notification_announcement_overline">Announcement</string>
+    <string name="notification_announcements_title">Announcements</string>
+    <string name="notification_announcements_empty">No announcements yet</string>
+    <string name="notification_announcements_empty_supporting">Maintenance notices, new versions and other announcements will appear here</string>
+    <string name="notification_announcement_detail_title">Announcement</string>
+    <string name="notification_announcement_detail_placeholder">Select an announcement to see the details</string>
+    <string name="notification_announcement_not_found">This announcement doesn’t exist or was removed</string>
+    <string name="notification_announcement_pinned">Pinned</string>
+    <string name="notification_announcement_tag_general">Announcement</string>
+    <string name="notification_announcement_tag_maintenance">Maintenance</string>
+    <string name="notification_announcement_tag_release">New version</string>
+    <string name="notification_announcement_tag_community">Community</string>
+
+    <string name="notification_report_result_row_title">A comment you reported has been handled</string>
+    <string name="notification_report_result_detail_title">Report result</string>
+    <string name="notification_report_result_upheld">Report upheld</string>
+    <string name="notification_report_result_description_removed">After review, this comment was found to break the community rules and has been removed. Thanks for your report.</string>
+    <string name="notification_report_result_description_handled">After review, this comment was found to break the community rules and action has been taken. Thanks for your report.</string>
+    <string name="notification_report_reason">Reason</string>
+    <string name="notification_report_target">Reported content</string>
+    <string name="notification_report_reported_at">Reported at</string>
+    <string name="notification_report_handled_at">Handled at</string>
+    <string name="notification_report_outcome">Outcome</string>
+    <string name="notification_report_outcome_removed">Comment removed</string>
+    <string name="notification_report_outcome_handled">Action taken</string>
+    <string name="notification_report_snapshot_title">Reported comment (as it was when you reported it)</string>
+    <string name="notification_report_snapshot_footnote">The comment may have been edited or deleted by its author since. The review is based on the snapshot taken when you reported it. %1$s</string>
+    <string name="notification_report_privacy_footnote">The author won’t be told who reported it.</string>
+    <string name="notification_report_target_episode_comment">Episode comment</string>
+    <string name="notification_report_target_subject_review">Anime review</string>
+    <string name="notification_report_target_person_comment">Person comment</string>
+    <string name="notification_report_target_character_comment">Character comment</string>
+    <string name="notification_report_target_comment">Comment</string>
+    <string name="notification_go_to_episode">Go to episode</string>
+    <string name="notification_go_to_subject">Go to anime</string>
+    <string name="notification_go_to_person">Go to person</string>
+    <string name="notification_go_to_character">Go to character</string>
+
+    <string name="notification_account_third_party_unbound">%1$s account unlinked</string>
+    <string name="notification_account_third_party_unbound_generic">Third-party account unlinked</string>
+    <string name="notification_account_third_party_unbound_supporting">It was used to sign in to another Animeko account</string>
+
+    <string name="notification_system_detail_title">System message</string>
+    <string name="notification_system_bangumi_expired">Bangumi authorization expired</string>
+    <string name="notification_system_bangumi_expired_supporting">Your watch progress has stopped syncing. It resumes after you reauthorize.</string>
+    <string name="notification_system_bangumi_reauthorize">Reauthorize</string>
+
+    <string name="notification_settings_group_system">System</string>
+    <string name="notification_settings_system_group_description">When off, those notifications are hidden on this device and not counted as unread.</string>
+    <string name="notification_settings_report_result_item">A comment you reported has a result</string>
+    <string name="notification_settings_account_security_item">Your account has a security alert</string>
+    <string name="notification_settings_group_announcements">Announcements</string>
+    <string name="notification_settings_announcement_item">You receive a new announcement</string>
+    <string name="notification_settings_announcement_description">When off, new announcements don’t put a dot on your avatar.</string>
+</resources>
