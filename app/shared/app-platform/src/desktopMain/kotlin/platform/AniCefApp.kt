@@ -31,9 +31,13 @@ import org.cef.CefApp
 import org.cef.CefClient
 import org.cef.CefSettings
 import org.cef.browser.CefBrowser
+import org.cef.browser.CefFrame
 import org.cef.callback.CefAuthCallback
 import org.cef.handler.CefRequestHandlerAdapter
+import org.cef.handler.CefResourceRequestHandler
+import org.cef.misc.BoolRef
 import org.cef.misc.CefLog
+import org.cef.network.CefRequest
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -85,7 +89,23 @@ object AniCefApp {
     private var proxyAuthUsername: String? = null
     private var proxyAuthPassword: String? = null
 
-    private val proxiedRequestHandler = object : CefRequestHandlerAdapter() {
+    /**
+     * client 唯一的 request handler. JCEF 的 `addRequestHandler` 只在 client 还没有 request handler 时生效,
+     * 所以代理认证和调用方的资源请求处理必须合在同一个 handler 里.
+     */
+    private class AniCefRequestHandler(
+        private val resourceRequestHandler: CefResourceRequestHandler?,
+    ) : CefRequestHandlerAdapter() {
+        override fun getResourceRequestHandler(
+            browser: CefBrowser?,
+            frame: CefFrame?,
+            request: CefRequest?,
+            isNavigation: Boolean,
+            isDownload: Boolean,
+            requestInitiator: String?,
+            disableDefaultHandling: BoolRef?,
+        ): CefResourceRequestHandler? = resourceRequestHandler
+
         override fun getAuthCredentials(
             browser: CefBrowser?,
             originUrl: String?,
@@ -340,11 +360,13 @@ object AniCefApp {
      *
      * 调用前应先用 [awaitInitialized] 确认就绪, 否则创建的浏览器会一直等到初始化完成才开始加载.
      *
+     * @param resourceRequestHandler 处理这个 client 下所有浏览器的资源请求 (拦截、改请求头).
+     * 不要再对返回的 client 调用 `addRequestHandler`: client 已有处理代理认证的 request handler, 后加的会被 JCEF 静默忽略.
      * @return `null` if [initialize] has never been called.
      */
-    fun createClient(): CefClient? {
+    fun createClient(resourceRequestHandler: CefResourceRequestHandler? = null): CefClient? {
         return app?.createClient()
-            ?.apply { addRequestHandler(proxiedRequestHandler) }
+            ?.apply { addRequestHandler(AniCefRequestHandler(resourceRequestHandler)) }
     }
 
     fun configureDataSourceBrowserLimit(limit: Int) {

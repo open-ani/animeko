@@ -13,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.Color
-import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +35,6 @@ import org.cef.browser.CefRequestContext
 import org.cef.callback.CefCookieVisitor
 import org.cef.callback.CefStringVisitor
 import org.cef.handler.CefLoadHandlerAdapter
-import org.cef.handler.CefRequestHandlerAdapter
 import org.cef.handler.CefResourceRequestHandlerAdapter
 import org.cef.misc.BoolRef
 import org.cef.network.CefCookieManager
@@ -55,6 +53,7 @@ class CefCaptchaBrowser private constructor(
     private val permit: AniCefApp.BrowserLifecyclePermit?,
     /** 创建时指定的 UA. `null` 时使用 CEF 默认的 UA. */
     private val configuredUserAgent: String?,
+    private val requestHandler: CaptchaResourceRequestHandler,
 ) : CaptchaBrowser {
     private val _pageLoads = MutableSharedFlow<LoadedPage>(
         extraBufferCapacity = 16,
@@ -65,13 +64,8 @@ class CefCaptchaBrowser private constructor(
     private val _isLoading = MutableStateFlow(false)
     override val isLoading: StateFlow<Boolean> get() = _isLoading
 
-    /** 未指定 UA 时浏览器实际使用的 UA, 创建时向 DevTools 查询; 查询失败时从请求头捕获. */
-    private val capturedUserAgent = atomic<String?>(null)
-
-    private val interceptor = atomic<((String) -> InterceptDecision)?>(null)
-
     override val userAgent: String
-        get() = configuredUserAgent ?: capturedUserAgent.value ?: fallbackUserAgent()
+        get() = configuredUserAgent ?: requestHandler.capturedUserAgent ?: fallbackUserAgent()
 
     override suspend fun navigate(url: String) {
         AniCefApp.runOnCefContext {
@@ -156,7 +150,7 @@ class CefCaptchaBrowser private constructor(
     }
 
     override fun setResourceInterceptor(handler: ((String) -> InterceptDecision)?) {
-        interceptor.value = handler
+        requestHandler.interceptor = handler
     }
 
     @Composable
@@ -206,44 +200,43 @@ class CefCaptchaBrowser private constructor(
                 }
             },
         )
-        client.addRequestHandler(
-            object : CefRequestHandlerAdapter() {
-                override fun getResourceRequestHandler(
-                    browser: CefBrowser?,
-                    frame: CefFrame?,
-                    request: CefRequest?,
-                    isNavigation: Boolean,
-                    isDownload: Boolean,
-                    requestInitiator: String?,
-                    disableDefaultHandling: BoolRef?,
-                ): CefResourceRequestHandlerAdapter {
-                    return object : CefResourceRequestHandlerAdapter() {
-                        override fun onBeforeResourceLoad(
-                            browser: CefBrowser?,
-                            frame: CefFrame?,
-                            request: CefRequest?,
-                        ): Boolean {
-                            if (request != null) {
-                                if (capturedUserAgent.value == null) {
-                                    request.getHeaderByName("User-Agent")
-                                        ?.takeIf { it.isNotBlank() }
-                                        ?.let { capturedUserAgent.value = it }
-                                }
-                                request.applyUserAgent(configuredUserAgent)
-                                val url = request.url
-                                val handler = interceptor.value
-                                if (url != null && handler != null) {
-                                    if (handler(url) == InterceptDecision.Block) {
-                                        return true
-                                    }
-                                }
-                            }
-                            return super.onBeforeResourceLoad(browser, frame, request)
-                        }
+    }
+
+    /**
+     * 浏览器的所有资源请求: 覆写请求头里的 UA, 执行 [setResourceInterceptor] 设置的拦截.
+     */
+    private class CaptchaResourceRequestHandler(
+        private val configuredUserAgent: String?,
+    ) : CefResourceRequestHandlerAdapter() {
+        /** 未指定 UA 时浏览器实际使用的 UA, 创建时向 DevTools 查询; 查询失败时从请求头捕获. */
+        @Volatile
+        var capturedUserAgent: String? = null
+
+        @Volatile
+        var interceptor: ((String) -> InterceptDecision)? = null
+
+        override fun onBeforeResourceLoad(
+            browser: CefBrowser?,
+            frame: CefFrame?,
+            request: CefRequest?,
+        ): Boolean {
+            if (request != null) {
+                if (capturedUserAgent == null) {
+                    request.getHeaderByName("User-Agent")
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { capturedUserAgent = it }
+                }
+                request.applyUserAgent(configuredUserAgent)
+                val url = request.url
+                val handler = interceptor
+                if (url != null && handler != null) {
+                    if (handler(url) == InterceptDecision.Block) {
+                        return true
                     }
                 }
-            },
-        )
+            }
+            return super.onBeforeResourceLoad(browser, frame, request)
+        }
     }
 
     companion object {
@@ -258,7 +251,8 @@ class CefCaptchaBrowser private constructor(
             var browserCreated: CompletableDeferred<Unit>? = null
             val instance = try {
                 AniCefApp.suspendCoroutineOnCefContext {
-                    val createdClient = AniCefApp.createClient()
+                    val requestHandler = CaptchaResourceRequestHandler(userAgent)
+                    val createdClient = AniCefApp.createClient(requestHandler)
                         ?: error("AniCefApp is not initialized, cannot create CaptchaBrowser")
                     client = createdClient
                     browserCreated = createdClient.browserCreatedSignal()
@@ -273,6 +267,7 @@ class CefCaptchaBrowser private constructor(
                         ).also { browser = it },
                         permit = permit,
                         configuredUserAgent = userAgent,
+                        requestHandler = requestHandler,
                     )
                     permit = null
                     created.installHandlers()
@@ -293,7 +288,7 @@ class CefCaptchaBrowser private constructor(
                 if (userAgent != null) {
                     instance.browser.overrideNavigatorUserAgent(userAgent)
                 } else {
-                    instance.browser.queryDefaultUserAgent()?.let { instance.capturedUserAgent.value = it }
+                    instance.browser.queryDefaultUserAgent()?.let { instance.requestHandler.capturedUserAgent = it }
                 }
             } catch (e: Throwable) {
                 instance.close()
