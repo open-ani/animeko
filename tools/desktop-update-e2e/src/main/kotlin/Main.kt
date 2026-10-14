@@ -7,16 +7,26 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+package me.him188.ani.tools.updatee2e
+
 import java.io.File
 import kotlin.system.exitProcess
 
 /**
- * [DesktopUpdateE2e] 的独立入口, 给 CI 的 Verify job 用: 那里只有下载下来的打包产物, 没有主构建.
- * 由 build-logic 自己的 `updateE2e` 任务运行: `./gradlew -p build-logic updateE2e -Pani.updateE2e.appDir=<目录>`.
- *
- * 参数: `--app <打包产物或包含它的目录>`, `--work-dir <工作目录>`, 可选 `--scenario <名字片段>`.
+ * 两种用法:
+ * - `generate-manifest <发布包 zip> <清单文件>`: 为发布包生成增量更新清单, ci-helper 上传发布包前调用.
+ * - `--app <打包产物或包含它的目录> --work-dir <工作目录> [--scenario <名字片段>]`: 自动更新端到端测试 ([DesktopUpdateE2e]).
+ *   CI 的 Verify job 以独立 jar 运行它: 那里只有下载下来的打包产物和一个 JDK.
  */
 fun main(args: Array<String>) {
+    if (args.firstOrNull() == "generate-manifest") {
+        require(args.size == 3) { "Usage: generate-manifest <package.zip> <manifest.json>" }
+        val manifest = readDesktopPackageManifest(File(args[1]))
+        manifest.writeTo(File(args[2]))
+        println("Wrote manifest of ${manifest.entries.size} entries for ${args[1]} to ${args[2]}")
+        return
+    }
+
     var app: File? = null
     var workDir: File? = null
     var scenario: String? = null

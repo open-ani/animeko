@@ -7,19 +7,15 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+package me.him188.ani.tools.updatee2e
+
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
-import groovy.json.JsonOutput
-import groovy.json.JsonSlurper
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
 import org.apache.commons.compress.archivers.zip.Zip64Mode
-import org.gradle.api.DefaultTask
-import org.gradle.api.GradleException
-import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.tasks.Internal
-import org.gradle.api.tasks.TaskAction
-import org.gradle.api.tasks.options.Option
 import java.io.File
 import java.io.InputStream
 import java.io.RandomAccessFile
@@ -37,35 +33,6 @@ import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeSource
-
-/**
- * 桌面自动更新端到端测试, 见 [DesktopUpdateE2e].
- *
- * 没有声明输出, 每次都会运行.
- */
-abstract class DesktopUpdateE2eTask : DefaultTask() {
-    /**
-     * 打包好的应用 (Windows 是 `Ani` 目录, macOS 是 `Ani.app`), 或者包含它的目录.
-     */
-    @get:Internal
-    abstract val appDir: DirectoryProperty
-
-    /**
-     * 安装目录副本、新版本发布包、数据目录和日志都放在这里, 开始时清空.
-     */
-    @get:Internal
-    abstract val workDir: DirectoryProperty
-
-    @get:Internal
-    @set:Option(option = "scenario", description = "Only run scenarios whose name contains this text")
-    var scenario: String? = null
-
-    @TaskAction
-    fun run() {
-        val log = E2eLog(lifecycle = logger::lifecycle, warn = logger::warn, error = { message, e -> logger.error(message, e) })
-        DesktopUpdateE2e(locatePackagedApp(appDir.get().asFile), workDir.get().asFile, log).run(scenario)
-    }
-}
 
 /**
  * 测试驱动器的日志出口: 作为 Gradle 任务运行时接到任务的 logger, 作为独立程序运行时接到标准输出.
@@ -147,7 +114,7 @@ class DesktopUpdateE2e(
             }
         }
         if (failures.isNotEmpty()) {
-            throw GradleException("Desktop update E2E failed:\n" + failures.joinToString("\n"))
+            throw IllegalStateException("Desktop update E2E failed:\n" + failures.joinToString("\n"))
         }
     }
 
@@ -293,12 +260,13 @@ class DesktopUpdateE2e(
             dataDir.mkdirs()
             MockUpdateServer(platform, fixture, version, scenario.behavior).use { server ->
                 configFile.writeText(
-                    JsonOutput.toJson(
-                        mapOf(
-                            "serverUrl" to server.baseUrl,
-                            "resultFile" to resultFile.absolutePath,
-                            "installedMarker" to platform.appRoot(installDir).resolve(MARKER_PATH).absolutePath,
-                            "install" to platform.installs,
+                    Json.encodeToString(
+                        TestTaskConfig.serializer(),
+                        TestTaskConfig(
+                            serverUrl = server.baseUrl,
+                            resultFile = resultFile.absolutePath,
+                            installedMarker = platform.appRoot(installDir).resolve(MARKER_PATH).absolutePath,
+                            install = platform.installs,
                         ),
                     ),
                 )
@@ -428,9 +396,7 @@ class DesktopUpdateE2e(
         private fun reports(): List<Report> {
             if (!resultFile.isFile) return emptyList()
             return resultFile.readLines().filter { it.isNotBlank() }.map { line ->
-                @Suppress("UNCHECKED_CAST")
-                val map = JsonSlurper().parseText(line) as Map<String, Any?>
-                Report(map["phase"] as String, map["detail"] as String?)
+                Json.decodeFromString(Report.serializer(), line)
             }
         }
 
@@ -483,9 +449,35 @@ class DesktopUpdateE2e(
     // endregion
 
     /**
-     * 应用通过报告文件写出的一行.
+     * 应用通过报告文件写出的一行, 字段与应用里的 `UpdateE2eTestTask.Report` 一致.
      */
-    private class Report(val phase: String, val detail: String?)
+    @Serializable
+    private class Report(val phase: String, val detail: String? = null)
+
+    /**
+     * 写给测试任务的配置, 字段与应用里的 `UpdateE2eTestTask.Config` 一致.
+     */
+    @Serializable
+    private class TestTaskConfig(
+        val serverUrl: String,
+        val resultFile: String,
+        val installedMarker: String,
+        val install: Boolean,
+    )
+
+    /**
+     * 版本 API 的响应, 字段与应用里的 `ReleaseUpdatesDetailedResponse` 一致.
+     */
+    @Serializable
+    private class UpdatesResponse(val updates: List<UpdateInfo>)
+
+    @Serializable
+    private class UpdateInfo(
+        val version: String,
+        val downloadUrlAlternatives: List<String>,
+        val publishTime: Long,
+        val description: String,
+    )
 
     private fun otherVolumeDir(): File? = platform.otherVolumeDir(workDir)
 
@@ -587,17 +579,17 @@ class DesktopUpdateE2e(
                     "/v1/updates/incremental/details" -> {
                         val updates = if (behavior.hasUpdate) {
                             listOf(
-                                mapOf(
-                                    "version" to version,
-                                    "downloadUrlAlternatives" to listOf(baseUrl + packageName),
-                                    "publishTime" to System.currentTimeMillis() / 1000,
-                                    "description" to "update-e2e $version",
+                                UpdateInfo(
+                                    version = version,
+                                    downloadUrlAlternatives = listOf(baseUrl + packageName),
+                                    publishTime = System.currentTimeMillis() / 1000,
+                                    description = "update-e2e $version",
                                 ),
                             )
                         } else {
                             emptyList()
                         }
-                        val body = JsonOutput.toJson(mapOf("updates" to updates)).toByteArray()
+                        val body = Json.encodeToString(UpdatesResponse.serializer(), UpdatesResponse(updates)).toByteArray()
                         exchange.responseHeaders.set("Content-Type", "application/json")
                         status = 200
                         bytes = exchange.send(200, body)
@@ -727,7 +719,7 @@ private sealed class E2ePlatform(val packageOs: String) {
      * 版本 API 返回的安装包资产名. macOS 返回 dmg, 客户端自己换成同名 zip.
      */
     abstract fun packageAssetName(version: String): String
-    fun zipAssetName(version: String): String = "ani-$version-$packageOs-${currentReleaseHostArch()}.zip"
+    fun zipAssetName(version: String): String = "ani-$version-$packageOs-${hostArch()}.zip"
 
     /**
      * 安装器能否自动完成安装并重启. 能的话测试走到新版本启动为止, 否则到下载为止.
@@ -769,7 +761,7 @@ private sealed class E2ePlatform(val packageOs: String) {
         override val appDirName: String get() = "Ani.app"
         override fun executable(installDir: File): File = installDir.resolve("Contents/MacOS/Ani")
         override fun appRoot(installDir: File): File = installDir.resolve("Contents")
-        override fun packageAssetName(version: String): String = "ani-$version-macos-${currentReleaseHostArch()}.dmg"
+        override fun packageAssetName(version: String): String = "ani-$version-macos-${hostArch()}.dmg"
 
         /**
          * 现在的安装脚本把新 app 复制到旧 app 上, 遇到运行时里的只读文件 (CEF 的 `gpu_shader_cache.bin`) 就失败, 也会留下
@@ -815,10 +807,25 @@ private sealed class E2ePlatform(val packageOs: String) {
     }
 
     companion object {
-        fun current(): E2ePlatform = when (getOs()) {
-            Os.Windows -> Windows
-            Os.MacOS -> MacOS
-            else -> throw GradleException("Desktop update E2E supports Windows and macOS only")
+        fun current(): E2ePlatform {
+            val os = System.getProperty("os.name").lowercase()
+            return when {
+                os.contains("win") -> Windows
+                os.contains("mac") -> MacOS
+                else -> throw IllegalStateException("Desktop update E2E supports Windows and macOS only")
+            }
+        }
+
+        /**
+         * 发布包资产名里的架构, 与 ci-helper 上传时用的相同.
+         */
+        fun hostArch(): String {
+            val arch = System.getProperty("os.arch").lowercase()
+            return when {
+                arch.contains("x86_64") || arch.contains("amd64") -> "x86_64"
+                arch.contains("aarch64") || arch.contains("arm") -> "aarch64"
+                else -> throw IllegalStateException("Unknown architecture: $arch")
+            }
         }
     }
 }

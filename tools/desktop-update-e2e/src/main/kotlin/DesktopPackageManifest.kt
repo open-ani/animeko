@@ -7,14 +7,10 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import groovy.json.JsonOutput
-import org.gradle.api.DefaultTask
-import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.tasks.InputFile
-import org.gradle.api.tasks.OutputFile
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
-import org.gradle.api.tasks.TaskAction
+package me.him188.ani.tools.updatee2e
+
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.InputStream
 import java.io.RandomAccessFile
@@ -28,7 +24,7 @@ import java.util.zip.ZipEntry
 
 /**
  * 清单作为发布包的伴随资产发布, 文件名是发布包资产名加这个后缀. 与 Linux 的 `.zsync` 是同一种约定:
- * 客户端从版本 API 返回的发布包地址派生清单地址, 版本 API 不需要知道它.
+ * 客户端从版本 API 返回的发布包地址派生清单地址, 版本 API 不需要知道它. build-logic 里有同一个常量给 CI 上传任务用.
  */
 const val DESKTOP_PACKAGE_MANIFEST_SUFFIX = ".manifest.json"
 
@@ -47,6 +43,7 @@ const val DESKTOP_PACKAGE_MANIFEST_FORMAT_VERSION = 1
  *
  * [packageSize] 让客户端核对镜像返回的文件与清单描述的是同一个包.
  */
+@Serializable
 data class DesktopPackageManifest(
     val formatVersion: Int,
     val packageSize: Long,
@@ -64,6 +61,7 @@ data class DesktopPackageManifest(
  * @param externalAttributes central directory 的外部属性, 高 16 位是 unix mode, 可执行位在其中.
  * @param sha256 解压后内容的 SHA-256 十六进制; 目录没有内容, 为 `null`.
  */
+@Serializable
 data class DesktopPackageEntry(
     val name: String,
     val method: Int,
@@ -116,47 +114,7 @@ fun DesktopPackageManifest.writeTo(output: File) {
 /**
  * 字段名就是 [DesktopPackageManifest] 和 [DesktopPackageEntry] 的属性名, 客户端按名解析.
  */
-fun DesktopPackageManifest.toJson(): String = JsonOutput.toJson(
-    linkedMapOf(
-        "formatVersion" to formatVersion,
-        "packageSize" to packageSize,
-        "entries" to entries.map { entry ->
-            linkedMapOf(
-                "name" to entry.name,
-                "method" to entry.method,
-                "crc32" to entry.crc32,
-                "compressedSize" to entry.compressedSize,
-                "size" to entry.size,
-                "dataOffset" to entry.dataOffset,
-                "dosTime" to entry.dosTime,
-                "externalAttributes" to entry.externalAttributes,
-                "sha256" to entry.sha256,
-            )
-        },
-    ),
-)
-
-/**
- * 为 `zipDesktopDistribution` 产出的发布包生成清单, 清单随发布包一起上传.
- */
-abstract class GenerateDesktopPackageManifestTask : DefaultTask() {
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.NONE)
-    abstract val packageFile: RegularFileProperty
-
-    @get:OutputFile
-    abstract val manifestFile: RegularFileProperty
-
-    @TaskAction
-    fun generate() {
-        val manifest = readDesktopPackageManifest(packageFile.get().asFile)
-        manifest.writeTo(manifestFile.get().asFile)
-        logger.lifecycle(
-            "Wrote manifest of ${manifest.entries.size} entries for ${packageFile.get().asFile.name} " +
-                    "to ${manifestFile.get().asFile}",
-        )
-    }
-}
+fun DesktopPackageManifest.toJson(): String = Json.encodeToString(DesktopPackageManifest.serializer(), this)
 
 // region zip 格式
 
