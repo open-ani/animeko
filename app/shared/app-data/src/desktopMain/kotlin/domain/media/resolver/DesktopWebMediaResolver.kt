@@ -170,8 +170,57 @@ class CefVideoExtractor(
                 logger.warn { "AniCefApp isn't initialized, web media cannot be resolved." }
                 throw MediaResolutionException(ResolutionFailures.WEB_ENGINE_UNAVAILABLE)
             }
+            val lastUrl = object {
+                // browser.url is not updated immediately, so we need to keep track of the current url.
+                var value: String? by atomic(null)
+            }
+            val resourceRequestHandler = object : CefResourceRequestHandlerAdapter() {
+                override fun onBeforeResourceLoad(
+                    browser: CefBrowser?,
+                    frame: CefFrame?,
+                    request: CefRequest?
+                ): Boolean {
+                    if (request != null && browser != null) {
+                        if (handleUrl(request, browser)) {
+                            return true
+                        }
+                        request.applyUserAgent(userAgent)
+                    }
+                    return super.onBeforeResourceLoad(browser, frame, request)
+                }
+
+                /**
+                 * @return `true` to intercept
+                 */
+                private fun handleUrl(
+                    request: CefRequest,
+                    browser: CefBrowser
+                ): Boolean = synchronized(this) {
+                    val url = request.url
+                    val matched = resourceMatcher(url)
+                    when (matched) {
+                        Instruction.Continue -> return false
+                        Instruction.FoundResource -> {
+                            deferred.complete(WebResource(url))
+                            logger.info { "Found video stream resource: $url" }
+                            return true
+                        }
+
+                        Instruction.LoadPage -> {
+                            if (browser.url == url || lastUrl.value == url) return false // don't recurse
+                            logger.info { "CEF loading nested page: $url, lastUrl=${lastUrl.value}" }
+                            lastUrl.value = url
+                            val escapedUrl = json.encodeToString(String.serializer(), url)
+                            AniCefApp.runOnCefContext {
+                                browser.executeJavaScript("window.location.href=$escapedUrl;", "", 1)
+                            }
+                            return true
+                        }
+                    }
+                }
+            }
             val createdClient = AniCefApp.suspendCoroutineOnCefContext {
-                AniCefApp.createClient()
+                AniCefApp.createClient(resourceRequestHandler)
             } ?: run {
                 logger.warn { "AniCefApp was never initialized, web media cannot be resolved." }
                 throw MediaResolutionException(ResolutionFailures.WEB_ENGINE_UNAVAILABLE)
@@ -180,62 +229,14 @@ class CefVideoExtractor(
             val browserCreated = AniCefApp.suspendCoroutineOnCefContext { createdClient.browserCreatedSignal() }
 
             val createdBrowser = AniCefApp.suspendCoroutineOnCefContext {
-                val lastUrl = object {
-                    // browser.url is not updated immediately, so we need to keep track of the current url.
-                    var value: String? by atomic(null)
-                }
                 createdClient.createBrowser(
                     // 指定了 UA 时先打开空白页, 等覆写 navigator.userAgent 之后再加载 pageUrl
                     if (userAgent == null) pageUrl else "about:blank",
                     CefRendering.DEFAULT,
                     true,
-                    CefRequestContext.createContext { _, _, _, _, _, _, _ ->
-                        object : CefResourceRequestHandlerAdapter() {
-                            override fun onBeforeResourceLoad(
-                                browser: CefBrowser?,
-                                frame: CefFrame?,
-                                request: CefRequest?
-                            ): Boolean {
-                                if (request != null && browser != null) {
-                                    if (handleUrl(request, browser)) {
-                                        return true
-                                    }
-                                    request.applyUserAgent(userAgent)
-                                }
-                                return super.onBeforeResourceLoad(browser, frame, request)
-                            }
-
-                            /**
-                             * @return `true` to intercept
-                             */
-                            private fun handleUrl(
-                                request: CefRequest,
-                                browser: CefBrowser
-                            ): Boolean = synchronized(this) {
-                                val url = request.url
-                                val matched = resourceMatcher(url)
-                                when (matched) {
-                                    Instruction.Continue -> return false
-                                    Instruction.FoundResource -> {
-                                        deferred.complete(WebResource(url))
-                                        logger.info { "Found video stream resource: $url" }
-                                        return true
-                                    }
-
-                                    Instruction.LoadPage -> {
-                                        if (browser.url == url || lastUrl.value == url) return false // don't recurse
-                                        logger.info { "CEF loading nested page: $url, lastUrl=${lastUrl.value}" }
-                                        lastUrl.value = url
-                                        val escapedUrl = json.encodeToString(String.serializer(), url)
-                                        AniCefApp.runOnCefContext {
-                                            browser.executeJavaScript("window.location.href=$escapedUrl;", "", 1)
-                                        }
-                                        return true
-                                    }
-                                }
-                            }
-                        }
-                    },
+                    // 全局上下文带磁盘缓存, 同一站点再次解析时播放页的脚本、样式直接命中缓存, 省下大部分加载时间.
+                    // cookie 也与验证码浏览器共用. 拦截在 client 的 request handler 上, 只作用于这个 client 的浏览器.
+                    CefRequestContext.getGlobalContext(),
                 )
             }
             browser = createdBrowser
