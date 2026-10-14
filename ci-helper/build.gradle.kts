@@ -128,22 +128,39 @@ val zipDesktopDistribution = tasks.register("zipDesktopDistribution", Zip::class
     archiveExtension.set("zip")
 }
 
-val generateDesktopDistributionManifest =
-    tasks.register("generateDesktopDistributionManifest", GenerateDesktopPackageManifestTask::class) {
-        packageFile.set(zipDesktopDistribution.flatMap { it.archiveFile })
-        manifestFile.set(
-            zipDesktopDistribution.flatMap { zip ->
-                zip.destinationDirectory.file(zip.archiveFileName.map { it + DESKTOP_PACKAGE_MANIFEST_SUFFIX })
-            },
+// 清单生成和自动更新端到端测试都在 tools/desktop-update-e2e 里, 它不依赖 Gradle, CI 的 Verify job 以独立 jar 运行它.
+val desktopUpdateE2e: Configuration by configurations.creating
+dependencies {
+    desktopUpdateE2e(project(":tools:desktop-update-e2e"))
+}
+
+val desktopDistributionManifest: Provider<RegularFile> = zipDesktopDistribution.flatMap { zip ->
+    zip.destinationDirectory.file(zip.archiveFileName.map { it + DESKTOP_PACKAGE_MANIFEST_SUFFIX })
+}
+
+val generateDesktopDistributionManifest = tasks.register("generateDesktopDistributionManifest", JavaExec::class) {
+    // 参数 lambda 只能捕获局部变量: 引用脚本级属性会把整个脚本对象带进 configuration cache.
+    val packageFile = zipDesktopDistribution.flatMap { it.archiveFile }
+    val manifestFile = desktopDistributionManifest
+    inputs.file(packageFile)
+    outputs.file(manifestFile)
+    classpath = desktopUpdateE2e
+    mainClass.set("me.him188.ani.tools.updatee2e.MainKt")
+    argumentProviders.add {
+        listOf(
+            "generate-manifest",
+            packageFile.get().asFile.absolutePath,
+            manifestFile.get().asFile.absolutePath,
         )
     }
+}
 
 tasks.register("uploadDesktopInstallers", UploadDesktopInstallersTask::class) {
     configureReleaseUploadInputs()
     fun uploadZipDistributionWithManifest() {
         dependsOn(zipDesktopDistribution, generateDesktopDistributionManifest)
         zipDistribution.set(zipDesktopDistribution.flatMap { it.archiveFile })
-        zipDistributionManifest.set(generateDesktopDistributionManifest.flatMap { it.manifestFile })
+        zipDistributionManifest.set(desktopDistributionManifest)
     }
     when (currentReleaseHostOs()) {
         ReleaseHostOs.WINDOWS -> uploadZipDistributionWithManifest()
@@ -263,7 +280,7 @@ tasks.register("prepareArtifactsForManualUpload") {
         )
         copyToDistribution(
             name = ReleaseArtifactNames.desktopPackageManifest(zipName),
-            file = generateDesktopDistributionManifest.get().manifestFile.get().asFile,
+            file = desktopDistributionManifest.get().asFile,
         )
     }
 }

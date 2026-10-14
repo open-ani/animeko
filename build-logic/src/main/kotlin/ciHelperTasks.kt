@@ -46,6 +46,11 @@ import java.net.URI
 import java.security.MessageDigest
 import javax.inject.Inject
 
+/**
+ * 桌面发布包增量更新清单的文件名后缀, 清单由 tools/desktop-update-e2e 生成; 那边有同一个常量.
+ */
+const val DESKTOP_PACKAGE_MANIFEST_SUFFIX = ".manifest.json"
+
 object ReleaseArtifactNames {
     private const val appName = "ani"
 

@@ -218,39 +218,79 @@ jobs:
         overwrite: 'true'
       if: '${{ steps.step-21.outcome == ''failure'' }}'
     - id: 'step-23'
+      name: 'Build update E2E runner (Attempt #1)'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew :tools:desktop-update-e2e:standaloneJar "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel"'
+    - id: 'step-24'
+      name: 'Build update E2E runner (Attempt #2)'
+      continue-on-error: false
+      timeout-minutes: 180
+      run: './gradlew :tools:desktop-update-e2e:standaloneJar "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel"'
+      if: '${{ steps.step-23.outcome == ''failure'' }}'
+    - id: 'step-25'
+      name: 'Upload update E2E runner (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-x64'
+        path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+    - id: 'step-26'
+      name: 'Upload update E2E runner (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-x64'
+        path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-25.outcome == ''failure'' }}'
+    - id: 'step-27'
+      name: 'Upload update E2E runner (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-x64'
+        path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-26.outcome == ''failure'' }}'
+    - id: 'step-28'
       name: 'Check (Desktop) (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel"'
-    - id: 'step-24'
+    - id: 'step-29'
       name: 'Check (Desktop) (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel"'
-      if: '${{ steps.step-23.outcome == ''failure'' }}'
-    - id: 'step-25'
+      if: '${{ steps.step-28.outcome == ''failure'' }}'
+    - id: 'step-30'
       name: 'Check (Desktop) (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel"'
-      if: '${{ steps.step-24.outcome == ''failure'' }}'
-    - id: 'step-26'
+      if: '${{ steps.step-29.outcome == ''failure'' }}'
+    - id: 'step-31'
       name: 'Check (Android Host) (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel"'
-    - id: 'step-27'
+    - id: 'step-32'
       name: 'Check (Android Host) (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel"'
-      if: '${{ steps.step-26.outcome == ''failure'' }}'
-    - id: 'step-28'
+      if: '${{ steps.step-31.outcome == ''failure'' }}'
+    - id: 'step-33'
       name: 'Check (Android Host) (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel"'
-      if: '${{ steps.step-27.outcome == ''failure'' }}'
+      if: '${{ steps.step-32.outcome == ''failure'' }}'
   build_github-windows-11-arm64:
     name: 'Build (Windows 11 AArch64 (GitHub))'
     runs-on:
@@ -425,39 +465,79 @@ jobs:
         overwrite: 'true'
       if: '${{ steps.step-22.outcome == ''failure'' }}'
     - id: 'step-24'
+      name: 'Build update E2E runner (Attempt #1)'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew :tools:desktop-update-e2e:standaloneJar "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "--no-configuration-cache"'
+    - id: 'step-25'
+      name: 'Build update E2E runner (Attempt #2)'
+      continue-on-error: false
+      timeout-minutes: 180
+      run: './gradlew :tools:desktop-update-e2e:standaloneJar "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "--no-configuration-cache"'
+      if: '${{ steps.step-24.outcome == ''failure'' }}'
+    - id: 'step-26'
+      name: 'Upload update E2E runner (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-aarch64'
+        path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+    - id: 'step-27'
+      name: 'Upload update E2E runner (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-aarch64'
+        path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-26.outcome == ''failure'' }}'
+    - id: 'step-28'
+      name: 'Upload update E2E runner (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-aarch64'
+        path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-27.outcome == ''failure'' }}'
+    - id: 'step-29'
       name: 'Check (Desktop) (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew desktopTest -x :torrent:anitorrent:desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "--no-configuration-cache"'
-    - id: 'step-25'
+    - id: 'step-30'
       name: 'Check (Desktop) (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew desktopTest -x :torrent:anitorrent:desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "--no-configuration-cache"'
-      if: '${{ steps.step-24.outcome == ''failure'' }}'
-    - id: 'step-26'
+      if: '${{ steps.step-29.outcome == ''failure'' }}'
+    - id: 'step-31'
       name: 'Check (Desktop) (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew desktopTest -x :torrent:anitorrent:desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "--no-configuration-cache"'
-      if: '${{ steps.step-25.outcome == ''failure'' }}'
-    - id: 'step-27'
+      if: '${{ steps.step-30.outcome == ''failure'' }}'
+    - id: 'step-32'
       name: 'Check (Android Host) (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "--no-configuration-cache"'
-    - id: 'step-28'
+    - id: 'step-33'
       name: 'Check (Android Host) (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "--no-configuration-cache"'
-      if: '${{ steps.step-27.outcome == ''failure'' }}'
-    - id: 'step-29'
+      if: '${{ steps.step-32.outcome == ''failure'' }}'
+    - id: 'step-34'
       name: 'Check (Android Host) (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "--no-configuration-cache"'
-      if: '${{ steps.step-28.outcome == ''failure'' }}'
+      if: '${{ steps.step-33.outcome == ''failure'' }}'
   build_github-ubuntu-2404:
     name: 'Build (Ubuntu 24.04 x86_64 (GitHub))'
     runs-on:
@@ -1308,6 +1388,46 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
       if: '${{ steps.step-23.outcome == ''failure'' }}'
+    - id: 'step-25'
+      name: 'Build update E2E runner (Attempt #1)'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew :tools:desktop-update-e2e:standaloneJar "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+    - id: 'step-26'
+      name: 'Build update E2E runner (Attempt #2)'
+      continue-on-error: false
+      timeout-minutes: 180
+      run: './gradlew :tools:desktop-update-e2e:standaloneJar "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+      if: '${{ steps.step-25.outcome == ''failure'' }}'
+    - id: 'step-27'
+      name: 'Upload update E2E runner (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-x64'
+        path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+    - id: 'step-28'
+      name: 'Upload update E2E runner (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-x64'
+        path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-27.outcome == ''failure'' }}'
+    - id: 'step-29'
+      name: 'Upload update E2E runner (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-x64'
+        path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-28.outcome == ''failure'' }}'
   build_self-hosted-macos-15:
     name: 'Build (macOS 15 AArch64 (Self-Hosted))'
     runs-on:
@@ -1619,51 +1739,91 @@ jobs:
         overwrite: 'true'
       if: '${{ steps.step-35.outcome == ''failure'' }}'
     - id: 'step-37'
+      name: 'Build update E2E runner (Attempt #1)'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew :tools:desktop-update-e2e:standaloneJar "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
+    - id: 'step-38'
+      name: 'Build update E2E runner (Attempt #2)'
+      continue-on-error: false
+      timeout-minutes: 180
+      run: './gradlew :tools:desktop-update-e2e:standaloneJar "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
+      if: '${{ steps.step-37.outcome == ''failure'' }}'
+    - id: 'step-39'
+      name: 'Upload update E2E runner (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-aarch64'
+        path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+    - id: 'step-40'
+      name: 'Upload update E2E runner (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-aarch64'
+        path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-39.outcome == ''failure'' }}'
+    - id: 'step-41'
+      name: 'Upload update E2E runner (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-aarch64'
+        path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
+        if-no-files-found: 'error'
+        overwrite: 'true'
+      if: '${{ steps.step-40.outcome == ''failure'' }}'
+    - id: 'step-42'
       name: 'Check (Desktop) (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-    - id: 'step-38'
+    - id: 'step-43'
       name: 'Check (Desktop) (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-      if: '${{ steps.step-37.outcome == ''failure'' }}'
-    - id: 'step-39'
+      if: '${{ steps.step-42.outcome == ''failure'' }}'
+    - id: 'step-44'
       name: 'Check (Desktop) (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-      if: '${{ steps.step-38.outcome == ''failure'' }}'
-    - id: 'step-40'
+      if: '${{ steps.step-43.outcome == ''failure'' }}'
+    - id: 'step-45'
       name: 'Check (Android Host) (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-    - id: 'step-41'
+    - id: 'step-46'
       name: 'Check (Android Host) (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-      if: '${{ steps.step-40.outcome == ''failure'' }}'
-    - id: 'step-42'
+      if: '${{ steps.step-45.outcome == ''failure'' }}'
+    - id: 'step-47'
       name: 'Check (Android Host) (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-      if: '${{ steps.step-41.outcome == ''failure'' }}'
-    - id: 'step-43'
+      if: '${{ steps.step-46.outcome == ''failure'' }}'
+    - id: 'step-48'
       name: 'Check (iOS) (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 120
       run: './gradlew :app:ios:testSentryTerminatePatch :app:shared:application:iosSimulatorArm64Test "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-    - id: 'step-44'
+    - id: 'step-49'
       name: 'Check (iOS) (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 120
       run: './gradlew :app:ios:testSentryTerminatePatch :app:shared:application:iosSimulatorArm64Test "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-      if: '${{ steps.step-43.outcome == ''failure'' }}'
-    - id: 'step-45'
+      if: '${{ steps.step-48.outcome == ''failure'' }}'
+    - id: 'step-50'
       name: 'Cleanup temp files'
       continue-on-error: true
       run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
@@ -2331,6 +2491,52 @@ jobs:
       timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "windows-native-input-test"'
+    - id: 'step-9'
+      name: 'Download update E2E runner (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-x64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+    - id: 'step-10'
+      name: 'Download update E2E runner (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-x64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+      if: '${{ steps.step-9.outcome == ''failure'' }}'
+    - id: 'step-11'
+      name: 'Download update E2E runner (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-x64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+      if: '${{ steps.step-10.outcome == ''failure'' }}'
+    - id: 'step-12'
+      name: 'Setup JDK 21 for the update E2E test'
+      uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+    - id: 'step-13'
+      name: 'Desktop update E2E test'
+      timeout-minutes: 40
+      shell: 'bash'
+      run: 'java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/ci-helper/verify" --work-dir "${{ github.workspace }}/update-e2e"'
+    - id: 'step-14'
+      name: 'Upload desktop update E2E logs'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'update-e2e-github-windows-2025'
+        path: |-
+          update-e2e/**/*.log
+          update-e2e/**/*.json
+          update-e2e/**/*.jsonl
+          update-e2e/**/*.txt
+        if-no-files-found: 'ignore'
+      if: 'failure()'
   verify_github-windows-2022:
     name: 'Verify (Windows Server 2022 x86_64 (GitHub))'
     runs-on:
@@ -2395,6 +2601,52 @@ jobs:
       timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "windows-native-input-test"'
+    - id: 'step-9'
+      name: 'Download update E2E runner (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-x64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+    - id: 'step-10'
+      name: 'Download update E2E runner (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-x64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+      if: '${{ steps.step-9.outcome == ''failure'' }}'
+    - id: 'step-11'
+      name: 'Download update E2E runner (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-x64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+      if: '${{ steps.step-10.outcome == ''failure'' }}'
+    - id: 'step-12'
+      name: 'Setup JDK 21 for the update E2E test'
+      uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+    - id: 'step-13'
+      name: 'Desktop update E2E test'
+      timeout-minutes: 40
+      shell: 'bash'
+      run: 'java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/ci-helper/verify" --work-dir "${{ github.workspace }}/update-e2e"'
+    - id: 'step-14'
+      name: 'Upload desktop update E2E logs'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'update-e2e-github-windows-2022'
+        path: |-
+          update-e2e/**/*.log
+          update-e2e/**/*.json
+          update-e2e/**/*.jsonl
+          update-e2e/**/*.txt
+        if-no-files-found: 'ignore'
+      if: 'failure()'
   verify_github-windows-11-arm64:
     name: 'Verify (Windows 11 AArch64 (GitHub))'
     runs-on:
@@ -2445,6 +2697,52 @@ jobs:
       timeout-minutes: 5
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "windows-native-input-test"'
+    - id: 'step-7'
+      name: 'Download update E2E runner (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-aarch64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+    - id: 'step-8'
+      name: 'Download update E2E runner (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-aarch64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+      if: '${{ steps.step-7.outcome == ''failure'' }}'
+    - id: 'step-9'
+      name: 'Download update E2E runner (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-windows-aarch64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+      if: '${{ steps.step-8.outcome == ''failure'' }}'
+    - id: 'step-10'
+      name: 'Setup JDK 21 for the update E2E test'
+      uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+    - id: 'step-11'
+      name: 'Desktop update E2E test'
+      timeout-minutes: 40
+      shell: 'bash'
+      run: 'java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/ci-helper/verify" --work-dir "${{ github.workspace }}/update-e2e"'
+    - id: 'step-12'
+      name: 'Upload desktop update E2E logs'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'update-e2e-github-windows-11-arm64'
+        path: |-
+          update-e2e/**/*.log
+          update-e2e/**/*.json
+          update-e2e/**/*.jsonl
+          update-e2e/**/*.txt
+        if-no-files-found: 'ignore'
+      if: 'failure()'
   verify_github-macos-14:
     name: 'Verify (macOS 14 AArch64 (GitHub))'
     runs-on:
@@ -2499,6 +2797,62 @@ jobs:
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
       if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
+    - id: 'step-8'
+      name: 'Download update E2E runner (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-aarch64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+    - id: 'step-9'
+      name: 'Download update E2E runner (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-aarch64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+      if: '${{ steps.step-8.outcome == ''failure'' }}'
+    - id: 'step-10'
+      name: 'Download update E2E runner (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-aarch64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+      if: '${{ steps.step-9.outcome == ''failure'' }}'
+    - id: 'step-11'
+      name: 'Extract DMG for the update E2E test'
+      shell: 'bash'
+      run: |-
+        rm -rf extracted_dmg && mkdir extracted_dmg
+        MOUNT_POINT="$(mktemp -d)"
+        echo y | hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT_POINT" "$GITHUB_WORKSPACE"/*.dmg > /dev/null
+        for app in "$MOUNT_POINT"/*.app; do ditto "$app" "extracted_dmg/$(basename "$app")"; done
+        hdiutil detach "$MOUNT_POINT"
+        ls -l extracted_dmg extracted_dmg/*/Contents/MacOS
+    - id: 'step-12'
+      name: 'Setup JDK 21 for the update E2E test'
+      uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+    - id: 'step-13'
+      name: 'Desktop update E2E test'
+      timeout-minutes: 40
+      shell: 'bash'
+      run: 'java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/extracted_dmg" --work-dir "${{ github.workspace }}/update-e2e"'
+    - id: 'step-14'
+      name: 'Upload desktop update E2E logs'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'update-e2e-github-macos-14'
+        path: |-
+          update-e2e/**/*.log
+          update-e2e/**/*.json
+          update-e2e/**/*.jsonl
+          update-e2e/**/*.txt
+        if-no-files-found: 'ignore'
+      if: 'failure()'
   verify_github-macos-15-apple:
     name: 'Verify (macOS 15 AArch64 (GitHub))'
     runs-on:
@@ -2553,6 +2907,62 @@ jobs:
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
       if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
+    - id: 'step-8'
+      name: 'Download update E2E runner (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-aarch64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+    - id: 'step-9'
+      name: 'Download update E2E runner (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-aarch64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+      if: '${{ steps.step-8.outcome == ''failure'' }}'
+    - id: 'step-10'
+      name: 'Download update E2E runner (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-aarch64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+      if: '${{ steps.step-9.outcome == ''failure'' }}'
+    - id: 'step-11'
+      name: 'Extract DMG for the update E2E test'
+      shell: 'bash'
+      run: |-
+        rm -rf extracted_dmg && mkdir extracted_dmg
+        MOUNT_POINT="$(mktemp -d)"
+        echo y | hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT_POINT" "$GITHUB_WORKSPACE"/*.dmg > /dev/null
+        for app in "$MOUNT_POINT"/*.app; do ditto "$app" "extracted_dmg/$(basename "$app")"; done
+        hdiutil detach "$MOUNT_POINT"
+        ls -l extracted_dmg extracted_dmg/*/Contents/MacOS
+    - id: 'step-12'
+      name: 'Setup JDK 21 for the update E2E test'
+      uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+    - id: 'step-13'
+      name: 'Desktop update E2E test'
+      timeout-minutes: 40
+      shell: 'bash'
+      run: 'java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/extracted_dmg" --work-dir "${{ github.workspace }}/update-e2e"'
+    - id: 'step-14'
+      name: 'Upload desktop update E2E logs'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'update-e2e-github-macos-15-apple'
+        path: |-
+          update-e2e/**/*.log
+          update-e2e/**/*.json
+          update-e2e/**/*.jsonl
+          update-e2e/**/*.txt
+        if-no-files-found: 'ignore'
+      if: 'failure()'
   verify_github-ubuntu-2404:
     name: 'Verify (Ubuntu 24.04 x86_64 (GitHub))'
     runs-on:

@@ -7,7 +7,15 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import groovy.json.JsonSlurper
+package me.him188.ani.tools.updatee2e
+
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import java.io.File
 import java.nio.file.Files
 import java.security.MessageDigest
@@ -121,24 +129,22 @@ class DesktopPackageManifestTest {
         val json = tempDir.resolve("package.zip$DESKTOP_PACKAGE_MANIFEST_SUFFIX")
         manifest.writeTo(json)
 
-        @Suppress("UNCHECKED_CAST")
-        val parsed = JsonSlurper().parse(json) as Map<String, Any?>
-        assertEquals(manifest.formatVersion, parsed["formatVersion"])
-        assertEquals(manifest.packageSize, (parsed["packageSize"] as Number).toLong())
+        val parsed = Json.parseToJsonElement(json.readText()).jsonObject
+        assertEquals(manifest.formatVersion, parsed.getValue("formatVersion").jsonPrimitive.int)
+        assertEquals(manifest.packageSize, parsed.getValue("packageSize").jsonPrimitive.long)
 
-        @Suppress("UNCHECKED_CAST")
-        val entries = parsed["entries"] as List<Map<String, Any?>>
+        val entries = parsed.getValue("entries").jsonArray.map { it.jsonObject }
         assertEquals(manifest.entries.size, entries.size)
         for ((expected, actual) in manifest.entries.zip(entries)) {
-            assertEquals(expected.name, actual["name"])
-            assertEquals(expected.method, actual["method"])
-            assertEquals(expected.crc32, (actual["crc32"] as Number).toLong())
-            assertEquals(expected.compressedSize, (actual["compressedSize"] as Number).toLong())
-            assertEquals(expected.size, (actual["size"] as Number).toLong())
-            assertEquals(expected.dataOffset, (actual["dataOffset"] as Number).toLong())
-            assertEquals(expected.dosTime, (actual["dosTime"] as Number).toLong())
-            assertEquals(expected.externalAttributes, (actual["externalAttributes"] as Number).toLong())
-            assertEquals(expected.sha256, actual["sha256"])
+            assertEquals(expected.name, actual.getValue("name").jsonPrimitive.content)
+            assertEquals(expected.method, actual.getValue("method").jsonPrimitive.int)
+            assertEquals(expected.crc32, actual.getValue("crc32").jsonPrimitive.long)
+            assertEquals(expected.compressedSize, actual.getValue("compressedSize").jsonPrimitive.long)
+            assertEquals(expected.size, actual.getValue("size").jsonPrimitive.long)
+            assertEquals(expected.dataOffset, actual.getValue("dataOffset").jsonPrimitive.long)
+            assertEquals(expected.dosTime, actual.getValue("dosTime").jsonPrimitive.long)
+            assertEquals(expected.externalAttributes, actual.getValue("externalAttributes").jsonPrimitive.long)
+            assertEquals(expected.sha256, actual.getValue("sha256").jsonPrimitive.contentOrNull)
         }
     }
 

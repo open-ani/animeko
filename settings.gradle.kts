@@ -66,6 +66,7 @@ fun includeProject(projectPath: String, dir: String? = null) {
 
 // Utilities shared by client and server (targeting JVM)
 includeProject(":utils:platform") // 适配各个平台的基础 API
+includeProject(":tools:desktop-update-e2e") // 桌面发布包清单生成与自动更新端到端测试, CI 用
 includeProject(":utils:intellij-annotations")
 includeProject(":utils:logging") // shared by client and server (targets JVM)
 includeProject(":utils:serialization", "utils/serialization")

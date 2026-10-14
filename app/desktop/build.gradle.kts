@@ -361,6 +361,38 @@ afterEvaluate {
     }
 }
 
+// 自动更新端到端测试: 以打包好的应用为旧版本, 对着本机 mock 的更新服务器走一遍检查、下载、安装、重启.
+// 场景和核对项见 tools/desktop-update-e2e 的 DesktopUpdateE2e. CI 的 Verify job 以独立 jar 对下载的产物跑;
+// 本地: ./gradlew :app:desktop:updateE2eTest [-Pani.updateE2e.scenario=delta]
+if (getOs() == Os.Windows || getOs() == Os.MacOS) {
+    val desktopUpdateE2e: Configuration by configurations.creating
+    dependencies {
+        desktopUpdateE2e(project(":tools:desktop-update-e2e"))
+    }
+    tasks.register("updateE2eTest", JavaExec::class) {
+        group = "verification"
+        description = "Runs the packaged app through mocked auto updates"
+        dependsOn("createReleaseDistributable")
+        classpath = desktopUpdateE2e
+        mainClass.set("me.him188.ani.tools.updatee2e.MainKt")
+        val packagedApp = layout.buildDirectory.dir("compose/binaries/main-release/app")
+        val workDir = layout.buildDirectory.dir("update-e2e")
+        val scenario = providers.gradleProperty("ani.updateE2e.scenario")
+        argumentProviders.add {
+            buildList {
+                add("--app")
+                add(packagedApp.get().asFile.absolutePath)
+                add("--work-dir")
+                add(workDir.get().asFile.absolutePath)
+                scenario.orNull?.let {
+                    add("--scenario")
+                    add(it)
+                }
+            }
+        }
+    }
+}
+
 idea {
     module {
         excludeDirs.add(file("appResources/macos-x64/lib"))
