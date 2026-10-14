@@ -2826,7 +2826,7 @@ jobs:
       run: |-
         rm -rf extracted_dmg && mkdir extracted_dmg
         MOUNT_POINT="$(mktemp -d)"
-        hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT_POINT" "$GITHUB_WORKSPACE"/*.dmg
+        echo y | hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT_POINT" "$GITHUB_WORKSPACE"/*.dmg > /dev/null
         for app in "$MOUNT_POINT"/*.app; do ditto "$app" "extracted_dmg/$(basename "$app")"; done
         hdiutil detach "$MOUNT_POINT"
         ls -l extracted_dmg extracted_dmg/*/Contents/MacOS
@@ -2936,7 +2936,7 @@ jobs:
       run: |-
         rm -rf extracted_dmg && mkdir extracted_dmg
         MOUNT_POINT="$(mktemp -d)"
-        hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT_POINT" "$GITHUB_WORKSPACE"/*.dmg
+        echo y | hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT_POINT" "$GITHUB_WORKSPACE"/*.dmg > /dev/null
         for app in "$MOUNT_POINT"/*.app; do ditto "$app" "extracted_dmg/$(basename "$app")"; done
         hdiutil detach "$MOUNT_POINT"
         ls -l extracted_dmg extracted_dmg/*/Contents/MacOS
