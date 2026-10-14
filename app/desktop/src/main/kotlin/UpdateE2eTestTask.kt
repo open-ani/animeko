@@ -28,7 +28,7 @@ import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 /**
- * 测试任务 `update-e2e`: 在打包好的应用里走一遍真实的自动更新流程. 驱动它的是 build-logic 的 `DesktopUpdateE2e`:
+ * 测试任务 `update-e2e`: 在打包好的应用里走一遍真实的自动更新流程. 驱动它的是 `tools/desktop-update-e2e` 的 `DesktopUpdateE2e`:
  * 在本机 mock 版本 API 和发布包, 以这个任务启动旧版本, 之后核对安装目录和服务器收到的请求.
  *
  * 流程与用户点击「更新」相同, 都经 [AppUpdateViewModel]: 检查版本, 自动下载 (增量或整包), 调用安装器. 安装器启动外部
@@ -102,7 +102,7 @@ object UpdateE2eTestTask : KoinComponent {
             vm.startCheckLatestVersion(uriHandler = null)
             val presentation = vm.presentationFlow.first { p ->
                 p.checkUpdateError != null
-                        || (p.state is AppUpdateState.AlreadyUpToDate && !p.isCheckingUpdate)
+                        || p.state is AppUpdateState.AlreadyUpToDate
                         || p.state is AppUpdateState.Downloaded
                         || p.state is AppUpdateState.DownloadFailed
             }

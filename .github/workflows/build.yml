@@ -2524,7 +2524,7 @@ jobs:
       name: 'Desktop update E2E test'
       timeout-minutes: 40
       shell: 'bash'
-      run: 'java -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/ci-helper/verify" --work-dir "${{ github.workspace }}/update-e2e"'
+      run: 'java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/ci-helper/verify" --work-dir "${{ github.workspace }}/update-e2e"'
     - id: 'step-14'
       name: 'Upload desktop update E2E logs'
       uses: 'actions/upload-artifact@v4'
@@ -2634,7 +2634,7 @@ jobs:
       name: 'Desktop update E2E test'
       timeout-minutes: 40
       shell: 'bash'
-      run: 'java -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/ci-helper/verify" --work-dir "${{ github.workspace }}/update-e2e"'
+      run: 'java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/ci-helper/verify" --work-dir "${{ github.workspace }}/update-e2e"'
     - id: 'step-14'
       name: 'Upload desktop update E2E logs'
       uses: 'actions/upload-artifact@v4'
@@ -2730,7 +2730,7 @@ jobs:
       name: 'Desktop update E2E test'
       timeout-minutes: 40
       shell: 'bash'
-      run: 'java -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/ci-helper/verify" --work-dir "${{ github.workspace }}/update-e2e"'
+      run: 'java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/ci-helper/verify" --work-dir "${{ github.workspace }}/update-e2e"'
     - id: 'step-12'
       name: 'Upload desktop update E2E logs'
       uses: 'actions/upload-artifact@v4'
@@ -2823,7 +2823,7 @@ jobs:
     - id: 'step-11'
       name: 'Extract DMG for the update E2E test'
       shell: 'bash'
-      run: '7z x "$GITHUB_WORKSPACE"/*.dmg -oextracted_dmg'
+      run: 'rm -rf extracted_dmg && 7z x -y "$GITHUB_WORKSPACE"/*.dmg -oextracted_dmg'
     - id: 'step-12'
       name: 'Setup JDK 21 for the update E2E test'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
@@ -2834,7 +2834,7 @@ jobs:
       name: 'Desktop update E2E test'
       timeout-minutes: 40
       shell: 'bash'
-      run: 'java -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/extracted_dmg" --work-dir "${{ github.workspace }}/update-e2e"'
+      run: 'java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/extracted_dmg" --work-dir "${{ github.workspace }}/update-e2e"'
     - id: 'step-14'
       name: 'Upload desktop update E2E logs'
       uses: 'actions/upload-artifact@v4'
@@ -2927,7 +2927,7 @@ jobs:
     - id: 'step-11'
       name: 'Extract DMG for the update E2E test'
       shell: 'bash'
-      run: '7z x "$GITHUB_WORKSPACE"/*.dmg -oextracted_dmg'
+      run: 'rm -rf extracted_dmg && 7z x -y "$GITHUB_WORKSPACE"/*.dmg -oextracted_dmg'
     - id: 'step-12'
       name: 'Setup JDK 21 for the update E2E test'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
@@ -2938,7 +2938,7 @@ jobs:
       name: 'Desktop update E2E test'
       timeout-minutes: 40
       shell: 'bash'
-      run: 'java -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/extracted_dmg" --work-dir "${{ github.workspace }}/update-e2e"'
+      run: 'java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/extracted_dmg" --work-dir "${{ github.workspace }}/update-e2e"'
     - id: 'step-14'
       name: 'Upload desktop update E2E logs'
       uses: 'actions/upload-artifact@v4'

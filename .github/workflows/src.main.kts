@@ -972,9 +972,10 @@ fun JobBuilder<*>.addDesktopUpdateE2e(runner: Runner) {
         ),
     )
     if (runner.os == OS.MACOS) {
+        // 前面的验证脚本也解到 extracted_dmg, 目录已存在时 7z 会询问是否覆盖, 没有终端就失败; 清掉重解.
         run(
             name = "Extract DMG for the update E2E test",
-            command = shell($$"""7z x "$GITHUB_WORKSPACE"/*.dmg -oextracted_dmg"""),
+            command = shell($$"""rm -rf extracted_dmg && 7z x -y "$GITHUB_WORKSPACE"/*.dmg -oextracted_dmg"""),
             shell = Shell.Bash,
         )
     }
@@ -987,7 +988,7 @@ fun JobBuilder<*>.addDesktopUpdateE2e(runner: Runner) {
     )
     run(
         name = "Desktop update E2E test",
-        command = shell("""java -jar "$runnerDir/desktop-update-e2e.jar" --app "$appDir" --work-dir "$workDir""""),
+        command = shell("""java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "$runnerDir/desktop-update-e2e.jar" --app "$appDir" --work-dir "$workDir""""),
         shell = Shell.Bash,
         timeoutMinutes = 40,
     )

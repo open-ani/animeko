@@ -68,10 +68,22 @@ open class AppUpdateViewModel(
     }
 
     /**
-     * 最新的版本. 当 [checked] 为 `true` 时, `null` 表示没有新版本. 否则表示还没有检查过.
+     * 一次检查的结果. 版本和检查时间放在同一个值里一起更新: 分成两个流时 [presentationFlow] 可能先看到检查时间已记下、
+     * 新版本还没送到, 瞬时呈现「已是最新」.
      */
-    private val latestVersionFlow = MutableStateFlow<NewVersion?>(null)
-    private val lastCheckTime: MutableStateFlow<Long> = MutableStateFlow(0L)
+    private class CheckResult(
+        /**
+         * `null` 表示没有新版本.
+         */
+        val latestVersion: NewVersion?,
+        val checkedAt: Long,
+    )
+
+    /**
+     * `null` 表示还没有检查过.
+     */
+    private val checkResultFlow = MutableStateFlow<CheckResult?>(null)
+    private val latestVersion: NewVersion? get() = checkResultFlow.value?.latestVersion
 
     /**
      * 新版本下载进度
@@ -84,16 +96,16 @@ open class AppUpdateViewModel(
     private val checkUpdateErrorFlow = MutableStateFlow<LoadError?>(null)
 
     val presentationFlow = combine(
-        latestVersionFlow,
+        checkResultFlow,
         fileDownloaderPresenter.flow,
         autoCheckTasker.isRunning,
         installationRunner.state,
         checkUpdateErrorFlow,
-    ) { latestVersion, fileDownloaderStats, isCheckingUpdate, installationState, checkUpdateError ->
-        val latestVersion = latestVersion
+    ) { checkResult, fileDownloaderStats, isCheckingUpdate, installationState, checkUpdateError ->
+        val latestVersion = checkResult?.latestVersion
         val state = when {
             // 还没检查过
-            lastCheckTime.value == 0L -> AppUpdateState.ClickToCheck
+            checkResult == null -> AppUpdateState.ClickToCheck
             latestVersion == null -> AppUpdateState.AlreadyUpToDate
             installationState is UpdateInstallationState.Installing -> AppUpdateState.Installing(latestVersion)
             else -> {
@@ -139,7 +151,8 @@ open class AppUpdateViewModel(
         if (autoCheckTasker.isRunning.value) {
             return
         } else {
-            if (currentTimeMillis() - lastCheckTime.value < 1000 * 60 * 60 * 1) {
+            val checkedAt = checkResultFlow.value?.checkedAt ?: 0L
+            if (currentTimeMillis() - checkedAt < 1000 * 60 * 60 * 1) {
                 return // 1 小时内检查过
             }
 
@@ -164,17 +177,17 @@ open class AppUpdateViewModel(
                 }
                 logger.info { "Checking latest version, updateSettings=${updateSettings}" }
 
-                // 先更新 latestVersionFlow 再记 lastCheckTime: presentationFlow 读到 lastCheckTime 已设置而 latestVersion
-                // 还是旧值时会短暂显示「已是最新」.
-                updateChecker.checkLatestVersion(updateSettings.releaseClass).also { latestVersionFlow.value = it }
+                updateChecker.checkLatestVersion(updateSettings.releaseClass).also {
+                    checkResultFlow.value = CheckResult(it, currentTimeMillis())
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
                 checkUpdateErrorFlow.value = LoadError.fromException(e)
                 logger.info { "Auto update checking failed due to IOException: $e" } // 故意不打印堆栈
+                // 失败也算检查过, 一小时内不再自动重试; 上次的结果保留
+                checkResultFlow.value = CheckResult(latestVersion, currentTimeMillis())
                 return@launch
-            } finally {
-                lastCheckTime.value = currentTimeMillis()
             }
 
             if (ver != null && updateSettings.autoDownloadUpdate) {
@@ -222,7 +235,7 @@ open class AppUpdateViewModel(
     }
 
     fun restartDownload(uriHandler: UriHandler) {
-        latestVersionFlow.value?.let { startDownload(it, uriHandler) }
+        latestVersion?.let { startDownload(it, uriHandler) }
     }
 
     fun install(context: ContextMP) {
