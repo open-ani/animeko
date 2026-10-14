@@ -76,3 +76,26 @@ dependencies {
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }
+
+// 自动更新端到端测试的独立入口 (DesktopUpdateE2e), 给 CI 的 Verify job 用: 那里只有下载下来的打包产物, 没有主构建.
+// ./gradlew -p build-logic updateE2e -Pani.updateE2e.appDir=<打包产物或包含它的目录> [-Pani.updateE2e.scenario=delta]
+tasks.register<JavaExec>("updateE2e") {
+    group = "verification"
+    description = "Runs a packaged desktop app through mocked auto updates"
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("DesktopUpdateE2eMainKt")
+    // 相对路径相对于仓库根 (included build 的工作目录不是用户执行命令的目录).
+    val repositoryRoot = layout.settingsDirectory.dir("..").asFile
+    val appDir = providers.gradleProperty("ani.updateE2e.appDir").map { repositoryRoot.resolve(it) }
+    val scenario = providers.gradleProperty("ani.updateE2e.scenario")
+    val workDir = layout.buildDirectory.dir("update-e2e")
+    argumentProviders.add {
+        buildList {
+            add("--app")
+            add((appDir.orNull ?: error("Set -Pani.updateE2e.appDir=<packaged app or a directory containing it>")).absolutePath)
+            add("--work-dir")
+            add(workDir.get().asFile.absolutePath)
+            scenario.orNull?.let { add("--scenario"); add(it) }
+        }
+    }
+}

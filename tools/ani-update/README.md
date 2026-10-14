@@ -16,6 +16,8 @@ Animeko 的 Windows 更新器, 应用退出后把新版本换进安装目录. �
 
 ## 测试
 
-`cargo test` 覆盖参数解析、解压和逐文件移动. 完整的更新流程由 `./gradlew :app:desktop:updateE2eTest` 验证:
+`cargo test` 覆盖参数解析、解压和逐文件移动. 完整的更新流程由自动更新端到端测试验证 (build-logic 的 `DesktopUpdateE2e`):
 它用打包好的应用对着本机 mock 的更新服务器走一遍检查、下载、安装、重启, 其中安装就是运行这里的更新器.
-CI 在 Windows 打包 job 里自动跑; 换了 `ani_update.exe` 后本地也可以跑一次.
+CI 在 Windows 的 Verify job 里自动跑; 换了 `ani_update.exe` 后本地也可以跑一次:
+`./gradlew :app:desktop:updateE2eTest` (先打包再测), 或对已有的打包产物
+`./gradlew -p build-logic updateE2e -Pani.updateE2e.appDir=<Ani 目录或包含它的目录>`.

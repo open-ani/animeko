@@ -362,7 +362,8 @@ afterEvaluate {
 }
 
 // 自动更新端到端测试: 以打包好的应用为旧版本, 对着本机 mock 的更新服务器走一遍检查、下载、安装、重启.
-// 场景和核对项见 build-logic 的 DesktopUpdateE2e. CI 在打包后运行; 本地: ./gradlew :app:desktop:updateE2eTest [--scenario delta]
+// 场景和核对项见 build-logic 的 DesktopUpdateE2e. CI 的 Verify job 用 build-logic 的 updateE2e 任务对下载的产物跑;
+// 本地: ./gradlew :app:desktop:updateE2eTest [--scenario delta]
 if (getOs() == Os.Windows || getOs() == Os.MacOS) {
     tasks.register("updateE2eTest", DesktopUpdateE2eTask::class) {
         group = "verification"

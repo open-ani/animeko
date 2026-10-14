@@ -17,7 +17,6 @@ import org.apache.commons.compress.archivers.zip.Zip64Mode
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.logging.Logger
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
@@ -46,7 +45,7 @@ import kotlin.time.TimeSource
  */
 abstract class DesktopUpdateE2eTask : DefaultTask() {
     /**
-     * 打包好的应用: Windows 是 `Ani` 目录, macOS 是 `Ani.app`.
+     * 打包好的应用 (Windows 是 `Ani` 目录, macOS 是 `Ani.app`), 或者包含它的目录.
      */
     @get:Internal
     abstract val appDir: DirectoryProperty
@@ -63,8 +62,29 @@ abstract class DesktopUpdateE2eTask : DefaultTask() {
 
     @TaskAction
     fun run() {
-        DesktopUpdateE2e(appDir.get().asFile, workDir.get().asFile, logger).run(scenario)
+        val log = E2eLog(lifecycle = logger::lifecycle, warn = logger::warn, error = { message, e -> logger.error(message, e) })
+        DesktopUpdateE2e(locatePackagedApp(appDir.get().asFile), workDir.get().asFile, log).run(scenario)
     }
+}
+
+/**
+ * 测试驱动器的日志出口: 作为 Gradle 任务运行时接到任务的 logger, 作为独立程序运行时接到标准输出.
+ */
+class E2eLog(
+    val lifecycle: (String) -> Unit,
+    val warn: (String) -> Unit,
+    val error: (String, Throwable?) -> Unit,
+)
+
+/**
+ * 在 [dir] 下找打包好的应用: [dir] 本身, 或它下面三层以内的 `Ani` (含 `Ani.exe`) 或 `Ani.app`. CI 下载的产物外面可能多一两层目录.
+ */
+fun locatePackagedApp(dir: File): File {
+    val platform = E2ePlatform.current()
+    fun isApp(candidate: File) = candidate.isDirectory && platform.executable(candidate).isFile
+    if (isApp(dir)) return dir
+    val found = dir.walkTopDown().maxDepth(3).firstOrNull { it.name == platform.appDirName && isApp(it) }
+    return checkNotNull(found) { "No packaged app (${platform.appDirName}) found under $dir" }
 }
 
 /**
@@ -83,9 +103,14 @@ abstract class DesktopUpdateE2eTask : DefaultTask() {
 class DesktopUpdateE2e(
     private val appDir: File,
     private val workDir: File,
-    private val logger: Logger,
+    private val logger: E2eLog,
 ) {
     private val platform = E2ePlatform.current()
+
+    /**
+     * 原始打包产物每个文件的 sha256. 每个场景的安装目录都是它的副本, 算一次给所有场景用.
+     */
+    private val distTree: Map<String, String> by lazy { hashTree(appDir) }
 
     fun run(scenarioFilter: String?) {
         check(platform.executable(appDir).isFile) { "Not a packaged app: $appDir" }
@@ -115,7 +140,7 @@ class DesktopUpdateE2e(
                 logger.lifecycle("[update-e2e] ${scenario.name}: passed")
             } catch (e: Exception) {
                 logger.error("[update-e2e] ${scenario.name}: FAILED: ${e.message}", e)
-                logger.error(run.diagnostics())
+                logger.error(run.diagnostics(), null)
                 failures += "${scenario.name}: ${e.message}"
             } finally {
                 run.killLeftoverProcesses()
@@ -262,8 +287,8 @@ class DesktopUpdateE2e(
         private var recordedRequests: List<MockUpdateServer.RecordedRequest> = emptyList()
 
         fun execute() {
-            copyTree(appDir, installDir)
-            val originalTree = hashTree(installDir)
+            platform.copyApp(appDir, installDir)
+            val originalTree = distTree
             dataDir.deleteRecursively()
             dataDir.mkdirs()
             MockUpdateServer(platform, fixture, version, scenario.behavior).use { server ->
@@ -719,6 +744,11 @@ private sealed class E2ePlatform(val packageOs: String) {
 
     open fun withLaunchdEnvironment(environment: Map<String, String>, block: () -> Unit) = block()
 
+    /**
+     * 把打包产物复制成一个安装目录.
+     */
+    open fun copyApp(source: File, target: File) = copyTree(source, target)
+
     object Windows : E2ePlatform("windows") {
         override val appDirName: String get() = "Ani"
         override fun executable(installDir: File): File = installDir.resolve("Ani.exe")
@@ -751,6 +781,20 @@ private sealed class E2ePlatform(val packageOs: String) {
             ?.filter { it.isDirectory && it.name.startsWith("ani-macos-update-") }
             ?.maxByOrNull { it.lastModified() }
             ?.resolve("update-output.log")
+
+        /**
+         * APFS 的 clonefile (`cp -c`) 复制 600 MB 的 `.app` 只要不到一秒, 逐字节复制要十几秒. 不支持时退回逐字节复制.
+         */
+        override fun copyApp(source: File, target: File) {
+            target.parentFile?.mkdirs()
+            val exit = runCatching {
+                ProcessBuilder("cp", "-c", "-R", source.absolutePath, target.absolutePath).inheritIO().start().waitFor()
+            }.getOrDefault(-1)
+            if (exit != 0) {
+                target.deleteRecursively()
+                copyTree(source, target)
+            }
+        }
 
         /**
          * 安装脚本用 `open` 启动新版本, 它从 launchd 而不是本进程继承环境.

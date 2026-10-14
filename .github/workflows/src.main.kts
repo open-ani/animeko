@@ -592,7 +592,6 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             // buildIosIpaRelease()
         }
         packageDesktopAndUpload()
-        desktopUpdateE2eTest()
 
         if (!matrix.isUbuntu) {
             gradleCheck() // save time
@@ -945,6 +944,63 @@ fun getVerifyJobBody(
 
         else -> error("Unsupported OS and arch combination: ${runner.os} ${runner.arch}")
     }
+
+    addDesktopUpdateE2e(runner)
+}
+
+/**
+ * 自动更新端到端测试 (build-logic 的 DesktopUpdateE2e): 用这个 job 下载下来的打包产物, 对着本机 mock 的更新服务器走一遍
+ * 检查、下载、安装、重启. 驱动器由 build-logic 单独构建运行, 不需要主构建, 只要一个 JDK 21. Linux 的 AppImage 走 zsync, 不在其中.
+ */
+fun JobBuilder<*>.addDesktopUpdateE2e(runner: Runner) {
+    val appDir = when (runner.os) {
+        OS.WINDOWS -> """${expr { github.workspace }}/ci-helper/verify"""
+        OS.MACOS -> """${expr { github.workspace }}/extracted_dmg"""
+        OS.UBUNTU -> return
+    }
+    if (runner.os == OS.MACOS) {
+        run(
+            name = "Extract DMG for the update E2E test",
+            command = shell($$"""7z x "$GITHUB_WORKSPACE"/*.dmg -oextracted_dmg"""),
+            shell = Shell.Bash,
+        )
+    }
+    uses(
+        name = "Setup JDK 21 for the update E2E test",
+        action = SetupJava_Untyped(
+            distribution_Untyped = "temurin",
+            javaVersion_Untyped = "21",
+        ),
+    )
+    // build-logic 按仓库根的 jvm.toolchain.* 选 JDK, 默认要 JetBrains Runtime; 这里只跑测试驱动器, 用装好的 Temurin 就行.
+    run(
+        name = "Point build-logic at the installed JDK",
+        command = shell("""echo "jvm.toolchain.vendor=adoptium" >> local.properties"""),
+        shell = Shell.Bash,
+    )
+    uses(
+        name = "Setup Gradle",
+        action = ActionsSetupGradle(),
+    )
+    run(
+        name = "Desktop update E2E test",
+        command = shell("""./gradlew -p build-logic updateE2e "-Pani.updateE2e.appDir=$appDir" --console=plain --stacktrace"""),
+        timeoutMinutes = 40,
+    )
+    uses(
+        name = "Upload desktop update E2E logs",
+        `if` = "failure()",
+        action = UploadArtifact(
+            name = "update-e2e-${runner.id}",
+            path_Untyped = $$"""
+                build-logic/build/update-e2e/**/*.log
+                build-logic/build/update-e2e/**/*.json
+                build-logic/build/update-e2e/**/*.jsonl
+                build-logic/build/update-e2e/**/*.txt
+            """.trimIndent(),
+            ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
+        ),
+    )
 }
 
 fun WorkflowBuilder.addVerifyJob(build: Job<BuildJobOutputs>, runner: Runner, ifExpr: String) {
@@ -2233,35 +2289,6 @@ class WithMatrix(
                 )
             }
         }
-    }
-
-    /**
-     * 用刚打包好的应用走一遍 mock 的自动更新 (检查、增量或整包下载、安装、重启), 场景见 build-logic 的 DesktopUpdateE2e.
-     * 只在上传安装包的 GitHub 托管 runner 上跑: 测试会启动应用和更新器, 不该碰自托管机器. Linux 的 AppImage 走 zsync, 不在其中.
-     */
-    fun JobBuilder<*>.desktopUpdateE2eTest() {
-        if (!matrix.uploadDesktopInstallers || matrix.selfHosted) return
-        if (!(matrix.isWindows || matrix.isMacOS)) return
-        runGradle(
-            name = "Desktop update E2E test",
-            tasks = arrayOf(":app:desktop:updateE2eTest"),
-            maxAttempts = 1,
-            timeoutMinutes = 40,
-        )
-        uses(
-            name = "Upload desktop update E2E logs",
-            `if` = "failure()",
-            action = UploadArtifact(
-                name = "update-e2e-${matrix.runner.id}",
-                path_Untyped = $$"""
-                    app/desktop/build/update-e2e/**/*.log
-                    app/desktop/build/update-e2e/**/*.json
-                    app/desktop/build/update-e2e/**/*.jsonl
-                    app/desktop/build/update-e2e/**/*.txt
-                """.trimIndent(),
-                ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
-            ),
-        )
     }
 
     fun JobBuilder<*>.uploadComposeLogs() {
