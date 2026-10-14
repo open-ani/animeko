@@ -10,7 +10,6 @@
 package me.him188.ani.app.domain.media.resolver
 
 import io.ktor.http.Cookie
-import io.ktor.http.Url
 import io.ktor.http.parseServerSetCookieHeader
 import io.ktor.util.date.toJvmDate
 import kotlinx.atomicfu.atomic
@@ -258,12 +257,11 @@ class CefVideoExtractor(
                     },
                 )
 
-                // set cookie
+                // set cookie. CEF 只接受完整 URL, 只传 host 时会静默丢弃这条 cookie.
                 val cookieManager = CefCookieManager.getGlobalManager()
-                val url = Url(pageUrl)
                 for (cookie in config.cookies) {
                     val ktorCookie = parseServerSetCookieHeader(cookie)
-                    cookieManager.setCookie(url.host, ktorCookie.toCefCookie())
+                    cookieManager.setCookie(pageUrl, ktorCookie.toCefCookie())
                 }
 
                 logger.info { "Fetching $pageUrl, userAgent=$userAgent" }
