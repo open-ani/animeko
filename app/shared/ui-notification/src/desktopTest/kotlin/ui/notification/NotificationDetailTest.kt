@@ -13,9 +13,11 @@ package me.him188.ani.app.ui.notification
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -38,17 +40,25 @@ import me.him188.ani.app.data.models.comment.CommentReportReason
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
+import me.him188.ani.app.data.models.notification.NotificationGroup
+import me.him188.ani.app.data.models.notification.NotificationTarget
+import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.models.notification.SystemNotificationEvent
+import me.him188.ani.app.navigation.AniNavigator
+import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.navigation.NavRoutes
+import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
+import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_report_reason_other
 import me.him188.ani.app.ui.lang.comment_report_reason_spoiler
+import me.him188.ani.app.ui.lang.notification_go_to_character
+import me.him188.ani.app.ui.lang.notification_go_to_episode
+import me.him188.ani.app.ui.lang.notification_go_to_person
+import me.him188.ani.app.ui.lang.notification_go_to_subject
 import me.him188.ani.app.ui.lang.notification_not_found
-import me.him188.ani.app.ui.lang.notification_report_go_to_character
-import me.him188.ani.app.ui.lang.notification_report_go_to_episode
-import me.him188.ani.app.ui.lang.notification_report_go_to_person
-import me.him188.ani.app.ui.lang.notification_report_go_to_subject
 import me.him188.ani.app.ui.lang.notification_report_outcome_handled
 import me.him188.ani.app.ui.lang.notification_report_outcome_removed
 import me.him188.ani.app.ui.lang.notification_report_privacy_footnote
@@ -62,6 +72,8 @@ import me.him188.ani.app.ui.lang.notification_report_target_comment
 import me.him188.ani.app.ui.lang.notification_system_bangumi_expired
 import me.him188.ani.app.ui.lang.notification_system_bangumi_expired_supporting
 import me.him188.ani.app.ui.lang.notification_system_bangumi_reauthorize
+import me.him188.ani.app.ui.lang.notification_title
+import me.him188.ani.app.ui.lang.notification_view_details
 import me.him188.ani.app.ui.lang.settings_mediasource_copy
 import me.him188.ani.app.ui.lang.settings_mediasource_retry
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -83,6 +95,7 @@ class NotificationDetailTest {
             onOpenCharacter = { calls += "character:$it" },
             onReauthorizeBangumi = { calls += "reauthorize" },
             onOpenAccountSettings = { calls += "account-settings" },
+            onCheckUpdate = { calls += "check-update" },
         )
     }
 
@@ -118,7 +131,7 @@ class NotificationDetailTest {
     fun `report result shows reason target outcome and snapshot`() = runAniComposeUiTest {
         val notification = createTestReportResult()
         val target = runBlocking {
-            reportTargetText(notification.content as AppNotificationContent.ReportResult, false)
+            reportTargetText(notification.content as AppNotificationContent.ReportResult, notification.display, false)
                 .resolveString()
         }
         showDetail(notification, NotificationActions.Noop)
@@ -265,7 +278,7 @@ class NotificationDetailTest {
     fun `episode comment report opens the episode`() = runAniComposeUiTest {
         val recorded = RecordedActions()
         showDetail(createTestReportResult(), recorded.actions)
-        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals(string(Lang.notification_report_go_to_episode))
+        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals(string(Lang.notification_go_to_episode))
             .performClick()
         assertEquals(listOf("episode:400602:1227087"), recorded.calls)
     }
@@ -277,7 +290,7 @@ class NotificationDetailTest {
             createTestReportResult(targetType = CommentReportTargetType.SUBJECT_REVIEW, episodeId = null, episodeSort = null),
             recorded.actions,
         )
-        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals(string(Lang.notification_report_go_to_subject))
+        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals(string(Lang.notification_go_to_subject))
             .performClick()
         assertEquals(listOf("subject:400602:葬送的芙莉莲"), recorded.calls)
     }
@@ -298,7 +311,7 @@ class NotificationDetailTest {
             }
         }
         onNodeWithText("种崎敦美").assertIsDisplayed()
-        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals(string(Lang.notification_report_go_to_person))
+        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals(string(Lang.notification_go_to_person))
             .performClick()
 
         runOnIdle {
@@ -308,7 +321,7 @@ class NotificationDetailTest {
                 characterId = 6, targetName = "芙莉莲",
             )
         }
-        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals(string(Lang.notification_report_go_to_character))
+        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals(string(Lang.notification_go_to_character))
             .performClick()
         assertEquals(listOf("person:5", "character:6"), recorded.calls)
     }
@@ -329,7 +342,7 @@ class NotificationDetailTest {
         }
         assertNoAction()
         onNodeWithTag(NotificationTestTags.DETAIL_TOP_BAR_ACTION)
-            .assertContentDescriptionEquals(string(Lang.notification_report_go_to_episode))
+            .assertContentDescriptionEquals(string(Lang.notification_go_to_episode))
             .performClick()
         assertEquals(listOf("episode:400602:1227087"), recorded.calls)
     }
@@ -345,6 +358,7 @@ class NotificationDetailTest {
                         createTestReportResult(subjectId = null, episodeId = null),
                         NotificationActions.Noop,
                     )
+                    NotificationDetailTopBarActions(unknownTargetTypeReport(target = null), NotificationActions.Noop)
                 }
             }
         }
@@ -364,7 +378,7 @@ class NotificationDetailTest {
             }
         }
         assertNoTopBarAction()
-        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals(string(Lang.notification_report_go_to_episode))
+        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals(string(Lang.notification_go_to_episode))
             .performClick()
         assertEquals(listOf("episode:400602:1227087"), recorded.calls)
     }
@@ -382,22 +396,82 @@ class NotificationDetailTest {
         assertNoAction()
     }
 
+    /**
+     * 不认识的评论类型. 被举报的对象和跳转的位置来自通用展示内容.
+     */
+    private fun unknownTargetTypeReport(
+        body: String? = "芙莉莲的角色评论",
+        target: NotificationTarget? = NotificationTarget(characterId = 6),
+    ): AppNotification = createTestReportResult(
+        targetType = null,
+        reason = CommentReportReason.OTHER,
+        subjectId = null, subjectName = null, subjectNameCn = null, episodeId = null, episodeSort = null,
+        personId = 5,
+        characterId = 6,
+        targetName = "芙莉莲",
+    ).let { it.copy(display = it.display.copy(body = body, target = target)) }
+
     @Test
-    fun `report with unknown target type shows a generic target and no navigation button`() = runAniComposeUiTest {
-        showDetail(
-            createTestReportResult(
-                targetType = null,
-                reason = CommentReportReason.OTHER,
-                personId = 5,
-                characterId = 6,
-                targetName = "芙莉莲",
-            ),
-            NotificationActions.Noop,
-        )
-        assertFieldValue(NotificationTestTags.REPORT_TARGET, string(Lang.notification_report_target_comment))
+    fun `report with unknown target type shows the display target and destination`() = runAniComposeUiTest {
+        val recorded = RecordedActions()
+        showDetail(unknownTargetTypeReport(), recorded.actions)
+        assertFieldValue(NotificationTestTags.REPORT_TARGET, "芙莉莲的角色评论")
         assertFieldValue(NotificationTestTags.REPORT_REASON, string(Lang.comment_report_reason_other))
         assertTrue(onAllNodesWithText("芙莉莲").fetchSemanticsNodes().isEmpty())
+        // 类型是认识的, 不提示更新
+        assertTrue(onAllNodesWithTag(NotificationTestTags.DETAIL_UPDATE_HINT).fetchSemanticsNodes().isEmpty())
+        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals(string(Lang.notification_go_to_character))
+            .performClick()
+        assertEquals(listOf("character:6"), recorded.calls)
+    }
+
+    @Test
+    fun `report with unknown target type opens a display url in the browser`() = runAniComposeUiTest {
+        val browser = RecordingBrowserNavigator()
+        setContent {
+            CompositionLocalProvider(LocalBrowserNavigator provides browser) {
+                NotificationTestHost {
+                    NotificationDetailContent(
+                        unknownTargetTypeReport(target = NotificationTarget(url = "https://myani.org/post/1")),
+                        NotificationActions.Noop,
+                    )
+                }
+            }
+        }
         assertNoAction()
+        onNodeWithTag(NotificationTestTags.DETAIL_LINK).assertTextEquals(string(Lang.notification_view_details))
+            .performClick()
+        waitUntil { browser.openedUrls.isNotEmpty() }
+        assertEquals(listOf("https://myani.org/post/1"), browser.openedUrls.toList())
+    }
+
+    @Test
+    fun `report with unknown target type and no display content shows a generic target`() = runAniComposeUiTest {
+        showDetail(unknownTargetTypeReport(body = null, target = null), NotificationActions.Noop)
+        assertFieldValue(NotificationTestTags.REPORT_TARGET, string(Lang.notification_report_target_comment))
+        assertNoAction()
+        assertTrue(onAllNodesWithTag(NotificationTestTags.DETAIL_LINK).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun `report with unknown target type shows the display destination in the top bar`() = runAniComposeUiTest {
+        val recorded = RecordedActions()
+        val notification = unknownTargetTypeReport(target = NotificationTarget(personId = 5))
+        setContent {
+            NotificationTestHost {
+                Column {
+                    Row {
+                        NotificationDetailTopBarActions(notification, recorded.actions)
+                    }
+                    NotificationDetailContent(notification, recorded.actions, reportActionInTopBar = true)
+                }
+            }
+        }
+        assertNoAction()
+        onNodeWithTag(NotificationTestTags.DETAIL_TOP_BAR_ACTION)
+            .assertContentDescriptionEquals(string(Lang.notification_go_to_person))
+            .performClick()
+        assertEquals(listOf("person:5"), recorded.calls)
     }
 
     @Test
@@ -479,4 +553,182 @@ class NotificationDetailTest {
         assertTrue(onAllNodesWithText(string(Lang.settings_mediasource_retry)).fetchSemanticsNodes().isEmpty())
         assertEquals(0, retries)
     }
+
+    // region types without their own rendering
+
+    @Test
+    fun `generic detail shows the generic content in order`() = withSimplifiedChinese {
+        runAniComposeUiTest {
+            showDetail(createTestGenericNotification(), NotificationActions.Noop)
+
+            val overline = onNodeWithTag(NotificationTestTags.DETAIL_OVERLINE, useUnmergedTree = true)
+                .assertTextEquals("葬送的芙莉莲 第 1 话")
+            val title = onNodeWithText("Bob 回复了你的评论").assertIsDisplayed()
+            // 30 分钟前, 当地时间 19:30
+            val time = onNodeWithText("10 月 13 日 19:30").assertIsDisplayed()
+            val body = onNodeWithText("同意，这一集的作画太好了").assertIsDisplayed()
+            val action = onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertIsDisplayed()
+            val hint = onNodeWithTag(NotificationTestTags.DETAIL_UPDATE_HINT).assertIsDisplayed()
+
+            val tops = listOf(overline, title, time, body, action, hint).map { it.fetchSemanticsNode().boundsInRoot.top }
+            assertEquals(tops.sorted(), tops, "overline, title, time, body, action and hint should be in order: $tops")
+            // 没有图片时只有图标
+            assertTrue(onAllNodesWithTag(NotificationTestTags.LEADING_IMAGE, useUnmergedTree = true).fetchSemanticsNodes().isEmpty())
+        }
+    }
+
+    @Test
+    fun `generic detail shows the image and omits missing parts`() = runAniComposeUiTest {
+        showDetail(
+            createTestGenericNotification(
+                overline = null,
+                body = null,
+                imageUrl = "https://example.com/avatar.png",
+                target = null,
+            ),
+            NotificationActions.Noop,
+        )
+        onNodeWithText("Bob 回复了你的评论").assertIsDisplayed()
+        onNodeWithTag(NotificationTestTags.LEADING_IMAGE, useUnmergedTree = true).assertExists()
+        assertTrue(onAllNodesWithTag(NotificationTestTags.DETAIL_OVERLINE, useUnmergedTree = true).fetchSemanticsNodes().isEmpty())
+        assertNoAction()
+        assertTrue(onAllNodesWithTag(NotificationTestTags.DETAIL_LINK).fetchSemanticsNodes().isEmpty())
+        // 仍然提示更新
+        onNodeWithTag(NotificationTestTags.DETAIL_UPDATE_HINT).assertIsDisplayed()
+    }
+
+    @Test
+    fun `generic detail body is selectable and links its urls`() = runAniComposeUiTest {
+        showDetail(
+            createTestGenericNotification(body = "第一行\n详情见 https://myani.org/help"),
+            NotificationActions.Noop,
+        )
+        val body = onNodeWithText("https://myani.org/help", substring = true).fetchSemanticsNode()
+        val text = body.config[SemanticsProperties.Text].single()
+        assertEquals("第一行\n详情见 https://myani.org/help", text.text)
+        assertEquals(1, text.getLinkAnnotations(0, text.length).size)
+    }
+
+    @Test
+    fun `unknown type detail asks to update and check update opens the update settings`() = withSimplifiedChinese {
+        runAniComposeUiTest {
+            val recorded = RecordedActions()
+            showDetail(createTestGenericNotification(rawType = "future_type"), recorded.actions)
+
+            onNodeWithText("当前版本可能无法完整显示这条通知，更新 Animeko 后可查看完整内容。").assertIsDisplayed()
+            onNodeWithTag(NotificationTestTags.DETAIL_CHECK_UPDATE).assertTextEquals("检查更新").performClick()
+            assertEquals(listOf("check-update"), recorded.calls)
+        }
+    }
+
+    @Test
+    fun `check update navigates to the software update settings`() = runAniComposeUiTest {
+        lateinit var navigator: AniNavigator
+        setContent {
+            NotificationTestHost {
+                navigator = LocalNavigator.current
+                NotificationDetailContent(createTestGenericNotification(), rememberNotificationActions(navigator))
+            }
+        }
+        onNodeWithTag(NotificationTestTags.DETAIL_CHECK_UPDATE).performClick()
+        runOnIdle {
+            assertEquals(NavRoutes.Settings(SettingsTab.UPDATE), navigator.backStack.last())
+        }
+    }
+
+    @Test
+    fun `known type shown from the generic content does not ask to update`() = runAniComposeUiTest {
+        // 认识的类型缺少自己的内容
+        showDetail(
+            createTestGenericNotification(
+                rawType = NotificationType.REPORT_RESULT.wireValue,
+                rawCategory = NotificationGroup.NOTICE.wireValue,
+                title = "你举报的评论已处理",
+            ),
+            NotificationActions.Noop,
+        )
+        onNodeWithText("你举报的评论已处理").assertIsDisplayed()
+        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertIsDisplayed()
+        assertTrue(onAllNodesWithTag(NotificationTestTags.DETAIL_UPDATE_HINT).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun `generic detail goes to the most specific destination`() = runAniComposeUiTest {
+        val recorded = RecordedActions()
+        val browser = RecordingBrowserNavigator()
+        var notification by mutableStateOf(
+            createTestGenericNotification(target = NotificationTarget(subjectId = 1, episodeId = 2, personId = 9, url = "https://a.example")),
+        )
+        setContent {
+            CompositionLocalProvider(LocalBrowserNavigator provides browser) {
+                NotificationTestHost {
+                    NotificationDetailContent(notification, recorded.actions)
+                }
+            }
+        }
+
+        fun goTo(label: StringResource) {
+            assertTrue(onAllNodesWithTag(NotificationTestTags.DETAIL_LINK).fetchSemanticsNodes().isEmpty())
+            onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals(string(label)).performClick()
+        }
+
+        goTo(Lang.notification_go_to_episode)
+        runOnIdle { notification = createTestGenericNotification(target = NotificationTarget(subjectId = 3, personId = 9)) }
+        goTo(Lang.notification_go_to_subject)
+        runOnIdle { notification = createTestGenericNotification(target = NotificationTarget(personId = 4, characterId = 9)) }
+        goTo(Lang.notification_go_to_person)
+        runOnIdle { notification = createTestGenericNotification(target = NotificationTarget(characterId = 5, url = "https://a.example")) }
+        goTo(Lang.notification_go_to_character)
+        assertEquals(listOf("episode:1:2", "subject:3:null", "person:4", "character:5"), recorded.calls)
+
+        // 网页链接在浏览器中打开
+        runOnIdle { notification = createTestGenericNotification(target = NotificationTarget(url = " https://myani.org/post/1 ")) }
+        assertNoAction()
+        onNodeWithTag(NotificationTestTags.DETAIL_LINK).assertTextEquals(string(Lang.notification_view_details)).performClick()
+        waitUntil { browser.openedUrls.isNotEmpty() }
+        assertEquals(listOf("https://myani.org/post/1"), browser.openedUrls.toList())
+
+        // 只接受 http(s) 链接; 没有位置时没有按钮
+        for (target in listOf(NotificationTarget(url = "ftp://myani.org"), NotificationTarget(), null)) {
+            runOnIdle { notification = createTestGenericNotification(target = target) }
+            waitForIdle()
+            assertNoAction()
+            assertTrue(onAllNodesWithTag(NotificationTestTags.DETAIL_LINK).fetchSemanticsNodes().isEmpty(), "$target")
+        }
+        assertEquals(4, recorded.calls.size)
+        assertEquals(1, browser.openedUrls.size)
+    }
+
+    @Test
+    fun `system message goes to its destination`() = runAniComposeUiTest {
+        val recorded = RecordedActions()
+        showDetail(
+            createTestSystemNotification(linkUrl = null).let {
+                it.copy(display = it.display.copy(target = NotificationTarget(subjectId = 7)))
+            },
+            recorded.actions,
+        )
+        assertTrue(onAllNodesWithTag(NotificationTestTags.DETAIL_LINK).fetchSemanticsNodes().isEmpty())
+        assertTrue(onAllNodesWithTag(NotificationTestTags.DETAIL_UPDATE_HINT).fetchSemanticsNodes().isEmpty())
+        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals(string(Lang.notification_go_to_subject))
+            .performClick()
+        assertEquals(listOf("subject:7:null"), recorded.calls)
+    }
+
+    @Test
+    fun `detail screen shows an unknown type loaded by id`() = runAniComposeUiTest {
+        val repository = FakeNotificationRepository(notifications = TestNotifications + TestInteractionNotifications)
+        val vm = NotificationDetailViewModel("reply-1", notificationTestKoin(repository))
+        setContent {
+            NotificationTestHost {
+                NotificationDetailScreen(vm, NotificationActions.Noop)
+            }
+        }
+        waitUntil { onAllNodes(hasTestTag(NotificationTestTags.DETAIL)).fetchSemanticsNodes().isNotEmpty() }
+        onNodeWithText("Bob 回复了你的评论").assertIsDisplayed()
+        onNodeWithTag(NotificationTestTags.DETAIL_UPDATE_HINT).assertIsDisplayed()
+        onNodeWithText(string(Lang.notification_title)).assertIsDisplayed()
+    }
+
+    // endregion
 }

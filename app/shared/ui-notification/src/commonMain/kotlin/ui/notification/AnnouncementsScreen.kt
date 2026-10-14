@@ -333,9 +333,8 @@ fun AnnouncementDetailContent(
             title = announcement.title,
             timeMillis = announcement.publishedAtMillis,
             body = announcement.body,
-            linkUrl = announcement.linkUrl,
-            linkTestTag = AnnouncementTestTags.DETAIL_LINK,
             overline = { AnnouncementTagLabel(announcement) },
+            action = announcement.linkUrl?.let { url -> { DetailLinkButton(url, AnnouncementTestTags.DETAIL_LINK) } },
         )
     }
 }

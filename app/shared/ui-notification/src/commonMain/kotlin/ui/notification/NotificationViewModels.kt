@@ -43,6 +43,7 @@ import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
 import me.him188.ani.app.data.models.notification.NotificationGroup
 import me.him188.ani.app.data.models.notification.NotificationType
+import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.repository.notification.NotificationRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.LoadError
@@ -95,9 +96,8 @@ private fun SessionStateProvider.accessFlow(): Flow<NotificationAccess> =
 /**
  * 通知中心.
  *
- * - 每个分组 ([groups]) 有自己的列表, 按该分组中客户端能渲染、且本机显示的类型
- *   ([me.him188.ani.app.data.models.preference.NotificationSettings.shownTypes]) 分页加载. 没有这样的类型 (例如预留的分组)
- *   或用户是游客时不请求, 列表为空. 通知设置变化时重新加载.
+ * - 每个分组 ([groups]) 有自己的列表, 按分组 (服务端的分类) 分页加载, 排除本机关闭的类型
+ *   ([NotificationSettings.excludedTypes]). 用户是游客时不请求, 列表为空. 本机关闭的类型变化时重新加载.
  * - 标记已读先更新 [readOverlays], 再请求服务端; 失败时撤销本地标记. 请求结束后 (无论成败) 请求刷新未读数.
  */
 @Stable
@@ -124,20 +124,20 @@ class NotificationCenterViewModel(
     val access: StateFlow<NotificationAccess> = sessionStateProvider.accessFlow()
         .stateIn(backgroundScope, SharingStarted.Eagerly, NotificationAccess.LOADING)
 
-    private val shownTypesByGroup: Map<NotificationGroup, Flow<Set<NotificationType>>> =
-        groups.associateWith { group ->
-            settingsRepository.notificationSettings.flow
-                .map { it.shownTypes(group.supportedTypes) }
-                .distinctUntilChanged()
-        }
+    /**
+     * 本机关闭的类型. 每个分组的列表和 "全部标为已读" 都排除这些类型.
+     */
+    private val excludedTypes: Flow<Set<NotificationType>> = settingsRepository.notificationSettings.flow
+        .map { it.excludedTypes }
+        .distinctUntilChanged()
 
     private val pagersByGroup: Map<NotificationGroup, Flow<PagingData<AppNotification>>> =
         groups.associateWith { group ->
-            combine(access, shownTypes(group)) { access, types -> access to types }
+            combine(access, excludedTypes) { access, excludedTypes -> access to excludedTypes }
                 .distinctUntilChanged()
-                .flatMapLatest { (access, types) ->
-                    if (access == NotificationAccess.AUTHORIZED && types.isNotEmpty()) {
-                        repository.notificationsPager(types)
+                .flatMapLatest { (access, excludedTypes) ->
+                    if (access == NotificationAccess.AUTHORIZED) {
+                        repository.notificationsPager(group, excludedTypes)
                     } else {
                         flowOf(PagingData.empty())
                     }
@@ -148,7 +148,7 @@ class NotificationCenterViewModel(
     private val readOverlaysFlow = MutableStateFlow(emptyReadOverlays())
 
     /**
-     * 每个分组本地叠加的已读状态. 某个分组的 "全部标为已读" 只作用于这个分组当时显示的类型, 通知设置改变它显示的类型时重置.
+     * 每个分组本地叠加的已读状态. "全部标为已读" 不作用于当时关闭的类型, 所以本机关闭的类型变化时重置各分组的这一标记.
      * 登录状态变化时整个重置: 列表会重新加载, 已读状态以服务端为准, 而上一个用户的本地标记会让新用户的未读通知显示为已读,
      * 点击也不会再标记.
      */
@@ -159,17 +159,14 @@ class NotificationCenterViewModel(
     init {
         badgeManager.requestRefresh()
         resetOnAccessChange(access) { readOverlaysFlow.value = emptyReadOverlays() }
-        for (group in groups) {
-            shownTypes(group).drop(1)
-                .onEach { updateReadOverlay(group) { it.copy(allReadUpToMillis = null) } }
-                .launchIn(backgroundScope)
-        }
+        excludedTypes.drop(1)
+            .onEach {
+                readOverlaysFlow.update { overlays ->
+                    overlays.mapValues { (_, overlay) -> overlay.copy(allReadUpToMillis = null) }
+                }
+            }
+            .launchIn(backgroundScope)
     }
-
-    /**
-     * [group] 中本机显示的类型. 这个分组的列表和 "全部标为已读" 都只针对这些类型.
-     */
-    private fun shownTypes(group: NotificationGroup): Flow<Set<NotificationType>> = shownTypesByGroup.getValue(group)
 
     private fun emptyReadOverlays(): Map<NotificationGroup, ReadOverlay> = groups.associateWith { ReadOverlay.Empty }
 
@@ -193,10 +190,10 @@ class NotificationCenterViewModel(
     }
 
     /**
-     * 打开一条通知时调用. 已读的通知不做任何事.
+     * 打开一条通知时调用. 已读的通知, 以及不属于任何标签页的通知不做任何事.
      */
     fun markRead(notification: AppNotification) {
-        val group = NotificationGroup.of(notification.type) ?: return
+        val group = notification.group?.takeIf { it in groups } ?: return
         if (readOverlay(group).isRead(notification)) return
         updateReadOverlay(group) { it.withRead(notification.id) }
         backgroundScope.launch {
@@ -215,8 +212,8 @@ class NotificationCenterViewModel(
     }
 
     /**
-     * 把 [group] 中本机显示的类型里不晚于 [newestCreatedAtMillis] 的通知全部标为已读. 传入这个分组已加载的最新一条的创建时间,
-     * 以免把用户还没看到的通知也标为已读. 只在本地标记这个分组. 分组中没有显示的类型时不做任何事.
+     * 把 [group] 中不晚于 [newestCreatedAtMillis] 的通知全部标为已读, 本机关闭的类型除外. 传入这个分组已加载的最新一条的创建时间,
+     * 以免把用户还没看到的通知也标为已读. 只在本地标记这个分组.
      *
      * 本地先把不晚于 [newestCreatedAtMillis] 的通知显示为已读, 再在 ViewModel 的作用域中请求并等待它完成:
      * 调用方的协程被取消 (例如离开页面) 时, 已经发出的请求仍会完成. 无论结果如何, 结束后都请求刷新未读数,
@@ -225,14 +222,13 @@ class NotificationCenterViewModel(
      * @throws me.him188.ani.app.data.repository.RepositoryException 请求失败时. 此时撤销本地标记.
      */
     suspend fun markAllRead(group: NotificationGroup, newestCreatedAtMillis: Long) {
-        val types = shownTypes(group).first()
-        if (types.isEmpty()) return
+        val excludedTypes = excludedTypes.first()
         val previous = readOverlay(group).allReadUpToMillis
         val applied = maxOf(previous ?: Long.MIN_VALUE, newestCreatedAtMillis)
         updateReadOverlay(group) { it.copy(allReadUpToMillis = applied) }
         backgroundScope.async {
             try {
-                repository.markAllNotificationsRead(types, beforeMillis = newestCreatedAtMillis)
+                repository.markAllNotificationsRead(group, excludedTypes, beforeMillis = newestCreatedAtMillis)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

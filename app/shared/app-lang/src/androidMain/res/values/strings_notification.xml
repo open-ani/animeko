@@ -12,6 +12,10 @@
     <string name="notification_group_notice">Notices</string>
     <string name="notification_group_interaction">Interactions</string>
     <string name="notification_view_details">View details</string>
+    <string name="notification_update_hint">This version may not be able to show this notification in full. Update Animeko to see all of it.</string>
+    <string name="notification_check_update">Check for updates</string>
+    <string name="notification_update_banner">Some notifications need a newer version to show in full</string>
+    <string name="notification_update_banner_action">Update</string>
 
     <string name="notification_time_just_now">Just now</string>
     <string name="notification_time_minutes_ago">%1$s min ago</string>
@@ -54,15 +58,14 @@
     <string name="notification_report_target_person_comment">Person comment</string>
     <string name="notification_report_target_character_comment">Character comment</string>
     <string name="notification_report_target_comment">Comment</string>
-    <string name="notification_report_go_to_episode">Go to episode</string>
-    <string name="notification_report_go_to_subject">Go to anime</string>
-    <string name="notification_report_go_to_person">Go to person</string>
-    <string name="notification_report_go_to_character">Go to character</string>
+    <string name="notification_go_to_episode">Go to episode</string>
+    <string name="notification_go_to_subject">Go to anime</string>
+    <string name="notification_go_to_person">Go to person</string>
+    <string name="notification_go_to_character">Go to character</string>
 
     <string name="notification_account_third_party_unbound">%1$s account unlinked</string>
     <string name="notification_account_third_party_unbound_generic">Third-party account unlinked</string>
     <string name="notification_account_third_party_unbound_supporting">It was used to sign in to another Animeko account</string>
-    <string name="notification_account_unknown">Account security alert</string>
 
     <string name="notification_system_detail_title">System message</string>
     <string name="notification_system_bangumi_expired">Bangumi authorization expired</string>

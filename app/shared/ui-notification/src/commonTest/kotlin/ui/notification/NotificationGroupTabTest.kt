@@ -26,9 +26,14 @@ class NotificationGroupTabTest {
     }
 
     @Test
-    fun `only the notice tab counts unread notifications`() {
-        val state = TestNotificationBadgeState.copy(unreadCount = 5)
+    fun `each tab shows the unread count of its own group`() {
+        val state = TestNotificationBadgeState.copy(
+            unreadCounts = mapOf(NotificationGroup.INTERACTION to 2, NotificationGroup.NOTICE to 5),
+        )
         assertEquals(5, state.unreadCountOf(NotificationGroup.NOTICE))
-        assertEquals(0, state.unreadCountOf(NotificationGroup.INTERACTION))
+        assertEquals(2, state.unreadCountOf(NotificationGroup.INTERACTION))
+
+        val noticeOnly = TestNotificationBadgeState.copy(unreadCounts = mapOf(NotificationGroup.NOTICE to 5))
+        assertEquals(0, noticeOnly.unreadCountOf(NotificationGroup.INTERACTION))
     }
 }

@@ -14,7 +14,9 @@ import me.him188.ani.app.data.models.comment.CommentReportReason
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.notification.AccountSecurityEvent
 import me.him188.ani.app.data.models.notification.AnnouncementTag
+import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
+import me.him188.ani.app.data.models.notification.NotificationDisplay
 import me.him188.ani.app.data.models.notification.SystemNotificationEvent
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_report_reason_harassment
@@ -27,7 +29,6 @@ import me.him188.ani.app.ui.lang.exploration_schedule_episode
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound_generic
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound_supporting
-import me.him188.ani.app.ui.lang.notification_account_unknown
 import me.him188.ani.app.ui.lang.notification_announcement_tag_community
 import me.him188.ani.app.ui.lang.notification_announcement_tag_general
 import me.him188.ani.app.ui.lang.notification_announcement_tag_maintenance
@@ -44,16 +45,18 @@ import me.him188.ani.app.ui.lang.notification_system_bangumi_reauthorize
 import org.jetbrains.compose.resources.StringResource
 
 /**
- * 通知列表一行的两行文本: [headline] 说明发生了什么, [supporting] 说明对象或细节.
+ * 通知列表一行的文本: [headline] 说明发生了什么, [supporting] 说明对象或细节.
  *
- * 两部分分开展示, 不拼接成一行; 也从不引用用户自己的评论内容.
+ * 各部分分开展示, 不拼接成一行. 客户端自己的文案从不引用用户自己的评论内容.
  *
  * @property supporting 没有可展示的细节时为 `null`, 此时只显示一行.
+ * @property overline 标题上方的一行, 例如条目与剧集. 只有通用展示内容 ([NotificationDisplay.overline]) 有.
  */
 @Immutable
 data class NotificationRowText(
     val headline: NotificationText,
     val supporting: NotificationText?,
+    val overline: NotificationText? = null,
 )
 
 /**
@@ -62,33 +65,51 @@ data class NotificationRowText(
  * @param useOriginalTitle 用户是否偏好显示条目原名, 见 `SubjectAppearanceSettings.useOriginalTitle`.
  */
 fun notificationRowText(
-    content: AppNotificationContent,
+    notification: AppNotification,
     useOriginalTitle: Boolean,
-): NotificationRowText = when (content) {
+): NotificationRowText = when (val content = notification.content) {
     is AppNotificationContent.ReportResult -> NotificationRowText(
         headline = NotificationText.Res(Lang.notification_report_result_row_title),
-        supporting = reportTargetText(content, useOriginalTitle),
+        supporting = reportTargetText(content, notification.display, useOriginalTitle),
     )
 
-    is AppNotificationContent.AccountSecurity -> accountSecurityRowText(content)
+    is AppNotificationContent.AccountSecurity -> accountSecurityRowText(content, notification.display)
 
-    is AppNotificationContent.System -> systemRowText(content)
+    is AppNotificationContent.System -> systemRowText(content, notification.display)
+
+    AppNotificationContent.Unknown -> displayRowText(notification.display)
 }
 
 /**
- * 系统消息的行文本. 认识的事件使用客户端的文案, 否则为服务端的标题和正文的第一行.
+ * 系统消息的行文本. 认识的事件使用客户端的文案, 否则为服务端的通用展示内容.
  */
-fun systemRowText(content: AppNotificationContent.System): NotificationRowText = when (content.event) {
+fun systemRowText(
+    content: AppNotificationContent.System,
+    display: NotificationDisplay,
+): NotificationRowText = when (content.event) {
     SystemNotificationEvent.BANGUMI_AUTHORIZATION_EXPIRED -> NotificationRowText(
         headline = NotificationText.Res(Lang.notification_system_bangumi_expired),
         supporting = NotificationText.Res(Lang.notification_system_bangumi_expired_supporting),
     )
 
-    null -> NotificationRowText(
-        headline = NotificationText.Plain(content.title),
-        supporting = firstLineOf(content.body)?.let { NotificationText.Plain(it) },
-    )
+    null -> displayRowText(display)
 }
+
+/**
+ * 通用展示内容的行文本: 标题上方的一行、标题和正文的第一行.
+ */
+fun displayRowText(display: NotificationDisplay): NotificationRowText = NotificationRowText(
+    headline = NotificationText.Plain(display.title),
+    supporting = display.body?.let { firstLineOf(it) }?.let { NotificationText.Plain(it) },
+    overline = display.overline?.trim()?.takeIf { it.isNotEmpty() }?.let { NotificationText.Plain(it) },
+)
+
+/**
+ * 客户端不认识这条通知的类型. 它只能用通用展示内容展示, 当前版本可能无法完整显示, 所以列表和详情提示用户更新.
+ *
+ * 认识的类型缺少自己的内容时同样用通用展示内容展示, 但更新也不会改变什么, 所以不提示.
+ */
+val AppNotification.isUnknownType: Boolean get() = type == null
 
 /**
  * 列表行中可以直接执行的操作, 显示在行文本下方.
@@ -116,6 +137,7 @@ fun notificationInlineActions(content: AppNotificationContent): List<Notificatio
 
     is AppNotificationContent.ReportResult,
     is AppNotificationContent.AccountSecurity,
+    AppNotificationContent.Unknown,
         -> emptyList()
 }
 
@@ -137,6 +159,7 @@ enum class NotificationOpenTarget {
 fun notificationOpenTarget(content: AppNotificationContent): NotificationOpenTarget = when (content) {
     is AppNotificationContent.ReportResult,
     is AppNotificationContent.System,
+    AppNotificationContent.Unknown,
         -> NotificationOpenTarget.DETAIL
 
     is AppNotificationContent.AccountSecurity -> NotificationOpenTarget.ACCOUNT_SETTINGS
@@ -146,10 +169,11 @@ fun notificationOpenTarget(content: AppNotificationContent): NotificationOpenTar
  * 被举报评论所在的对象: 剧集评论为 "条目名 第 N 话", 条目评论为条目名, 人物和角色评论为人物或角色名.
  * 缺少这些信息时为评论类型 (例如 "剧集评论").
  *
- * 不认识的评论类型不知道哪些字段描述了它的对象, 总是显示为通用的 "评论".
+ * 不认识的评论类型使用通用展示内容中正文 ([NotificationDisplay.body]) 的第一行, 没有正文时显示为通用的 "评论".
  */
 fun reportTargetText(
     content: AppNotificationContent.ReportResult,
+    display: NotificationDisplay,
     useOriginalTitle: Boolean,
 ): NotificationText {
     val subjectName = preferredSubjectName(content.subjectName, content.subjectNameCn, useOriginalTitle)
@@ -169,7 +193,7 @@ fun reportTargetText(
         CommentReportTargetType.CHARACTER_COMMENT,
             -> targetName?.let { NotificationText.Plain(it) } ?: fallback
 
-        null -> fallback
+        null -> display.body?.let { firstLineOf(it) }?.let { NotificationText.Plain(it) } ?: fallback
     }
 }
 
@@ -246,19 +270,19 @@ fun parseReportSnapshot(snapshot: String): ReportSnapshot {
 }
 
 /**
- * 账号安全通知的行文本. 不认识的事件为通用的 "账号安全提醒".
+ * 账号安全通知的行文本. 认识的事件使用客户端的文案, 否则为服务端的通用展示内容.
  */
-fun accountSecurityRowText(content: AppNotificationContent.AccountSecurity): NotificationRowText =
+fun accountSecurityRowText(
+    content: AppNotificationContent.AccountSecurity,
+    display: NotificationDisplay,
+): NotificationRowText =
     when (content.event) {
         AccountSecurityEvent.THIRD_PARTY_UNBOUND -> NotificationRowText(
             headline = thirdPartyUnboundTitle(content.provider),
             supporting = NotificationText.Res(Lang.notification_account_third_party_unbound_supporting),
         )
 
-        AccountSecurityEvent.UNKNOWN -> NotificationRowText(
-            headline = NotificationText.Res(Lang.notification_account_unknown),
-            supporting = null,
-        )
+        AccountSecurityEvent.UNKNOWN -> displayRowText(display)
     }
 
 private fun thirdPartyUnboundTitle(provider: String?): NotificationText {

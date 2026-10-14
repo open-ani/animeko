@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.notification
 
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
+import me.him188.ani.app.data.models.notification.NotificationGroup
 import me.him188.ani.app.data.models.preference.NotificationSettings
 import kotlin.test.Test
 import kotlin.test.assertFalse
@@ -21,8 +22,17 @@ class NotificationEntryDotTest {
 
     @Test
     fun `unread notifications always show the dot`() {
-        val state = NotificationBadgeState.Empty.copy(unreadCount = 5, hasUnreadAnnouncements = true)
+        val state = NotificationBadgeState.Empty.copy(
+            unreadCounts = mapOf(NotificationGroup.NOTICE to 5),
+            hasUnreadAnnouncements = true,
+        )
         assertTrue(state.showsEntryDot(dotOn))
+        assertTrue(state.showsEntryDot(dotOff))
+    }
+
+    @Test
+    fun `unread notifications in any tab show the dot`() {
+        val state = NotificationBadgeState.Empty.copy(unreadCounts = mapOf(NotificationGroup.INTERACTION to 1))
         assertTrue(state.showsEntryDot(dotOff))
     }
 

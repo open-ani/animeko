@@ -47,10 +47,11 @@ import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -114,6 +115,7 @@ import kotlin.math.floor
  * 每个分组 ([NotificationCenterViewModel.groups]) 是一个标签页, 有自己的列表、滚动位置和本地已读状态.
  * 点击通知时按 [notificationOpenTarget] 打开: 详情在窄屏调用 [onNavigateToDetail] 打开单独的页面, 宽屏为双栏, 显示在右侧;
  * 账号设置在窄屏和宽屏都调用 [NotificationActions.onOpenAccountSettings]. 打开一条通知或执行它的行内操作都会立即把它标为已读.
+ * 标签页已加载的通知中有客户端不认识的类型 ([isUnknownType]) 时, 列表顶部提示更新 ([NotificationActions.onCheckUpdate]).
  *
  * 列表不会自动加载新到的通知, 而未读数由后台定时刷新. 所以 "全部标为已读" 之后, 以及某个分组的未读数增加到超过它的列表中的未读通知时,
  * 重新加载对应的列表, 让新通知显示出来: "全部标为已读" 只标记已加载的通知.
@@ -151,15 +153,17 @@ fun NotificationCenterScreen(
         }
     }
 
-    var lastUnreadCount by remember { mutableIntStateOf(badgeState.unreadCount) }
-    LaunchedEffect(badgeState.unreadCount) {
-        val unreadCount = badgeState.unreadCount
-        val increased = unreadCount > lastUnreadCount
-        lastUnreadCount = unreadCount
-        if (!increased || access != NotificationAccess.AUTHORIZED) return@LaunchedEffect
+    // 某个标签页的未读数增加到超过列表中的未读通知时, 重新加载这个标签页, 让新通知显示出来
+    var lastUnreadCounts by remember { mutableStateOf(badgeState.unreadCounts) }
+    LaunchedEffect(badgeState.unreadCounts) {
+        val previous = lastUnreadCounts
+        lastUnreadCounts = badgeState.unreadCounts
+        if (access != NotificationAccess.AUTHORIZED) return@LaunchedEffect
         for (page in pages) {
-            if (page.items.loadState.refresh is LoadState.NotLoading &&
-                badgeState.unreadCountOf(page.group) > page.loadedUnreadCount()
+            val unreadCount = badgeState.unreadCountOf(page.group)
+            if (unreadCount > (previous[page.group] ?: 0) &&
+                page.items.loadState.refresh is LoadState.NotLoading &&
+                unreadCount > page.loadedUnreadCount()
             ) {
                 page.items.refresh()
             }
@@ -200,7 +204,7 @@ fun NotificationCenterScreen(
 /**
  * 通知中心的一个标签页.
  *
- * @property items 这个分组的通知. 预留的分组 ([NotificationGroup.isReserved]) 没有通知.
+ * @property items 这个分组的通知.
  * @property readOverlay 这个分组本地叠加的已读状态.
  */
 @Stable
@@ -315,6 +319,7 @@ fun NotificationCenterScreen(
                         onInlineAction = ::performInlineAction,
                         onClickAnnouncements = onNavigateToAnnouncements,
                         onRefresh = onRefresh,
+                        onCheckUpdate = actions.onCheckUpdate,
                         onLogin = onLogin,
                     )
                 }
@@ -380,6 +385,7 @@ private fun PaneScope.NotificationCenterListPane(
     onInlineAction: (AppNotification, NotificationInlineAction) -> Unit,
     onClickAnnouncements: () -> Unit,
     onRefresh: (NotificationGroup) -> Unit,
+    onCheckUpdate: () -> Unit,
     onLogin: () -> Unit,
 ) {
     val showTabs = pages.size > 1
@@ -462,6 +468,7 @@ private fun PaneScope.NotificationCenterListPane(
                 onClickNotification = onClickNotification,
                 onInlineAction = onInlineAction,
                 onRefresh = { onRefresh(page.group) },
+                onCheckUpdate = onCheckUpdate,
                 onLogin = onLogin,
             )
         }
@@ -478,16 +485,27 @@ private fun PaneScope.NotificationCenterPageList(
     onClickNotification: (AppNotification) -> Unit,
     onInlineAction: (AppNotification, NotificationInlineAction) -> Unit,
     onRefresh: () -> Unit,
+    onCheckUpdate: () -> Unit,
     onLogin: () -> Unit,
 ) {
     val items = page.items
     val isRefreshing = items.loadState.refresh is LoadState.Loading && items.itemCount > 0
+    val hasUnknownTypes by remember(items) {
+        derivedStateOf { items.itemSnapshotList.items.any { it.isUnknownType } }
+    }
+    KeepAtTopWhenFirstItemChanges(
+        listState,
+        firstItemKey = when {
+            access != NotificationAccess.AUTHORIZED || items.itemCount == 0 -> null
+            hasUnknownTypes -> UpdateBannerKey
+            else -> items.peek(0)?.id
+        },
+    )
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
         Modifier.fillMaxSize(),
-        // 预留的分组不请求, 没有可以刷新的内容
-        enabled = access == NotificationAccess.AUTHORIZED && !page.group.isReserved,
+        enabled = access == NotificationAccess.AUTHORIZED,
         touchOnly = true,
     ) {
         LazyColumn(
@@ -504,10 +522,33 @@ private fun PaneScope.NotificationCenterPageList(
                 readOverlay = page.readOverlay,
                 singlePane = isSinglePane,
                 selectedId = selectedId,
+                showUpdateBanner = hasUnknownTypes,
                 onClickNotification = onClickNotification,
                 onInlineAction = onInlineAction,
+                onCheckUpdate = onCheckUpdate,
                 onLogin = onLogin,
             )
+        }
+    }
+}
+
+private const val UpdateBannerKey = "update-banner"
+
+/**
+ * LazyColumn 在最前面插入内容时让原来的第一项保持在原处, 插入的内容在视口上方. 重新加载后出现的新通知和更新提示都在最前面,
+ * 所以列表停在顶部时, 第一项变化后仍然停在顶部, 让它们显示出来.
+ *
+ * @param firstItemKey 列表第一项的 key.
+ */
+@Composable
+private fun KeepAtTopWhenFirstItemChanges(listState: LazyListState, firstItemKey: Any?) {
+    val lastFirstItemKey = remember(listState) { arrayOfNulls<Any>(1) }
+    SideEffect {
+        if (lastFirstItemKey[0] == firstItemKey) return@SideEffect
+        lastFirstItemKey[0] = firstItemKey
+        // 此时列表还没有按新的内容测量, 读到的仍是变化前的位置
+        if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) {
+            listState.requestScrollToItem(0)
         }
     }
 }
@@ -602,6 +643,9 @@ private fun TabIndicatorScope.pagerTabIndicatorModifier(pagerState: PagerState):
         layout(placeable.width, placeable.height) { placeable.placeRelative(offset, 0) }
     }
 
+/**
+ * @param showUpdateBanner 在列表顶部显示 [NotificationUpdateBanner].
+ */
 private fun LazyListScope.notificationItems(
     group: NotificationGroup,
     items: LazyPagingItems<AppNotification>,
@@ -609,8 +653,10 @@ private fun LazyListScope.notificationItems(
     readOverlay: ReadOverlay,
     singlePane: Boolean,
     selectedId: String?,
+    showUpdateBanner: Boolean,
     onClickNotification: (AppNotification) -> Unit,
     onInlineAction: (AppNotification, NotificationInlineAction) -> Unit,
+    onCheckUpdate: () -> Unit,
     onLogin: () -> Unit,
 ) {
     when (access) {
@@ -634,11 +680,6 @@ private fun LazyListScope.notificationItems(
         NotificationAccess.AUTHORIZED -> {}
     }
 
-    if (group.isReserved) {
-        emptyItem(group)
-        return
-    }
-
     if (items.itemCount == 0) {
         when {
             items.loadState.refresh is LoadState.Error -> item(key = "error", contentType = "error") {
@@ -656,6 +697,18 @@ private fun LazyListScope.notificationItems(
             else -> emptyItem(group)
         }
         return
+    }
+
+    if (showUpdateBanner) {
+        item(key = UpdateBannerKey, contentType = "update-banner") {
+            NotificationUpdateBanner(
+                onUpdate = onCheckUpdate,
+                // 单栏时列表项贴边, 提示与列表项的文字对齐; 双栏时与列表项的选中背景对齐
+                Modifier
+                    .padding(horizontal = if (singlePane) NotificationListItemDefaults.HorizontalPadding else 0.dp)
+                    .padding(top = if (singlePane) 8.dp else 0.dp, bottom = 8.dp),
+            )
+        }
     }
 
     items(
@@ -724,19 +777,21 @@ private fun NotificationRow(
     modifier: Modifier = Modifier,
 ) {
     val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
-    val rowText = remember(notification.content, useOriginalTitle) {
-        notificationRowText(notification.content, useOriginalTitle)
+    val rowText = remember(notification, useOriginalTitle) {
+        notificationRowText(notification, useOriginalTitle)
     }
     val inlineActions = remember(notification.content) { notificationInlineActions(notification.content) }
     NotificationListItem(
         headline = rowText.headline.resolve(),
         supporting = rowText.supporting?.resolve(),
         time = formatNotificationRowTime(notification.createdAtMillis),
-        icon = NotificationListItemDefaults.iconFor(notification.type),
+        icon = NotificationListItemDefaults.iconFor(notification),
         read = read,
         onClick = onClick,
         modifier = modifier.testTag(NotificationTestTags.item(notification.id)),
         selected = selected,
+        overline = rowText.overline?.resolve(),
+        imageUrl = NotificationListItemDefaults.imageUrlFor(notification),
         actions = if (inlineActions.isEmpty()) {
             null
         } else {
@@ -764,12 +819,3 @@ private val NotificationGroup.emptyTextRes: StringResource
         NotificationGroup.INTERACTION -> Lang.notification_interaction_empty
         NotificationGroup.NOTICE -> Lang.notification_empty
     }
-
-/**
- * [group] 的标签页上显示的未读数. [NotificationBadgeState.unreadCount] 只统计客户端能渲染的类型, 它们都属于
- * [NotificationGroup.NOTICE]; 预留的分组没有未读数.
- */
-internal fun NotificationBadgeState.unreadCountOf(group: NotificationGroup): Int = when (group) {
-    NotificationGroup.INTERACTION -> 0
-    NotificationGroup.NOTICE -> unreadCount
-}

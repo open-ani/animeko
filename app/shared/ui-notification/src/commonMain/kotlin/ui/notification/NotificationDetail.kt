@@ -25,12 +25,14 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.TaskAlt
+import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,16 +56,20 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
+import me.him188.ani.app.data.models.notification.NotificationDestination
+import me.him188.ani.app.data.models.notification.NotificationDisplay
+import me.him188.ani.app.data.models.notification.NotificationTarget
 import me.him188.ani.app.data.models.notification.SystemNotificationEvent
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.notification_report_go_to_character
-import me.him188.ani.app.ui.lang.notification_report_go_to_episode
-import me.him188.ani.app.ui.lang.notification_report_go_to_person
-import me.him188.ani.app.ui.lang.notification_report_go_to_subject
+import me.him188.ani.app.ui.lang.notification_check_update
+import me.him188.ani.app.ui.lang.notification_go_to_character
+import me.him188.ani.app.ui.lang.notification_go_to_episode
+import me.him188.ani.app.ui.lang.notification_go_to_person
+import me.him188.ani.app.ui.lang.notification_go_to_subject
 import me.him188.ani.app.ui.lang.notification_report_handled_at
 import me.him188.ani.app.ui.lang.notification_report_outcome
 import me.him188.ani.app.ui.lang.notification_report_outcome_handled
@@ -83,6 +89,7 @@ import me.him188.ani.app.ui.lang.notification_system_bangumi_expired_supporting
 import me.him188.ani.app.ui.lang.notification_system_bangumi_reauthorize
 import me.him188.ani.app.ui.lang.notification_system_detail_title
 import me.him188.ani.app.ui.lang.notification_title
+import me.him188.ani.app.ui.lang.notification_update_hint
 import me.him188.ani.app.ui.lang.notification_view_details
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -126,7 +133,7 @@ internal fun DetailContentColumn(
 }
 
 /**
- * 举报结果详情的跳转按钮的目标. 缺少目标的 ID 时没有按钮.
+ * 举报结果详情的跳转按钮的目标. 缺少目标的 ID 时没有按钮. 不认识的评论类型见 [reportResultFallbackDestination].
  *
  * 按钮通常在详情底部; 宽屏双栏中是详情栏顶栏的图标按钮, 见 [NotificationDetailTopBarActions].
  */
@@ -165,12 +172,22 @@ fun reportResultAction(content: AppNotificationContent.ReportResult): ReportResu
             content.characterId?.let { ReportResultAction.OpenCharacter(it.toInt()) }
     }
 
+/**
+ * 不认识的评论类型 ([AppNotificationContent.ReportResult.targetType] 为 `null`) 的跳转按钮前往通用展示内容中的位置
+ * ([NotificationTarget.destination]). 认识的评论类型使用 [reportResultAction], 返回 `null`.
+ */
+fun reportResultFallbackDestination(
+    content: AppNotificationContent.ReportResult,
+    display: NotificationDisplay,
+): NotificationDestination? =
+    if (content.targetType == null) display.target?.destination else null
+
 val ReportResultAction.labelRes: StringResource
     get() = when (this) {
-        is ReportResultAction.OpenEpisode -> Lang.notification_report_go_to_episode
-        is ReportResultAction.OpenSubject -> Lang.notification_report_go_to_subject
-        is ReportResultAction.OpenPerson -> Lang.notification_report_go_to_person
-        is ReportResultAction.OpenCharacter -> Lang.notification_report_go_to_character
+        is ReportResultAction.OpenEpisode -> Lang.notification_go_to_episode
+        is ReportResultAction.OpenSubject -> Lang.notification_go_to_subject
+        is ReportResultAction.OpenPerson -> Lang.notification_go_to_person
+        is ReportResultAction.OpenCharacter -> Lang.notification_go_to_character
     }
 
 /**
@@ -197,12 +214,43 @@ fun NotificationActions.perform(
 }
 
 /**
+ * [NotificationDestination] 的按钮文字. 网页链接为 "查看详情".
+ */
+val NotificationDestination.labelRes: StringResource
+    get() = when (this) {
+        is NotificationDestination.Episode -> Lang.notification_go_to_episode
+        is NotificationDestination.Subject -> Lang.notification_go_to_subject
+        is NotificationDestination.Person -> Lang.notification_go_to_person
+        is NotificationDestination.Character -> Lang.notification_go_to_character
+        is NotificationDestination.Url -> Lang.notification_view_details
+    }
+
+/**
+ * 前往 [destination]. 网页链接由 [openUrl] 在浏览器中打开.
+ */
+fun NotificationActions.open(
+    destination: NotificationDestination,
+    openUrl: (url: String) -> Unit,
+) {
+    when (destination) {
+        is NotificationDestination.Episode -> onOpenEpisode(destination.subjectId.toInt(), destination.episodeId.toInt())
+        is NotificationDestination.Subject -> onOpenSubject(destination.subjectId.toInt(), null)
+        is NotificationDestination.Person -> onOpenPerson(destination.personId.toInt())
+        is NotificationDestination.Character -> onOpenCharacter(destination.characterId.toInt())
+        is NotificationDestination.Url -> openUrl(destination.url)
+    }
+}
+
+/**
  * 详情页顶栏的标题.
  */
 @Composable
 fun notificationDetailTitle(content: AppNotificationContent): String = when (content) {
     is AppNotificationContent.ReportResult -> stringResource(Lang.notification_report_result_detail_title)
-    is AppNotificationContent.AccountSecurity -> stringResource(Lang.notification_title)
+    is AppNotificationContent.AccountSecurity,
+    AppNotificationContent.Unknown,
+        -> stringResource(Lang.notification_title)
+
     is AppNotificationContent.System -> stringResource(Lang.notification_system_detail_title)
 }
 
@@ -223,15 +271,18 @@ fun NotificationDetailContent(
 ) {
     DetailContentColumn(NotificationTestTags.DETAIL, modifier) {
         when (val content = notification.content) {
-            is AppNotificationContent.ReportResult -> ReportResultDetail(content, actions, reportActionInTopBar)
+            is AppNotificationContent.ReportResult ->
+                ReportResultDetail(content, notification.display, actions, reportActionInTopBar)
             is AppNotificationContent.AccountSecurity -> {}
-            is AppNotificationContent.System -> SystemNotificationDetail(content, notification.createdAtMillis, actions)
+            is AppNotificationContent.System -> SystemNotificationDetail(content, notification, actions)
+            AppNotificationContent.Unknown -> GenericNotificationDetail(notification, actions)
         }
     }
 }
 
 /**
- * 详情栏顶栏中的操作: 举报结果的跳转按钮 (见 [ReportResultAction]), 显示为图标按钮. 其他通知没有.
+ * 详情栏顶栏中的操作: 举报结果的跳转按钮 (见 [ReportResultAction] 和 [reportResultFallbackDestination]),
+ * 显示为图标按钮. 其他通知没有.
  *
  * 与 `NotificationDetailContent(reportActionInTopBar = true)` 一起使用.
  */
@@ -241,14 +292,29 @@ fun NotificationDetailTopBarActions(
     actions: NotificationActions,
 ) {
     val content = notification.content as? AppNotificationContent.ReportResult ?: return
-    val action = reportResultAction(content) ?: return
-    IconButton(
-        onClick = { actions.perform(action, content) },
-        Modifier.testTag(NotificationTestTags.DETAIL_TOP_BAR_ACTION),
-    ) {
+    val action = reportResultAction(content)
+    if (action != null) {
+        TopBarOpenButton(stringResource(action.labelRes), onClick = { actions.perform(action, content) })
+        return
+    }
+    val destination = reportResultFallbackDestination(content, notification.display) ?: return
+    val browserNavigator = rememberAsyncBrowserNavigator()
+    val context = LocalContext.current
+    TopBarOpenButton(
+        stringResource(destination.labelRes),
+        onClick = { actions.open(destination, openUrl = { browserNavigator.openBrowser(context, it) }) },
+    )
+}
+
+@Composable
+private fun TopBarOpenButton(
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    IconButton(onClick, Modifier.testTag(NotificationTestTags.DETAIL_TOP_BAR_ACTION)) {
         Icon(
             Icons.AutoMirrored.Rounded.OpenInNew,
-            contentDescription = stringResource(action.labelRes),
+            contentDescription = contentDescription,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
@@ -350,6 +416,7 @@ private fun DetailActionButton(
 @Composable
 private fun ReportResultDetail(
     content: AppNotificationContent.ReportResult,
+    display: NotificationDisplay,
     actions: NotificationActions,
     actionInTopBar: Boolean,
 ) {
@@ -370,7 +437,7 @@ private fun ReportResultDetail(
     )
     DetailField(
         stringResource(Lang.notification_report_target),
-        reportTargetText(content, useOriginalTitle).resolve(),
+        reportTargetText(content, display, useOriginalTitle).resolve(),
         Modifier.testTag(NotificationTestTags.REPORT_TARGET),
     )
     DetailField(
@@ -406,13 +473,16 @@ private fun ReportResultDetail(
         },
     )
 
+    if (actionInTopBar) return
     val action = reportResultAction(content)
-    if (action != null && !actionInTopBar) {
+    if (action != null) {
         DetailActionButton(
             stringResource(action.labelRes),
             onClick = { actions.perform(action, content) },
             Modifier.testTag(NotificationTestTags.DETAIL_ACTION),
         )
+    } else {
+        reportResultFallbackDestination(content, display)?.let { NotificationDestinationButton(it, actions) }
     }
 }
 
@@ -490,22 +560,20 @@ private fun ReportSnapshotSection(snapshot: ReportSnapshot, createdAtMillis: Lon
 }
 
 /**
- * 系统消息. 认识的事件使用客户端的文案和操作, 否则为服务端的标题、正文和链接.
+ * 系统消息. 认识的事件使用客户端的文案和操作, 否则为服务端的通用展示内容.
  */
 @Composable
 private fun SystemNotificationDetail(
     content: AppNotificationContent.System,
-    createdAtMillis: Long,
+    notification: AppNotification,
     actions: NotificationActions,
 ) {
     when (content.event) {
         SystemNotificationEvent.BANGUMI_AUTHORIZATION_EXPIRED -> {
             LinkedTextDetail(
                 title = stringResource(Lang.notification_system_bangumi_expired),
-                timeMillis = createdAtMillis,
+                timeMillis = notification.createdAtMillis,
                 body = stringResource(Lang.notification_system_bangumi_expired_supporting),
-                linkUrl = null,
-                linkTestTag = NotificationTestTags.DETAIL_LINK,
             )
             Spacer(Modifier.height(4.dp))
             DetailActionButton(
@@ -515,32 +583,156 @@ private fun SystemNotificationDetail(
             )
         }
 
-        null -> LinkedTextDetail(
-            title = content.title,
-            timeMillis = createdAtMillis,
-            body = content.body,
-            linkUrl = content.linkUrl,
-            linkTestTag = NotificationTestTags.DETAIL_LINK,
-        )
+        null -> {
+            val display = notification.display
+            val destination = display.target?.destination
+            LinkedTextDetail(
+                title = display.title,
+                timeMillis = notification.createdAtMillis,
+                body = display.body.orEmpty(),
+                action = destination?.let { { NotificationDestinationButton(it, actions) } },
+            )
+        }
     }
 }
 
 /**
- * 标题、时间、正文和可选的 "查看详情" 链接. 用于系统通知和公告.
+ * 只用通用展示内容展示的通知: 图标或图片, 标题上方的一行, 标题, 时间, 正文和前往的位置 ([NotificationTarget.destination]).
  *
- * 正文可选择复制, 其中的网址可点击, 点击后在浏览器中打开.
- *
- * @param overline 标题上方的内容, 例如公告分类.
+ * 客户端不认识这个类型时 ([isUnknownType]), 内容可能不完整, 在底部提示用户更新.
  */
 @Composable
-internal fun LinkedTextDetail(
-    title: String,
-    timeMillis: Long,
-    body: String,
-    linkUrl: String?,
-    linkTestTag: String,
-    overline: (@Composable () -> Unit)? = null,
+private fun GenericNotificationDetail(
+    notification: AppNotification,
+    actions: NotificationActions,
 ) {
+    val display = notification.display
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        Modifier.padding(top = 8.dp, bottom = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        NotificationLeading(
+            NotificationListItemDefaults.iconFor(notification),
+            NotificationListItemDefaults.imageUrlFor(notification),
+            containerColor = scheme.secondaryContainer,
+            contentColor = scheme.onSecondaryContainer,
+        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            val overline = display.overline?.trim()?.takeIf { it.isNotEmpty() }
+            if (overline != null) {
+                Text(
+                    overline,
+                    Modifier.testTag(NotificationTestTags.DETAIL_OVERLINE),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Normal,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
+            Text(display.title, style = MaterialTheme.typography.titleLarge)
+            Text(
+                formatNotificationDetailTime(notification.createdAtMillis),
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.outline,
+            )
+        }
+    }
+
+    val body = display.body?.takeIf { it.isNotBlank() }
+    if (body != null) {
+        LinkifiedBody(body)
+    }
+
+    val destination = display.target?.destination
+    if (destination != null) {
+        Spacer(Modifier.height(12.dp))
+        NotificationDestinationButton(destination, actions)
+    }
+
+    if (notification.isUnknownType) {
+        Spacer(Modifier.height(16.dp))
+        UpdateHint(actions.onCheckUpdate)
+    }
+}
+
+/**
+ * 当前版本可能无法完整显示这条通知, 提示用户更新. "检查更新" 前往软件更新设置.
+ */
+@Composable
+private fun UpdateHint(onCheckUpdate: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(scheme.surfaceContainerHigh)
+            .testTag(NotificationTestTags.DETAIL_UPDATE_HINT)
+            .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(
+            Icons.Outlined.Update,
+            contentDescription = null,
+            Modifier.size(20.dp),
+            tint = scheme.onSurfaceVariant,
+        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                stringResource(Lang.notification_update_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = scheme.onSurfaceVariant,
+            )
+            DetailActionButton(
+                stringResource(Lang.notification_check_update),
+                onClick = onCheckUpdate,
+                Modifier.testTag(NotificationTestTags.DETAIL_CHECK_UPDATE),
+            )
+        }
+    }
+}
+
+/**
+ * 前往 [destination] 的按钮. 网页链接是带外链图标的 "查看详情", 在浏览器中打开.
+ */
+@Composable
+private fun NotificationDestinationButton(
+    destination: NotificationDestination,
+    actions: NotificationActions,
+) {
+    val browserNavigator = rememberAsyncBrowserNavigator()
+    val context = LocalContext.current
+    val isUrl = destination is NotificationDestination.Url
+    DetailActionButton(
+        stringResource(destination.labelRes),
+        onClick = { actions.open(destination, openUrl = { browserNavigator.openBrowser(context, it) }) },
+        Modifier.testTag(if (isUrl) NotificationTestTags.DETAIL_LINK else NotificationTestTags.DETAIL_ACTION),
+        icon = if (isUrl) Icons.AutoMirrored.Rounded.OpenInNew else null,
+    )
+}
+
+/**
+ * 在浏览器中打开 [url] 的 "查看详情" 按钮.
+ */
+@Composable
+internal fun DetailLinkButton(
+    url: String,
+    testTag: String,
+) {
+    val browserNavigator = rememberAsyncBrowserNavigator()
+    val context = LocalContext.current
+    DetailActionButton(
+        stringResource(Lang.notification_view_details),
+        onClick = { browserNavigator.openBrowser(context, url) },
+        Modifier.testTag(testTag),
+        icon = Icons.AutoMirrored.Rounded.OpenInNew,
+    )
+}
+
+/**
+ * 可选择复制的正文, 其中的网址可点击, 点击后在浏览器中打开.
+ */
+@Composable
+private fun LinkifiedBody(body: String) {
     val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
     val linkColor = MaterialTheme.colorScheme.primary
@@ -551,7 +743,27 @@ internal fun LinkedTextDetail(
             onClickUrl = { browserNavigator.openBrowser(context, it) },
         )
     }
+    SelectionContainer {
+        Text(annotatedBody, style = MaterialTheme.typography.bodyLarge)
+    }
+}
 
+/**
+ * 标题、时间、正文和可选的操作 (例如 [DetailLinkButton]). 用于系统通知和公告.
+ *
+ * 正文可选择复制, 其中的网址可点击, 点击后在浏览器中打开.
+ *
+ * @param overline 标题上方的内容, 例如公告分类.
+ * @param action 正文下方的按钮.
+ */
+@Composable
+internal fun LinkedTextDetail(
+    title: String,
+    timeMillis: Long,
+    body: String,
+    overline: (@Composable () -> Unit)? = null,
+    action: (@Composable () -> Unit)? = null,
+) {
     Column(
         Modifier.padding(top = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -564,17 +776,10 @@ internal fun LinkedTextDetail(
             color = MaterialTheme.colorScheme.outline,
         )
         Spacer(Modifier.height(8.dp))
-        SelectionContainer {
-            Text(annotatedBody, style = MaterialTheme.typography.bodyLarge)
-        }
-        if (linkUrl != null) {
+        LinkifiedBody(body)
+        if (action != null) {
             Spacer(Modifier.height(4.dp))
-            DetailActionButton(
-                stringResource(Lang.notification_view_details),
-                onClick = { browserNavigator.openBrowser(context, linkUrl) },
-                Modifier.testTag(linkTestTag),
-                icon = Icons.AutoMirrored.Rounded.OpenInNew,
-            )
+            action()
         }
     }
 }

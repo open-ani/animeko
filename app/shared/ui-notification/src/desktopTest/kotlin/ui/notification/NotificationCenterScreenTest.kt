@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
 import me.him188.ani.app.data.models.notification.NotificationGroup
+import me.him188.ani.app.data.models.notification.NotificationIcon
 import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.domain.session.InvalidSessionReason
@@ -58,10 +59,10 @@ import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.login_sign_in
 import me.him188.ani.app.ui.lang.notification_empty
+import me.him188.ani.app.ui.lang.notification_go_to_episode
 import me.him188.ani.app.ui.lang.notification_group_interaction
 import me.him188.ani.app.ui.lang.notification_group_notice
 import me.him188.ani.app.ui.lang.notification_interaction_empty
-import me.him188.ani.app.ui.lang.notification_report_go_to_episode
 import me.him188.ani.app.ui.lang.notification_system_bangumi_expired_supporting
 import me.him188.ani.app.ui.lang.notification_system_bangumi_reauthorize
 import me.him188.ani.app.ui.lang.notification_unread
@@ -83,6 +84,7 @@ class NotificationCenterScreenTest {
         var login = 0
         var accountSettings = 0
         var reauthorize = 0
+        var checkUpdate = 0
         val episodes = mutableListOf<String>()
 
         val actions = NotificationActions.Noop.let { noop ->
@@ -93,6 +95,7 @@ class NotificationCenterScreenTest {
                 onOpenCharacter = noop.onOpenCharacter,
                 onReauthorizeBangumi = { reauthorize++ },
                 onOpenAccountSettings = { accountSettings++ },
+                onCheckUpdate = { checkUpdate++ },
             )
         }
     }
@@ -129,8 +132,8 @@ class NotificationCenterScreenTest {
         waitUntil { onAllNodesWithTag(NotificationTestTags.item(id)).fetchSemanticsNodes().isNotEmpty() }
     }
 
-    private fun ComposeUiTest.row(id: String) =
-        onNodeWithTag(NotificationTestTags.centerList(NotificationGroup.NOTICE))
+    private fun ComposeUiTest.row(id: String, group: NotificationGroup = NotificationGroup.NOTICE) =
+        onNodeWithTag(NotificationTestTags.centerList(group))
             .performScrollToNode(hasTestTag(NotificationTestTags.item(id)))
             .let { onNodeWithTag(NotificationTestTags.item(id)) }
 
@@ -164,11 +167,39 @@ class NotificationCenterScreenTest {
     private fun ComposeUiTest.tabBadgeCount() =
         onAllNodesWithTag(NotificationTestTags.TAB_BADGE, useUnmergedTree = true).fetchSemanticsNodes().size
 
-    private fun ComposeUiTest.rowTexts(id: String): List<String> {
-        row(id)
+    private fun ComposeUiTest.rowTexts(id: String, group: NotificationGroup = NotificationGroup.NOTICE): List<String> {
+        row(id, group)
         return onNodeWithTag(NotificationTestTags.item(id)).fetchSemanticsNode()
             .config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }
     }
+
+    private fun ComposeUiTest.rowHeightDp(id: String, group: NotificationGroup = NotificationGroup.NOTICE) =
+        row(id, group).fetchSemanticsNode().boundsInRoot.height / density.density
+
+    private fun ComposeUiTest.hasNodeInRow(id: String, tag: String) =
+        onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().any { node ->
+            hasAnyAncestor(hasTestTag(NotificationTestTags.item(id))).matches(node)
+        }
+
+    private fun ComposeUiTest.bannerIn(group: NotificationGroup) = onNode(
+        hasTestTag(NotificationTestTags.UPDATE_BANNER) and
+                hasAnyAncestor(hasTestTag(NotificationTestTags.centerList(group))),
+    )
+
+    private fun ComposeUiTest.hasBanner() = hasNode(hasTestTag(NotificationTestTags.UPDATE_BANNER))
+
+    /**
+     * 两行的互动: 没有标题上方的一行.
+     */
+    private val reaction = createTestGenericNotification(
+        id = "reaction-1",
+        rawType = "reaction",
+        createdAtMillis = TestNotificationNowMillis - 4 * 60 * 60_000L,
+        overline = null,
+        title = "Rin 等 12 人赞了你的评论",
+        body = "OP 的分镜每一帧都能当壁纸",
+        icon = NotificationIcon.REACTION,
+    )
 
     private fun ComposeUiTest.hasUnreadDot(id: String): Boolean {
         row(id)
@@ -379,13 +410,20 @@ class NotificationCenterScreenTest {
         showCenter(vm)
         waitForRow("security-1")
 
-        val shownTypes = setOf(NotificationType.SYSTEM, NotificationType.ACCOUNT_SECURITY)
-        assertEquals(listOf(shownTypes), repository.notificationLoadTypes.distinct())
+        val excluded = setOf(NotificationType.REPORT_RESULT)
+        // 每个分组按自己的分类请求, 都排除关闭的类型
+        waitUntil { repository.notificationLoadsOf(NotificationGroup.INTERACTION) > 0 }
+        assertEquals(
+            setOf(NotificationLoad(NotificationGroup.INTERACTION, excluded), NotificationLoad(NotificationGroup.NOTICE, excluded)),
+            repository.notificationLoadRequests.toSet(),
+        )
         assertTrue(onAllNodesWithTag(NotificationTestTags.item("report-1")).fetchSemanticsNodes().isEmpty())
 
         onNodeWithTag(NotificationTestTags.MARK_ALL_READ).performClick()
         waitUntil { repository.markAllCalls.isNotEmpty() }
-        assertEquals(shownTypes, repository.markAllCalls.single().first)
+        val call = repository.markAllCalls.single()
+        assertEquals(NotificationGroup.NOTICE, call.group)
+        assertEquals(excluded, call.excludeTypes)
     }
 
     @Test
@@ -399,7 +437,10 @@ class NotificationCenterScreenTest {
         runBlocking { settingsRepository.notificationSettings.set(NotificationSettings(showAccountSecurity = false)) }
 
         waitUntil { onAllNodesWithTag(NotificationTestTags.item("security-1")).fetchSemanticsNodes().isEmpty() }
-        assertEquals(setOf(NotificationType.SYSTEM, NotificationType.REPORT_RESULT), repository.notificationLoadTypes.last())
+        assertEquals(
+            setOf(NotificationType.ACCOUNT_SECURITY),
+            repository.notificationLoadRequests.last { it.group == NotificationGroup.NOTICE }.excludeTypes,
+        )
         waitForRow("report-1")
 
         runBlocking { settingsRepository.notificationSettings.set(NotificationSettings.Default) }
@@ -424,7 +465,7 @@ class NotificationCenterScreenTest {
 
     @Test
     fun `two pane detail shows the report action in its top bar`() = runAniComposeUiTest {
-        val goToEpisode = runBlocking { getString(Lang.notification_report_go_to_episode) }
+        val goToEpisode = runBlocking { getString(Lang.notification_go_to_episode) }
         val vm = NotificationCenterViewModel(notificationTestKoin())
         val opened = showCenter(vm, twoPane = true)
         waitForRow("report-1")
@@ -459,7 +500,7 @@ class NotificationCenterScreenTest {
 
         waitUntil { repository.markAllCalls.isNotEmpty() }
         val newest = TestNotifications.maxOf { it.createdAtMillis }
-        assertEquals(listOf(NotificationGroup.NOTICE.types to newest), repository.markAllCalls.toList())
+        assertEquals(listOf(MarkAllCall(NotificationGroup.NOTICE, emptySet(), newest)), repository.markAllCalls.toList())
         waitUntil { badgeManager.refreshRequests.get() > refreshesBefore }
         waitUntil { TestNotifications.none { hasUnreadDot(it.id) } }
     }
@@ -479,7 +520,10 @@ class NotificationCenterScreenTest {
         waitUntil { repository.markAllCalls.isNotEmpty() }
         // 只标记已加载的通知
         val newestLoaded = TestNotifications.maxOf { it.createdAtMillis }
-        assertEquals(listOf(NotificationGroup.NOTICE.types to newestLoaded), repository.markAllCalls.toList())
+        assertEquals(
+            listOf(MarkAllCall(NotificationGroup.NOTICE, emptySet(), newestLoaded)),
+            repository.markAllCalls.toList(),
+        )
         waitForRow(newerNotification.id)
         assertTrue(repository.notificationLoads > loadsBefore)
         assertTrue(hasUnreadDot(newerNotification.id))
@@ -489,17 +533,75 @@ class NotificationCenterScreenTest {
     @Test
     fun `a rising unread count reloads the list`() = runAniComposeUiTest {
         val repository = FakeNotificationRepository(notifications = TestNotifications.map { it.copy(read = true) })
-        val badgeManager = FakeNotificationBadgeManager(TestNotificationBadgeState.copy(unreadCount = 0))
+        val badgeManager = FakeNotificationBadgeManager(TestNotificationBadgeState.copy(unreadCounts = emptyMap()))
         val vm = NotificationCenterViewModel(notificationTestKoin(repository, badgeManager))
         showCenter(vm)
         waitForRow("report-1")
+        val interactionLoads = repository.notificationLoadsOf(NotificationGroup.INTERACTION)
 
         repository.notifications = listOf(newerNotification) + repository.notifications
-        badgeManager.state.value = badgeManager.state.value.copy(unreadCount = 1)
+        badgeManager.state.value = badgeManager.state.value.copy(unreadCounts = mapOf(NotificationGroup.NOTICE to 1))
 
         waitForRow(newerNotification.id)
         assertTrue(hasUnreadDot(newerNotification.id))
         onNodeWithTag(NotificationTestTags.MARK_ALL_READ).assertIsEnabled()
+        // 只重新加载未读数增加的标签页
+        assertEquals(interactionLoads, repository.notificationLoadsOf(NotificationGroup.INTERACTION))
+    }
+
+    @Test
+    fun `a rising interaction count reloads the interaction list`() = runAniComposeUiTest {
+        val repository = FakeNotificationRepository(notifications = TestNotifications.map { it.copy(read = true) })
+        val badgeManager = FakeNotificationBadgeManager(TestNotificationBadgeState.copy(unreadCounts = emptyMap()))
+        val vm = NotificationCenterViewModel(notificationTestKoin(repository, badgeManager))
+        showCenter(vm)
+        waitForRow("report-1")
+        val noticeLoads = repository.notificationLoadsOf(NotificationGroup.NOTICE)
+
+        val reply = createTestGenericNotification()
+        repository.notifications = listOf(reply) + repository.notifications
+        badgeManager.state.value = badgeManager.state.value.copy(
+            unreadCounts = mapOf(NotificationGroup.INTERACTION to 1),
+        )
+
+        selectTab(vm, NotificationGroup.INTERACTION)
+        waitForRow(reply.id)
+        assertEquals(noticeLoads, repository.notificationLoadsOf(NotificationGroup.NOTICE))
+    }
+
+    @Test
+    fun `a reload keeps the list at the top only when it was at the top`() = runAniComposeUiTest {
+        val many = TestNotifications + List(30) {
+            createTestSystemNotification(id = "system-extra-$it", createdAtMillis = TestNotificationNowMillis - (60L + it) * 86_400_000L)
+        }
+        val repository = FakeNotificationRepository(notifications = many.map { it.copy(read = true) })
+        val badgeManager = FakeNotificationBadgeManager(TestNotificationBadgeState.copy(unreadCounts = emptyMap()))
+        val vm = NotificationCenterViewModel(notificationTestKoin(repository, badgeManager))
+        showCenter(vm)
+        waitForRow("report-1")
+        val listTop = boundsDp(NotificationTestTags.centerList(NotificationGroup.NOTICE)).top
+
+        // 停在顶部时, 重新加载后最前面的新通知显示在顶部
+        repository.notifications = listOf(newerNotification) + repository.notifications
+        badgeManager.state.value = badgeManager.state.value.copy(unreadCounts = mapOf(NotificationGroup.NOTICE to 1))
+        waitForRow(newerNotification.id)
+        waitForIdle()
+        assertEquals(listTop, boundsDp(NotificationTestTags.item(newerNotification.id)).top, 0.5f)
+
+        // 滚动到其他位置时不跳回顶部
+        row("system-extra-29")
+        waitForIdle()
+        val bottomRow = boundsDp(NotificationTestTags.item("system-extra-29"))
+        val newest = createTestSystemNotification(id = "system-newest", read = false, createdAtMillis = TestNotificationNowMillis)
+        fun rowCount() = onNodeWithTag(NotificationTestTags.centerList(NotificationGroup.NOTICE)).fetchSemanticsNode()
+            .config[SemanticsProperties.CollectionInfo].rowCount
+        val rowsBefore = rowCount()
+        repository.notifications = listOf(newest) + repository.notifications
+        badgeManager.state.value = badgeManager.state.value.copy(unreadCounts = mapOf(NotificationGroup.NOTICE to 2))
+        waitUntil { rowCount() > rowsBefore }
+        waitForIdle()
+        assertEquals(bottomRow, boundsDp(NotificationTestTags.item("system-extra-29")))
+        assertFalse(hasNode(hasTestTag(NotificationTestTags.item(newest.id))))
     }
 
     @Test
@@ -529,7 +631,11 @@ class NotificationCenterScreenTest {
     fun `guest sees a login prompt and the announcement entry`() = runAniComposeUiTest {
         val signInText = runBlocking { getString(Lang.login_sign_in) }
         val badgeManager = FakeNotificationBadgeManager(
-            TestNotificationBadgeState.copy(unreadCount = 0, unreadAnnouncementCount = 0, hasUnreadAnnouncements = false),
+            TestNotificationBadgeState.copy(
+                unreadCounts = emptyMap(),
+                unreadAnnouncementCount = 0,
+                hasUnreadAnnouncements = false,
+            ),
         )
         val vm = NotificationCenterViewModel(
             notificationTestKoin(badgeManager = badgeManager, sessionStateProvider = FakeSessionStateProvider.Guest),
@@ -658,7 +764,9 @@ class NotificationCenterScreenTest {
         val noticeLabel = runBlocking { getString(Lang.notification_group_notice) }
         val threeUnread = runBlocking { getString(Lang.notification_unread_count, 3) }
         val manyUnread = runBlocking { getString(Lang.notification_unread_count, 120) }
-        val badgeManager = FakeNotificationBadgeManager(TestNotificationBadgeState.copy(unreadCount = 3))
+        val badgeManager = FakeNotificationBadgeManager(
+            TestNotificationBadgeState.copy(unreadCounts = mapOf(NotificationGroup.NOTICE to 3)),
+        )
         val vm = NotificationCenterViewModel(notificationTestKoin(badgeManager = badgeManager))
         showCenter(vm)
         waitForRow("report-1")
@@ -666,7 +774,7 @@ class NotificationCenterScreenTest {
         // 读屏读出标签和未读数, 而不是徽标上的数字
         noticeBadge().assertContentDescriptionEquals(threeUnread)
         tab(NotificationGroup.NOTICE).assertTextEquals(noticeLabel).assertContentDescriptionEquals(threeUnread)
-        // 互动没有未读数
+        // 互动没有未读通知
         assertEquals(1, tabBadgeCount())
         assertNull(
             tab(NotificationGroup.INTERACTION).fetchSemanticsNode().config.getOrNull(SemanticsProperties.ContentDescription),
@@ -680,19 +788,42 @@ class NotificationCenterScreenTest {
         assertEquals(16f, badge.height / density.density, 0.5f)
         assertEquals(6f, (badge.left - label.right) / density.density, 0.5f)
 
-        badgeManager.state.value = badgeManager.state.value.copy(unreadCount = 0)
+        badgeManager.state.value = badgeManager.state.value.copy(unreadCounts = emptyMap())
         waitUntil { tabBadgeCount() == 0 }
         tab(NotificationGroup.NOTICE).assertTextEquals(noticeLabel)
         assertNull(tab(NotificationGroup.NOTICE).fetchSemanticsNode().config.getOrNull(SemanticsProperties.ContentDescription))
 
-        badgeManager.state.value = badgeManager.state.value.copy(unreadCount = 120)
+        badgeManager.state.value = badgeManager.state.value.copy(unreadCounts = mapOf(NotificationGroup.NOTICE to 120))
         waitUntil { tabBadgeCount() == 1 }
         noticeBadge().assertContentDescriptionEquals(manyUnread)
         assertEquals("99+", notificationBadgeText(120))
     }
 
     @Test
-    fun `interaction tab shows its empty state and never requests interaction types`() = runAniComposeUiTest {
+    fun `each tab badge shows the count of its own category`() = runAniComposeUiTest {
+        val twoUnread = runBlocking { getString(Lang.notification_unread_count, 2) }
+        val threeUnread = runBlocking { getString(Lang.notification_unread_count, 3) }
+        val badgeManager = FakeNotificationBadgeManager(
+            TestNotificationBadgeState.copy(
+                unreadCounts = mapOf(NotificationGroup.INTERACTION to 2, NotificationGroup.NOTICE to 3),
+            ),
+        )
+        val vm = NotificationCenterViewModel(notificationTestKoin(badgeManager = badgeManager))
+        showCenter(vm)
+        waitForRow("report-1")
+
+        assertEquals(2, tabBadgeCount())
+        tab(NotificationGroup.INTERACTION).assertContentDescriptionEquals(twoUnread)
+        tab(NotificationGroup.NOTICE).assertContentDescriptionEquals(threeUnread)
+
+        badgeManager.state.value = badgeManager.state.value.copy(unreadCounts = mapOf(NotificationGroup.INTERACTION to 2))
+        waitUntil { tabBadgeCount() == 1 }
+        tab(NotificationGroup.INTERACTION).assertContentDescriptionEquals(twoUnread)
+        assertNull(tab(NotificationGroup.NOTICE).fetchSemanticsNode().config.getOrNull(SemanticsProperties.ContentDescription))
+    }
+
+    @Test
+    fun `empty interaction tab shows its empty state`() = runAniComposeUiTest {
         val interactionEmpty = runBlocking { getString(Lang.notification_interaction_empty) }
         val repository = FakeNotificationRepository()
         val vm = NotificationCenterViewModel(notificationTestKoin(repository))
@@ -707,27 +838,54 @@ class NotificationCenterScreenTest {
         ).assertIsDisplayed()
         tab(NotificationGroup.INTERACTION).assertIsSelected()
         tab(NotificationGroup.NOTICE).assertIsNotSelected()
-        // 互动没有可以标记的通知
-        onNodeWithTag(NotificationTestTags.MARK_ALL_READ).assertIsNotEnabled().performClick()
-
-        selectTab(vm, NotificationGroup.NOTICE)
-        waitForRow("report-1")
-        onNodeWithTag(NotificationTestTags.MARK_ALL_READ).assertIsEnabled().performClick()
-        waitUntil { repository.markAllCalls.isNotEmpty() }
-        selectTab(vm, NotificationGroup.INTERACTION)
+        // 空列表没有可以标记的通知
         onNodeWithTag(NotificationTestTags.MARK_ALL_READ).assertIsNotEnabled()
 
-        assertEquals(listOf(NotificationGroup.NOTICE.types), repository.markAllCalls.map { it.first })
-        assertTrue(repository.notificationLoadTypes.isNotEmpty())
-        for (types in repository.notificationLoadTypes) {
-            assertTrue(types.isNotEmpty(), "requested no types")
-            assertTrue(NotificationType.SUPPORTED.containsAll(types), "requested $types")
-        }
+        // 每个分组请求自己的分类
+        assertEquals(
+            setOf(NotificationGroup.INTERACTION, NotificationGroup.NOTICE),
+            repository.notificationLoadRequests.map { it.group }.toSet(),
+        )
+        assertTrue(repository.markAllCalls.isEmpty())
     }
 
     @Test
-    fun `pull to refresh is disabled on the interaction tab`() = runAniComposeUiTest {
-        val repository = FakeNotificationRepository()
+    fun `interaction tab lists its notifications and marks them read in its own group`() = runAniComposeUiTest {
+        val repository = FakeNotificationRepository(notifications = TestNotifications + TestInteractionNotifications)
+        // 服务端还有未加载的未读互动, 所以点击已加载的唯一一条未读之后仍然可以 "全部标为已读"
+        val badgeManager = FakeNotificationBadgeManager(
+            TestNotificationBadgeState.copy(
+                unreadCounts = mapOf(NotificationGroup.INTERACTION to 2, NotificationGroup.NOTICE to 3),
+            ),
+        )
+        val vm = NotificationCenterViewModel(notificationTestKoin(repository, badgeManager))
+        val opened = showCenter(vm)
+        waitForRow("report-1")
+        // 互动的通知不出现在通知标签页
+        assertFalse(hasNode(hasTestTag(NotificationTestTags.item("reply-1"))))
+
+        selectTab(vm, NotificationGroup.INTERACTION)
+        waitForRow("reply-1")
+        onNodeWithTag(NotificationTestTags.item("reply-1")).performClick()
+        waitUntil { repository.markedRead.isNotEmpty() }
+        assertEquals(listOf(listOf("reply-1")), repository.markedRead.toList())
+        assertEquals(listOf("reply-1"), opened.details)
+        assertEquals(setOf("reply-1"), vm.readOverlays.value.getValue(NotificationGroup.INTERACTION).readIds)
+        assertEquals(ReadOverlay.Empty, vm.readOverlays.value.getValue(NotificationGroup.NOTICE))
+
+        onNodeWithTag(NotificationTestTags.MARK_ALL_READ).assertIsEnabled().performClick()
+        waitUntil { repository.markAllCalls.isNotEmpty() }
+        val newest = TestInteractionNotifications.maxOf { it.createdAtMillis }
+        assertEquals(
+            listOf(MarkAllCall(NotificationGroup.INTERACTION, emptySet(), newest)),
+            repository.markAllCalls.toList(),
+        )
+        assertEquals(ReadOverlay.Empty, vm.readOverlays.value.getValue(NotificationGroup.NOTICE))
+    }
+
+    @Test
+    fun `both tabs can be pulled to refresh`() = runAniComposeUiTest {
+        val repository = FakeNotificationRepository(notifications = TestNotifications + TestInteractionNotifications)
         val badgeManager = FakeNotificationBadgeManager()
         val vm = NotificationCenterViewModel(notificationTestKoin(repository, badgeManager))
         showCenter(vm)
@@ -753,11 +911,12 @@ class NotificationCenterScreenTest {
         waitForRow("report-1")
 
         selectTab(vm, NotificationGroup.INTERACTION)
+        waitForRow("reply-1")
         val refreshes = badgeManager.refreshRequests.get()
-        val loads = repository.notificationLoads
+        val interactionLoads = repository.notificationLoadsOf(NotificationGroup.INTERACTION)
         pull(NotificationGroup.INTERACTION)
-        assertEquals(refreshes, badgeManager.refreshRequests.get())
-        assertEquals(loads, repository.notificationLoads)
+        waitUntil { badgeManager.refreshRequests.get() > refreshes }
+        waitUntil { repository.notificationLoadsOf(NotificationGroup.INTERACTION) > interactionLoads }
         assertEquals(NotificationGroup.INTERACTION, vm.selectedGroup.value)
     }
 
@@ -893,10 +1052,11 @@ class NotificationCenterScreenTest {
         // 切换标签页不影响各自的本地标记
         selectTab(vm, NotificationGroup.INTERACTION)
         assertEquals(ReadOverlay.Empty, vm.readOverlays.value.getValue(NotificationGroup.INTERACTION))
-        // 互动没有显示的类型, "全部标为已读" 什么也不做
-        runBlocking { vm.markAllRead(NotificationGroup.INTERACTION, Long.MAX_VALUE) }
-        assertEquals(ReadOverlay.Empty, vm.readOverlays.value.getValue(NotificationGroup.INTERACTION))
-        assertEquals(1, repository.markAllCalls.size)
+        // "全部标为已读" 只标记自己的分组
+        runBlocking { vm.markAllRead(NotificationGroup.INTERACTION, 1000) }
+        assertEquals(1000, vm.readOverlays.value.getValue(NotificationGroup.INTERACTION).allReadUpToMillis)
+        assertEquals(newest, vm.readOverlays.value.getValue(NotificationGroup.NOTICE).allReadUpToMillis)
+        assertEquals(MarkAllCall(NotificationGroup.INTERACTION, emptySet(), 1000), repository.markAllCalls.last())
 
         selectTab(vm, NotificationGroup.NOTICE)
         waitForRow("report-1")
@@ -911,7 +1071,7 @@ class NotificationCenterScreenTest {
         val vm = NotificationCenterViewModel(
             notificationTestKoin(
                 repository = repository,
-                badgeManager = FakeNotificationBadgeManager(TestNotificationBadgeState.copy(unreadCount = 0)),
+                badgeManager = FakeNotificationBadgeManager(TestNotificationBadgeState.copy(unreadCounts = emptyMap())),
                 sessionStateProvider = FakeSessionStateProvider.Guest,
             ),
         )
@@ -931,4 +1091,163 @@ class NotificationCenterScreenTest {
         assertEquals(0, tabBadgeCount())
         assertEquals(0, repository.notificationLoads)
     }
+
+    // region types without their own rendering
+
+    @Test
+    fun `unknown type rows use three lines with an overline and two lines without`() = withSimplifiedChinese {
+        runAniComposeUiTest {
+            val repository = FakeNotificationRepository(
+                notifications = TestNotifications + TestInteractionNotifications + reaction,
+            )
+            val vm = NotificationCenterViewModel(notificationTestKoin(repository))
+            showCenter(vm)
+            waitForRow("report-1")
+            selectTab(vm, NotificationGroup.INTERACTION)
+            waitForRow("reply-1")
+            val group = NotificationGroup.INTERACTION
+
+            // 条目与剧集 / 谁做了什么 / 内容预览. 时间和未读标记在第一行
+            assertEquals(
+                listOf("葬送的芙莉莲 第 1 话", "30 分钟前", "Bob 回复了你的评论", "同意，这一集的作画太好了"),
+                rowTexts("reply-1", group),
+            )
+            assertEquals(88f, rowHeightDp("reply-1", group), 0.5f)
+            val overline = onNode(
+                hasTestTag(NotificationTestTags.ROW_OVERLINE) and hasAnyAncestor(hasTestTag(NotificationTestTags.item("reply-1"))),
+                useUnmergedTree = true,
+            ).fetchSemanticsNode().boundsInRoot
+            fun textBounds(text: String) = onNode(
+                hasText(text) and hasAnyAncestor(hasTestTag(NotificationTestTags.item("reply-1"))),
+                useUnmergedTree = true,
+            ).fetchSemanticsNode().boundsInRoot
+            val headline = textBounds("Bob 回复了你的评论")
+            val supporting = textBounds("同意，这一集的作画太好了")
+            val time = textBounds("30 分钟前")
+            assertTrue(overline.bottom <= headline.top + 0.5f && headline.bottom <= supporting.top + 0.5f)
+            assertTrue(time.top < headline.top, "time should be on the overline line")
+            assertTrue(hasNodeInRow("reply-1", NotificationTestTags.UNREAD_DOT))
+            onNode(
+                hasText("Bob 回复了你的评论") and hasAnyAncestor(hasTestTag(NotificationTestTags.item("reply-1"))),
+                useUnmergedTree = true,
+            ).let { assertEquals(FontWeight.Medium, it.textFontWeight()) }
+            // 三行项顶部对齐
+            assertEquals(row("reply-1", group).fetchSemanticsNode().boundsInRoot.top + 10f * density.density, overline.top, 1f)
+
+            // 没有标题上方的一行时与其他通知一样是两行
+            assertEquals(listOf("Rin 等 12 人赞了你的评论", "4 小时前", "OP 的分镜每一帧都能当壁纸"), rowTexts("reaction-1", group))
+            assertEquals(72f, rowHeightDp("reaction-1", group), 0.5f)
+            assertFalse(hasNodeInRow("reaction-1", NotificationTestTags.ROW_OVERLINE))
+            // 只有标题时是一行
+            assertEquals(listOf("Alice 关注了你", "10 月 10 日"), rowTexts("follow-1", group))
+            assertEquals(56f, rowHeightDp("follow-1", group), 0.5f)
+        }
+    }
+
+    @Test
+    fun `unknown type rows show the image instead of the icon`() = runAniComposeUiTest {
+        val repository = FakeNotificationRepository(notifications = TestNotifications + TestInteractionNotifications)
+        val vm = NotificationCenterViewModel(notificationTestKoin(repository))
+        showCenter(vm)
+        waitForRow("report-1")
+        selectTab(vm, NotificationGroup.INTERACTION)
+        waitForRow("mention-1")
+
+        row("mention-1", NotificationGroup.INTERACTION)
+        assertTrue(hasNodeInRow("mention-1", NotificationTestTags.LEADING_IMAGE))
+        row("reply-1", NotificationGroup.INTERACTION)
+        assertFalse(hasNodeInRow("reply-1", NotificationTestTags.LEADING_IMAGE))
+    }
+
+    @Test
+    fun `clicking an unknown type row marks it read and shows the generic detail beside the list`() = runAniComposeUiTest {
+        val repository = FakeNotificationRepository(notifications = TestNotifications + TestInteractionNotifications)
+        val vm = NotificationCenterViewModel(notificationTestKoin(repository))
+        val opened = showCenter(vm, twoPane = true)
+        waitForRow("report-1")
+        selectTab(vm, NotificationGroup.INTERACTION)
+        waitForRow("reply-1")
+
+        row("reply-1", NotificationGroup.INTERACTION).performClick()
+
+        waitUntil { repository.markedRead.isNotEmpty() }
+        assertEquals(listOf(listOf("reply-1")), repository.markedRead.toList())
+        waitUntil { hasNode(hasTestTag(NotificationTestTags.DETAIL_UPDATE_HINT)) }
+        onNode(hasText("Bob 回复了你的评论") and hasAnyAncestor(hasTestTag(NotificationTestTags.DETAIL)))
+            .assertIsDisplayed()
+        assertTrue(opened.details.isEmpty())
+        waitUntil { !hasNodeInRow("reply-1", NotificationTestTags.UNREAD_DOT) }
+
+        // 前往按钮在详情底部, 顶栏没有操作
+        assertFalse(hasNode(hasTestTag(NotificationTestTags.DETAIL_TOP_BAR_ACTION)))
+        onNodeWithTag(NotificationTestTags.DETAIL_ACTION).performClick()
+        assertEquals(listOf("400602:1227087"), opened.episodes)
+
+        onNodeWithTag(NotificationTestTags.DETAIL_CHECK_UPDATE).performClick()
+        assertEquals(1, opened.checkUpdate)
+    }
+
+    @Test
+    fun `update banner appears once in a tab that loaded an unknown type`() = withSimplifiedChinese {
+        runAniComposeUiTest {
+            val repository = FakeNotificationRepository(notifications = TestNotifications + TestInteractionNotifications)
+            val vm = NotificationCenterViewModel(notificationTestKoin(repository))
+            val opened = showCenter(vm)
+            waitForRow("report-1")
+            // 通知标签页只有认识的类型
+            assertFalse(hasBanner())
+
+            selectTab(vm, NotificationGroup.INTERACTION)
+            waitForRow("reply-1")
+            bannerIn(NotificationGroup.INTERACTION).assertIsDisplayed()
+                .assertTextContains("部分通知需要更新版本才能完整显示")
+            assertEquals(1, onAllNodesWithTag(NotificationTestTags.UPDATE_BANNER).fetchSemanticsNodes().size)
+            // 在列表顶部
+            val banner = bannerIn(NotificationGroup.INTERACTION).fetchSemanticsNode().boundsInRoot
+            assertTrue(banner.bottom <= row("reply-1", NotificationGroup.INTERACTION).fetchSemanticsNode().boundsInRoot.top)
+
+            onNodeWithTag(NotificationTestTags.UPDATE_BANNER_ACTION).assertTextEquals("更新").performClick()
+            assertEquals(1, opened.checkUpdate)
+            // 只前往更新设置, 不打开也不标记通知
+            assertTrue(opened.details.isEmpty())
+            assertTrue(repository.markedRead.isEmpty())
+        }
+    }
+
+    @Test
+    fun `known types shown from the generic content do not show the update banner`() = runAniComposeUiTest {
+        // 认识的类型缺少自己的内容
+        val systemWithoutPayload = createTestGenericNotification(
+            id = "system-without-payload",
+            read = true,
+            rawType = NotificationType.SYSTEM.wireValue,
+            rawCategory = NotificationGroup.NOTICE.wireValue,
+            createdAtMillis = TestNotificationNowMillis - 10 * 60_000L,
+            overline = null,
+            title = "系统消息",
+        )
+        val futureNotice = createTestGenericNotification(
+            id = "future-notice",
+            rawType = "future_notice",
+            rawCategory = NotificationGroup.NOTICE.wireValue,
+            overline = null,
+            title = "新的通知类型",
+            icon = null,
+        )
+        val repository = FakeNotificationRepository(notifications = TestNotifications + systemWithoutPayload)
+        val badgeManager = FakeNotificationBadgeManager()
+        val vm = NotificationCenterViewModel(notificationTestKoin(repository, badgeManager))
+        showCenter(vm)
+        waitForRow(systemWithoutPayload.id)
+        assertFalse(hasBanner())
+
+        // 通知分类中出现客户端不认识的类型
+        repository.notifications = listOf(futureNotice) + repository.notifications
+        badgeManager.state.value = badgeManager.state.value.copy(unreadCounts = mapOf(NotificationGroup.NOTICE to 4))
+        waitForRow(futureNotice.id)
+        waitUntil { hasBanner() }
+        bannerIn(NotificationGroup.NOTICE).assertIsDisplayed()
+    }
+
+    // endregion
 }

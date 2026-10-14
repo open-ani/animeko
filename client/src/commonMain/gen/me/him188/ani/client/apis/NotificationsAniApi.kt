@@ -20,7 +20,6 @@ import me.him188.ani.client.models.AniMarkAllNotificationsReadRequest
 import me.him188.ani.client.models.AniMarkNotificationsReadRequest
 import me.him188.ani.client.models.AniNotification
 import me.him188.ani.client.models.AniNotificationPage
-import me.him188.ani.client.models.AniNotificationType
 import me.him188.ani.client.models.AniNotificationUnreadSummary
 
 import me.him188.ani.client.infrastructure.*
@@ -83,12 +82,13 @@ open class NotificationsAniApi : ApiClient {
 
     /**
      * Get unread notification summary
-     * &#x60;types&#x60; 中每种有未读通知的类型的未读数, 以及公告的未读数和列表的第一条公告. 未登录也可以调用: 这时没有通知未读数, 公告未读数为 0, 公告的 &#x60;read&#x60; 为 &#x60;null&#x60;.
-     * @param types 只统计这些类型, 逗号分隔或重复传参; 不传表示全部类型 (optional)
+     * &#x60;categories&#x60; 中每个有未读通知的分类的未读数, 以及公告的未读数和列表的第一条公告. 未知的分类和类型忽略. 未登录也可以调用: 这时没有通知未读数, 公告未读数为 0, 公告的 &#x60;read&#x60; 为 &#x60;null&#x60;.
+     * @param categories 统计这些分类, 逗号分隔或重复传参; 不传时不统计通知 (optional)
+     * @param excludeTypes 不统计这些类型, 逗号分隔或重复传参 (optional)
      * @return AniNotificationUnreadSummary
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getNotificationUnreadSummary(types: kotlin.collections.List<AniNotificationType>? = null): HttpResponse<AniNotificationUnreadSummary> {
+    open suspend fun getNotificationUnreadSummary(categories: kotlin.collections.List<kotlin.String>? = null, excludeTypes: kotlin.collections.List<kotlin.String>? = null): HttpResponse<AniNotificationUnreadSummary> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -96,7 +96,8 @@ open class NotificationsAniApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
-        types?.apply { localVariableQuery["types"] = toMultiValue(this, "csv") }
+        categories?.apply { localVariableQuery["categories"] = toMultiValue(this, "csv") }
+        excludeTypes?.apply { localVariableQuery["excludeTypes"] = toMultiValue(this, "csv") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
@@ -117,14 +118,15 @@ open class NotificationsAniApi : ApiClient {
 
     /**
      * List notifications
-     * 当前用户的通知, 按创建时间倒序. &#x60;types&#x60; 是客户端能展示的类型, 只返回这些类型; 不传表示全部类型, 传空表示不返回任何通知.
-     * @param types 只返回这些类型, 逗号分隔或重复传参 (optional)
+     * 当前用户在一个分类中的通知, 按创建时间倒序. 未知的分类没有通知, &#x60;excludeTypes&#x60; 中未知的类型忽略.
+     * @param category 分类, 取值同 &#x60;Notification.category&#x60;
+     * @param excludeTypes 不返回这些类型, 逗号分隔或重复传参 (optional)
      * @param after 上一页的 &#x60;nextCursor&#x60; (optional)
      * @param limit  (optional)
      * @return AniNotificationPage
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listNotifications(types: kotlin.collections.List<AniNotificationType>? = null, after: kotlin.String? = null, limit: kotlin.Int? = null): HttpResponse<AniNotificationPage> {
+    open suspend fun listNotifications(category: kotlin.String, excludeTypes: kotlin.collections.List<kotlin.String>? = null, after: kotlin.String? = null, limit: kotlin.Int? = null): HttpResponse<AniNotificationPage> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -132,7 +134,8 @@ open class NotificationsAniApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
-        types?.apply { localVariableQuery["types"] = toMultiValue(this, "csv") }
+        category?.apply { localVariableQuery["category"] = listOf("$category") }
+        excludeTypes?.apply { localVariableQuery["excludeTypes"] = toMultiValue(this, "csv") }
         after?.apply { localVariableQuery["after"] = listOf("$after") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         val localVariableHeaders = mutableMapOf<String, String>()
@@ -155,12 +158,12 @@ open class NotificationsAniApi : ApiClient {
 
     /**
      * Mark all notifications as read
-     * 把创建时间不晚于 &#x60;beforeMillis&#x60; (默认现在) 的未读通知标为已读. 客户端应传它看到的最新一条通知的创建时间, 这样标记期间新到的通知仍是未读. 请求体至少是 &#x60;{}&#x60;, 空请求体返回 400.
-     * @param aniMarkAllNotificationsReadRequest  (optional)
+     * 把一个分类中创建时间不晚于 &#x60;beforeMillis&#x60; (默认现在) 的未读通知标为已读. 客户端应传它看到的最新一条通知的创建时间, 这样标记期间新到的通知仍是未读. 未知的分类不标记任何通知, &#x60;excludeTypes&#x60; 中未知的类型忽略.
+     * @param aniMarkAllNotificationsReadRequest
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun markAllNotificationsRead(aniMarkAllNotificationsReadRequest: AniMarkAllNotificationsReadRequest? = null): HttpResponse<kotlin.Any> {
+    open suspend fun markAllNotificationsRead(aniMarkAllNotificationsReadRequest: AniMarkAllNotificationsReadRequest): HttpResponse<kotlin.Any> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 

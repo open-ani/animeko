@@ -16,7 +16,6 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniNotificationType
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -25,15 +24,19 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
- * @param types 只标记这些类型; 不传表示全部类型
+ * @param category 分类, 取值同 `Notification.category`
+ * @param excludeTypes 不标记这些类型
  * @param beforeMillis 只标记创建时间不晚于此时间 (epoch 毫秒) 的通知; 默认现在
  */
 @Serializable
 
 data class AniMarkAllNotificationsReadRequest (
 
-    /* 只标记这些类型; 不传表示全部类型 */
-    @SerialName(value = "types") val types: kotlin.collections.List<AniNotificationType>? = null,
+    /* 分类, 取值同 `Notification.category` */
+    @SerialName(value = "category") @Required val category: kotlin.String,
+
+    /* 不标记这些类型 */
+    @SerialName(value = "excludeTypes") val excludeTypes: kotlin.collections.List<kotlin.String>? = null,
 
     /* 只标记创建时间不晚于此时间 (epoch 毫秒) 的通知; 默认现在 */
     @SerialName(value = "beforeMillis") val beforeMillis: kotlin.Long? = null

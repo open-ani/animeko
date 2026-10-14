@@ -33,14 +33,19 @@ private fun PreviewHost(content: @Composable () -> Unit) = ProvideCompositionLoc
 }
 
 /**
- * 每个标签页一个. [NotificationGroup.NOTICE] 显示 [notices], 预留的分组没有通知.
+ * 每个标签页一个. [NotificationGroup.NOTICE] 显示 [notices], [NotificationGroup.INTERACTION] 显示 [TestInteractionNotifications].
  */
 @Composable
 private fun rememberPreviewPages(notices: List<AppNotification>): List<NotificationCenterPage> =
     NotificationGroup.TABS.map { group ->
         NotificationCenterPage(
             group = group,
-            items = rememberTestLazyPagingItems(if (group == NotificationGroup.NOTICE) notices else emptyList()),
+            items = rememberTestLazyPagingItems(
+                when (group) {
+                    NotificationGroup.INTERACTION -> TestInteractionNotifications
+                    NotificationGroup.NOTICE -> notices
+                },
+            ),
             readOverlay = ReadOverlay.Empty,
         )
     }
@@ -84,7 +89,7 @@ private fun PreviewNotificationCenterGuest() = PreviewNotificationCenter(
     access = NotificationAccess.GUEST,
     notices = emptyList(),
     badgeState = TestNotificationBadgeState.copy(
-        unreadCount = 0,
+        unreadCounts = emptyMap(),
         hasUnreadAnnouncements = false,
         unreadAnnouncementCount = 0,
     ),
@@ -120,6 +125,33 @@ private fun PreviewSystemDetail() = PreviewHost {
     Surface {
         NotificationDetailScreen(
             state = DetailLoadState.Loaded(createTestSystemNotification()),
+            actions = NotificationActions.Noop,
+            onRetry = {},
+        )
+    }
+}
+
+/**
+ * 当前版本不认识类型的通知: 通用展示内容和更新提示.
+ */
+@Composable
+@Preview
+private fun PreviewGenericDetail() = PreviewHost {
+    Surface {
+        NotificationDetailScreen(
+            state = DetailLoadState.Loaded(createTestGenericNotification()),
+            actions = NotificationActions.Noop,
+            onRetry = {},
+        )
+    }
+}
+
+@Composable
+@Preview
+private fun PreviewGenericDetailWithAvatar() = PreviewHost {
+    Surface {
+        NotificationDetailScreen(
+            state = DetailLoadState.Loaded(TestInteractionNotifications[1]),
             actions = NotificationActions.Noop,
             onRetry = {},
         )

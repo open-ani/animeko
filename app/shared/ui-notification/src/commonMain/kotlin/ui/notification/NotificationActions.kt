@@ -17,7 +17,8 @@ import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 
 /**
- * 通知可以跳转的位置: 详情底部的按钮, 列表行的操作 (见 [NotificationInlineAction]), 以及点击账号安全通知时去的账号设置.
+ * 通知可以跳转的位置: 详情底部的按钮, 列表行的操作 (见 [NotificationInlineAction]), 点击账号安全通知时去的账号设置,
+ * 以及当前版本无法完整显示某条通知时提示用户去的软件更新设置.
  */
 @Immutable
 class NotificationActions(
@@ -27,6 +28,7 @@ class NotificationActions(
     val onOpenCharacter: (characterId: Int) -> Unit,
     val onReauthorizeBangumi: () -> Unit,
     val onOpenAccountSettings: () -> Unit,
+    val onCheckUpdate: () -> Unit,
 ) {
     companion object {
         val Noop = NotificationActions(
@@ -36,6 +38,7 @@ class NotificationActions(
             onOpenCharacter = {},
             onReauthorizeBangumi = {},
             onOpenAccountSettings = {},
+            onCheckUpdate = {},
         )
     }
 }
@@ -49,5 +52,6 @@ fun rememberNotificationActions(navigator: AniNavigator): NotificationActions = 
         onOpenCharacter = { navigator.navigateCharacterDetails(it) },
         onReauthorizeBangumi = { navigator.navigateBangumiAuthorize() },
         onOpenAccountSettings = { navigator.navigateSettings(SettingsTab.PROFILE) },
+        onCheckUpdate = { navigator.navigateSettings(SettingsTab.UPDATE) },
     )
 }

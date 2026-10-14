@@ -35,7 +35,6 @@ import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -54,9 +53,8 @@ class NotificationBadgeManagerImplTest {
 
     private val userSummary = NotificationUnreadSummary(
         unreadCounts = mapOf(
-            NotificationType.SYSTEM to 2,
-            NotificationType.REPORT_RESULT to 3,
-            NotificationType.COMMENT_REPLY to 7,
+            NotificationGroup.INTERACTION to 2,
+            NotificationGroup.NOTICE to 3,
         ),
         unreadAnnouncementCount = 2,
         latestAnnouncement = announcement,
@@ -69,7 +67,10 @@ class NotificationBadgeManagerImplTest {
     )
 
     private val userState = NotificationBadgeState(
-        unreadCount = 5,
+        unreadCounts = mapOf(
+            NotificationGroup.INTERACTION to 2,
+            NotificationGroup.NOTICE to 3,
+        ),
         hasUnreadAnnouncements = true,
         unreadAnnouncementCount = 2,
         latestAnnouncement = announcement,
@@ -97,12 +98,17 @@ class NotificationBadgeManagerImplTest {
     private class FakeNotificationService(
         var handler: suspend (call: Int) -> NotificationUnreadSummary,
     ) : AniNotificationService(UnusedNotificationsApi, EmptyCoroutineContext) {
-        val requestedTypes = mutableListOf<Set<NotificationType>>()
-        val calls get() = requestedTypes.size
+        val requestedGroups = mutableListOf<List<NotificationGroup>>()
+        val excludedTypes = mutableListOf<Set<NotificationType>>()
+        val calls get() = requestedGroups.size
 
-        override suspend fun getUnreadSummary(types: Set<NotificationType>): NotificationUnreadSummary {
-            requestedTypes += types
-            return handler(requestedTypes.size)
+        override suspend fun getUnreadSummary(
+            groups: List<NotificationGroup>,
+            excludeTypes: Set<NotificationType>,
+        ): NotificationUnreadSummary {
+            requestedGroups += groups
+            excludedTypes += excludeTypes
+            return handler(requestedGroups.size)
         }
     }
 
@@ -155,9 +161,29 @@ class NotificationBadgeManagerImplTest {
         manager.setAppForeground(true)
         runCurrent()
         assertEquals(3, service.calls)
-        assertEquals(listOf(NotificationType.SUPPORTED), service.requestedTypes.distinct())
-        // 预留分组的类型客户端不能渲染, 不请求也不统计
-        assertTrue(service.requestedTypes.none { types -> types.any { it in NotificationGroup.INTERACTION.types } })
+        // 总是请求所有标签页的分类
+        assertEquals(listOf(NotificationGroup.TABS), service.requestedGroups.distinct())
+        assertEquals(listOf(emptySet()), service.excludedTypes.distinct())
+    }
+
+    @Test
+    fun `counts are kept per tab and the entry uses their sum`() = runTest {
+        session.set(loggedIn)
+        service.handler = { userSummary.copy(unreadCounts = mapOf(NotificationGroup.INTERACTION to 4)) }
+        val manager = startManager()
+
+        manager.setAppForeground(true)
+        runCurrent()
+        assertEquals(4, manager.state.value.unreadCountOf(NotificationGroup.INTERACTION))
+        assertEquals(0, manager.state.value.unreadCountOf(NotificationGroup.NOTICE))
+        assertEquals(4, manager.state.value.unreadCount)
+
+        service.handler = { userSummary }
+        manager.requestRefresh()
+        runCurrent()
+        assertEquals(2, manager.state.value.unreadCountOf(NotificationGroup.INTERACTION))
+        assertEquals(3, manager.state.value.unreadCountOf(NotificationGroup.NOTICE))
+        assertEquals(5, manager.state.value.unreadCount)
     }
 
     @Test
@@ -335,7 +361,7 @@ class NotificationBadgeManagerImplTest {
         runCurrent()
         assertEquals(userState, manager.state.value)
 
-        service.handler = { userSummary.copy(unreadCounts = mapOf(NotificationType.SYSTEM to 1)) }
+        service.handler = { userSummary.copy(unreadCounts = mapOf(NotificationGroup.NOTICE to 1)) }
         manager.requestRefresh()
         runCurrent()
         assertEquals(1, manager.state.value.unreadCount)
@@ -358,7 +384,7 @@ class NotificationBadgeManagerImplTest {
     }
 
     @Test
-    fun `switched off types are neither requested nor counted`() = runTest {
+    fun `switched off types are excluded from the request`() = runTest {
         session.set(loggedIn)
         settings.value = NotificationSettings(showReportResults = false)
         val manager = startManager()
@@ -366,16 +392,13 @@ class NotificationBadgeManagerImplTest {
         manager.setAppForeground(true)
         runCurrent()
 
-        assertEquals(
-            listOf(setOf(NotificationType.SYSTEM, NotificationType.ACCOUNT_SECURITY)),
-            service.requestedTypes,
-        )
-        // 服务端即使返回了关闭的类型, 也不计入
-        assertEquals(userState.copy(unreadCount = 2), manager.state.value)
+        assertEquals(listOf(NotificationGroup.TABS), service.requestedGroups)
+        assertEquals(listOf(setOf(NotificationType.REPORT_RESULT)), service.excludedTypes)
+        assertEquals(userState, manager.state.value)
     }
 
     @Test
-    fun `changing the shown types refreshes once`() = runTest {
+    fun `changing the excluded types refreshes once`() = runTest {
         session.set(loggedIn)
         val manager = startManager()
         manager.setAppForeground(true)
@@ -383,21 +406,23 @@ class NotificationBadgeManagerImplTest {
         assertEquals(1, service.calls)
         assertEquals(userState, manager.state.value)
 
+        service.handler = { userSummary.copy(unreadCounts = mapOf(NotificationGroup.NOTICE to 1)) }
         settings.value = NotificationSettings(showReportResults = false)
         runCurrent()
         assertEquals(2, service.calls)
-        assertEquals(setOf(NotificationType.SYSTEM, NotificationType.ACCOUNT_SECURITY), service.requestedTypes.last())
-        assertEquals(2, manager.state.value.unreadCount)
+        assertEquals(setOf(NotificationType.REPORT_RESULT), service.excludedTypes.last())
+        assertEquals(1, manager.state.value.unreadCount)
 
-        // 公告红点的设置不影响请求的类型
+        // 公告红点的设置不影响请求
         settings.value = settings.value.copy(showAnnouncementDot = false)
         runCurrent()
         assertEquals(2, service.calls)
 
+        service.handler = { userSummary }
         settings.value = NotificationSettings.Default
         runCurrent()
         assertEquals(3, service.calls)
-        assertEquals(NotificationType.SUPPORTED, service.requestedTypes.last())
+        assertEquals(emptySet(), service.excludedTypes.last())
         assertEquals(userState, manager.state.value)
     }
 }

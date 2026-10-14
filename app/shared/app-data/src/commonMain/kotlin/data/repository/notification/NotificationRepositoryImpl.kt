@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.CursorPage
 import me.him188.ani.app.data.models.notification.Announcement
 import me.him188.ani.app.data.models.notification.AppNotification
+import me.him188.ani.app.data.models.notification.NotificationGroup
 import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.network.AniAnnouncementService
 import me.him188.ani.app.data.network.AniNotificationService
@@ -27,12 +28,18 @@ class NotificationRepositoryImpl(
     private val notificationService: AniNotificationService,
     private val announcementService: AniAnnouncementService,
 ) : Repository(), NotificationRepository {
-    override fun notificationsPager(types: Set<NotificationType>): Flow<PagingData<AppNotification>> =
-        Pager(defaultPagingConfig) { notificationsPagingSource(types) }.flow
+    override fun notificationsPager(
+        group: NotificationGroup,
+        excludeTypes: Set<NotificationType>,
+    ): Flow<PagingData<AppNotification>> =
+        Pager(defaultPagingConfig) { notificationsPagingSource(group, excludeTypes) }.flow
 
-    internal fun notificationsPagingSource(types: Set<NotificationType>): PagingSource<String, AppNotification> =
+    internal fun notificationsPagingSource(
+        group: NotificationGroup,
+        excludeTypes: Set<NotificationType>,
+    ): PagingSource<String, AppNotification> =
         CursorPagingSource(maxLimit = AniNotificationService.MAX_LIMIT, keyOf = { it.id }) { after, limit ->
-            notificationService.listNotifications(types, after, limit)
+            notificationService.listNotifications(group, excludeTypes, after, limit)
         }
 
     override suspend fun getNotification(id: String): AppNotification? =
@@ -44,8 +51,12 @@ class NotificationRepositoryImpl(
         }
     }
 
-    override suspend fun markAllNotificationsRead(types: Set<NotificationType>, beforeMillis: Long?) {
-        notificationService.markAllNotificationsRead(types, beforeMillis)
+    override suspend fun markAllNotificationsRead(
+        group: NotificationGroup,
+        excludeTypes: Set<NotificationType>,
+        beforeMillis: Long?,
+    ) {
+        notificationService.markAllNotificationsRead(group, excludeTypes, beforeMillis)
     }
 
     override fun announcementsPager(): Flow<PagingData<Announcement>> =

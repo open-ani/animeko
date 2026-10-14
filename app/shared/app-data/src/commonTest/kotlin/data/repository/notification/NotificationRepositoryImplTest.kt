@@ -19,7 +19,9 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import me.him188.ani.app.data.models.notification.Announcement
 import me.him188.ani.app.data.models.notification.AppNotification
+import me.him188.ani.app.data.models.notification.AppNotificationContent
 import me.him188.ani.app.data.models.notification.NotificationGroup
+import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.network.NotificationTestServer
 import me.him188.ani.app.data.network.bodyJson
 import me.him188.ani.app.data.network.respondJson
@@ -42,7 +44,10 @@ class NotificationRepositoryImplTest {
                 else -> error("Unexpected cursor")
             }
         }
-        val source = server.repository().notificationsPagingSource(NotificationGroup.NOTICE.types)
+        val source = server.repository().notificationsPagingSource(
+            NotificationGroup.NOTICE,
+            setOf(NotificationType.ACCOUNT_SECURITY),
+        )
 
         val first = assertIs<PagingSource.LoadResult.Page<String, AppNotification>>(source.load(refresh(90)))
         assertEquals(listOf("n1", "n2"), first.data.map { it.id })
@@ -55,10 +60,8 @@ class NotificationRepositoryImplTest {
 
         assertEquals(listOf(null, "2:n2"), server.requests.map { it.url.parameters["after"] })
         assertEquals(listOf("90", "30"), server.requests.map { it.url.parameters["limit"] })
-        assertEquals(
-            listOf("system,report_result,account_security"),
-            server.requests.map { it.url.parameters["types"] }.distinct(),
-        )
+        assertEquals(listOf("notice"), server.requests.map { it.url.parameters["category"] }.distinct())
+        assertEquals(listOf("account_security"), server.requests.map { it.url.parameters["excludeTypes"] }.distinct())
     }
 
     @Test
@@ -66,7 +69,7 @@ class NotificationRepositoryImplTest {
         val server = NotificationTestServer { respondJson("""{"items":[]}""") }
         val repository = server.repository()
 
-        repository.notificationsPagingSource(NotificationGroup.NOTICE.types).load(refresh(300))
+        repository.notificationsPagingSource(NotificationGroup.NOTICE, emptySet()).load(refresh(300))
         repository.announcementsPagingSource().load(refresh(300))
 
         assertEquals(listOf("100", "100"), server.requests.map { it.url.parameters["limit"] })
@@ -75,7 +78,7 @@ class NotificationRepositoryImplTest {
     @Test
     fun `refresh always starts from the first page`() = runTest {
         val server = NotificationTestServer { respondJson("""{"items":[]}""") }
-        val source = server.repository().notificationsPagingSource(NotificationGroup.NOTICE.types)
+        val source = server.repository().notificationsPagingSource(NotificationGroup.NOTICE, emptySet())
 
         assertNull(source.getRefreshKey(PagingState(emptyList(), null, PagingConfig(30), 0)))
     }
@@ -86,7 +89,7 @@ class NotificationRepositoryImplTest {
         val repository = server.repository()
 
         val notifications = assertIs<PagingSource.LoadResult.Error<String, AppNotification>>(
-            repository.notificationsPagingSource(NotificationGroup.NOTICE.types).load(refresh(30)),
+            repository.notificationsPagingSource(NotificationGroup.NOTICE, emptySet()).load(refresh(30)),
         )
         assertIs<RepositoryServiceUnavailableException>(notifications.repositoryException)
         val announcements = assertIs<PagingSource.LoadResult.Error<String, Announcement>>(
@@ -175,19 +178,42 @@ class NotificationRepositoryImplTest {
     }
 
     @Test
-    fun `mark all read sends the group types and the time`() = runTest {
+    fun `interaction notifications page like the other categories`() = runTest {
+        val server = NotificationTestServer {
+            respondJson(
+                """{"items":[{"id":"i1","type":"comment_reply","category":"interaction","createdAtMillis":1,
+                "read":false,"title":"Bob 回复了你的评论"}]}""",
+            )
+        }
+        val source = server.repository().notificationsPagingSource(NotificationGroup.INTERACTION, emptySet())
+
+        val page = assertIs<PagingSource.LoadResult.Page<String, AppNotification>>(source.load(refresh(30)))
+
+        assertEquals(listOf("i1"), page.data.map { it.id })
+        assertEquals(AppNotificationContent.Unknown, page.data.single().content)
+        assertEquals("interaction", server.requests.single().url.parameters["category"])
+        assertNull(server.requests.single().url.parameters["excludeTypes"])
+    }
+
+    @Test
+    fun `mark all read sends the group excluded types and time`() = runTest {
         val server = NotificationTestServer()
         val repository = server.repository()
 
-        repository.markAllNotificationsRead(NotificationGroup.NOTICE.types, beforeMillis = 42)
+        repository.markAllNotificationsRead(
+            NotificationGroup.NOTICE,
+            setOf(NotificationType.REPORT_RESULT),
+            beforeMillis = 42,
+        )
         repository.markAllAnnouncementsRead(beforeMillis = 7)
 
         val (notifications, announcements) = server.requests
         assertEquals("/v2/notifications/read-all", notifications.url.encodedPath)
         val body = notifications.bodyJson()
+        assertEquals("notice", body.getValue("category").jsonPrimitive.content)
         assertEquals(
-            NotificationGroup.NOTICE.types.map { it.wireValue },
-            body.getValue("types").jsonArray.map { it.jsonPrimitive.content },
+            listOf("report_result"),
+            body.getValue("excludeTypes").jsonArray.map { it.jsonPrimitive.content },
         )
         assertEquals(42, body.getValue("beforeMillis").jsonPrimitive.long)
         assertEquals("/v2/announcements/read-all", announcements.url.encodedPath)
@@ -196,7 +222,8 @@ class NotificationRepositoryImplTest {
 
     private fun notificationPage(ids: List<String>, nextCursor: String?): String {
         val items = ids.joinToString(",") { id ->
-            """{"id":"$id","type":"system","createdAtMillis":1,"read":false,"system":{"title":"t","body":"b"}}"""
+            """{"id":"$id","type":"system","category":"notice","createdAtMillis":1,"read":false,"title":"t",
+            "system":{}}"""
         }
         val cursor = nextCursor?.let { ""","nextCursor":"$it"""" } ?: ""
         return """{"items":[$items]$cursor}"""

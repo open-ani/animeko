@@ -12,6 +12,10 @@
     <string name="notification_group_notice">通知</string>
     <string name="notification_group_interaction">互动</string>
     <string name="notification_view_details">查看详情</string>
+    <string name="notification_update_hint">当前版本可能无法完整显示这条通知，更新 Animeko 后可查看完整内容。</string>
+    <string name="notification_check_update">检查更新</string>
+    <string name="notification_update_banner">部分通知需要更新版本才能完整显示</string>
+    <string name="notification_update_banner_action">更新</string>
 
     <string name="notification_time_just_now">刚刚</string>
     <string name="notification_time_minutes_ago">%1$s 分钟前</string>
@@ -54,15 +58,14 @@
     <string name="notification_report_target_person_comment">人物评论</string>
     <string name="notification_report_target_character_comment">角色评论</string>
     <string name="notification_report_target_comment">评论</string>
-    <string name="notification_report_go_to_episode">前往该剧集</string>
-    <string name="notification_report_go_to_subject">前往该条目</string>
-    <string name="notification_report_go_to_person">前往人物</string>
-    <string name="notification_report_go_to_character">前往角色</string>
+    <string name="notification_go_to_episode">前往该剧集</string>
+    <string name="notification_go_to_subject">前往该条目</string>
+    <string name="notification_go_to_person">前往人物</string>
+    <string name="notification_go_to_character">前往角色</string>
 
     <string name="notification_account_third_party_unbound">%1$s 账号已解绑</string>
     <string name="notification_account_third_party_unbound_generic">第三方账号已解绑</string>
     <string name="notification_account_third_party_unbound_supporting">该账号已登录另一个 Animeko 账号</string>
-    <string name="notification_account_unknown">账号安全提醒</string>
 
     <string name="notification_system_detail_title">系统通知</string>
     <string name="notification_system_bangumi_expired">Bangumi 授权已过期</string>

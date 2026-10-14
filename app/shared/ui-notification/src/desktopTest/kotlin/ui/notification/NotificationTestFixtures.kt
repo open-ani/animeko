@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import me.him188.ani.app.data.models.notification.Announcement
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
+import me.him188.ani.app.data.models.notification.NotificationGroup
 import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.RepositoryNetworkException
@@ -45,6 +46,9 @@ import me.him188.ani.app.domain.session.InvalidSessionReason
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.app.navigation.BrowserNavigator
+import me.him188.ani.app.navigation.OpenBrowserResult
+import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.Koin
@@ -56,9 +60,27 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
+ * 一次通知列表的加载: 请求的分组和排除的类型.
+ */
+data class NotificationLoad(
+    val group: NotificationGroup,
+    val excludeTypes: Set<NotificationType>,
+)
+
+/**
+ * 一次 "全部标为已读" 的请求.
+ */
+data class MarkAllCall(
+    val group: NotificationGroup,
+    val excludeTypes: Set<NotificationType>,
+    val beforeMillis: Long?,
+)
+
+/**
  * 模拟服务端的通知和公告. 列表每次加载都读取当时的数据, 标记已读会修改数据中的已读状态, 与服务端一样.
  *
- * @param notifications 初始的通知. 之后可以修改 [notifications], 刷新列表后生效.
+ * @param notifications 初始的通知, 按分类 ([AppNotification.rawCategory]) 出现在对应分组的列表中.
+ * 之后可以修改 [notifications], 刷新列表后生效.
  * @param announcements 初始的公告, 按服务端的顺序排列 (置顶在前).
  * @param announcementPageSize 公告列表每页的条数.
  */
@@ -74,7 +96,7 @@ class FakeNotificationRepository(
     var announcements: List<Announcement> = announcements
 
     val markedRead = CopyOnWriteArrayList<List<String>>()
-    val markAllCalls = CopyOnWriteArrayList<Pair<Set<NotificationType>, Long?>>()
+    val markAllCalls = CopyOnWriteArrayList<MarkAllCall>()
     val markedAnnouncementsRead = CopyOnWriteArrayList<List<String>>()
     val markAllAnnouncementsBefore = CopyOnWriteArrayList<Long?>()
 
@@ -84,14 +106,19 @@ class FakeNotificationRepository(
     val markAllAnnouncementsFailures = AtomicInteger()
 
     /**
-     * 每次加载通知列表时请求的类型. 首次加载和每次刷新各一次.
+     * 每次加载通知列表时的请求. 每个分组的首次加载和每次刷新各一次.
      */
-    val notificationLoadTypes = CopyOnWriteArrayList<Set<NotificationType>>()
+    val notificationLoadRequests = CopyOnWriteArrayList<NotificationLoad>()
 
     /**
-     * 通知列表的加载次数.
+     * 通知列表的加载次数, 包括所有分组.
      */
-    val notificationLoads get() = notificationLoadTypes.size
+    val notificationLoads get() = notificationLoadRequests.size
+
+    /**
+     * [group] 的通知列表的加载次数.
+     */
+    fun notificationLoadsOf(group: NotificationGroup): Int = notificationLoadRequests.count { it.group == group }
 
     /**
      * 公告列表加载的页数. 首次加载、每次刷新和加载下一页各一次.
@@ -107,17 +134,20 @@ class FakeNotificationRepository(
     private var announcementsSource: PagingSource<Int, Announcement>? = null
 
     /**
-     * 与真实的分页一样可以刷新: 每次加载都读取当时的 [notifications], 全部放在一页中.
+     * 与真实的分页一样可以刷新: 每次加载都读取当时的 [notifications] 中属于 [group] 的通知, 全部放在一页中.
      */
-    override fun notificationsPager(types: Set<NotificationType>): Flow<PagingData<AppNotification>> =
+    override fun notificationsPager(
+        group: NotificationGroup,
+        excludeTypes: Set<NotificationType>,
+    ): Flow<PagingData<AppNotification>> =
         Pager(PagingConfig(pageSize = 30)) {
             object : PagingSource<Int, AppNotification>() {
                 override fun getRefreshKey(state: PagingState<Int, AppNotification>): Int? = null
 
                 override suspend fun load(params: LoadParams<Int>): LoadResult<Int, AppNotification> {
-                    notificationLoadTypes += types
+                    notificationLoadRequests += NotificationLoad(group, excludeTypes)
                     return LoadResult.Page(
-                        notifications.filter { it.type in types },
+                        notifications.filter { it.rawCategory == group.wireValue && it.type !in excludeTypes },
                         prevKey = null,
                         nextKey = null,
                     )
@@ -132,8 +162,12 @@ class FakeNotificationRepository(
         markedRead += ids
     }
 
-    override suspend fun markAllNotificationsRead(types: Set<NotificationType>, beforeMillis: Long?) {
-        markAllCalls += types to beforeMillis
+    override suspend fun markAllNotificationsRead(
+        group: NotificationGroup,
+        excludeTypes: Set<NotificationType>,
+        beforeMillis: Long?,
+    ) {
+        markAllCalls += MarkAllCall(group, excludeTypes, beforeMillis)
     }
 
     /**
@@ -195,6 +229,20 @@ class FakeNotificationRepository(
         }
         markAllAnnouncementsBefore += beforeMillis
     }
+}
+
+/**
+ * 记录要在浏览器中打开的网页, 不真正打开.
+ */
+class RecordingBrowserNavigator : BrowserNavigator {
+    val openedUrls = CopyOnWriteArrayList<String>()
+
+    override fun openBrowser(context: Context, url: String): OpenBrowserResult {
+        openedUrls += url
+        return OpenBrowserResult.Success
+    }
+
+    override fun intentActionView(context: Context, url: String): OpenBrowserResult = openBrowser(context, url)
 }
 
 class FakeNotificationBadgeManager(

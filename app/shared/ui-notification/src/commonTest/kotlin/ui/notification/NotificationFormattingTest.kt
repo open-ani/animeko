@@ -11,30 +11,47 @@
 
 package me.him188.ani.app.ui.notification
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Reply
+import androidx.compose.material.icons.rounded.AddReaction
+import androidx.compose.material.icons.rounded.AlternateEmail
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.PersonAdd
+import androidx.compose.material.icons.rounded.Shield
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.notification.AccountSecurityEvent
+import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
+import me.him188.ani.app.data.models.notification.NotificationDestination
+import me.him188.ani.app.data.models.notification.NotificationDisplay
+import me.him188.ani.app.data.models.notification.NotificationIcon
+import me.him188.ani.app.data.models.notification.NotificationTarget
+import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.models.notification.SystemNotificationEvent
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_schedule_episode
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound_generic
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound_supporting
-import me.him188.ani.app.ui.lang.notification_account_unknown
-import me.him188.ani.app.ui.lang.notification_report_go_to_character
-import me.him188.ani.app.ui.lang.notification_report_go_to_episode
-import me.him188.ani.app.ui.lang.notification_report_go_to_person
-import me.him188.ani.app.ui.lang.notification_report_go_to_subject
+import me.him188.ani.app.ui.lang.notification_go_to_character
+import me.him188.ani.app.ui.lang.notification_go_to_episode
+import me.him188.ani.app.ui.lang.notification_go_to_person
+import me.him188.ani.app.ui.lang.notification_go_to_subject
 import me.him188.ani.app.ui.lang.notification_report_result_row_title
 import me.him188.ani.app.ui.lang.notification_report_target_character_comment
 import me.him188.ani.app.ui.lang.notification_report_target_comment
 import me.him188.ani.app.ui.lang.notification_report_target_episode_comment
 import me.him188.ani.app.ui.lang.notification_system_bangumi_expired
 import me.him188.ani.app.ui.lang.notification_system_bangumi_expired_supporting
+import me.him188.ani.app.ui.lang.notification_view_details
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class NotificationFormattingTest {
     private fun plain(text: String) = NotificationText.Plain(text)
@@ -84,45 +101,50 @@ class NotificationFormattingTest {
 
     // region report result
 
+    private fun reportTargetTextOf(notification: AppNotification, useOriginalTitle: Boolean): NotificationText {
+        val content = notification.content as AppNotificationContent.ReportResult
+        return reportTargetText(content, notification.display, useOriginalTitle)
+    }
+
     @Test
     fun `report row uses chinese subject name and episode label`() {
-        val text = notificationRowText(createTestReportResult().content, useOriginalTitle = false)
+        val text = notificationRowText(createTestReportResult(), useOriginalTitle = false)
         assertEquals(NotificationText.Res(Lang.notification_report_result_row_title), text.headline)
         assertEquals(NotificationText.Words(listOf(plain("葬送的芙莉莲"), episode("12"))), text.supporting)
     }
 
     @Test
     fun `report row uses original title when preferred`() {
-        val content = createTestReportResult(episodeSort = "SP1").content as AppNotificationContent.ReportResult
         assertEquals(
             NotificationText.Words(listOf(plain("葬送のフリーレン"), plain("SP1"))),
-            reportTargetText(content, useOriginalTitle = true),
+            reportTargetTextOf(createTestReportResult(episodeSort = "SP1"), useOriginalTitle = true),
         )
     }
 
     @Test
     fun `report row falls back to the other name when preferred name is blank`() {
-        val content = createTestReportResult(subjectNameCn = " ").content as AppNotificationContent.ReportResult
         assertEquals(
             NotificationText.Words(listOf(plain("葬送のフリーレン"), episode("12"))),
-            reportTargetText(content, useOriginalTitle = false),
+            reportTargetTextOf(createTestReportResult(subjectNameCn = " "), useOriginalTitle = false),
         )
     }
 
     @Test
     fun `subject review shows subject only`() {
-        val content = createTestReportResult(
+        val notification = createTestReportResult(
             targetType = CommentReportTargetType.SUBJECT_REVIEW,
             episodeId = null,
             episodeSort = null,
-        ).content as AppNotificationContent.ReportResult
-        assertEquals(plain("葬送的芙莉莲"), reportTargetText(content, useOriginalTitle = false))
+        )
+        assertEquals(plain("葬送的芙莉莲"), reportTargetTextOf(notification, useOriginalTitle = false))
     }
 
     @Test
     fun `episode comment without episode sort shows subject only`() {
-        val content = createTestReportResult(episodeSort = null).content as AppNotificationContent.ReportResult
-        assertEquals(plain("葬送的芙莉莲"), reportTargetText(content, useOriginalTitle = false))
+        assertEquals(
+            plain("葬送的芙莉莲"),
+            reportTargetTextOf(createTestReportResult(episodeSort = null), useOriginalTitle = false),
+        )
     }
 
     @Test
@@ -131,22 +153,27 @@ class NotificationFormattingTest {
             targetType = CommentReportTargetType.CHARACTER_COMMENT,
             subjectId = null, subjectName = null, subjectNameCn = null, episodeId = null, episodeSort = null,
             characterId = 1, targetName = "芙莉莲",
-        ).content as AppNotificationContent.ReportResult
-        assertEquals(plain("芙莉莲"), reportTargetText(character, useOriginalTitle = false))
+        )
+        assertEquals(plain("芙莉莲"), reportTargetTextOf(character, useOriginalTitle = false))
 
         assertEquals(
             NotificationText.Res(Lang.notification_report_target_character_comment),
-            reportTargetText(character.copy(targetName = null), useOriginalTitle = false),
+            reportTargetText(
+                (character.content as AppNotificationContent.ReportResult).copy(targetName = null),
+                character.display.copy(body = "服务端正文"),
+                useOriginalTitle = false,
+            ),
         )
     }
 
     @Test
     fun `episode comment without subject falls back to target type`() {
-        val content = createTestReportResult(subjectName = null, subjectNameCn = null)
-            .content as AppNotificationContent.ReportResult
         assertEquals(
             NotificationText.Res(Lang.notification_report_target_episode_comment),
-            reportTargetText(content, useOriginalTitle = false),
+            reportTargetTextOf(
+                createTestReportResult(subjectName = null, subjectNameCn = null),
+                useOriginalTitle = false,
+            ),
         )
     }
 
@@ -180,14 +207,15 @@ class NotificationFormattingTest {
                 onOpenCharacter = { calls += "character:$it" },
                 onReauthorizeBangumi = noop.onReauthorizeBangumi,
                 onOpenAccountSettings = noop.onOpenAccountSettings,
+                onCheckUpdate = noop.onCheckUpdate,
             )
         }
         val content = createTestReportResult().content as AppNotificationContent.ReportResult
         val cases = listOf(
-            ReportResultAction.OpenEpisode(1, 2) to Lang.notification_report_go_to_episode,
-            ReportResultAction.OpenSubject(3) to Lang.notification_report_go_to_subject,
-            ReportResultAction.OpenPerson(4) to Lang.notification_report_go_to_person,
-            ReportResultAction.OpenCharacter(5) to Lang.notification_report_go_to_character,
+            ReportResultAction.OpenEpisode(1, 2) to Lang.notification_go_to_episode,
+            ReportResultAction.OpenSubject(3) to Lang.notification_go_to_subject,
+            ReportResultAction.OpenPerson(4) to Lang.notification_go_to_person,
+            ReportResultAction.OpenCharacter(5) to Lang.notification_go_to_character,
         )
         for ((action, label) in cases) {
             assertEquals(label, action.labelRes)
@@ -197,21 +225,47 @@ class NotificationFormattingTest {
     }
 
     @Test
-    fun `unknown target type shows a generic line and no action`() {
-        val content = createTestReportResult().content as AppNotificationContent.ReportResult
-        val unknown = content.copy(targetType = null, personId = 7, characterId = 8, targetName = "芙莉莲")
-        val generic = NotificationText.Res(Lang.notification_report_target_comment)
-
-        assertEquals(generic, reportTargetText(unknown, useOriginalTitle = false))
-        assertEquals(
-            NotificationRowText(NotificationText.Res(Lang.notification_report_result_row_title), generic),
-            notificationRowText(unknown, useOriginalTitle = false),
+    fun `unknown target type shows the display body and goes to the display target`() {
+        val notification = createTestReportResult()
+        val unknown = (notification.content as AppNotificationContent.ReportResult)
+            .copy(targetType = null, personId = 7, characterId = 8, targetName = "芙莉莲")
+        val display = notification.display.copy(
+            body = "\n 芙莉莲的角色评论 \n第二行",
+            target = NotificationTarget(characterId = 8),
         )
+
+        assertEquals(plain("芙莉莲的角色评论"), reportTargetText(unknown, display, useOriginalTitle = false))
         assertEquals(
-            generic,
-            reportTargetText(unknown.copy(subjectName = null, subjectNameCn = null), useOriginalTitle = true),
+            NotificationRowText(NotificationText.Res(Lang.notification_report_result_row_title), plain("芙莉莲的角色评论")),
+            notificationRowText(notification.copy(display = display, content = unknown), useOriginalTitle = false),
         )
         assertNull(reportResultAction(unknown))
+        assertEquals(NotificationDestination.Character(8), reportResultFallbackDestination(unknown, display))
+    }
+
+    @Test
+    fun `unknown target type without display body or target shows a generic line and no destination`() {
+        val notification = createTestReportResult()
+        val unknown = (notification.content as AppNotificationContent.ReportResult).copy(targetType = null)
+        val generic = NotificationText.Res(Lang.notification_report_target_comment)
+
+        val display = notification.display
+        assertEquals(generic, reportTargetText(unknown, display.copy(body = null), useOriginalTitle = false))
+        assertEquals(generic, reportTargetText(unknown, display.copy(body = " \n "), useOriginalTitle = true))
+        assertNull(reportResultFallbackDestination(unknown, display.copy(target = null)))
+        val ftp = display.copy(target = NotificationTarget(url = "ftp://myani.org"))
+        assertNull(reportResultFallbackDestination(unknown, ftp))
+    }
+
+    @Test
+    fun `known target types do not use the display destination`() {
+        val notification = createTestReportResult(episodeId = null)
+        val content = notification.content as AppNotificationContent.ReportResult
+        val display = notification.display.copy(target = NotificationTarget(subjectId = 1))
+        assertNull(reportResultAction(content))
+        assertNull(reportResultFallbackDestination(content, display))
+        val episode = createTestReportResult().content as AppNotificationContent.ReportResult
+        assertNull(reportResultFallbackDestination(episode, display))
     }
 
     // endregion
@@ -224,11 +278,15 @@ class NotificationFormattingTest {
     ): AppNotificationContent.AccountSecurity =
         createTestAccountSecurity(event = event, provider = provider).content as AppNotificationContent.AccountSecurity
 
+    private fun accountSecurityRow(
+        event: AccountSecurityEvent,
+        provider: String? = null,
+        display: NotificationDisplay = NotificationDisplay(title = "服务端标题", body = "服务端正文"),
+    ): NotificationRowText = accountSecurityRowText(accountSecurity(event, provider), display)
+
     @Test
     fun `third party unbound row shows provider`() {
-        val text = accountSecurityRowText(
-            accountSecurity(AccountSecurityEvent.THIRD_PARTY_UNBOUND, provider = "github"),
-        )
+        val text = accountSecurityRow(AccountSecurityEvent.THIRD_PARTY_UNBOUND, provider = "github")
         assertEquals(
             NotificationRowText(
                 NotificationText.Res(Lang.notification_account_third_party_unbound, listOf(plain("GitHub"))),
@@ -238,7 +296,7 @@ class NotificationFormattingTest {
         )
         assertEquals(
             NotificationText.Res(Lang.notification_account_third_party_unbound_generic),
-            accountSecurityRowText(accountSecurity(AccountSecurityEvent.THIRD_PARTY_UNBOUND)).headline,
+            accountSecurityRow(AccountSecurityEvent.THIRD_PARTY_UNBOUND).headline,
         )
     }
 
@@ -246,9 +304,7 @@ class NotificationFormattingTest {
     fun `third party unbound row hides unknown provider`() {
         assertEquals(
             NotificationText.Res(Lang.notification_account_third_party_unbound_generic),
-            accountSecurityRowText(
-                accountSecurity(AccountSecurityEvent.THIRD_PARTY_UNBOUND, provider = "weibo"),
-            ).headline,
+            accountSecurityRow(AccountSecurityEvent.THIRD_PARTY_UNBOUND, provider = "weibo").headline,
         )
         assertNull(providerDisplayName("weibo"))
         assertNull(providerDisplayName(" "))
@@ -258,10 +314,22 @@ class NotificationFormattingTest {
     }
 
     @Test
-    fun `unknown event row is a generic alert without supporting text`() {
+    fun `unknown event row uses the display content`() {
         assertEquals(
-            NotificationRowText(NotificationText.Res(Lang.notification_account_unknown), supporting = null),
-            accountSecurityRowText(accountSecurity(AccountSecurityEvent.UNKNOWN, provider = "github")),
+            NotificationRowText(plain("密码已修改"), plain("如果不是你本人操作，请检查账号")),
+            accountSecurityRow(
+                AccountSecurityEvent.UNKNOWN,
+                provider = "github",
+                display = NotificationDisplay(title = "密码已修改", body = "\n如果不是你本人操作，请检查账号\n第二行"),
+            ),
+        )
+        val notification = createTestAccountSecurity(event = AccountSecurityEvent.UNKNOWN, provider = null)
+        assertEquals(
+            NotificationRowText(plain(notification.display.title), supporting = null),
+            notificationRowText(
+                notification.copy(display = notification.display.copy(body = null)),
+                useOriginalTitle = false,
+            ),
         )
     }
 
@@ -273,6 +341,7 @@ class NotificationFormattingTest {
         assertEquals(NotificationOpenTarget.DETAIL, notificationOpenTarget(createTestReportResult().content))
         assertEquals(NotificationOpenTarget.DETAIL, notificationOpenTarget(createTestSystemNotification().content))
         assertEquals(NotificationOpenTarget.DETAIL, notificationOpenTarget(createTestBangumiExpired().content))
+        assertEquals(NotificationOpenTarget.DETAIL, notificationOpenTarget(createTestGenericNotification().content))
     }
 
     // endregion
@@ -281,7 +350,7 @@ class NotificationFormattingTest {
 
     @Test
     fun `bangumi authorization expired row uses client text`() {
-        val content = AppNotificationContent.System(
+        val notification = createTestSystemNotification(
             title = "服务端标题",
             body = "服务端正文",
             event = SystemNotificationEvent.BANGUMI_AUTHORIZATION_EXPIRED,
@@ -291,7 +360,7 @@ class NotificationFormattingTest {
                 NotificationText.Res(Lang.notification_system_bangumi_expired),
                 NotificationText.Res(Lang.notification_system_bangumi_expired_supporting),
             ),
-            notificationRowText(content, useOriginalTitle = false),
+            notificationRowText(notification, useOriginalTitle = false),
         )
     }
 
@@ -304,16 +373,129 @@ class NotificationFormattingTest {
         assertEquals(emptyList(), notificationInlineActions(createTestSystemNotification().content))
         assertEquals(emptyList(), notificationInlineActions(createTestReportResult().content))
         assertEquals(emptyList(), notificationInlineActions(createTestAccountSecurity().content))
+        assertEquals(emptyList(), notificationInlineActions(createTestGenericNotification().content))
     }
 
     @Test
     fun `system row uses title and first non blank line of body`() {
         val text = notificationRowText(
-            AppNotificationContent.System("标题", "\n  第一行  \n第二行"),
+            createTestSystemNotification(title = "标题", body = "\n  第一行  \n第二行"),
             useOriginalTitle = false,
         )
         assertEquals(NotificationRowText(plain("标题"), plain("第一行")), text)
-        assertNull(notificationRowText(AppNotificationContent.System("标题", " \n "), false).supporting)
+        assertNull(notificationRowText(createTestSystemNotification(title = "标题", body = " \n "), false).supporting)
+    }
+
+    // endregion
+
+    // region types without their own rendering
+
+    @Test
+    fun `generic row uses the display overline title and first line of body`() {
+        val notification = createTestGenericNotification(
+            overline = " 葬送的芙莉莲 第 1 话 ",
+            title = "Bob 回复了你的评论",
+            body = "\n第一行\n第二行",
+        )
+        assertEquals(
+            NotificationRowText(plain("Bob 回复了你的评论"), plain("第一行"), overline = plain("葬送的芙莉莲 第 1 话")),
+            notificationRowText(notification, useOriginalTitle = false),
+        )
+        assertNull(notificationRowText(createTestGenericNotification(body = null), false).supporting)
+        assertNull(notificationRowText(createTestGenericNotification(overline = null), false).overline)
+        assertNull(notificationRowText(createTestGenericNotification(overline = " "), false).overline)
+    }
+
+    @Test
+    fun `types with their own rows ignore the display overline`() {
+        for (notification in listOf(createTestReportResult(), createTestAccountSecurity(), createTestBangumiExpired())) {
+            val withOverline = notification.copy(display = notification.display.copy(overline = "条目"))
+            assertNull(notificationRowText(withOverline, false).overline, notification.id)
+        }
+    }
+
+    @Test
+    fun `generic rows use the display icon and unknown icons fall back to the default`() {
+        val cases = mapOf(
+            NotificationIcon.REPORT to Icons.Rounded.Flag,
+            NotificationIcon.SECURITY to Icons.Rounded.Shield,
+            NotificationIcon.INFO to Icons.Rounded.Info,
+            NotificationIcon.REPLY to Icons.AutoMirrored.Rounded.Reply,
+            NotificationIcon.MENTION to Icons.Rounded.AlternateEmail,
+            NotificationIcon.REACTION to Icons.Rounded.AddReaction,
+            NotificationIcon.FOLLOW to Icons.Rounded.PersonAdd,
+        )
+        for ((icon, vector) in cases) {
+            assertEquals(vector, NotificationListItemDefaults.iconFor(createTestGenericNotification(icon = icon)))
+        }
+        // 服务端以后增加的图标
+        val unknownIcon = NotificationIcon.fromWireValue("sparkle")
+        assertNull(unknownIcon)
+        assertEquals(Icons.Rounded.Notifications, NotificationListItemDefaults.iconFor(createTestGenericNotification(icon = unknownIcon)))
+    }
+
+    @Test
+    fun `known types keep their own icons`() {
+        val reportWithOtherIcon = createTestReportResult().let {
+            it.copy(display = it.display.copy(icon = NotificationIcon.FOLLOW))
+        }
+        assertEquals(Icons.Rounded.Flag, NotificationListItemDefaults.iconFor(reportWithOtherIcon))
+        assertEquals(Icons.Rounded.Shield, NotificationListItemDefaults.iconFor(createTestAccountSecurity()))
+        assertEquals(Icons.Rounded.Info, NotificationListItemDefaults.iconFor(createTestSystemNotification()))
+    }
+
+    @Test
+    fun `only generic rows show the display image`() {
+        val url = "https://example.com/avatar.png"
+        assertEquals(url, NotificationListItemDefaults.imageUrlFor(createTestGenericNotification(imageUrl = url)))
+        assertNull(NotificationListItemDefaults.imageUrlFor(createTestGenericNotification(imageUrl = null)))
+        assertNull(NotificationListItemDefaults.imageUrlFor(createTestGenericNotification(imageUrl = " ")))
+        for (notification in TestNotifications) {
+            val withImage = notification.copy(display = notification.display.copy(imageUrl = url))
+            assertNull(NotificationListItemDefaults.imageUrlFor(withImage), notification.id)
+        }
+    }
+
+    @Test
+    fun `only types the client does not know ask for an update`() {
+        assertTrue(createTestGenericNotification(rawType = "comment_reply").isUnknownType)
+        assertTrue(createTestGenericNotification(rawType = "future_type").isUnknownType)
+        // 认识的类型缺少自己的内容时用通用展示内容展示, 但更新也不会改变什么
+        assertFalse(createTestGenericNotification(rawType = NotificationType.REPORT_RESULT.wireValue).isUnknownType)
+        for (notification in TestNotifications) {
+            assertFalse(notification.isUnknownType, notification.id)
+        }
+    }
+
+    @Test
+    fun `destinations have labels and open their targets`() {
+        val calls = mutableListOf<String>()
+        val actions = NotificationActions.Noop.let { noop ->
+            NotificationActions(
+                onOpenEpisode = { subjectId, episodeId -> calls += "episode:$subjectId:$episodeId" },
+                onOpenSubject = { subjectId, placeholder -> calls += "subject:$subjectId:$placeholder" },
+                onOpenPerson = { calls += "person:$it" },
+                onOpenCharacter = { calls += "character:$it" },
+                onReauthorizeBangumi = noop.onReauthorizeBangumi,
+                onOpenAccountSettings = noop.onOpenAccountSettings,
+                onCheckUpdate = noop.onCheckUpdate,
+            )
+        }
+        val cases = listOf(
+            NotificationDestination.Episode(1, 2) to Lang.notification_go_to_episode,
+            NotificationDestination.Subject(3) to Lang.notification_go_to_subject,
+            NotificationDestination.Person(4) to Lang.notification_go_to_person,
+            NotificationDestination.Character(5) to Lang.notification_go_to_character,
+            NotificationDestination.Url("https://myani.org") to Lang.notification_view_details,
+        )
+        for ((destination, label) in cases) {
+            assertEquals(label, destination.labelRes)
+            actions.open(destination, openUrl = { calls += "url:$it" })
+        }
+        assertEquals(
+            listOf("episode:1:2", "subject:3:null", "person:4", "character:5", "url:https://myani.org"),
+            calls,
+        )
     }
 
     // endregion

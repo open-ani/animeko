@@ -19,6 +19,11 @@ import me.him188.ani.app.data.models.notification.AnnouncementTag
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
+import me.him188.ani.app.data.models.notification.NotificationDisplay
+import me.him188.ani.app.data.models.notification.NotificationGroup
+import me.him188.ani.app.data.models.notification.NotificationIcon
+import me.him188.ani.app.data.models.notification.NotificationTarget
+import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.models.notification.SystemNotificationEvent
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.time.Clock
@@ -65,8 +70,16 @@ fun createTestReportResult(
     targetName: String? = null,
 ): AppNotification = AppNotification(
     id = id,
+    rawType = NotificationType.REPORT_RESULT.wireValue,
+    rawCategory = NotificationGroup.NOTICE.wireValue,
     createdAtMillis = createdAtMillis,
     read = read,
+    display = NotificationDisplay(
+        title = "你举报的评论已处理",
+        body = listOfNotNull(subjectNameCn ?: subjectName, episodeSort?.let { "第 $it 话" }).joinToString(" "),
+        icon = NotificationIcon.REPORT,
+        target = NotificationTarget(subjectId = subjectId, episodeId = episodeId),
+    ),
     content = AppNotificationContent.ReportResult(
         targetType = targetType,
         reason = reason,
@@ -95,8 +108,18 @@ fun createTestAccountSecurity(
     provider: String? = "github",
 ): AppNotification = AppNotification(
     id = id,
+    rawType = NotificationType.ACCOUNT_SECURITY.wireValue,
+    rawCategory = NotificationGroup.NOTICE.wireValue,
     createdAtMillis = createdAtMillis,
     read = read,
+    display = NotificationDisplay(
+        title = when (event) {
+            AccountSecurityEvent.THIRD_PARTY_UNBOUND -> "${providerDisplayName(provider) ?: "第三方"} 账号已解绑"
+            AccountSecurityEvent.UNKNOWN -> "账号安全提醒"
+        },
+        body = "该账号已登录另一个 Animeko 账号".takeIf { event == AccountSecurityEvent.THIRD_PARTY_UNBOUND },
+        icon = NotificationIcon.SECURITY,
+    ),
     content = AppNotificationContent.AccountSecurity(
         event = event,
         rawEvent = event.wireValue ?: "future_event",
@@ -116,9 +139,50 @@ fun createTestSystemNotification(
     event: SystemNotificationEvent? = null,
 ): AppNotification = AppNotification(
     id = id,
+    rawType = NotificationType.SYSTEM.wireValue,
+    rawCategory = NotificationGroup.NOTICE.wireValue,
     createdAtMillis = createdAtMillis,
     read = read,
-    content = AppNotificationContent.System(title, body, linkUrl, event),
+    display = NotificationDisplay(
+        title = title,
+        body = body,
+        icon = NotificationIcon.INFO,
+        target = linkUrl?.let { NotificationTarget(url = it) },
+    ),
+    content = AppNotificationContent.System(event),
+)
+
+/**
+ * 当前版本没有专门展示方式的通知, 例如互动. 用通用展示内容展示.
+ */
+@TestOnly
+fun createTestGenericNotification(
+    id: String = "reply-1",
+    read: Boolean = false,
+    rawType: String = "comment_reply",
+    rawCategory: String = NotificationGroup.INTERACTION.wireValue,
+    createdAtMillis: Long = TestNotificationNowMillis - 30 * MINUTE_MILLIS,
+    overline: String? = "葬送的芙莉莲 第 1 话",
+    title: String = "Bob 回复了你的评论",
+    body: String? = "同意，这一集的作画太好了",
+    icon: NotificationIcon? = NotificationIcon.REPLY,
+    imageUrl: String? = null,
+    target: NotificationTarget? = NotificationTarget(subjectId = 400602, episodeId = 1227087),
+): AppNotification = AppNotification(
+    id = id,
+    rawType = rawType,
+    rawCategory = rawCategory,
+    createdAtMillis = createdAtMillis,
+    read = read,
+    display = NotificationDisplay(
+        title = title,
+        body = body,
+        overline = overline,
+        icon = icon,
+        imageUrl = imageUrl,
+        target = target,
+    ),
+    content = AppNotificationContent.Unknown,
 )
 
 /**
@@ -186,6 +250,38 @@ val TestNotifications: List<AppNotification>
         createTestSystemNotification(),
     )
 
+/**
+ * 互动标签页的通知. 当前版本没有互动的专门展示方式, 都用通用展示内容展示.
+ */
+@TestOnly
+val TestInteractionNotifications: List<AppNotification>
+    get() = listOf(
+        createTestGenericNotification(),
+        createTestGenericNotification(
+            id = "mention-1",
+            read = true,
+            rawType = "mention",
+            createdAtMillis = TestNotificationNowMillis - 5 * HOUR_MILLIS,
+            overline = "孤独摇滚！ 第 8 话",
+            title = "阿九 在评论中提到了你",
+            body = "阿九：@你 之前说的那个伏笔，这集回收了",
+            icon = NotificationIcon.MENTION,
+            imageUrl = "https://example.com/avatar/9.png",
+            target = NotificationTarget(subjectId = 328609, episodeId = 1144392),
+        ),
+        createTestGenericNotification(
+            id = "follow-1",
+            read = true,
+            rawType = "follow",
+            createdAtMillis = TestNotificationNowMillis - 3 * DAY_MILLIS,
+            overline = null,
+            title = "Alice 关注了你",
+            body = null,
+            icon = NotificationIcon.FOLLOW,
+            target = null,
+        ),
+    )
+
 @TestOnly
 val TestAnnouncements: List<Announcement>
     get() = listOf(
@@ -210,7 +306,7 @@ val TestAnnouncements: List<Announcement>
 @TestOnly
 val TestNotificationBadgeState: NotificationBadgeState
     get() = NotificationBadgeState(
-        unreadCount = 3,
+        unreadCounts = mapOf(NotificationGroup.NOTICE to 3),
         hasUnreadAnnouncements = true,
         unreadAnnouncementCount = 2,
         latestAnnouncement = TestAnnouncements.first(),

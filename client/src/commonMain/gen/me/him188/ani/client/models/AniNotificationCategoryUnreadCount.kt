@@ -16,7 +16,6 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniNotificationType
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -25,15 +24,17 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
- * @param type
- * @param count
+ * @param category 分类, 取值同 `Notification.category`
+ * @param count 未读数, 大于 0
  */
 @Serializable
 
-data class AniNotificationUnreadCount (
+data class AniNotificationCategoryUnreadCount (
 
-    @SerialName(value = "type") @Required val type: AniNotificationType,
+    /* 分类, 取值同 `Notification.category` */
+    @SerialName(value = "category") @Required val category: kotlin.String,
 
+    /* 未读数, 大于 0 */
     @SerialName(value = "count") @Required val count: kotlin.Int
 
 ) {

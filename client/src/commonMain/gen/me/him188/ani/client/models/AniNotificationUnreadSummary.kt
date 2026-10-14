@@ -17,7 +17,7 @@
 package me.him188.ani.client.models
 
 import me.him188.ani.client.models.AniAnnouncement
-import me.him188.ani.client.models.AniNotificationUnreadCount
+import me.him188.ani.client.models.AniNotificationCategoryUnreadCount
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -26,7 +26,7 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
- * @param counts 请求的类型中有未读通知的类型及其未读数. 未登录时为空
+ * @param counts 请求的分类中有未读通知的分类及其未读数, 按请求的顺序. 未登录时为空
  * @param unreadAnnouncementCount 未读公告数. 未登录时为 0
  * @param latestAnnouncement
  */
@@ -34,8 +34,8 @@ import kotlinx.serialization.encoding.*
 
 data class AniNotificationUnreadSummary (
 
-    /* 请求的类型中有未读通知的类型及其未读数. 未登录时为空 */
-    @SerialName(value = "counts") @Required val counts: kotlin.collections.List<AniNotificationUnreadCount>,
+    /* 请求的分类中有未读通知的分类及其未读数, 按请求的顺序. 未登录时为空 */
+    @SerialName(value = "counts") @Required val counts: kotlin.collections.List<AniNotificationCategoryUnreadCount>,
 
     /* 未读公告数. 未登录时为 0 */
     @SerialName(value = "unreadAnnouncementCount") @Required val unreadAnnouncementCount: kotlin.Int,

@@ -29,9 +29,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.Reply
+import androidx.compose.material.icons.outlined.Update
+import androidx.compose.material.icons.rounded.AddReaction
+import androidx.compose.material.icons.rounded.AlternateEmail
 import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.HorizontalDivider
@@ -48,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -57,12 +64,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.notification.Announcement
-import me.him188.ani.app.data.models.notification.NotificationType
+import me.him188.ani.app.data.models.notification.AppNotification
+import me.him188.ani.app.data.models.notification.AppNotificationContent
+import me.him188.ani.app.data.models.notification.NotificationIcon
 import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.notification_announcement_overline
 import me.him188.ani.app.ui.lang.notification_announcement_pinned
 import me.him188.ani.app.ui.lang.notification_unread
+import me.him188.ani.app.ui.lang.notification_update_banner
+import me.him188.ani.app.ui.lang.notification_update_banner_action
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -113,16 +125,39 @@ object NotificationListItemDefaults {
      */
     fun verticalPadding(lines: Int): Dp = if (lines <= 1) OneLineVerticalPadding else VerticalPadding
 
-    fun iconFor(type: NotificationType): ImageVector = when (type) {
-        NotificationType.REPORT_RESULT -> Icons.Rounded.Flag
-        NotificationType.ACCOUNT_SECURITY -> Icons.Rounded.Shield
-        NotificationType.SYSTEM,
-        NotificationType.COMMENT_REPLY,
-        NotificationType.MENTION,
-        NotificationType.REACTION,
-        NotificationType.FOLLOW,
-        NotificationType.DIRECT_MESSAGE,
-            -> Icons.Rounded.Info
+    /**
+     * 列表行的图标. 客户端认识的类型使用固定的图标, 其他通知使用通用展示内容中的图标 ([iconFor]).
+     */
+    fun iconFor(notification: AppNotification): ImageVector = when (notification.content) {
+        is AppNotificationContent.ReportResult -> Icons.Rounded.Flag
+        is AppNotificationContent.AccountSecurity -> Icons.Rounded.Shield
+        is AppNotificationContent.System -> Icons.Rounded.Info
+        AppNotificationContent.Unknown -> iconFor(notification.display.icon)
+    }
+
+    /**
+     * 列表行左侧代替图标显示的图片, 例如对方的头像. 只有用通用展示内容展示的通知有.
+     */
+    fun imageUrlFor(notification: AppNotification): String? = when (notification.content) {
+        AppNotificationContent.Unknown -> notification.display.imageUrl?.takeIf { it.isNotBlank() }
+        is AppNotificationContent.ReportResult,
+        is AppNotificationContent.AccountSecurity,
+        is AppNotificationContent.System,
+            -> null
+    }
+
+    /**
+     * 通用展示内容的图标. 没有或不认识的图标为通用的通知图标.
+     */
+    fun iconFor(icon: NotificationIcon?): ImageVector = when (icon) {
+        NotificationIcon.REPORT -> Icons.Rounded.Flag
+        NotificationIcon.SECURITY -> Icons.Rounded.Shield
+        NotificationIcon.INFO -> Icons.Rounded.Info
+        NotificationIcon.REPLY -> Icons.AutoMirrored.Rounded.Reply
+        NotificationIcon.MENTION -> Icons.Rounded.AlternateEmail
+        NotificationIcon.REACTION -> Icons.Rounded.AddReaction
+        NotificationIcon.FOLLOW -> Icons.Rounded.PersonAdd
+        null -> Icons.Rounded.Notifications
     }
 }
 
@@ -185,14 +220,17 @@ fun UnreadDot(
 }
 
 /**
- * 通知列表的一行: 左侧类型图标, 第一行为标题、时间和未读标记, 第二行为辅助文本.
+ * 通知列表的一行: 左侧类型图标或图片, 第一行为标题、时间和未读标记, 第二行为辅助文本.
  *
- * 有 [actions] 时第三行为操作按钮, 整行顶部对齐. 点击按钮只执行按钮的操作, 点击行的其他位置调用 [onClick].
+ * 有 [overline] 时它在标题上方, 时间和未读标记随之移到这一行, 例如互动的 "条目与剧集 / 谁做了什么 / 内容预览".
+ * 有 [actions] 时最后一行为操作按钮. 有操作按钮或有三行及以上的项顶部对齐. 点击按钮只执行按钮的操作, 点击行的其他位置调用 [onClick].
  * 最小高度和上下内边距按行数取 [NotificationListItemDefaults.minHeight] 和 [NotificationListItemDefaults.verticalPadding].
  *
- * @param supporting 为 `null` 时只显示标题行.
+ * @param supporting 为 `null` 时没有辅助文本行.
  * @param read 已读项整体弱化, 不显示未读标记.
  * @param selected 宽屏双栏时当前正在右侧展示的项.
+ * @param overline 标题上方的一行.
+ * @param imageUrl 代替 [icon] 显示的圆形图片, 例如对方的头像. 加载完成前和加载失败时显示 [icon].
  * @param actions 行内操作, 通常是几个 [NotificationInlineActionButton]. 按钮文字与辅助文本左对齐.
  */
 @Composable
@@ -205,11 +243,14 @@ fun NotificationListItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
+    overline: String? = null,
+    imageUrl: String? = null,
     actions: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val colors = listItemColors(read = read, selected = selected)
     val unreadText = stringResource(Lang.notification_unread)
-    val lines = 1 + (if (supporting != null) 1 else 0) + (if (actions != null) 1 else 0)
+    val lines = (if (overline != null) 1 else 0) + 1 +
+            (if (supporting != null) 1 else 0) + (if (actions != null) 1 else 0)
     Row(
         modifier
             .fillMaxWidth()
@@ -225,36 +266,45 @@ fun NotificationListItem(
                 vertical = NotificationListItemDefaults.verticalPadding(lines),
             ),
         horizontalArrangement = Arrangement.spacedBy(NotificationListItemDefaults.Spacing),
-        verticalAlignment = if (actions != null) Alignment.Top else Alignment.CenterVertically,
+        verticalAlignment = if (actions != null || lines >= 3) Alignment.Top else Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier
-                .size(NotificationListItemDefaults.LeadingSize)
-                .clip(CircleShape)
-                .background(colors.leadingContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                Modifier.size(NotificationListItemDefaults.LeadingIconSize),
-                tint = colors.leadingContent,
-            )
-        }
+        NotificationLeading(
+            icon,
+            imageUrl,
+            containerColor = colors.leadingContainer,
+            contentColor = colors.leadingContent,
+        )
         Column(Modifier.weight(1f)) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(NotificationListItemDefaults.Spacing),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            @Composable
+            fun HeadlineText(modifier: Modifier = Modifier) {
                 Text(
                     headline,
-                    Modifier.weight(1f),
+                    modifier,
                     color = colors.headline,
                     fontWeight = if (read) FontWeight.Normal else FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyLarge,
                 )
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(NotificationListItemDefaults.Spacing),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (overline != null) {
+                    Text(
+                        overline,
+                        Modifier.weight(1f).testTag(NotificationTestTags.ROW_OVERLINE),
+                        color = colors.supporting,
+                        fontWeight = FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                } else {
+                    HeadlineText(Modifier.weight(1f))
+                }
                 Text(
                     time,
                     color = colors.trailing,
@@ -265,6 +315,9 @@ fun NotificationListItem(
                 if (!read) {
                     UnreadDot(Modifier.testTag(NotificationTestTags.UNREAD_DOT))
                 }
+            }
+            if (overline != null) {
+                HeadlineText()
             }
             if (supporting != null) {
                 Text(
@@ -286,6 +339,85 @@ fun NotificationListItem(
                     content = actions,
                 )
             }
+        }
+    }
+}
+
+/**
+ * 列表行和详情左侧的圆形图标. 有 [imageUrl] 时显示图片, 图片加载完成前和加载失败时显示 [icon].
+ */
+@Composable
+fun NotificationLeading(
+    icon: ImageVector,
+    imageUrl: String?,
+    containerColor: Color,
+    contentColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier
+            .size(NotificationListItemDefaults.LeadingSize)
+            .clip(CircleShape)
+            .background(containerColor),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            Modifier.size(NotificationListItemDefaults.LeadingIconSize),
+            tint = contentColor,
+        )
+        if (imageUrl != null) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                Modifier
+                    .matchParentSize()
+                    .testTag(NotificationTestTags.LEADING_IMAGE),
+                contentScale = ContentScale.Crop,
+            )
+        }
+    }
+}
+
+/**
+ * 列表顶部的提示: 列表中有当前版本不认识类型的通知, 它们只用通用展示内容显示, 更新后才能完整显示.
+ *
+ * @param onUpdate 点击 "更新", 前往软件更新设置.
+ */
+@Composable
+fun NotificationUpdateBanner(
+    onUpdate: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(scheme.surfaceContainerHigh)
+            .testTag(NotificationTestTags.UPDATE_BANNER)
+            // 读屏把提示作为一个整体读出, 按钮仍可单独操作
+            .semantics(mergeDescendants = true) {}
+            .heightIn(min = 48.dp)
+            .padding(start = 16.dp, end = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Outlined.Update,
+            contentDescription = null,
+            Modifier.size(20.dp),
+            tint = scheme.onSurfaceVariant,
+        )
+        Text(
+            stringResource(Lang.notification_update_banner),
+            Modifier.weight(1f).padding(vertical = 12.dp),
+            color = scheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        TextButton(onUpdate, Modifier.testTag(NotificationTestTags.UPDATE_BANNER_ACTION)) {
+            Text(stringResource(Lang.notification_update_banner_action))
         }
     }
 }

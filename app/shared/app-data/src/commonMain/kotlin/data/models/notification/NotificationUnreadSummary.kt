@@ -12,12 +12,12 @@ package me.him188.ani.app.data.models.notification
 /**
  * 服务端返回的未读概况.
  *
- * @property unreadCounts 请求的类型中有未读通知的类型及其未读数. 游客为空.
+ * @property unreadCounts 请求的分组中有未读通知的分组及其未读数. 游客为空.
  * @property unreadAnnouncementCount 未读公告数. 游客为 0.
  * @property latestAnnouncement 公告列表的第一条 (置顶优先, 然后最新). 游客也有, 此时 [Announcement.read] 为 `null`.
  */
 data class NotificationUnreadSummary(
-    val unreadCounts: Map<NotificationType, Int>,
+    val unreadCounts: Map<NotificationGroup, Int>,
     val unreadAnnouncementCount: Int,
     val latestAnnouncement: Announcement?,
 )
