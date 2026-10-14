@@ -49,10 +49,6 @@ object UpdateE2eTestTask : KoinComponent {
          * 只有新版本才有的文件 (绝对路径). 它存在即说明更新已完成, 当前进程是新版本.
          */
         val installedMarker: String,
-        /**
-         * 下载完成后是否继续安装. 不安装时报告 `downloaded` 就退出, 由驱动器核对下载到的包.
-         */
-        val install: Boolean = true,
     )
 
     @Serializable
@@ -80,6 +76,10 @@ object UpdateE2eTestTask : KoinComponent {
         if (marker.isFile) {
             report("relaunched", marker.readText().trim())
             exitProcess(0)
+        }
+        // 没有标记文件却已有报告: 安装没生效, 重新启动的仍是旧版本 (比如安装脚本失败后恢复了旧版本). 不能再走一遍更新, 会循环.
+        if (resultFile.isFile && resultFile.length() > 0) {
+            fail("relaunched without the installed marker, the update did not take effect")
         }
 
         // 流程卡住时留下线程栈再退出, 驱动器只能看到进程没退出, 看不到卡在哪.
@@ -117,7 +117,6 @@ object UpdateE2eTestTask : KoinComponent {
 
                 is AppUpdateState.Downloaded -> {
                     report("downloaded", state.file.toString())
-                    if (!config.install) exitProcess(0)
                     vm.install(context)
                     // 安装成功时安装器会结束本进程, 这里只会等到失败.
                     val failure = vm.presentationFlow.first { it.installationFailure != null }.installationFailure

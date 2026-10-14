@@ -28,7 +28,6 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.zip.ZipFile
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -64,8 +63,7 @@ fun locatePackagedApp(dir: File): File {
 /**
  * 用打包好的应用当旧版本, 从它派生一个新版本发布包 (加文件、改文件、删文件、改名), 由本机 mock 的版本 API 和下载服务器提供;
  * 以测试任务 `update-e2e` 启动旧版本, 让它走真实的检查、下载、安装、重启流程; 最后核对安装目录与新版本一致, 并按场景核对
- * 服务器收到的请求 (增量时只有 Range 请求且流量远小于整包, 回退时下载了整包). 安装器还不能自动完成安装的平台
- * ([E2ePlatform.installs] 为 `false`) 到下载为止, 核对的是下载到的包.
+ * 服务器收到的请求 (增量时只有 Range 请求且流量远小于整包, 回退时下载了整包).
  *
  * 每个场景都从干净的安装目录和数据目录开始. 应用通过 `ANIMEKO_DESKTOP_TEST_DATA_DIR` 把数据放在工作目录里, 不碰机器上
  * 正常安装的应用. macOS 的安装脚本用 `open` 启动新版本, 它不继承本进程的环境, 所以环境变量同时通过 `launchctl setenv`
@@ -155,6 +153,7 @@ class DesktopUpdateE2e(
         root.resolve(MARKER_PATH).apply { parentFile.mkdirs() }.writeText(NEW_VERSION_MARKER)
         val payload = Random(20241014).nextBytes(PAYLOAD_SIZE)
         root.resolve(PAYLOAD_PATH).writeBytes(payload)
+        platform.sealNewVersion(newDir)
 
         val zip = workDir.resolve("new").resolve("package.zip")
         logger.lifecycle("[update-e2e] zipping new version to $zip")
@@ -273,7 +272,6 @@ class DesktopUpdateE2e(
                             serverUrl = server.baseUrl,
                             resultFile = resultFile.absolutePath,
                             installedMarker = platform.appRoot(installDir).resolve(MARKER_PATH).absolutePath,
-                            install = platform.installs,
                         ),
                     ),
                 )
@@ -306,7 +304,7 @@ class DesktopUpdateE2e(
                 process.destroyForcibly()
                 throw IllegalStateException("The app did not exit within $APP_TIMEOUT")
             }
-            if (scenario.transfer != Transfer.NONE && platform.installs) {
+            if (scenario.transfer != Transfer.NONE) {
                 awaitUntil("the updated app to report", RELAUNCH_TIMEOUT) { phases().contains("relaunched") }
             }
             awaitUntil("the app and updater processes to exit", EXIT_TIMEOUT) { appProcesses().isEmpty() }
@@ -353,16 +351,8 @@ class DesktopUpdateE2e(
                 }
             }
 
-            val downloaded = reports.firstOrNull { it.phase == "downloaded" }
-            checkNotNull(downloaded) { "The app never reported 'downloaded': $phases" }
+            check(phases.contains("downloaded")) { "The app never reported 'downloaded': $phases" }
             val expected = hashTree(fixture.dir)
-            if (!platform.installs) {
-                check(reports.last() === downloaded) { "Expected the app to stop after downloading, got $phases" }
-                verifyDownloadedPackage(File(downloaded.detail!!), expected)
-                check(hashTree(installDir) == originalTree) { "The installed app must not change without installing" }
-                return
-            }
-
             val relaunched = reports.last()
             check(relaunched.phase == "relaunched" && relaunched.detail == NEW_VERSION_MARKER) {
                 "The updated app did not report after relaunch: $reports"
@@ -378,26 +368,6 @@ class DesktopUpdateE2e(
             val leftovers = installParent.listFiles().orEmpty().filter { it.name != platform.appDirName }
             if (leftovers.isNotEmpty()) logger.warn("[update-e2e] leftovers next to the installed app: $leftovers")
             check(platform.executable(installDir).canExecute()) { "The updated launcher is not executable" }
-        }
-
-        /**
-         * 下载到的 (增量拼出或整包下载的) zip 必须与新版本逐文件一致.
-         */
-        private fun verifyDownloadedPackage(file: File, expected: Map<String, String>) {
-            check(file.isFile) { "Downloaded package does not exist: $file" }
-            val actual = ZipFile(file).use { zip ->
-                zip.entries().asSequence()
-                    .filterNot { it.isDirectory }
-                    .associate { entry ->
-                        entry.name.removePrefix("${platform.appDirName}/") to zip.getInputStream(entry).use { it.digestHex("SHA-256") }
-                    }
-            }
-            val missing = expected.keys - actual.keys
-            val different = expected.keys.intersect(actual.keys).filter { expected[it] != actual[it] }
-            val extra = actual.keys - expected.keys
-            check(missing.isEmpty() && different.isEmpty() && extra.isEmpty()) {
-                "Downloaded package differs from the new version. Missing: $missing, different: $different, extra: $extra"
-            }
         }
 
         private fun reports(): List<Report> {
@@ -418,11 +388,11 @@ class DesktopUpdateE2e(
         }
 
         /**
-         * 这个场景启动的应用和更新器进程: 可执行文件在安装目录里, 或是 Windows 更新器 (在临时目录运行).
+         * 这个场景启动的应用和更新器进程: 可执行文件在安装目录里, 或是更新器 (在安装目录外运行).
          */
         private fun appProcesses(): List<ProcessHandle> = ProcessHandle.allProcesses().filter { handle ->
-            val command = handle.info().command().orElse(null) ?: return@filter false
-            command.startsWith(installDir.absolutePath) || platform.isUpdaterProcess(command)
+            val info = handle.info()
+            info.command().orElse("").startsWith(installDir.absolutePath) || platform.isUpdaterProcess(info)
         }.toList()
 
         fun killLeftoverProcesses() {
@@ -444,7 +414,7 @@ class DesktopUpdateE2e(
             }
             tail("stdout", stdoutFile)
             tail("app log", dataDir.resolve("data/logs").listFiles()?.filter { it.isFile }?.maxByOrNull { it.lastModified() })
-            tail("updater log", platform.updaterLog())
+            platform.updaterLogs().forEach { tail("updater log", it) }
             val threads = File(resultFile.path + ".threads.txt")
             if (threads.isFile) {
                 appendLine("---- thread dump of the stuck app: $threads")
@@ -469,7 +439,6 @@ class DesktopUpdateE2e(
         val serverUrl: String,
         val resultFile: String,
         val installedMarker: String,
-        val install: Boolean,
     )
 
     /**
@@ -729,12 +698,19 @@ private sealed class E2ePlatform(val packageOs: String) {
     fun zipAssetName(version: String): String = "ani-$version-$packageOs-${hostArch()}.zip"
 
     /**
-     * 安装器能否自动完成安装并重启. 能的话测试走到新版本启动为止, 否则到下载为止.
+     * [info] 是否是这个平台的更新器进程. 更新器在安装目录外运行, 不能按安装目录认.
      */
-    abstract val installs: Boolean
+    open fun isUpdaterProcess(info: ProcessHandle.Info): Boolean = false
 
-    open fun isUpdaterProcess(command: String): Boolean = false
-    open fun updaterLog(): File? = null
+    /**
+     * 更新器留下的日志, 场景失败时打印.
+     */
+    open fun updaterLogs(): List<File> = emptyList()
+
+    /**
+     * 派生出新版本之后的收尾, 比如重新签名.
+     */
+    open fun sealNewVersion(app: File) {}
 
     /**
      * 与 [workDir] 不在同一卷上的可写目录, 没有则为 `null`.
@@ -753,9 +729,10 @@ private sealed class E2ePlatform(val packageOs: String) {
         override fun executable(installDir: File): File = installDir.resolve("Ani.exe")
         override fun appRoot(installDir: File): File = installDir
         override fun packageAssetName(version: String): String = zipAssetName(version)
-        override val installs: Boolean get() = true
-        override fun isUpdaterProcess(command: String): Boolean = command.endsWith("ani_update.exe", ignoreCase = true)
-        override fun updaterLog(): File = File(System.getProperty("java.io.tmpdir"), "ani-update.log")
+        override fun isUpdaterProcess(info: ProcessHandle.Info): Boolean =
+            info.command().orElse("").endsWith("ani_update.exe", ignoreCase = true)
+
+        override fun updaterLogs(): List<File> = listOf(File(System.getProperty("java.io.tmpdir"), "ani-update.log"))
 
         override fun otherVolumeDir(workDir: File): File? {
             val temp = File(System.getProperty("java.io.tmpdir")).absoluteFile
@@ -771,15 +748,28 @@ private sealed class E2ePlatform(val packageOs: String) {
         override fun packageAssetName(version: String): String = "ani-$version-macos-${hostArch()}.dmg"
 
         /**
-         * 现在的安装脚本把新 app 复制到旧 app 上, 遇到运行时里的只读文件 (CEF 的 `gpu_shader_cache.bin`) 就失败, 也会留下
-         * 签名无效的 bundle. 整包替换 .app 的安装器合入后改为 `true`, 届时派生新版本后要重新 ad-hoc 签名, 它的校验才能通过.
+         * 安装脚本 `macos-update.command` 由 bash 运行, 只能按参数认.
          */
-        override val installs: Boolean get() = false
+        override fun isUpdaterProcess(info: ProcessHandle.Info): Boolean =
+            info.arguments().orElse(emptyArray()).any { it.endsWith("macos-update.command") }
 
-        override fun updaterLog(): File? = File(System.getProperty("java.io.tmpdir")).listFiles()
-            ?.filter { it.isDirectory && it.name.startsWith("ani-macos-update-") }
-            ?.maxByOrNull { it.lastModified() }
-            ?.resolve("update-output.log")
+        override fun updaterLogs(): List<File> {
+            val dir = File(System.getProperty("java.io.tmpdir")).listFiles()
+                ?.filter { it.isDirectory && it.name.startsWith("ani-macos-update-") }
+                ?.maxByOrNull { it.lastModified() }
+                ?: return emptyList()
+            return listOf(dir.resolve("update-output.log"), dir.resolve("update-error.log"))
+        }
+
+        /**
+         * 安装脚本换 bundle 前会 `codesign --verify --deep --strict`. 派生出的新版本改了封印在签名里的资源文件, 要重新 ad-hoc 签名.
+         * 只签最外层的 bundle, 不 `--deep`: 嵌套的框架和运行时没改, 原签名仍然有效; 重签它们会改写每个 Mach-O 文件, 增量下载
+         * 就得重取整个运行时. 只签外层只多出签名封印 `CodeResources` 和主可执行文件, 1 MB 多.
+         */
+        override fun sealNewVersion(app: File) {
+            val exit = ProcessBuilder("codesign", "--force", "--sign", "-", app.absolutePath).inheritIO().start().waitFor()
+            check(exit == 0) { "codesign exited with $exit re-signing the derived new version $app" }
+        }
 
         /**
          * APFS 的 clonefile (`cp -c`) 复制 600 MB 的 `.app` 只要不到一秒, 逐字节复制要十几秒. 不支持时退回逐字节复制.
