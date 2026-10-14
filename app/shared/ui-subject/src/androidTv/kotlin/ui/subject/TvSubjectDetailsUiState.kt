@@ -87,6 +87,8 @@ sealed interface TvSubjectDetailsIntent {
     data object Resume : TvSubjectDetailsIntent
     data class PlayEpisode(val episodeId: Int) : TvSubjectDetailsIntent
     data class OpenRelatedSubject(val subjectId: Int) : TvSubjectDetailsIntent
+    data class OpenTagSubject(val subjectId: Int) : TvSubjectDetailsIntent
+    data object EnterRating : TvSubjectDetailsIntent
     data object Login : TvSubjectDetailsIntent
     data class SetCollection(val type: UnifiedCollectionType, val requestId: Int) : TvSubjectDetailsIntent
     data class MarkAllWatched(val requestId: Int) : TvSubjectDetailsIntent

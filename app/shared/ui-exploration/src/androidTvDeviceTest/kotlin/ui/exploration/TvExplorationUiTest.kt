@@ -807,7 +807,9 @@ class TvExplorationUiTest {
         val intents = mutableListOf<TvExplorationIntent>()
         mount(onIntent = { intents += it })
         key(Key.DirectionCenter)
-        assertEquals(1, intents.filterIsInstance<TvExplorationIntent.OpenSubject>().single().subject.subjectId)
+        val featured = intents.filterIsInstance<TvExplorationIntent.OpenSubject>().single()
+        assertEquals(1, featured.subject.subjectId)
+        assertEquals(TvExplorationArea.Featured, featured.area)
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-followed-11")
         key(Key.DirectionCenter)
@@ -815,7 +817,9 @@ class TvExplorationUiTest {
         key(Key.DirectionDown)
         awaitFocus("tv-exploration-rec-21")
         key(Key.DirectionCenter)
-        assertEquals(21, intents.filterIsInstance<TvExplorationIntent.OpenSubject>().last().subject.subjectId)
+        val recommendation = intents.filterIsInstance<TvExplorationIntent.OpenSubject>().last()
+        assertEquals(21, recommendation.subject.subjectId)
+        assertEquals(TvExplorationArea.Recommendations, recommendation.area)
     }
 
     @Test

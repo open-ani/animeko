@@ -118,14 +118,17 @@ class PlayerSession(
     }
 
     /**
-     * 解析 media 并开始播放这个 media.
+     * 解析 media 并从 [startPositionMillis] 开始播放这个 media.
      *
-     * @param startPositionHintMillis 预计从哪里开始播放, 见 [HlsPlaybackPreparer.prepare]. 只影响预缓存, 不会跳转.
+     * @param startPositionMillis 起播位置, 续播时为记忆的进度. 播放器在打开媒体时就定位到这里
+     * ([MediampPlayer.setMediaData]), 而不是先从头起播、缓冲, 再跳转并重新缓冲.
+     * 经 HLS 代理播放时它同时是预缓存的起点 ([HlsPlaybackPreparer.prepare]);
+     * 播放器打开的是去除广告后的播放列表, 两者都在这条时间轴上.
      */
     suspend fun loadMedia(
         media: Media?,
         episodeInfo: EpisodeMetadata,
-        startPositionHintMillis: Long? = null,
+        startPositionMillis: Long = 0L,
     ) = coroutineScope {
         val backgroundScope = this
         _videoLoadingStateFlow.value = VideoLoadingState.Initial // 避免一直显示已取消 (.Cancelled)
@@ -156,13 +159,17 @@ class PlayerSession(
             } else {
                 source.open(scopeForCleanup = backgroundScope) // may throw MediaSourceOpenException
             }
-            val preparedData = prepareHlsPlaybackIfEnabled(data, media, startPositionHintMillis).also {
+            val preparedData = prepareHlsPlaybackIfEnabled(
+                data,
+                media,
+                startPositionHintMillis = startPositionMillis.takeIf { it > 0L },
+            ).also {
                 preparedHlsPlaybackProxySession = it.session
             }.data
 
-            logger.info { "Set media data to player: $preparedData" }
-            // v2: setMediaData 挂起直到媒体真正打开, 并直接携带播放意图, 无需再单独 resume.
-            player.setMediaData(preparedData, playWhenReady = true)
+            logger.info { "Set media data to player at ${startPositionMillis}ms: $preparedData" }
+            // v2: setMediaData 挂起直到媒体真正打开, 播放意图和起播位置随打开一并生效.
+            player.setMediaData(preparedData, playWhenReady = true, startPositionMillis = startPositionMillis)
             hlsPlaybackProxySession = preparedHlsPlaybackProxySession
             preparedHlsPlaybackProxySession = null
             openedJellyfinPlayback?.let(jellyfinPlaybackController::install)
@@ -203,6 +210,7 @@ class PlayerSession(
                 ResolutionFailures.ENGINE_ERROR -> VideoLoadingState.UnknownError(e)
                 ResolutionFailures.NETWORK_ERROR -> VideoLoadingState.NetworkError
                 ResolutionFailures.NO_MATCHING_RESOURCE -> VideoLoadingState.NoMatchingFile
+                ResolutionFailures.WEB_ENGINE_UNAVAILABLE -> VideoLoadingState.WebEngineUnavailable
             }
             stopPlayback()
         } catch (e: CancellationException) { // 切换数据源 (含 MediaLoadCancellationException)

@@ -52,7 +52,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * 主页使用的自动更新检查
  */
 @Stable
-class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
+open class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val updateSettings = settingsRepository.updateSettings.flow
     private val updateManager: UpdateManager by inject()

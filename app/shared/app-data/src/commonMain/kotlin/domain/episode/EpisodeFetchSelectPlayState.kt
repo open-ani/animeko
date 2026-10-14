@@ -40,7 +40,6 @@ import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.createFetchFetchSession
@@ -367,7 +366,8 @@ class EpisodeFetchSelectPlayState(
     /**
      * An intrinsic extension that is automatically and forcefully added to the extension manager.
      *
-     * This extension calls [PlayerSession.loadMedia] when a new media is selected.
+     * This extension calls [PlayerSession.loadMedia] when a new media is selected,
+     * starting at the remembered progress of the episode (see [startPositionMillis]).
      */
     private inner class LoadMediaOnSelectExtension(
         private val onMediaLoaded: (episodeId: Int) -> Unit = { }
@@ -385,10 +385,11 @@ class EpisodeFetchSelectPlayState(
                                 .first()
                                 .episodeInfo
 
+                            callOnBeforeLoadMedia(episodeSession)
                             playerSession.loadMedia(
                                 media,
                                 episodeInfo.toEpisodeMetadata(),
-                                startPositionHintMillis(episodeInfo.episodeId),
+                                startPositionMillis(episodeInfo.episodeId),
                             )
                             onMediaLoaded(episodeInfo.episodeId)
                         }
@@ -399,19 +400,36 @@ class EpisodeFetchSelectPlayState(
     }
 
     /**
-     * 续播的起点, 供 HLS 代理在起播前预缓存那里的分片 (见 [HlsPlaybackPreparer.prepare]).
-     * 跳转仍由 RememberPlayProgressExtension 在播放开始后执行, 这里与它读同一份进度; 一起看时它不续播, 这里也不给.
-     * 读取失败只是少了预缓存, 不影响加载.
+     * 出错的扩展只记录日志: 保存进度失败等不应妨碍加载新选择的 media, 也不应跳过其他扩展.
      */
-    private suspend fun startPositionHintMillis(episodeId: Int): Long? {
-        if (automationGate.suppressed.value) return null
+    private suspend fun callOnBeforeLoadMedia(episodeSession: EpisodeSession) {
+        for (extension in extensionManager.extensions) {
+            try {
+                extension.onBeforeLoadMedia(episodeSession)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.warn(e) { "Extension ${extension.name} failed in onBeforeLoadMedia" }
+            }
+        }
+    }
+
+    /**
+     * 起播位置: 本集记忆的播放进度. 播放器直接在这里打开, 不先从头起播再跳转 (见 [PlayerSession.loadMedia]).
+     *
+     * 进度只在这里读取, 并且在 [PlayerExtension.onBeforeLoadMedia] 之后: 换源时 RememberPlayProgressExtension
+     * 在那里保存旧资源的进度, 新资源因此从换源时的位置继续.
+     * 一起看时进度由房间同步, 不续播. 读取失败时从头播放.
+     */
+    private suspend fun startPositionMillis(episodeId: Int): Long {
+        if (automationGate.suppressed.value) return 0L
         return try {
-            playHistoryRepository.getResumePositionMillisByEpisodeId(episodeId)
+            playHistoryRepository.getResumePositionMillisByEpisodeId(episodeId) ?: 0L
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logger.warn(e) { "Failed to read play progress of episode $episodeId for HLS start position hint" }
-            null
+            logger.warn(e) { "Failed to read play progress of episode $episodeId, starting from the beginning" }
+            0L
         }
     }
 

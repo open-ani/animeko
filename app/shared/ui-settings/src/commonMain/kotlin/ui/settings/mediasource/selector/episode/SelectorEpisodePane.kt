@@ -41,11 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
-import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
-import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
@@ -61,23 +57,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.saveable.Saver
-import androidx.compose.runtime.saveable.listSaver
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.runtime.toMutableStateList
-import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-import androidx.navigation3.ui.NavDisplay
 import kotlinx.coroutines.launch
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import me.him188.ani.app.domain.media.resolver.TestWebViewVideoExtractor
 import me.him188.ani.app.domain.mediasource.codec.createTestMediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.test.buildMatchTags
-import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
+import me.him188.ani.app.domain.mediasource.test.TestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.web.captcha.createTestWebSessionManager
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
@@ -85,7 +69,6 @@ import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
-import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
@@ -104,9 +87,12 @@ import me.him188.ani.app.ui.lang.settings_mediasource_selector_episode_nested_li
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_episode_no_matched_video
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_episode_not_matched
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_episode_single_matched_video
+import me.him188.ani.app.ui.settings.mediasource.editor.MediaSourceDetailPaneLayout
+import me.him188.ani.app.ui.settings.mediasource.editor.MediaSourceDetailRoutes
+import me.him188.ani.app.ui.settings.mediasource.editor.MediaSourceEditorDefaults
+import me.him188.ani.app.ui.settings.mediasource.editor.MediaSourceTestAndDetailPane
 import me.him188.ani.app.ui.settings.mediasource.rss.createTestSaveableStorage
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourcePageState
-import me.him188.ani.app.ui.settings.mediasource.selector.edit.SelectorConfigurationDefaults
 import me.him188.ani.app.ui.settings.mediasource.selector.test.SelectorTestPane
 import me.him188.ani.app.ui.settings.mediasource.selector.test.TestSelectorMediaSourceEngine
 import me.him188.ani.datasources.api.EpisodeSort
@@ -117,130 +103,89 @@ import kotlin.coroutines.EmptyCoroutineContext
 @Composable
 fun SelectorTestAndEpisodePane(
     state: EditSelectorMediaSourcePageState,
-    layout: SelectorEpisodePaneLayout,
+    layout: MediaSourceDetailPaneLayout,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    initialRoute: SelectorEpisodePaneRoutes = SelectorEpisodePaneRoutes.TEST,
+    initialRoute: MediaSourceDetailRoutes = MediaSourceDetailRoutes.TEST,
 ) {
-    // 栈底总是 TEST, EPISODE 叠在它上面, 所以最多两层
-    val backStack = rememberSaveable(saver = SelectorEpisodePaneBackStackSaver) {
-        if (initialRoute == SelectorEpisodePaneRoutes.TEST) {
-            mutableStateListOf<SelectorEpisodePaneRoutes>(SelectorEpisodePaneRoutes.TEST)
-        } else {
-            mutableStateListOf(SelectorEpisodePaneRoutes.TEST, initialRoute)
-        }
-    }
-    state.episodeBackStack = backStack
+    MediaSourceTestAndDetailPane(
+        state.detailNav,
+        modifier,
+        initialRoute = initialRoute,
+        testPane = {
+            SelectorTestPane(
+                state.testState,
+                onViewEpisode = { state.detailNav.view(it) },
+                Modifier.fillMaxSize(),
+                contentPadding = contentPadding,
+            )
+        },
+        detailPane = {
+            // stopViewing 会把栈弹回 TEST
+            val onBack: () -> Unit = { state.detailNav.stopViewing() }
+            val cardColors: CardColors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            )
 
-    NavDisplay(
-        backStack = backStack,
-        modifier = modifier,
-        onBack = { state.stopViewing() },
-        entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator()),
-        entryProvider = entryProvider {
-            entry<SelectorEpisodePaneRoutes.TEST> {
-                SelectorTestPane(
-                    state.testState,
-                    onViewEpisode = {
-                        state.viewEpisode(it)
-                    },
+            // decorate
+            val content: @Composable () -> Unit = {
+                SelectorEpisodePaneContent(
+                    state.episodeState,
                     Modifier.fillMaxSize(),
-                    contentPadding = contentPadding,
+                    itemColors = ListItemDefaults.colors(containerColor = cardColors.containerColor),
                 )
             }
-            entry<SelectorEpisodePaneRoutes.EPISODE> {
-                // stopViewing 会把栈弹回 TEST
-                val onBack: () -> Unit = { state.stopViewing() }
-                BackHandler(onBack = onBack)
-                val cardColors: CardColors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                )
-
-                // decorate
-                val content: @Composable () -> Unit = {
-                    SelectorEpisodePaneContent(
-                        state.episodeState,
+            val topAppBarDecorated = if (layout.showTopBarInPane) {
+                {
+                    // list 展开, 能编辑配置
+                    Card(
                         Modifier.fillMaxSize(),
-                        itemColors = ListItemDefaults.colors(containerColor = cardColors.containerColor),
-                    )
-                }
-                val topAppBarDecorated = if (layout.showTopBarInPane) {
-                    {
-                        // list 展开, 能编辑配置
-                        Card(
-                            Modifier.fillMaxSize(),
-                            colors = cardColors,
-                            shape = MaterialTheme.shapes.large,
-                        ) {
-                            SelectorEpisodePaneDefaults.TopAppBar(
-                                state.episodeState,
-                                navigationIcon = {
-                                    BackNavigationIconButton({ onBack() })
-                                },
-                            )
-                            content()
-                        }
-                    }
-                } else content
-
-                val bottomSheetDecorated = if (layout.showBottomSheet) {
-                    {
-                        BottomSheetScaffold(
-                            sheetContent = {
-                                SelectorEpisodePaneDefaults.ConfigurationContent(
-                                    state.configurationState,
-                                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                                )
+                        colors = cardColors,
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        SelectorEpisodePaneDefaults.TopAppBar(
+                            state.episodeState,
+                            navigationIcon = {
+                                BackNavigationIconButton({ onBack() })
                             },
-                            Modifier
-                                .fillMaxSize(),
-                            sheetPeekHeight = 78.dp,
-                        ) { paddingValues ->
-                            Box(Modifier.padding(paddingValues)) {
-                                topAppBarDecorated()
-                            }
+                        )
+                        content()
+                    }
+                }
+            } else content
+
+            val bottomSheetDecorated = if (layout.showBottomSheet) {
+                {
+                    BottomSheetScaffold(
+                        sheetContent = {
+                            SelectorEpisodePaneDefaults.ConfigurationContent(
+                                state.configurationState,
+                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                            )
+                        },
+                        Modifier
+                            .fillMaxSize(),
+                        sheetPeekHeight = 78.dp,
+                    ) { paddingValues ->
+                        Box(Modifier.padding(paddingValues)) {
+                            topAppBarDecorated()
                         }
                     }
-                } else topAppBarDecorated
-
-                Box(Modifier.padding(contentPadding)) {
-                    bottomSheetDecorated()
                 }
+            } else topAppBarDecorated
+
+            Box(Modifier.padding(contentPadding)) {
+                bottomSheetDecorated()
             }
         },
     )
 }
 
-private val SelectorEpisodePaneBackStackSaver: Saver<SnapshotStateList<SelectorEpisodePaneRoutes>, Any> = listSaver(
-    save = { stack ->
-        stack.map { route ->
-            when (route) {
-                SelectorEpisodePaneRoutes.TEST -> "TEST"
-                SelectorEpisodePaneRoutes.EPISODE -> "EPISODE"
-            }
-        }
-    },
-    restore = { saved ->
-        // 空栈会让 NavDisplay 抛异常, 此时放弃恢复
-        if (saved.isEmpty()) {
-            null
-        } else {
-            saved.map { entry ->
-                when (entry as String) {
-                    "EPISODE" -> SelectorEpisodePaneRoutes.EPISODE
-                    else -> SelectorEpisodePaneRoutes.TEST
-                }
-            }.toMutableStateList()
-        }
-    },
-)
-
-
 @Composable
 fun SelectorEpisodePaneContent(
     state: SelectorEpisodeState,
     modifier: Modifier = Modifier,
-    itemSpacing: Dp = SelectorConfigurationDefaults.verticalSpacing,
+    itemSpacing: Dp = MediaSourceEditorDefaults.verticalSpacing,
     horizontalPadding: Dp = currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding,
     itemColors: ListItemColors = ListItemDefaults.colors(),
 ) {
@@ -423,51 +368,6 @@ fun SelectorEpisodePaneContent(
 }
 
 
-@Serializable
-sealed class SelectorEpisodePaneRoutes : NavKey {
-    @Serializable
-    @SerialName("TEST")
-    data object TEST : SelectorEpisodePaneRoutes()
-
-    @Serializable
-    @SerialName("EPISODE") // remove package
-    data object EPISODE : SelectorEpisodePaneRoutes()
-}
-
-@Immutable
-data class SelectorEpisodePaneLayout(
-    val showTopBarInPane: Boolean,
-    val showTopBarInScaffold: Boolean,
-    val showBottomSheet: Boolean,
-) {
-    companion object {
-        val Expanded = SelectorEpisodePaneLayout(
-            showTopBarInPane = true,
-            showTopBarInScaffold = false,
-            showBottomSheet = false,
-        )
-
-        val Compact = SelectorEpisodePaneLayout(
-            showTopBarInPane = false,
-            showTopBarInScaffold = true,
-            showBottomSheet = true,
-        )
-
-        fun calculate(
-            scaffoldValue: ThreePaneScaffoldValue,
-        ): SelectorEpisodePaneLayout {
-            return when {
-                scaffoldValue[ListDetailPaneScaffoldRole.List] == PaneAdaptedValue.Expanded -> {
-                    // list 和 extra 同时展开, 也就是大屏环境. list 内包含了配置, 所以我们无需使用 bottom sheet 显示配置
-                    Expanded
-                }
-
-                else -> Compact
-            }
-        }
-    }
-}
-
 @Composable
 @Preview
 fun PreviewSelectorEpisodePaneCompact() = ProvideCompositionLocalsForPreview {
@@ -477,10 +377,10 @@ fun PreviewSelectorEpisodePaneCompact() = ProvideCompositionLocalsForPreview {
         )
         SelectorTestAndEpisodePane(
             state = state,
-            layout = SelectorEpisodePaneLayout.Compact,
+            layout = MediaSourceDetailPaneLayout.Compact,
         )
         SideEffect {
-            state.viewEpisode(TestSelectorTestEpisodePresentations[0])
+            state.detailNav.view(SampleTestEpisodePresentations[0])
         }
     }
 }
@@ -492,8 +392,8 @@ fun PreviewSelectorEpisodePaneExpanded() {
         Surface {
             SelectorTestAndEpisodePane(
                 state = rememberTestEditSelectorMediaSourceState(),
-                layout = SelectorEpisodePaneLayout.Expanded,
-                initialRoute = SelectorEpisodePaneRoutes.EPISODE,
+                layout = MediaSourceDetailPaneLayout.Expanded,
+                initialRoute = MediaSourceDetailRoutes.DETAIL,
             )
         }
     }
@@ -501,9 +401,9 @@ fun PreviewSelectorEpisodePaneExpanded() {
 
 @TestOnly
 @Stable
-internal val TestSelectorTestEpisodePresentations
+internal val SampleTestEpisodePresentations
     get() = listOf(
-        SelectorTestEpisodePresentation(
+        TestEpisodePresentation(
             channel = null,
             name = "Test Episode 2",
             episodeSort = EpisodeSort(2),
@@ -514,7 +414,7 @@ internal val TestSelectorTestEpisodePresentations
             },
             origin = null,
         ),
-        SelectorTestEpisodePresentation(
+        TestEpisodePresentation(
             channel = null,
             name = "Test Episode Unknown",
             episodeSort = null,
@@ -529,7 +429,7 @@ internal val TestSelectorTestEpisodePresentations
 @TestOnly
 @Composable
 internal fun rememberTestSelectorEpisodeState(
-    item: SelectorTestEpisodePresentation? = TestSelectorTestEpisodePresentations[0],
+    item: TestEpisodePresentation? = SampleTestEpisodePresentations[0],
     config: SelectorSearchConfig.MatchVideoConfig = SelectorSearchConfig.MatchVideoConfig(),
     urls: (pageUrl: String) -> List<String> = {
         listOf("https://example.com/a.mkv")
@@ -541,6 +441,7 @@ internal fun rememberTestSelectorEpisodeState(
         SelectorEpisodeState(
             itemState = stateOf(item),
             matchVideoConfigState = stateOf(config),
+            userAgentState = stateOf(null),
             webViewVideoExtractor = stateOf(TestWebViewVideoExtractor(urls)),
             engine = TestSelectorMediaSourceEngine(),
             backgroundScope = scope,

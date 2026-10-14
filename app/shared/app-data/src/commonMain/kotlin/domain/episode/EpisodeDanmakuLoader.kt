@@ -101,6 +101,7 @@ class EpisodeDanmakuLoader(
                         is UriMediaData -> null
                     },
                     videoDuration = duration,
+                    splitSeason = info.seriesInfo.splitSeason,
                 )
             }
         }.distinctUntilChanged()

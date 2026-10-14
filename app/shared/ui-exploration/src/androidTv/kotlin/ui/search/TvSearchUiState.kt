@@ -19,5 +19,5 @@ data class TvSearchUiState(
 sealed interface TvSearchIntent {
     data class ChangeKeywords(val value: String) : TvSearchIntent
     data object Search : TvSearchIntent
-    data class OpenSubject(val subject: SubjectPreviewItemInfo) : TvSearchIntent
+    data class OpenSubject(val subject: SubjectPreviewItemInfo, val position: Int) : TvSearchIntent
 }

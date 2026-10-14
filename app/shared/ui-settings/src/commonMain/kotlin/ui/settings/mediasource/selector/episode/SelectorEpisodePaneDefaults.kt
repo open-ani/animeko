@@ -40,9 +40,9 @@ import me.him188.ani.app.ui.lang.settings_mediasource_selector_episode_edit_conf
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_episode_open_link_failed
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_episode_open_original_link
 import me.him188.ani.app.ui.settings.mediasource.RefreshIndicationDefaults
-import me.him188.ani.app.ui.settings.mediasource.selector.edit.MatchVideoSection
+import me.him188.ani.app.ui.settings.mediasource.editor.MediaSourceEditorDefaults
 import me.him188.ani.app.ui.settings.mediasource.selector.edit.SelectorConfigState
-import me.him188.ani.app.ui.settings.mediasource.selector.edit.SelectorConfigurationDefaults
+import me.him188.ani.app.ui.settings.mediasource.selector.edit.SelectorMatchVideoSection
 import org.jetbrains.compose.resources.stringResource
 
 object SelectorEpisodePaneDefaults {
@@ -105,8 +105,8 @@ object SelectorEpisodePaneDefaults {
         state: SelectorConfigState,
         modifier: Modifier = Modifier.Companion,
         contentPadding: PaddingValues = PaddingValues(0.dp),
-        textFieldShape: Shape = SelectorConfigurationDefaults.textFieldShape,
-        verticalSpacing: Dp = SelectorConfigurationDefaults.verticalSpacing,
+        textFieldShape: Shape = MediaSourceEditorDefaults.textFieldShape,
+        verticalSpacing: Dp = MediaSourceEditorDefaults.verticalSpacing,
     ) {
         val editConfigText = stringResource(Lang.settings_mediasource_selector_episode_edit_config)
         Column(modifier.padding(contentPadding)) {
@@ -117,7 +117,7 @@ object SelectorEpisodePaneDefaults {
                     Text(editConfigText)
                 }
             }
-            SelectorConfigurationDefaults.MatchVideoSection(
+            SelectorMatchVideoSection(
                 state,
                 textFieldShape = textFieldShape,
                 verticalSpacing = verticalSpacing,

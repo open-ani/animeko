@@ -23,6 +23,7 @@ import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
+import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.repository.person.PersonCommentRepository
 import me.him188.ani.app.data.repository.person.PersonDetailsRepository
@@ -63,6 +64,7 @@ class TvAppDependencies(
     val personDetailsRepository: PersonDetailsRepository,
     val personCommentRepository: PersonCommentRepository,
     val commentReportService: AniCommentReportService,
+    val versionExpiryService: VersionExpiryService,
 ) {
     companion object {
         fun fromKoin(koin: Koin): TvAppDependencies = TvAppDependencies(
@@ -91,6 +93,7 @@ class TvAppDependencies(
             personDetailsRepository = koin.get(),
             personCommentRepository = koin.get(),
             commentReportService = koin.get(),
+            versionExpiryService = koin.get(),
         )
     }
 }

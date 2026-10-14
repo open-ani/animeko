@@ -783,7 +783,7 @@ private class SolvingCaptchaBrowserFactory(
 
     override val isSupported: Boolean get() = true
 
-    override suspend fun create(): CaptchaBrowser {
+    override suspend fun create(userAgent: String?): CaptchaBrowser {
         createCount++
         return SolvingCaptchaBrowser(solves)
     }

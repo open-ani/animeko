@@ -9,7 +9,7 @@
 
 @file:OptIn(TestOnly::class)
 
-package me.him188.ani.app.ui.settings.mediasource.selector.test
+package me.him188.ani.app.ui.settings.mediasource.test
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -41,14 +41,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.mediasource.test.MatchTag
-import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSubjectPresentation
+import me.him188.ani.app.domain.mediasource.test.TestSubjectPresentation
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.Tag
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_dummy_line
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_dummy_tag
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_dummy_url
-import me.him188.ani.app.ui.settings.mediasource.rss.test.OutlinedMatchTag
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.xml.Element
 import org.jetbrains.compose.resources.stringResource
@@ -59,17 +58,17 @@ import kotlin.random.nextInt
  * @see selectedItemIndex `-1` for no selection
  */
 @Composable
-internal fun SelectorTestSubjectResultLazyRow(
-    items: List<SelectorTestSubjectPresentation>,
+internal fun TestSubjectResultLazyRow(
+    items: List<TestSubjectPresentation>,
     selectedItemIndex: Int,
-    onSelect: (Int, SelectorTestSubjectPresentation) -> Unit,
+    onSelect: (Int, TestSubjectPresentation) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     SubcomposeLayout { constraints ->
         // measure 一个卡片的高度
         val (measurable) = subcompose(0) {
-            SelectorTestResultCard(
+            TestResultCard(
                 title = { Text(stringResource(Lang.settings_mediasource_selector_test_dummy_line)) },
                 isSelected = false,
                 onClick = {},
@@ -82,8 +81,8 @@ internal fun SelectorTestSubjectResultLazyRow(
         val itemSize = measurable.measure(constraints)
 
         val (lazyRow) = subcompose(1) {
-            SelectorTestResultLazyRow(items, selectedItemIndex, modifier, contentPadding) { index, item ->
-                SelectorTestSubjectResultCard(
+            TestResultLazyRow(items, selectedItemIndex, modifier, contentPadding) { index, item ->
+                TestSubjectResultCard(
                     item,
                     selectedItemIndex == index,
                     onClick = { onSelect(index, item) },
@@ -100,13 +99,13 @@ internal fun SelectorTestSubjectResultLazyRow(
 }
 
 @Composable
-internal fun SelectorTestSubjectResultCard(
-    item: SelectorTestSubjectPresentation,
+internal fun TestSubjectResultCard(
+    item: TestSubjectPresentation,
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SelectorTestResultCard(
+    TestResultCard(
         title = {
             Text(
                 item.name,
@@ -130,7 +129,7 @@ internal fun SelectorTestSubjectResultCard(
 
 
 @Composable
-internal fun SelectorTestResultCard(
+internal fun TestResultCard(
     title: @Composable () -> Unit,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -161,49 +160,49 @@ internal fun SelectorTestResultCard(
 }
 
 @TestOnly
-fun createTestSelectorTestSubjectPresentation(
+fun createTestSubjectPresentation(
     name: String,
     subjectDetailsPageUrl: String = "",
     origin: Element? = null,
     tags: List<MatchTag> = emptyList(),
-): SelectorTestSubjectPresentation {
-    return SelectorTestSubjectPresentation(
+): TestSubjectPresentation {
+    return TestSubjectPresentation(
         name, subjectDetailsPageUrl, origin, tags,
     )
 }
 
 @TestOnly
-val TestSelectorTestSubjectPresentations
+val SampleTestSubjectPresentations
     get() = listOf(
-        createTestSelectorTestSubjectPresentation(
+        createTestSubjectPresentation(
             "孤独摇滚",
         ),
-        createTestSelectorTestSubjectPresentation(
+        createTestSubjectPresentation(
             "孤独摇滚",
         ),
-        createTestSelectorTestSubjectPresentation(
+        createTestSubjectPresentation(
             "孤独摇滚",
         ),
-        createTestSelectorTestSubjectPresentation(
+        createTestSubjectPresentation(
             "孤独摇滚",
         ),
-        createTestSelectorTestSubjectPresentation(
+        createTestSubjectPresentation(
             "孤独摇滚",
             tags = listOf(MatchTag("标题", isMatch = false), MatchTag("字幕", isMatch = true)),
         ),
-        createTestSelectorTestSubjectPresentation(
+        createTestSubjectPresentation(
             "孤独摇滚".repeat(10),
             tags = listOf(MatchTag("标题", isMatch = false)),
         ),
-        createTestSelectorTestSubjectPresentation(
+        createTestSubjectPresentation(
             "孤独摇滚".repeat(10),
             tags = listOf(MatchTag("标题", isMatch = false)),
         ),
-        createTestSelectorTestSubjectPresentation(
+        createTestSubjectPresentation(
             "孤独摇滚".repeat(10),
             tags = listOf(MatchTag("标题", isMatch = false)),
         ),
-        createTestSelectorTestSubjectPresentation(
+        createTestSubjectPresentation(
             "孤独摇滚".repeat(10),
             tags = listOf(MatchTag("标题", isMatch = false)),
         ),
@@ -215,15 +214,15 @@ private fun PreviewSubjectResultLazyRow() = ProvideCompositionLocalsForPreview {
     Surface {
         Column {
             var selectedIndex by remember { mutableIntStateOf(1) }
-            SelectorTestSubjectResultLazyRow(
-                TestSelectorTestSubjectPresentations,
+            TestSubjectResultLazyRow(
+                SampleTestSubjectPresentations,
                 selectedItemIndex = selectedIndex,
                 { _, _ -> },
             )
 
             Row {
                 Text("Selected index: $selectedIndex")
-                Button({ selectedIndex = Random.nextInt(TestSelectorTestSubjectPresentations.indices) }) {
+                Button({ selectedIndex = Random.nextInt(SampleTestSubjectPresentations.indices) }) {
                     Text("Select random")
                 }
             }

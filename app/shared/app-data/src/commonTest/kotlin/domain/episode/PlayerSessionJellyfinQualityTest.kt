@@ -631,8 +631,9 @@ class PlayerSessionJellyfinQualityTest {
                     return HlsPlaybackPreparerResult(data)
                 }
             }
+            val player = ResumeBeforeSeekPlayer(TestMediampPlayer(StandardTestDispatcher(testScheduler)))
             val session = PlayerSession(
-                ResumeBeforeSeekPlayer(TestMediampPlayer(StandardTestDispatcher(testScheduler))),
+                player,
                 koin(
                     resolver = resolver(media.mediaId to provider.mediaDataProvider),
                     hlsPlaybackPreparer = preparer,
@@ -653,7 +654,7 @@ class PlayerSessionJellyfinQualityTest {
                 mainDispatcher = EmptyCoroutineContext,
             )
 
-            session.loadMedia(media, episodeMetadata(1), startPositionHintMillis = 12_000L)
+            session.loadMedia(media, episodeMetadata(1), startPositionMillis = 12_000L)
             for (bitrate in listOf(4_000_000, 2_000_000)) {
                 assertTrue(
                     session.reloadJellyfinPlaybackQuality(
@@ -665,6 +666,7 @@ class PlayerSessionJellyfinQualityTest {
 
             assertEquals(List(3) { HlsPlaybackOptions(filterSegments = tagged, proxySegments = true) }, recordedOptions)
             assertEquals(listOf<Long?>(12_000L, 42_000L, 42_000L), positionHints)
+            assertEquals(listOf(12_000L, 42_000L, 42_000L), player.startPositions)
             session.stopPlayback()
             session.close()
         }
@@ -675,6 +677,7 @@ class PlayerSessionJellyfinQualityTest {
         private val failOnMediaNumber: Int? = null,
     ) : MediampPlayer by delegate {
         val mediaUris = mutableListOf<String>()
+        val startPositions = mutableListOf<Long>()
         private var mediaNumber = 0
 
         init {
@@ -688,6 +691,7 @@ class PlayerSessionJellyfinQualityTest {
         ) {
             mediaNumber++
             (data as? UriMediaData)?.uri?.let(mediaUris::add)
+            startPositions += startPositionMillis
             if (mediaNumber == failOnMediaNumber) {
                 error("simulated player rejection")
             }

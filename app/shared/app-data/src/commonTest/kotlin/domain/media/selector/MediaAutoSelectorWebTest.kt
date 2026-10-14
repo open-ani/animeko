@@ -60,11 +60,12 @@ class MediaAutoSelectorWebTest {
     }
 
     @Test
-    fun `all sources complete with fuzzy T0 but must wait until fifteen seconds`() = runFetchMediaSelectorTestSuite {
+    fun `pending source keeps the fifteen second fuzzy deadline`() = runFetchMediaSelectorTestSuite {
         initWeb()
         val (_, session, sources) = configureFetchSession {
             object {
                 val web1 by web { tier = 0 }
+                val pending by web { tier = 0 }
             }
         }
         val job = launchSelection(session)
@@ -81,6 +82,111 @@ class MediaAutoSelectorWebTest {
     }
 
     @Test
+    fun `pending T0 source keeps the five second exact deadline`() = runFetchMediaSelectorTestSuite {
+        initWeb()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val high by web { tier = 1 }
+                val pending by web { tier = 0 }
+            }
+        }
+        val job = launchSelection(session)
+        sources.high.complete(media(kind = WEB, subjectName = "Example Series"))
+        testScope().runCurrent()
+        testScope().advanceTimeBy(5.seconds)
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+        testScope().runCurrent()
+        assertEquals(sources.high.instance.mediaSourceId, selector.selected.value?.mediaSourceId)
+        assertTrue(job.isCompleted)
+    }
+
+    @Test
+    fun `finished sources with only exact high tier select it at once`() = runFetchMediaSelectorTestSuite {
+        initWeb()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val high by web { tier = 1 }
+                val empty by web { tier = 0 }
+                val failed by web { tier = 0 }
+                val captcha by web { tier = 0 }
+                val disabled by web(enabled = false) { tier = 0 }
+            }
+        }
+        val job = launchSelection(session)
+        sources.high.complete(media(kind = WEB, subjectName = "Example Series"))
+        sources.empty.complete(emptyList<Media>())
+        sources.failed.result.completeExceptionally(IllegalStateException("Fetch failed"))
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+        sources.captcha.requireCaptcha()
+        testScope().runCurrent()
+        assertEquals(sources.high.instance.mediaSourceId, selector.selected.value?.mediaSourceId)
+        assertTrue(job.isCompleted)
+        assertEquals(0, sources.disabled.fetchCount)
+    }
+
+    @Test
+    fun `finished sources with only fuzzy T0 select it at once`() = runFetchMediaSelectorTestSuite {
+        initWeb()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val fuzzy by web { tier = 0 }
+                val empty by web { tier = 0 }
+            }
+        }
+        val job = launchSelection(session)
+        sources.fuzzy.complete(media(kind = WEB, subjectName = "Example Series Special"))
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+        sources.empty.complete(emptyList<Media>())
+        testScope().runCurrent()
+        assertEquals(sources.fuzzy.instance.mediaSourceId, selector.selected.value?.mediaSourceId)
+        assertTrue(job.isCompleted)
+    }
+
+    @Test
+    fun `finished sources select what the fifteen second deadline would select`() = runFetchMediaSelectorTestSuite {
+        initWeb()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val fuzzy by web { tier = 0 }
+                val exactLow by web { tier = 3 }
+                val exactHigh by web { tier = 1 }
+            }
+        }
+        val job = launchSelection(session)
+        sources.fuzzy.complete(media(kind = WEB, subjectName = "Example Series Special"))
+        sources.exactLow.complete(media(kind = WEB, subjectName = "Example Series"))
+        sources.exactHigh.complete(media(kind = WEB, subjectName = "Example Series"))
+        testScope().runCurrent()
+        assertEquals(sources.exactHigh.instance.mediaSourceId, selector.selected.value?.mediaSourceId)
+        assertTrue(job.isCompleted)
+    }
+
+    @Test
+    fun `rate limited source keeps the deadlines until it retries`() = runFetchMediaSelectorTestSuite {
+        initWeb()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val high by web { tier = 1 }
+                val limited by web { tier = 0 }
+            }
+        }
+        val job = launchSelection(session)
+        sources.high.complete(media(kind = WEB, subjectName = "Example Series"))
+        sources.limited.rateLimit(retryAfter = 30.seconds)
+        testScope().runCurrent()
+        testScope().advanceTimeBy(5.seconds)
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+        testScope().runCurrent()
+        assertEquals(sources.high.instance.mediaSourceId, selector.selected.value?.mediaSourceId)
+        assertTrue(job.isCompleted)
+    }
+
+    @Test
     fun `first deadline selects exact by channel tier regardless of source order and preferences`() = runFetchMediaSelectorTestSuite {
         initWeb()
         val (_, session, sources) = configureFetchSession {
@@ -90,6 +196,7 @@ class MediaAutoSelectorWebTest {
                     tier = 3
                     channelTiers("good" to 1)
                 }
+                val pending by web { tier = 0 }
             }
         }
         preferenceApi.savedUserPreference.value = MediaPreference.Any.copy(mediaSourceId = sources.first.instance.mediaSourceId)
@@ -155,6 +262,7 @@ class MediaAutoSelectorWebTest {
             object {
                 val remembered by web { tier = 2 }
                 val fuzzy by web { tier = 0 }
+                val pending by web { tier = 0 }
             }
         }
         val job = launchSelection(session, preferredSourceId = sources.remembered.instance.mediaSourceId)
@@ -169,6 +277,28 @@ class MediaAutoSelectorWebTest {
         assertNull(selector.selected.value)
         testScope().runCurrent()
         assertEquals(sources.fuzzy.instance.mediaSourceId, selector.selected.value?.mediaSourceId)
+        assertTrue(job.isCompleted)
+    }
+
+    @Test
+    fun `pending remembered source holds finished sources until it returns nothing`() = runFetchMediaSelectorTestSuite {
+        initWeb()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val remembered by web { tier = 0 }
+                val high by web { tier = 2 }
+            }
+        }
+        val job = launchSelection(session, preferredSourceId = sources.remembered.instance.mediaSourceId)
+        sources.high.complete(media(kind = WEB, subjectName = "Example Series"))
+        testScope().runCurrent()
+        testScope().advanceTimeBy(20.seconds)
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+        sources.remembered.complete(emptyList<Media>())
+        testScope().runCurrent()
+        assertEquals(sources.high.instance.mediaSourceId, selector.selected.value?.mediaSourceId)
         assertTrue(job.isCompleted)
     }
 
@@ -251,6 +381,26 @@ class MediaAutoSelectorWebTest {
     }
 
     @Test
+    fun `infinite fuzzy deadline lets finished sources select only exact matches`() = runFetchMediaSelectorTestSuite {
+        initWeb()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val fuzzy by web { tier = 0 }
+                val exact by web { tier = 2 }
+            }
+        }
+        val job = launchSelection(session, fuzzyAfter = Duration.INFINITE)
+        sources.fuzzy.complete(media(kind = WEB, subjectName = "Example Series Special"))
+        sources.exact.complete(emptyList<Media>())
+        testScope().runCurrent()
+        testScope().advanceTimeBy(120.seconds)
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+        job.cancel()
+    }
+
+    @Test
     fun `all empty sources finish without waiting for deadlines`() = runFetchMediaSelectorTestSuite {
         initWeb()
         val (_, session, sources) = configureFetchSession {
@@ -285,22 +435,43 @@ class MediaAutoSelectorWebTest {
     }
 
     @Test
-    fun `disabled fast select still enforces fuzzy deadline after all sources finish`() = runFetchMediaSelectorTestSuite {
+    fun `disabled fast select waits for all sources then selects fuzzy at once`() = runFetchMediaSelectorTestSuite {
         initWeb()
         val (_, session, sources) = configureFetchSession {
             object {
                 val web1 by web { tier = 0 }
+                val web2 by web { tier = 0 }
             }
         }
-        val job = testScope().launch {
-            MediaAutoSelector(selector).select(session, MediaAutoSelector.Config(
-                web = MediaAutoSelector.Web(preferenceApi.sourceTiers!!, fastSelect = false),
-            ))
-        }
+        val job = launchSelection(session, fastSelect = false)
         sources.web1.complete(media(kind = WEB, subjectName = "Example Series Special"))
+        testScope().runCurrent()
+        testScope().advanceTimeBy(20.seconds)
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+        sources.web2.complete(emptyList<Media>())
+        testScope().runCurrent()
+        assertEquals(sources.web1.instance.mediaSourceId, selector.selected.value?.mediaSourceId)
+        assertTrue(job.isCompleted)
+    }
+
+    @Test
+    fun `disabled fast select keeps the fuzzy deadline behind a rate limited source`() = runFetchMediaSelectorTestSuite {
+        initWeb()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val web1 by web { tier = 0 }
+                val limited by web { tier = 0 }
+            }
+        }
+        val job = launchSelection(session, fastSelect = false)
+        sources.web1.complete(media(kind = WEB, subjectName = "Example Series Special"))
+        sources.limited.rateLimit(retryAfter = 30.seconds)
         testScope().runCurrent()
         testScope().advanceTimeBy(15.seconds)
         assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
         testScope().runCurrent()
         assertEquals(sources.web1.instance.mediaSourceId, selector.selected.value?.mediaSourceId)
         assertTrue(job.isCompleted)
@@ -387,12 +558,16 @@ class MediaAutoSelectorWebTest {
         session: MediaFetchSession,
         preferredSourceId: String? = null,
         exactAfter: Duration = 5.seconds,
+        fuzzyAfter: Duration = 15.seconds,
+        fastSelect: Boolean = true,
     ): Job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
         MediaAutoSelector(selector).select(session, MediaAutoSelector.Config(
             preferredSourceId = preferredSourceId,
             web = MediaAutoSelector.Web(
                 sourceTiers = preferenceApi.sourceTiers!!,
+                fastSelect = fastSelect,
                 exactMatchAfter = exactAfter,
+                fuzzyMatchAfter = fuzzyAfter,
             ),
         ))
     }

@@ -37,6 +37,11 @@ fun interface WebVideoMatcher { // SPI service load
 
 data class WebViewConfig(
     val cookies: List<String> = emptyList(),
+    /**
+     * WebView 加载页面时使用的 User-Agent, 作用于所有请求头和页面脚本读到的 `navigator.userAgent`
+     * (桌面端跨站 iframe 中的 `navigator.userAgent` 除外). `null` 时使用各平台 WebView 的默认值.
+     */
+    val userAgent: String? = null,
 ) {
     companion object {
         val Empty = WebViewConfig()

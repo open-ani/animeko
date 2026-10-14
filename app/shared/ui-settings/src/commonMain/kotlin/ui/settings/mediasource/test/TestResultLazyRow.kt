@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.settings.mediasource.selector.test
+package me.him188.ani.app.ui.settings.mediasource.test
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,7 +28,7 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
  * @see selectedItemIndex `-1` for no selection
  */
 @Composable
-internal fun <T> SelectorTestResultLazyRow(
+internal fun <T> TestResultLazyRow(
     items: List<T>,
     selectedItemIndex: Int,
     modifier: Modifier = Modifier,

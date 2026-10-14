@@ -29,6 +29,9 @@ import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.exploration.ExplorationPageViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.recordEvent
 import org.koin.core.Koin
 
 class TvExplorationViewModel(
@@ -70,16 +73,29 @@ class TvExplorationViewModel(
                 backgroundScope.launch { loadBackdrop(intent.subjectId) }
             }
 
-            is TvExplorationIntent.OpenSubject -> navigation.emit(
-                TvNavigationEvent.Subject(
-                    intent.subject.subjectId,
-                    SubjectDetailPlaceholder(
-                        id = intent.subject.subjectId,
-                        nameCN = intent.subject.title,
-                        coverUrl = intent.subject.imageUrl,
+            is TvExplorationIntent.OpenSubject -> {
+                Analytics.recordEvent(SubjectEnter) {
+                    put(
+                        "source",
+                        when (intent.area) {
+                            TvExplorationArea.Featured -> "home_trending"
+                            TvExplorationArea.ContinueWatching -> "home_followed"
+                            TvExplorationArea.Recommendations -> "home_recommendation"
+                        },
+                    )
+                    put("subject_id", intent.subject.subjectId)
+                }
+                navigation.emit(
+                    TvNavigationEvent.Subject(
+                        intent.subject.subjectId,
+                        SubjectDetailPlaceholder(
+                            id = intent.subject.subjectId,
+                            nameCN = intent.subject.title,
+                            coverUrl = intent.subject.imageUrl,
+                        ),
                     ),
-                ),
-            )
+                )
+            }
 
             is TvExplorationIntent.ContinueWatching -> navigation.emit(
                 TvNavigationEvent.Episode(intent.subject.subjectId, intent.episodeId),

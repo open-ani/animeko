@@ -15,6 +15,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
+import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiMediaSourceCodec
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSourceCodec
 import me.him188.ani.app.domain.mediasource.subscription.SubscriptionMetadata
 import me.him188.ani.app.domain.mediasource.subscription.SubscriptionUpdateData
@@ -32,6 +33,7 @@ class MediaSourceCodecManager(
         // Register your codec here
         RssMediaSourceCodec,
         SelectorMediaSourceCodec,
+        JsonApiMediaSourceCodec,
     )
 ) {
 

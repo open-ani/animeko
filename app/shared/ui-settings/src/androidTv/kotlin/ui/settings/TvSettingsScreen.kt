@@ -89,6 +89,7 @@ fun TvSettingsScreen(
     displayModes: List<TvSettingsDisplayMode> = emptyList(),
     onOpenUrl: (String) -> Unit = {},
     onImport: () -> Unit = {},
+    onCheckUpdate: () -> Unit = {},
 ) {
     val focus = rememberTvFocusScope()
     var section by rememberSaveable { mutableStateOf(TvSettingsSection.Appearance) }
@@ -168,7 +169,7 @@ fun TvSettingsScreen(
             }
             TvSettingsSection.Sources -> content.sources { openExtra(TvSettingsExtra.Subscriptions) }
             TvSettingsSection.Watching -> content.watching { openExtra(TvSettingsExtra.WatchingAdvanced) }
-            TvSettingsSection.About -> content.about(aboutPage, ::openPage)
+            TvSettingsSection.About -> content.about(aboutPage, ::openPage, onCheckUpdate)
         }
     }
     val items = content.items.withEmptyPlaceholder()

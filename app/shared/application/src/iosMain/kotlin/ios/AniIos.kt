@@ -45,6 +45,7 @@ import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.PlatformHlsPlaybackPreparer
+import me.him188.ani.app.domain.media.resolver.ApiVideoMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.JellyfinMediaResolver
 import me.him188.ani.app.domain.media.resolver.IosWebMediaResolver
@@ -384,6 +385,7 @@ fun getIosModules(
                 .plus(LocalFileUriMediaResolver())
                 .plus(JellyfinMediaResolver(get(), get()))
                 .plus(HttpStreamingMediaResolver())
+                .plus(ApiVideoMediaResolver(get<MediaSourceManager>().apiVideoResolverLoader))
                 .plus(
                     IosWebMediaResolver(
                         get<MediaSourceManager>().webVideoMatcherLoader,

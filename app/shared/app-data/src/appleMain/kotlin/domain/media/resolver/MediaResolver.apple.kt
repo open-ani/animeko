@@ -62,7 +62,8 @@ class IosWebMediaResolver(
     }
 
     override fun supports(media: Media): Boolean {
-        return media.download is ResourceLocation.WebVideo
+        // API 签发地址的网页视频由 ApiVideoMediaResolver 解析, 不打开页面
+        return (media.download as? ResourceLocation.WebVideo)?.isResolvedByApi == false
     }
 
     @Composable
@@ -287,8 +288,9 @@ class IosWebViewVideoExtractor(
         suspend fun run(): WebResource? {
             logger.info { "Starting webview for $pageUrl" }
             webView.setCustomUserAgent(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " +
-                        "Chrome/58.0.3029.110 Safari/537.3",
+                config.userAgent
+                    ?: ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " +
+                            "Chrome/58.0.3029.110 Safari/537.3"),
             )
 
             try {

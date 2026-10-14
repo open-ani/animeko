@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.settings.mediasource.selector.test
+package me.him188.ani.app.ui.settings.mediasource.test
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
@@ -29,22 +29,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
+import me.him188.ani.app.domain.mediasource.test.TestEpisodePresentation
 import me.him188.ani.app.ui.foundation.layout.cardHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.cardVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_empty_name
-import me.him188.ani.app.ui.settings.mediasource.rss.test.OutlinedMatchTag
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun SelectorTestEpisodeListGrid(
-    episodes: List<SelectorTestEpisodePresentation>,
+fun TestEpisodeListGrid(
+    episodes: List<TestEpisodePresentation>,
     modifier: Modifier = Modifier,
     state: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    eachItem: @Composable (SelectorTestEpisodePresentation) -> Unit,
+    eachItem: @Composable (TestEpisodePresentation) -> Unit,
 ) {
     LazyVerticalStaggeredGrid(
         columns = StaggeredGridCells.Adaptive(300.dp),
@@ -63,10 +62,10 @@ fun SelectorTestEpisodeListGrid(
 }
 
 @Stable
-object SelectorTestEpisodeListGridDefaults {
+object TestEpisodeListGridDefaults {
     @Composable
     fun EpisodeCard(
-        episode: SelectorTestEpisodePresentation,
+        episode: TestEpisodePresentation,
         onClick: () -> Unit,
         modifier: Modifier = Modifier,
     ) {

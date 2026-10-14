@@ -387,6 +387,7 @@ class MediaSelectorAutoSelectUseCaseTest {
             object {
                 val cached by localCache()
                 val web1 by web { tier = 0 }
+                val pending by web { tier = 0 }
             }
         }
 
@@ -605,6 +606,32 @@ class MediaSelectorAutoSelectUseCaseTest {
     )
 
     @Test
+    fun `finished WEB fuzzy match is selected over ready BT without waiting`() = runFetchMediaSelectorTestSuite {
+        initSubject("Example Series")
+        preferenceApi.savedUserPreference.value = MediaPreference.Any
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val bt1 by bt()
+                val web1 by web { tier = 0 }
+                val web2 by web { tier = 0 }
+            }
+        }
+
+        val job = launchAutoSelect(session)
+        sources.bt1.complete(media(kind = BitTorrent, subjectName = initApi.subjectName))
+        sources.web1.complete(media(kind = WEB, subjectName = "Example Series Special"))
+        testScope().runCurrent()
+        assertNull(selector.selected.value)
+
+        sources.web2.complete(emptyList<Media>())
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.web1)
+        job.assertCompleted()
+    }
+
+    @Test
     fun `manual selection while WEB is pending prevents BT fallback`() = runFetchMediaSelectorTestSuite {
         initSubject()
         preferenceApi.savedUserPreference.value = MediaPreference.Any
@@ -663,6 +690,34 @@ class MediaSelectorAutoSelectUseCaseTest {
         job.assertCompleted()
     }
 
+    @Test
+    fun `last selected disabled source is enabled before finished sources end the wait`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        preferenceApi.savedUserPreference.value = MediaPreference.Any.copy(mediaSourceId = "web1")
+        preferenceApi.mediaSelectorSettings.value = autoSelectSettings(autoEnableLastSelected = true)
+
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val web1 by web(enabled = false) { tier = 0 }
+                val web2 by web { tier = 2 }
+            }
+        }
+        sources.web2.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+
+        val job = launchAutoSelect(session)
+        testScope().runCurrent()
+
+        assertNull(selector.selected.value)
+        assertFalse(job.isCompleted)
+
+        sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+        testScope().runCurrent()
+
+        assertSelectedSource(sources.web1)
+        job.assertCompleted()
+    }
+
     context(scope: TestScope)
     private fun FetchMediaSelectorTestSuite.launchAutoSelect(session: MediaFetchSession): Job {
         val useCase = MediaSelectorAutoSelectUseCaseImpl(createKoin())
@@ -684,6 +739,7 @@ class MediaSelectorAutoSelectUseCaseTest {
             object {
                 val bt1 by bt()
                 val web1 by web { tier = webTier }
+                val pending by web { tier = 0 }
             }
         }
 

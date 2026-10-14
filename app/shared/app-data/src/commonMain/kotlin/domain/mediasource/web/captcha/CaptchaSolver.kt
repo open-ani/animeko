@@ -61,4 +61,9 @@ class SolveContext internal constructor(
      * 纯 HTTP 验证码可能只放行当前搜索请求, 不能为验证成功再重复请求一次.
      */
     val retainSolvedPage: (LoadedPage) -> Unit = {},
-)
+) {
+    /**
+     * 数据源配置的 User-Agent. 纯 HTTP 策略的请求需要以它发出 (`webSourceUserAgent`), 与浏览器和后续取页保持同一身份.
+     */
+    val userAgent: String? get() = request.expectation.userAgent
+}

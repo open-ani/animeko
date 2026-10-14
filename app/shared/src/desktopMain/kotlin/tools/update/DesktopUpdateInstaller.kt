@@ -81,193 +81,35 @@ object MacOSUpdateInstaller : DesktopUpdateInstaller {
             return failed("Unsupported update file format: $extension")
         }
 
+        // 新版本先放到 .app 旁边, 再以重命名替换整个 .app, 因此需要能写入它所在的目录.
+        if (!appDir.parentFile.canWrite()) {
+            return failed(
+                "Cannot write to the directory containing the app: ${appDir.parentFile}",
+                InstallationFailureReason.FAILED_TO_COPY,
+            )
+        }
+
         val tempDir = createTempDirectory(prefix = "ani-macos-update-").toFile()
         logger.info { "tempDir: ${tempDir.absolutePath}" }
 
         val scriptFile = File(tempDir, "macos-update.command")
-        // We'll pass in essential parameters to the script.
-        val oldPid = ProcessHandle.current().pid()
-        val appName = appDir.name  // e.g. Ani.app
-        val targetParentDir = appDir.parentFile.absolutePath
-
-        // Generate the shell script content based on the extension
-        val scriptContent = when (extension) {
-            "dmg" -> {
-                logger.info { "tempMountDir: ${tempDir.absolutePath}" }
-
-                generateShellScriptForDmg(
-                    oldPid = oldPid,
-                    dmgFilePath = updateFile.absolutePath,
-                    convertedDmgFilePath = tempDir.resolve("converted.dmg").absolutePath,
-                    mountPath = tempDir.resolve("mount").absolutePath,
-                    appName = appName,
-                    targetParent = targetParentDir,
-                )
-            }
-
-            "zip" -> generateShellScriptForZip(
-                oldPid = oldPid,
-                zipFilePath = updateFile.absolutePath,
-                unzipPath = tempDir.resolve("unzip").absolutePath,
-                appName = appName,
-                targetParent = targetParentDir,
-            )
-
-            else -> return failed("Unsupported file format: $extension") // theoretically unreachable
-        }
-
-        // Write the script to disk and make it executable
-        scriptFile.writeText(scriptContent)
+        scriptFile.writeText(MACOS_UPDATE_SCRIPT)
         scriptFile.setExecutable(true)
 
-        // Now run the script
         logger.info { "Launching update script: ${scriptFile.absolutePath}" }
-        ProcessBuilder(scriptFile.absolutePath)
+        ProcessBuilder(
+            scriptFile.absolutePath,
+            ProcessHandle.current().pid().toString(),
+            updateFile.absolutePath,
+            appDir.absolutePath,
+            tempDir.absolutePath,
+        )
             .redirectOutput(File(tempDir, "update-output.log"))
             .redirectError(File(tempDir, "update-error.log"))
             .start()
 
         logger.info { "Exiting old instance." }
         return exitProcessForUpdate(delayMillis = 1000)
-    }
-
-    /**
-     * Generates a shell script that handles .dmg files:
-     * 1) Waits for the old process to exit
-     * 2) Converts + mounts the DMG
-     * 3) Copies the .app into place
-     * 4) Removes the quarantine attribute
-     * 5) Detaches the DMG
-     * 6) Cleans up
-     * 7) Launches the new app
-     */
-    private fun generateShellScriptForDmg(
-        oldPid: Long,
-        dmgFilePath: String,
-        convertedDmgFilePath: String,
-        mountPath: String,
-        appName: String,
-        targetParent: String,
-    ): String {
-        return $$"""
-            #!/usr/bin/env bash
-            set -euo pipefail
-
-            OLD_PID=$$oldPid
-            DMG_FILE="$$dmgFilePath"
-            MOUNT_DIR="$$mountPath"
-            APP_NAME="$$appName"
-            TARGET_PARENT="$$targetParent"
-            NEW_DMG_FILE="$$convertedDmgFilePath"
-
-            echo "Update script for DMG started."
-            echo "Will wait for process PID=$$oldPid to exit."
-
-            # 1) Wait for the old process to fully exit.
-            while kill -0 "$OLD_PID" 2>/dev/null; do
-              echo "Waiting for old app process $OLD_PID to exit..."
-              sleep 1
-            done
-
-            # 2) Convert the DMG to a CDR (UDTO format)
-            echo "Converting DMG into CDR..."
-            hdiutil convert "$DMG_FILE" -format UDTO -o "$NEW_DMG_FILE"
-
-            # 3) Mount the converted DMG
-            echo "Mounting the DMG at $MOUNT_DIR ..."
-            hdiutil attach "${NEW_DMG_FILE}.cdr" -nobrowse -noverify -noautoopen -mountpoint "$MOUNT_DIR"
-
-            # 4) Copy the updated .app from the DMG to the parent of the current .app
-            echo "Copying updated app to $TARGET_PARENT ..."
-            cp -R "$MOUNT_DIR/$APP_NAME" "$TARGET_PARENT"
-
-            # 5) Detach the DMG
-            echo "Detaching the DMG..."
-            hdiutil detach "$MOUNT_DIR" || echo "Warning: failed to detach DMG."
-
-            # 6) Remove the com.apple.quarantine attribute
-            echo "Removing quarantine..."
-            xattr -r -d com.apple.quarantine "$TARGET_PARENT/$APP_NAME" || true
-
-            echo "Cleaning up temporary mount directory..."
-            rm -rf "$MOUNT_DIR"
-
-            # 7) Launch the newly copied app
-            echo "Launching updated app: $TARGET_PARENT/$APP_NAME"
-            open "$TARGET_PARENT/$APP_NAME"
-
-            echo "Update script for DMG finished."
-        """.trimIndent()
-    }
-
-    /**
-     * Generates a shell script that handles .zip files:
-     * 1) Waits for the old process to exit
-     * 2) Unzips to a temp directory
-     * 3) Finds the .app inside the unzipped folder
-     * 4) Copies the .app into place
-     * 5) Removes the quarantine attribute
-     * 6) Cleans up
-     * 7) Launches the new app
-     */
-    private fun generateShellScriptForZip(
-        oldPid: Long,
-        zipFilePath: String,
-        unzipPath: String,
-        appName: String,
-        targetParent: String,
-    ): String {
-        return $$"""
-            #!/usr/bin/env bash
-            set -euo pipefail
-
-            OLD_PID=$$oldPid
-            ZIP_FILE="$$zipFilePath"
-            UNZIP_DIR="$$unzipPath"
-            APP_NAME="$$appName"
-            TARGET_PARENT="$$targetParent"
-
-            echo "Update script for ZIP started."
-            echo "Will wait for process PID=$$oldPid to exit."
-
-            # 1) Wait for the old process to fully exit.
-            while kill -0 "$OLD_PID" 2>/dev/null; do
-              echo "Waiting for old app process $OLD_PID to exit..."
-              sleep 1
-            done
-
-            # 2) Unzip the ZIP file into a temporary directory
-            echo "Unzipping update file into $UNZIP_DIR ..."
-            mkdir -p "$UNZIP_DIR"
-            unzip -q "$ZIP_FILE" -d "$UNZIP_DIR"
-
-            # 3) Within the unzipped folder, locate the .app folder
-            #    We'll assume the unzipped folder contains the correct .app we need, matching $APP_NAME
-            #    If the .zip file is structured differently, you'd adapt accordingly.
-            echo "Looking for $APP_NAME inside $UNZIP_DIR ..."
-            if [ ! -d "$UNZIP_DIR/$APP_NAME" ]; then
-              echo "Error: Could not find $APP_NAME in the extracted zip."
-              exit 1
-            fi
-
-            # 4) Copy the updated .app to the parent of the current .app
-            echo "Copying updated app to $TARGET_PARENT ..."
-            cp -R "$UNZIP_DIR/$APP_NAME" "$TARGET_PARENT"
-
-            # 5) Remove the com.apple.quarantine attribute
-            echo "Removing quarantine..."
-            xattr -r -d com.apple.quarantine "$TARGET_PARENT/$APP_NAME" || true
-
-            # 6) Clean up the unzipped folder
-            echo "Cleaning up temporary unzip directory..."
-            rm -rf "$UNZIP_DIR"
-
-            # 7) Launch the newly copied app
-            echo "Launching updated app: $TARGET_PARENT/$APP_NAME"
-            open "$TARGET_PARENT/$APP_NAME"
-
-            echo "Update script for ZIP finished."
-        """.trimIndent()
     }
 
     override fun deleteOldUpdater() {
@@ -282,6 +124,102 @@ object MacOSUpdateInstaller : DesktopUpdateInstaller {
         return InstallationResult.Failed(reason ?: InstallationFailureReason.UNSUPPORTED_FILE_STRUCTURE, message)
     }
 }
+
+/**
+ * 等待旧进程退出后, 用安装包 (`.dmg` 或 `.zip`) 中的 `.app` 替换当前 `.app` 并启动它.
+ *
+ * 参数: 旧进程 PID, 安装包路径, 当前 `.app` 路径, 工作目录.
+ *
+ * 新版本先完整复制到当前 `.app` 旁边并校验签名, 再以重命名替换整个 `.app`. 不能把新文件覆盖到现有 `.app` 中:
+ * 原地覆盖已签名的可执行文件会保留原 inode, 内核仍按旧签名校验它, 新版本启动时会因 "Code Signature Invalid" 被杀死;
+ * 覆盖也会留下旧版本独有的文件, 破坏签名封印. 任一步骤失败时保留或恢复旧 `.app`, 并重新启动它.
+ */
+internal val MACOS_UPDATE_SCRIPT = $$"""
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    OLD_PID="$1"
+    PACKAGE_FILE="$2"
+    TARGET_APP="$3"
+    WORK_DIR="$4"
+
+    APP_NAME="$(basename "$TARGET_APP")"
+    TARGET_PARENT="$(dirname "$TARGET_APP")"
+    # Kept next to the target so that the swaps below are renames within one volume.
+    STAGING_APP="$TARGET_PARENT/.$APP_NAME.update"
+    BACKUP_APP="$TARGET_PARENT/.$APP_NAME.old"
+    MOUNT_DIR="$WORK_DIR/mount"
+    MOUNTED=0
+
+    cleanup() {
+      local status=$?
+      if [ "$MOUNTED" = 1 ]; then
+        hdiutil detach "$MOUNT_DIR" >/dev/null || echo "Warning: failed to detach DMG." >&2
+      fi
+      # Logs in WORK_DIR are kept for troubleshooting.
+      rm -rf -- "$STAGING_APP" "$WORK_DIR/converted.cdr" "$WORK_DIR/unzip"
+      if [ "$status" -ne 0 ]; then
+        if [ ! -e "$TARGET_APP" ] && [ -e "$BACKUP_APP" ]; then
+          mv -- "$BACKUP_APP" "$TARGET_APP" || true
+        fi
+        echo "Update failed with status $status, launching the current app." >&2
+        open "$TARGET_APP" || true
+      fi
+    }
+    trap cleanup EXIT
+
+    echo "Waiting for process $OLD_PID to exit..."
+    while kill -0 "$OLD_PID" 2>/dev/null; do
+      sleep 1
+    done
+
+    shopt -s nocasematch
+    case "$PACKAGE_FILE" in
+      *.dmg)
+        # A DMG with a license agreement cannot be attached without user interaction; the CDR copy has none.
+        echo "Converting DMG into CDR..."
+        hdiutil convert "$PACKAGE_FILE" -format UDTO -o "$WORK_DIR/converted"
+        mkdir -p "$MOUNT_DIR"
+        echo "Mounting DMG at $MOUNT_DIR..."
+        hdiutil attach "$WORK_DIR/converted.cdr" -nobrowse -noverify -noautoopen -readonly -mountpoint "$MOUNT_DIR"
+        MOUNTED=1
+        SOURCE_DIR="$MOUNT_DIR"
+        ;;
+      *.zip)
+        echo "Unzipping update package..."
+        mkdir -p "$WORK_DIR/unzip"
+        unzip -q "$PACKAGE_FILE" -d "$WORK_DIR/unzip"
+        SOURCE_DIR="$WORK_DIR/unzip"
+        ;;
+      *)
+        echo "Error: unsupported update package: $PACKAGE_FILE" >&2
+        exit 1
+        ;;
+    esac
+    shopt -u nocasematch
+
+    SOURCE_APP="$SOURCE_DIR/$APP_NAME"
+    if [ ! -d "$SOURCE_APP" ]; then
+      echo "Error: $APP_NAME not found in the update package." >&2
+      exit 1
+    fi
+
+    echo "Copying $SOURCE_APP to $STAGING_APP..."
+    rm -rf -- "$STAGING_APP" "$BACKUP_APP"
+    ditto "$SOURCE_APP" "$STAGING_APP"
+    xattr -r -d com.apple.quarantine "$STAGING_APP" 2>/dev/null || true
+
+    echo "Verifying code signature..."
+    codesign --verify --deep --strict "$STAGING_APP"
+
+    echo "Replacing $TARGET_APP..."
+    mv -- "$TARGET_APP" "$BACKUP_APP"
+    mv -- "$STAGING_APP" "$TARGET_APP"
+    rm -rf -- "$BACKUP_APP" || echo "Warning: failed to remove $BACKUP_APP." >&2
+
+    echo "Launching $TARGET_APP"
+    open "$TARGET_APP"
+""".trimIndent()
 
 /**
  * 在后台线程退出进程, 让外部更新程序接管.
