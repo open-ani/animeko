@@ -2823,7 +2823,13 @@ jobs:
     - id: 'step-11'
       name: 'Extract DMG for the update E2E test'
       shell: 'bash'
-      run: 'rm -rf extracted_dmg && 7z x -y "$GITHUB_WORKSPACE"/*.dmg -oextracted_dmg'
+      run: |-
+        rm -rf extracted_dmg && mkdir extracted_dmg
+        MOUNT_POINT="$(mktemp -d)"
+        hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT_POINT" "$GITHUB_WORKSPACE"/*.dmg
+        for app in "$MOUNT_POINT"/*.app; do ditto "$app" "extracted_dmg/$(basename "$app")"; done
+        hdiutil detach "$MOUNT_POINT"
+        ls -l extracted_dmg extracted_dmg/*/Contents/MacOS
     - id: 'step-12'
       name: 'Setup JDK 21 for the update E2E test'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
@@ -2927,7 +2933,13 @@ jobs:
     - id: 'step-11'
       name: 'Extract DMG for the update E2E test'
       shell: 'bash'
-      run: 'rm -rf extracted_dmg && 7z x -y "$GITHUB_WORKSPACE"/*.dmg -oextracted_dmg'
+      run: |-
+        rm -rf extracted_dmg && mkdir extracted_dmg
+        MOUNT_POINT="$(mktemp -d)"
+        hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT_POINT" "$GITHUB_WORKSPACE"/*.dmg
+        for app in "$MOUNT_POINT"/*.app; do ditto "$app" "extracted_dmg/$(basename "$app")"; done
+        hdiutil detach "$MOUNT_POINT"
+        ls -l extracted_dmg extracted_dmg/*/Contents/MacOS
     - id: 'step-12'
       name: 'Setup JDK 21 for the update E2E test'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'

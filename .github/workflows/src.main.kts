@@ -972,10 +972,20 @@ fun JobBuilder<*>.addDesktopUpdateE2e(runner: Runner) {
         ),
     )
     if (runner.os == OS.MACOS) {
-        // 前面的验证脚本也解到 extracted_dmg, 目录已存在时 7z 会询问是否覆盖, 没有终端就失败; 清掉重解.
+        // 验证脚本用 7z 解 dmg, 解出来的文件没有可执行位, 它只给启动器补了 chmod. 这里要的是和用户装的一样的 bundle
+        // (权限、签名都在), 所以挂载 dmg 后用 ditto 复制. 目录名沿用验证脚本的 extracted_dmg, 先清掉它留下的.
         run(
             name = "Extract DMG for the update E2E test",
-            command = shell($$"""rm -rf extracted_dmg && 7z x -y "$GITHUB_WORKSPACE"/*.dmg -oextracted_dmg"""),
+            command = shell(
+                $$"""
+                    rm -rf extracted_dmg && mkdir extracted_dmg
+                    MOUNT_POINT="$(mktemp -d)"
+                    hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT_POINT" "$GITHUB_WORKSPACE"/*.dmg
+                    for app in "$MOUNT_POINT"/*.app; do ditto "$app" "extracted_dmg/$(basename "$app")"; done
+                    hdiutil detach "$MOUNT_POINT"
+                    ls -l extracted_dmg extracted_dmg/*/Contents/MacOS
+                """.trimIndent(),
+            ),
             shell = Shell.Bash,
         )
     }

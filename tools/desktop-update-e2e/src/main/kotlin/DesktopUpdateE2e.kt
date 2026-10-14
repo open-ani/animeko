@@ -45,13 +45,20 @@ class E2eLog(
 
 /**
  * 在 [dir] 下找打包好的应用: [dir] 本身, 或它下面三层以内的 `Ani` (含 `Ani.exe`) 或 `Ani.app`. CI 下载的产物外面可能多一两层目录.
+ *
+ * 启动器必须可执行: 测试用的是用户装到机器上的那个 bundle, 丢了权限的副本 (比如 7z 解出来的 dmg 内容) 跑不起来, 在这里
+ * 就报清楚, 不等每个场景各自失败一遍.
  */
 fun locatePackagedApp(dir: File): File {
     val platform = E2ePlatform.current()
     fun isApp(candidate: File) = candidate.isDirectory && platform.executable(candidate).isFile
-    if (isApp(dir)) return dir
-    val found = dir.walkTopDown().maxDepth(3).firstOrNull { it.name == platform.appDirName && isApp(it) }
-    return checkNotNull(found) { "No packaged app (${platform.appDirName}) found under $dir" }
+    val app = if (isApp(dir)) dir else dir.walkTopDown().maxDepth(3).firstOrNull { it.name == platform.appDirName && isApp(it) }
+    checkNotNull(app) { "No packaged app (${platform.appDirName}) found under $dir" }
+    check(platform.executable(app).canExecute()) {
+        "The launcher ${platform.executable(app)} is not executable: copy the packaged app with its permissions intact " +
+                "(on macOS mount the dmg and copy the bundle with ditto, 7z drops the mode bits)"
+    }
+    return app
 }
 
 /**
