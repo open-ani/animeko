@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.settings.mediasource.rss.edit
+package me.him188.ani.app.ui.settings.mediasource.editor
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth

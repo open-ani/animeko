@@ -78,7 +78,9 @@ class DesktopWebMediaResolver(
     private val settings: SettingsRepository by inject()
     private val proxyProvider: ProxyProvider by inject()
 
-    override fun supports(media: Media): Boolean = media.download is ResourceLocation.WebVideo
+    // API 签发地址的网页视频由 ApiVideoMediaResolver 解析, 不打开页面
+    override fun supports(media: Media): Boolean =
+        (media.download as? ResourceLocation.WebVideo)?.isResolvedByApi == false
 
     override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> {
         return withContext(Dispatchers.Default) {

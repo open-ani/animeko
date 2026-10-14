@@ -40,6 +40,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiMediaSource
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.search.SubjectSearchQuery
@@ -96,6 +97,8 @@ import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceViewModel
+import me.him188.ani.app.ui.settings.mediasource.jsonapi.EditJsonApiMediaSourceScreen
+import me.him188.ani.app.ui.settings.mediasource.jsonapi.EditJsonApiMediaSourceViewModel
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceViewModel
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsScreen
@@ -586,6 +589,23 @@ private fun AniAppContentImpl(
                         EditSelectorMediaSourceScreen(
                             viewModel<EditSelectorMediaSourceViewModel>(key = mediaSourceInstanceId) {
                                 EditSelectorMediaSourceViewModel(mediaSourceInstanceId, context)
+                            },
+                            Modifier,
+                            windowInsets = windowInsets,
+                            navigationIcon = {
+                                BackNavigationIconButton(
+                                    {
+                                        aniNavigator.popBackStack(route, inclusive = true)
+                                    },
+                                )
+                            },
+                        )
+                    }
+
+                    JsonApiMediaSource.FactoryId -> {
+                        EditJsonApiMediaSourceScreen(
+                            viewModel<EditJsonApiMediaSourceViewModel>(key = mediaSourceInstanceId) {
+                                EditJsonApiMediaSourceViewModel(mediaSourceInstanceId)
                             },
                             Modifier,
                             windowInsets = windowInsets,

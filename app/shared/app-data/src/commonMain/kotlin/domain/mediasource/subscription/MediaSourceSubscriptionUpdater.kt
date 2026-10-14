@@ -24,6 +24,7 @@ import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.mediasource.codec.ExportedMediaSourceData
+import me.him188.ani.app.domain.mediasource.codec.FactoryNotFoundException
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceArguments
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
@@ -257,8 +258,10 @@ class MediaSourceSubscriptionUpdater(
         return save.config.serializedArguments?.let {
             try {
                 codecManager.deserializeArgument(save.factoryId, it)
-            } catch (e: IllegalArgumentException) {
-                throw e
+            } catch (e: FactoryNotFoundException) {
+                // 本地保存了这个版本不认识的数据源 (例如降级后). 它不参与订阅更新, 不能让整个订阅刷新失败
+                logger.warn(e) { "Cannot decode media source ${save.mediaSourceId} of unknown factory ${save.factoryId}, ignoring" }
+                null
             }
         }
     }

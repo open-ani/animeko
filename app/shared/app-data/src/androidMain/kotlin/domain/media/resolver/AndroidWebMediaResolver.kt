@@ -61,7 +61,9 @@ class AndroidWebMediaResolver(
         java.util.ServiceLoader.load(WebVideoMatcher::class.java, this::class.java.classLoader).filterNotNull()
     }
 
-    override fun supports(media: Media): Boolean = media.download is ResourceLocation.WebVideo
+    // API 签发地址的网页视频由 ApiVideoMediaResolver 解析, 不打开页面
+    override fun supports(media: Media): Boolean =
+        (media.download as? ResourceLocation.WebVideo)?.isResolvedByApi == false
 
     private var attached: Context? = null
 

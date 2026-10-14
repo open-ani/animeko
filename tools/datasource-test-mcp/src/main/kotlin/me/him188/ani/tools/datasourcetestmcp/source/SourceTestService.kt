@@ -27,6 +27,7 @@ import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.SubtitleKind
+import me.him188.ani.datasources.api.matcher.ApiVideoResolver
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherProvider
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaMatch
@@ -357,6 +358,7 @@ class SourceTestService(
             },
             probeTimeoutMillis = probeTimeoutMillis,
             candidateTestMode = candidateTestMode,
+            apiResolverFor = { match -> sourceById[match.media.mediaSourceId] as? ApiVideoResolver },
         )
         errors += channelResults.flatMap { it.errors }
 

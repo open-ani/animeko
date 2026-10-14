@@ -11,9 +11,13 @@ package me.him188.ani.tools.datasourcetestmcp.resolver
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.matcher.ApiVideoResolver
 import me.him188.ani.datasources.api.matcher.WebVideoMatcher
 import me.him188.ani.datasources.api.source.MediaMatch
+import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.tools.datasourcetestmcp.video.VideoUrlProbeEngine
 
 interface CandidateVideoResolver {
@@ -25,12 +29,17 @@ internal class ChannelTestExecutor(
     private val resolver: CandidateVideoResolver,
     private val probe: VideoUrlProbeEngine,
 ) {
+    /**
+     * @param apiResolverFor 产生该候选的数据源的 [ApiVideoResolver]. 由接口签发地址的资源
+     * (`WebVideo.isResolvedByApi`) 不打开播放页, 直接向它取地址.
+     */
     suspend fun execute(
         playableCandidates: List<MediaMatch>,
         matchersFor: (MediaMatch) -> List<WebVideoMatcher>,
         probeTimeoutMillis: Long,
         candidateTestMode: CandidateTestMode,
         probeEnabled: Boolean = true,
+        apiResolverFor: (MediaMatch) -> ApiVideoResolver? = { null },
     ): List<ChannelTestResult> {
         val results = mutableListOf<ChannelTestResult>()
         playableCandidates.forEachIndexed { index, match ->
@@ -39,6 +48,7 @@ internal class ChannelTestExecutor(
                     order = index + 1,
                     match = match,
                     matchers = matchersFor(match),
+                    apiResolver = apiResolverFor(match),
                     probeTimeoutMillis = probeTimeoutMillis,
                     probeEnabled = probeEnabled,
                 )
@@ -63,16 +73,43 @@ internal class ChannelTestExecutor(
         return results
     }
 
+    private suspend fun resolveByApi(media: Media, apiResolver: ApiVideoResolver?): ResolveResult {
+        if (apiResolver == null) {
+            return ResolveResult(
+                diagnostics = buildJsonObject { put("mode", "api") },
+                errors = listOf("Media is resolved by API but its source does not provide an ApiVideoResolver"),
+            )
+        }
+        val video = apiResolver.resolveApiVideo(media)
+            ?: return ResolveResult(
+                diagnostics = buildJsonObject { put("mode", "api") },
+                errors = listOf("The API issued no video URL for this media"),
+            )
+        return ResolveResult(
+            resolvedVideo = ResolvedVideoResult(
+                url = video.m3u8Url,
+                headers = video.headers,
+                strategy = "api-issued",
+            ),
+            diagnostics = buildJsonObject { put("mode", "api") },
+        )
+    }
+
     private suspend fun testCandidate(
         order: Int,
         match: MediaMatch,
         matchers: List<WebVideoMatcher>,
+        apiResolver: ApiVideoResolver?,
         probeTimeoutMillis: Long,
         probeEnabled: Boolean,
     ): ChannelTestResult {
         val candidate = match.toCandidateResult()
         val resolveStart = System.currentTimeMillis()
-        val resolveResult = resolver.resolve(match.media, matchers)
+        val resolveResult = if ((match.media.download as? ResourceLocation.WebVideo)?.isResolvedByApi == true) {
+            resolveByApi(match.media, apiResolver)
+        } else {
+            resolver.resolve(match.media, matchers)
+        }
         val resolveDuration = System.currentTimeMillis() - resolveStart
         val resolvedVideo = resolveResult.resolvedVideo ?: return ChannelTestResult(
             order = order,
