@@ -9,8 +9,13 @@
 
 package me.him188.ani.app.ui.notification
 
+import me.him188.ani.app.data.models.notification.NotificationGroup
+
 object NotificationTestTags {
-    const val CENTER_LIST = "notification-center-list"
+    const val CENTER_LIST_PREFIX = "notification-center-list-"
+    const val TAB_ROW = "notification-tab-row"
+    const val TAB_PREFIX = "notification-tab-"
+    const val TAB_BADGE = "notification-tab-badge"
     const val ITEM_PREFIX = "notification-item-"
     const val UNREAD_DOT = "notification-unread-dot"
     const val INLINE_ACTION = "notification-inline-action"
@@ -34,6 +39,13 @@ object NotificationTestTags {
     const val REPORT_SNAPSHOT_TEXT = "notification-report-snapshot-text"
 
     fun item(id: String) = ITEM_PREFIX + id
+
+    /**
+     * [group] 的标签页中的列表.
+     */
+    fun centerList(group: NotificationGroup) = CENTER_LIST_PREFIX + group.name.lowercase()
+
+    fun tab(group: NotificationGroup) = TAB_PREFIX + group.name.lowercase()
 }
 
 object AnnouncementTestTags {

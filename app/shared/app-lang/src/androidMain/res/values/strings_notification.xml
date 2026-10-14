@@ -4,10 +4,13 @@
     <string name="notification_settings">Notification settings</string>
     <string name="notification_unread">Unread</string>
     <string name="notification_has_unread">Unread notifications</string>
+    <string name="notification_unread_count">%1$d unread</string>
     <string name="notification_empty">No notifications</string>
+    <string name="notification_interaction_empty">No interactions yet</string>
     <string name="notification_detail_placeholder">Select a notification to see the details</string>
     <string name="notification_not_found">This notification doesn’t exist</string>
     <string name="notification_group_notice">Notices</string>
+    <string name="notification_group_interaction">Interactions</string>
     <string name="notification_view_details">View details</string>
 
     <string name="notification_time_just_now">Just now</string>

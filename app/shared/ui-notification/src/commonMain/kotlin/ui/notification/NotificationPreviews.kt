@@ -15,6 +15,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.tooling.preview.Preview
+import me.him188.ani.app.data.models.notification.AppNotification
+import me.him188.ani.app.data.models.notification.NotificationBadgeState
 import me.him188.ani.app.data.models.notification.NotificationGroup
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.search.rememberTestLazyPagingItems
@@ -30,19 +32,34 @@ private fun PreviewHost(content: @Composable () -> Unit) = ProvideCompositionLoc
     }
 }
 
+/**
+ * 每个标签页一个. [NotificationGroup.NOTICE] 显示 [notices], 预留的分组没有通知.
+ */
 @Composable
-@Preview
-private fun PreviewNotificationCenter() = PreviewHost {
+private fun rememberPreviewPages(notices: List<AppNotification>): List<NotificationCenterPage> =
+    NotificationGroup.TABS.map { group ->
+        NotificationCenterPage(
+            group = group,
+            items = rememberTestLazyPagingItems(if (group == NotificationGroup.NOTICE) notices else emptyList()),
+            readOverlay = ReadOverlay.Empty,
+        )
+    }
+
+@Composable
+private fun PreviewNotificationCenter(
+    selectedGroup: NotificationGroup,
+    access: NotificationAccess = NotificationAccess.AUTHORIZED,
+    notices: List<AppNotification> = TestNotifications,
+    badgeState: NotificationBadgeState = TestNotificationBadgeState,
+) = PreviewHost {
     NotificationCenterScreen(
-        items = rememberTestLazyPagingItems(TestNotifications),
-        access = NotificationAccess.AUTHORIZED,
-        readOverlay = ReadOverlay.Empty,
-        badgeState = TestNotificationBadgeState,
-        groups = NotificationGroup.SUPPORTED,
-        selectedGroup = NotificationGroup.NOTICE,
+        pages = rememberPreviewPages(notices),
+        selectedGroup = selectedGroup,
         onSelectGroup = {},
+        access = access,
+        badgeState = badgeState,
         onOpenNotification = {},
-        onMarkAllRead = {},
+        onMarkAllRead = { _, _ -> },
         onRefresh = {},
         onNavigateToDetail = {},
         onNavigateToAnnouncements = {},
@@ -54,29 +71,24 @@ private fun PreviewNotificationCenter() = PreviewHost {
 
 @Composable
 @Preview
-private fun PreviewNotificationCenterGuest() = PreviewHost {
-    NotificationCenterScreen(
-        items = rememberTestLazyPagingItems(emptyList()),
-        access = NotificationAccess.GUEST,
-        readOverlay = ReadOverlay.Empty,
-        badgeState = TestNotificationBadgeState.copy(
-            unreadCount = 0,
-            hasUnreadAnnouncements = false,
-            unreadAnnouncementCount = 0,
-        ),
-        groups = NotificationGroup.SUPPORTED,
-        selectedGroup = NotificationGroup.NOTICE,
-        onSelectGroup = {},
-        onOpenNotification = {},
-        onMarkAllRead = {},
-        onRefresh = {},
-        onNavigateToDetail = {},
-        onNavigateToAnnouncements = {},
-        onNavigateToSettings = {},
-        onLogin = {},
-        actions = NotificationActions.Noop,
-    )
-}
+private fun PreviewNotificationCenterNotice() = PreviewNotificationCenter(NotificationGroup.NOTICE)
+
+@Composable
+@Preview
+private fun PreviewNotificationCenterInteraction() = PreviewNotificationCenter(NotificationGroup.INTERACTION)
+
+@Composable
+@Preview
+private fun PreviewNotificationCenterGuest() = PreviewNotificationCenter(
+    NotificationGroup.NOTICE,
+    access = NotificationAccess.GUEST,
+    notices = emptyList(),
+    badgeState = TestNotificationBadgeState.copy(
+        unreadCount = 0,
+        hasUnreadAnnouncements = false,
+        unreadAnnouncementCount = 0,
+    ),
+)
 
 @Composable
 @Preview

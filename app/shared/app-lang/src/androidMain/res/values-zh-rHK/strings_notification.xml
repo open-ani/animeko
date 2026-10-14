@@ -4,10 +4,13 @@
     <string name="notification_settings">通知設定</string>
     <string name="notification_unread">未讀</string>
     <string name="notification_has_unread">有未讀通知</string>
+    <string name="notification_unread_count">%1$d 則未讀</string>
     <string name="notification_empty">暫時沒有通知</string>
+    <string name="notification_interaction_empty">暫無互動</string>
     <string name="notification_detail_placeholder">選擇一則通知查看詳情</string>
     <string name="notification_not_found">該通知不存在</string>
     <string name="notification_group_notice">通知</string>
+    <string name="notification_group_interaction">互動</string>
     <string name="notification_view_details">查看詳情</string>
 
     <string name="notification_time_just_now">剛剛</string>

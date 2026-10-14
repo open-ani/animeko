@@ -23,7 +23,7 @@ enum class NotificationType(val wireValue: String) {
     ACCOUNT_SECURITY("account_security"),
 
     /**
-     * 互动分组, 预留.
+     * [NotificationGroup.INTERACTION] 的类型. 预留, 客户端不渲染.
      */
     COMMENT_REPLY("comment_reply"),
     MENTION("mention"),
@@ -31,33 +31,42 @@ enum class NotificationType(val wireValue: String) {
     FOLLOW("follow"),
 
     /**
-     * 私信分组, 预留.
+     * 私信. 预留, 客户端不渲染, 也不属于任何分组.
      */
     DIRECT_MESSAGE("direct_message"),
     ;
 
     companion object {
         /**
-         * 客户端能渲染的类型, 即 [NotificationGroup.SUPPORTED] 中所有分组的类型.
-         *
-         * 用 lazy 是因为 [NotificationGroup] 的枚举值引用了本类的枚举值, 两个类的静态初始化不能互相依赖.
+         * 客户端能渲染的类型. 列表、未读数和 "全部标为已读" 的请求只带这些类型 (再去掉本机关闭的类型).
+         * 预留分组 ([NotificationGroup.isReserved]) 的类型不在其中.
          */
-        val SUPPORTED: Set<NotificationType> by lazy {
-            NotificationGroup.SUPPORTED.flatMapTo(LinkedHashSet()) { it.types }
-        }
+        val SUPPORTED: Set<NotificationType> = setOf(SYSTEM, REPORT_RESULT, ACCOUNT_SECURITY)
 
         fun fromWireValue(value: String): NotificationType? = entries.firstOrNull { it.wireValue == value }
     }
 }
 
 /**
- * 通知中心的分组, 按 "谁在和我说话" 划分. 每个分组渲染一组 [NotificationType].
+ * 通知中心的分组, 按 "谁在和我说话" 划分. 每个分组是通知中心的一个标签页, 包含一组 [NotificationType].
  *
  * 公告不属于任何分组: 它是全局的, 有单独的列表.
  */
 enum class NotificationGroup(
     val types: Set<NotificationType>,
 ) {
+    /**
+     * 其他用户对我的内容做了什么: 回复, 提及, 回应, 关注. 预留, 见 [isReserved].
+     */
+    INTERACTION(
+        setOf(
+            NotificationType.COMMENT_REPLY,
+            NotificationType.MENTION,
+            NotificationType.REACTION,
+            NotificationType.FOLLOW,
+        ),
+    ),
+
     /**
      * 系统发给用户本人的通知: 系统消息, 举报结果, 账号安全.
      */
@@ -70,10 +79,25 @@ enum class NotificationGroup(
     ),
     ;
 
+    /**
+     * 本分组中客户端能渲染的类型 ([NotificationType.SUPPORTED]). 本分组的列表和 "全部标为已读" 只请求这些类型.
+     */
+    val supportedTypes: Set<NotificationType> = types.filterTo(LinkedHashSet()) { it in NotificationType.SUPPORTED }
+
+    /**
+     * 预留的分组: 显示标签页, 但客户端不能渲染其中任何类型, 所以不请求, 列表总是空的, 也没有未读数.
+     */
+    val isReserved: Boolean get() = supportedTypes.isEmpty()
+
     companion object {
         /**
-         * 客户端展示的分组, 按标签页顺序. 只有一个分组时通知中心不显示标签页.
+         * 通知中心的标签页, 按显示顺序. 只有一个分组时通知中心不显示标签页.
          */
-        val SUPPORTED: List<NotificationGroup> = listOf(NOTICE)
+        val TABS: List<NotificationGroup> = listOf(INTERACTION, NOTICE)
+
+        /**
+         * [type] 所属的分组. 不属于任何分组时为 `null`.
+         */
+        fun of(type: NotificationType): NotificationGroup? = entries.firstOrNull { type in it.types }
     }
 }

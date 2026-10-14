@@ -19,6 +19,7 @@ import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.notification.AccountSecurityEvent
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
+import me.him188.ani.app.data.models.notification.NotificationGroup
 import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.models.notification.NotificationUnreadSummary
 import me.him188.ani.app.data.models.notification.SystemNotificationEvent
@@ -45,7 +46,8 @@ import kotlin.coroutines.CoroutineContext
  * 当前用户的站内通知.
  *
  * 列表和未读数接口必须带上 `types`: 服务端只返回和统计这些类型, 而不传表示全部类型, 会包含本客户端不能渲染的新类型.
- * 所以这里的 `types` 参数都不可省略, 调用方传 [NotificationType.SUPPORTED] 或其中一个分组的类型, 再去掉本机关闭的类型.
+ * 所以这里的 `types` 参数都不可省略, 调用方传 [NotificationType.SUPPORTED] 或某个分组的 [NotificationGroup.supportedTypes],
+ * 再去掉本机关闭的类型.
  * `types` 为空时不会请求全部类型: 列表为空, 未读数为空, "全部标为已读" 什么也不做.
  */
 open class AniNotificationService(

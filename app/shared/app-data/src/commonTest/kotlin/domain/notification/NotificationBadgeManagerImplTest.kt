@@ -19,6 +19,7 @@ import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.notification.Announcement
 import me.him188.ani.app.data.models.notification.AnnouncementTag
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
+import me.him188.ani.app.data.models.notification.NotificationGroup
 import me.him188.ani.app.data.models.notification.NotificationType
 import me.him188.ani.app.data.models.notification.NotificationUnreadSummary
 import me.him188.ani.app.data.models.preference.NotificationSettings
@@ -34,6 +35,7 @@ import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -154,6 +156,8 @@ class NotificationBadgeManagerImplTest {
         runCurrent()
         assertEquals(3, service.calls)
         assertEquals(listOf(NotificationType.SUPPORTED), service.requestedTypes.distinct())
+        // 预留分组的类型客户端不能渲染, 不请求也不统计
+        assertTrue(service.requestedTypes.none { types -> types.any { it in NotificationGroup.INTERACTION.types } })
     }
 
     @Test

@@ -12,7 +12,9 @@ package me.him188.ani.app.data.models.notification
 import me.him188.ani.app.data.models.preference.NotificationSettings
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class NotificationModelsTest {
     @Test
@@ -21,7 +23,49 @@ class NotificationModelsTest {
             setOf(NotificationType.SYSTEM, NotificationType.REPORT_RESULT, NotificationType.ACCOUNT_SECURITY),
             NotificationType.SUPPORTED,
         )
-        assertEquals(listOf(NotificationGroup.NOTICE), NotificationGroup.SUPPORTED)
+        assertEquals(NotificationGroup.NOTICE.types, NotificationType.SUPPORTED)
+    }
+
+    @Test
+    fun `supported types exclude interaction and direct message types`() {
+        for (type in NotificationGroup.INTERACTION.types + NotificationType.DIRECT_MESSAGE) {
+            assertFalse(type in NotificationType.SUPPORTED, "$type")
+        }
+    }
+
+    @Test
+    fun `tabs are interaction then notice`() {
+        assertEquals(listOf(NotificationGroup.INTERACTION, NotificationGroup.NOTICE), NotificationGroup.TABS)
+    }
+
+    @Test
+    fun `interaction group is reserved and requests no types`() {
+        assertEquals(
+            setOf(
+                NotificationType.COMMENT_REPLY,
+                NotificationType.MENTION,
+                NotificationType.REACTION,
+                NotificationType.FOLLOW,
+            ),
+            NotificationGroup.INTERACTION.types,
+        )
+        assertEquals(emptySet(), NotificationGroup.INTERACTION.supportedTypes)
+        assertTrue(NotificationGroup.INTERACTION.isReserved)
+
+        assertEquals(NotificationGroup.NOTICE.types, NotificationGroup.NOTICE.supportedTypes)
+        assertFalse(NotificationGroup.NOTICE.isReserved)
+    }
+
+    @Test
+    fun `every type belongs to at most one group`() {
+        for (type in NotificationType.entries) {
+            val groups = NotificationGroup.entries.filter { type in it.types }
+            assertTrue(groups.size <= 1, "$type is in $groups")
+            assertEquals(groups.singleOrNull(), NotificationGroup.of(type))
+        }
+        assertEquals(NotificationGroup.NOTICE, NotificationGroup.of(NotificationType.REPORT_RESULT))
+        assertEquals(NotificationGroup.INTERACTION, NotificationGroup.of(NotificationType.MENTION))
+        assertNull(NotificationGroup.of(NotificationType.DIRECT_MESSAGE))
     }
 
     @Test
