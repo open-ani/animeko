@@ -128,6 +128,9 @@ class PlayerLoadErrorHandlerTest {
                 // tier=1 高于 InstantSelectTierThreshold(0), 该源永远进不了 instant 候选,
                 // 因此只有 lowTierToleranceDuration 超时后的 fallback 能选出东西.
                 val webA by web { tier = 1 }
+
+                // 仍在查询的源让容忍窗生效; 所有源都已结束时不必等容忍窗.
+                val pending by web { tier = 0 }
             }
         }
         val mediaA = media(kind = WEB, subjectName = initApi.subjectName)
@@ -162,6 +165,41 @@ class PlayerLoadErrorHandlerTest {
         assertEquals(mediaB.mediaId, selector.selected.value?.mediaId)
         assertEquals(setOf(mediaA.mediaId), handler.blacklist)
     }
+
+    @Test
+    fun `player error switches to high tier right after the error delay when all sources finished`() =
+        runFetchMediaSelectorTestSuite {
+            initSubject("test")
+            val (_, session, sources) = configureFetchSession {
+                object {
+                    val webA by web { tier = 1 }
+                }
+            }
+            val mediaA = media(kind = WEB, subjectName = initApi.subjectName)
+            val mediaB = media(kind = WEB, subjectName = initApi.subjectName)
+            sources.webA.complete(mediaA, mediaB)
+            testScope().runCurrent()
+
+            selector.select(selector.filteredCandidatesMedia.first().single { it.mediaId == mediaA.mediaId })
+
+            val handler = PlayerLoadErrorHandler(
+                getPreferKind = { MediaSourceKind.WEB },
+                getSourceTiers = { preferenceApi.sourceTiers!! },
+            )
+            val job = testScope().launch { handler.handleError(session, selector) }
+            testScope().runCurrent()
+
+            testScope().advanceTimeBy(999.milliseconds)
+            testScope().runCurrent()
+            assertFalse(job.isCompleted)
+            assertEquals(mediaA.mediaId, selector.selected.value?.mediaId)
+
+            testScope().advanceTimeBy(2.milliseconds)
+            testScope().runCurrent()
+
+            assertTrue(job.isCompleted)
+            assertEquals(mediaB.mediaId, selector.selected.value?.mediaId)
+        }
 
     @Test
     fun `ERR-05 preferKind BT 不自动换源`() = runFetchMediaSelectorTestSuite {
