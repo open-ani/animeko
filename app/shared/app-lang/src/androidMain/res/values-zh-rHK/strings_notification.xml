@@ -6,7 +6,9 @@
     <string name="notification_has_unread">有未讀通知</string>
     <string name="notification_unread_count">%1$d 則未讀</string>
     <string name="notification_empty">暫時沒有通知</string>
-    <string name="notification_interaction_empty">暫無互動</string>
+    <string name="notification_empty_supporting">舉報的處理結果和賬戶相關的提示會顯示在這裏</string>
+    <string name="notification_interaction_empty">暫時沒有互動</string>
+    <string name="notification_interaction_empty_supporting">評論收到的回覆、提及和回應會顯示在這裏</string>
     <string name="notification_detail_placeholder">選擇一則通知查看詳情</string>
     <string name="notification_not_found">該通知不存在</string>
     <string name="notification_group_notice">通知</string>
@@ -29,6 +31,7 @@
     <string name="notification_announcement_overline">公告</string>
     <string name="notification_announcements_title">公告</string>
     <string name="notification_announcements_empty">暫時沒有公告</string>
+    <string name="notification_announcements_empty_supporting">維護、版本更新等公告會顯示在這裏</string>
     <string name="notification_announcement_detail_title">公告</string>
     <string name="notification_announcement_detail_placeholder">選擇一則公告查看詳情</string>
     <string name="notification_announcement_not_found">該公告不存在或已被刪除</string>

@@ -29,7 +29,6 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.bottomCenter
 import androidx.compose.ui.test.centerLeft
 import androidx.compose.ui.test.centerRight
 import androidx.compose.ui.test.hasAnyAncestor
@@ -42,10 +41,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
-import androidx.compose.ui.test.topCenter
 import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
@@ -59,10 +56,12 @@ import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.login_sign_in
 import me.him188.ani.app.ui.lang.notification_empty
+import me.him188.ani.app.ui.lang.notification_empty_supporting
 import me.him188.ani.app.ui.lang.notification_go_to_episode
 import me.him188.ani.app.ui.lang.notification_group_interaction
 import me.him188.ani.app.ui.lang.notification_group_notice
 import me.him188.ani.app.ui.lang.notification_interaction_empty
+import me.him188.ani.app.ui.lang.notification_interaction_empty_supporting
 import me.him188.ani.app.ui.lang.notification_system_bangumi_expired_supporting
 import me.him188.ani.app.ui.lang.notification_system_bangumi_reauthorize
 import me.him188.ani.app.ui.lang.notification_unread
@@ -656,6 +655,7 @@ class NotificationCenterScreenTest {
     @Test
     fun `empty list shows the empty state`() = runAniComposeUiTest {
         val emptyText = runBlocking { getString(Lang.notification_empty) }
+        val emptySupportingText = runBlocking { getString(Lang.notification_empty_supporting) }
         val vm = NotificationCenterViewModel(
             notificationTestKoin(
                 repository = FakeNotificationRepository(notifications = emptyList()),
@@ -665,7 +665,8 @@ class NotificationCenterScreenTest {
         showCenter(vm)
 
         waitUntil { onAllNodesWithTag(NotificationTestTags.EMPTY).fetchSemanticsNodes().isNotEmpty() }
-        onNodeWithText(emptyText).assertIsDisplayed()
+        onNodeWithTag(NotificationTestTags.EMPTY).assertIsDisplayed().assertTextEquals(emptyText, emptySupportingText)
+        assertEmptyStateIcon(NotificationTestTags.EMPTY)
         onNodeWithTag(NotificationTestTags.MARK_ALL_READ).assertIsNotEnabled()
         assertTrue(onAllNodesWithTag(NotificationTestTags.ANNOUNCEMENT_ENTRY).fetchSemanticsNodes().isEmpty())
     }
@@ -825,6 +826,7 @@ class NotificationCenterScreenTest {
     @Test
     fun `empty interaction tab shows its empty state`() = runAniComposeUiTest {
         val interactionEmpty = runBlocking { getString(Lang.notification_interaction_empty) }
+        val interactionEmptySupporting = runBlocking { getString(Lang.notification_interaction_empty_supporting) }
         val repository = FakeNotificationRepository()
         val vm = NotificationCenterViewModel(notificationTestKoin(repository))
         showCenter(vm)
@@ -833,9 +835,10 @@ class NotificationCenterScreenTest {
 
         selectTab(vm, NotificationGroup.INTERACTION)
         onNode(
-            hasText(interactionEmpty) and
+            hasTestTag(NotificationTestTags.EMPTY) and
                     hasAnyAncestor(hasTestTag(NotificationTestTags.centerList(NotificationGroup.INTERACTION))),
-        ).assertIsDisplayed()
+        ).assertIsDisplayed().assertTextEquals(interactionEmpty, interactionEmptySupporting)
+        assertEmptyStateIcon(NotificationTestTags.EMPTY)
         tab(NotificationGroup.INTERACTION).assertIsSelected()
         tab(NotificationGroup.NOTICE).assertIsNotSelected()
         // 空列表没有可以标记的通知
@@ -891,21 +894,10 @@ class NotificationCenterScreenTest {
         showCenter(vm)
         waitForRow("report-1")
 
-        fun pull(group: NotificationGroup) {
-            onNodeWithTag(NotificationTestTags.centerList(group)).performTouchInput {
-                swipe(
-                    start = topCenter + Offset(0f, 20f),
-                    end = bottomCenter - Offset(0f, 20f),
-                    durationMillis = 1_000,
-                )
-            }
-            waitForIdle()
-        }
-
         // 通知可以下拉刷新
         val refreshesBefore = badgeManager.refreshRequests.get()
         val loadsBefore = repository.notificationLoads
-        pull(NotificationGroup.NOTICE)
+        pullToRefresh(NotificationTestTags.centerList(NotificationGroup.NOTICE))
         waitUntil { badgeManager.refreshRequests.get() > refreshesBefore }
         waitUntil { repository.notificationLoads > loadsBefore }
         waitForRow("report-1")
@@ -914,7 +906,7 @@ class NotificationCenterScreenTest {
         waitForRow("reply-1")
         val refreshes = badgeManager.refreshRequests.get()
         val interactionLoads = repository.notificationLoadsOf(NotificationGroup.INTERACTION)
-        pull(NotificationGroup.INTERACTION)
+        pullToRefresh(NotificationTestTags.centerList(NotificationGroup.INTERACTION))
         waitUntil { badgeManager.refreshRequests.get() > refreshes }
         waitUntil { repository.notificationLoadsOf(NotificationGroup.INTERACTION) > interactionLoads }
         assertEquals(NotificationGroup.INTERACTION, vm.selectedGroup.value)

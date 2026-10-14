@@ -102,7 +102,7 @@ private val DetailContentMaxWidth = 640.dp
 /**
  * 详情内容的宽度: 最宽 [DetailContentMaxWidth], 可用宽度更大时 (宽屏) 水平居中, 否则 (手机) 填满.
  *
- * 通知和公告的详情、加载失败、找不到和未选择时的提示都使用这个宽度, 让它们在宽屏中位于同一列.
+ * 通知和公告的详情和加载失败的提示都使用这个宽度, 让它们在宽屏中位于同一列.
  */
 internal fun Modifier.detailContentWidth(): Modifier =
     fillMaxWidth()

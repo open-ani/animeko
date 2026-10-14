@@ -11,13 +11,27 @@
 
 package me.him188.ani.app.ui.notification
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.bottomCenter
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
+import androidx.compose.ui.test.topCenter
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -50,6 +64,9 @@ import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.OpenBrowserResult
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.input.ActiveInputSourceState
+import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
+import me.him188.ani.app.ui.foundation.input.trackActiveInputSource
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.Koin
 import org.koin.dsl.koinApplication
@@ -58,6 +75,7 @@ import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.test.assertEquals
 
 /**
  * 一次通知列表的加载: 请求的分组和排除的类型.
@@ -295,12 +313,20 @@ fun createTestSettingsRepository(): SettingsRepository = PreferencesRepositoryIm
 
 /**
  * 预览环境, 并把时间固定为 [TestNotificationTimeContext].
+ *
+ * 与 App 的根组件一样记录最近使用的指针设备, 每个测试独立. 只响应触摸的下拉刷新依据它判断输入方式.
  */
 @Composable
 fun NotificationTestHost(content: @Composable () -> Unit) {
     ProvideCompositionLocalsForPreview {
-        CompositionLocalProvider(LocalNotificationTimeContext provides TestNotificationTimeContext) {
-            content()
+        val inputSource = remember { ActiveInputSourceState() }
+        CompositionLocalProvider(
+            LocalNotificationTimeContext provides TestNotificationTimeContext,
+            LocalActiveInputSource provides inputSource,
+        ) {
+            Box(Modifier.trackActiveInputSource(inputSource), propagateMinConstraints = true) {
+                content()
+            }
         }
     }
 }
@@ -349,4 +375,30 @@ fun SemanticsNodeInteraction.textFontWeight(): FontWeight? {
     val results = mutableListOf<TextLayoutResult>()
     fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
     return results.single().layoutInput.style.fontWeight
+}
+
+/**
+ * [stateTag] 标记的 [NotificationEmptyState] 中有 64dp 的圆形图标.
+ */
+fun ComposeUiTest.assertEmptyStateIcon(stateTag: String) {
+    val icon = onNode(
+        hasTestTag(NotificationTestTags.EMPTY_STATE_ICON) and hasAnyAncestor(hasTestTag(stateTag)),
+        useUnmergedTree = true,
+    ).assertIsDisplayed().getBoundsInRoot()
+    assertEquals(64f, (icon.right - icon.left).value, 0.5f, "icon width")
+    assertEquals(64f, (icon.bottom - icon.top).value, 0.5f, "icon height")
+}
+
+/**
+ * 用手指在 [tag] 节点上从顶部拖到底部, 触发下拉刷新.
+ */
+fun ComposeUiTest.pullToRefresh(tag: String) {
+    onNodeWithTag(tag).performTouchInput {
+        swipe(
+            start = topCenter + Offset(0f, 20f),
+            end = bottomCenter - Offset(0f, 20f),
+            durationMillis = 1_000,
+        )
+    }
+    waitForIdle()
 }

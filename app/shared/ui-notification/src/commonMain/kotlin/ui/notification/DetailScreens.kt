@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -130,7 +132,7 @@ fun AnnouncementDetailScreen(
 }
 
 /**
- * @param notFoundText [DetailLoadState.NotFound] 时的提示. 重试也不会成功, 所以只有提示, 没有重试按钮.
+ * @param notFoundText [DetailLoadState.NotFound] 时居中显示的提示. 重试也不会成功, 所以只有提示, 没有重试按钮.
  */
 @Composable
 private fun <T> DetailScaffold(
@@ -163,13 +165,13 @@ private fun <T> DetailScaffold(
                 CircularProgressIndicator()
             }
 
-            DetailLoadState.NotFound -> NotificationHintText(
-                notFoundText,
-                Modifier
-                    .padding(paddingValues)
-                    .detailContentWidth()
-                    .testTag(notFoundTestTag),
-            )
+            DetailLoadState.NotFound -> Box(Modifier.padding(paddingValues).fillMaxSize(), Alignment.Center) {
+                NotificationEmptyState(
+                    Icons.Outlined.SearchOff,
+                    title = notFoundText,
+                    Modifier.testTag(notFoundTestTag),
+                )
+            }
 
             is DetailLoadState.Failed -> LoadErrorCard(
                 state.error,

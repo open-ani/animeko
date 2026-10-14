@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -64,6 +65,7 @@ import me.him188.ani.app.ui.lang.notification_announcement_detail_placeholder
 import me.him188.ani.app.ui.lang.notification_announcement_detail_title
 import me.him188.ani.app.ui.lang.notification_announcement_pinned
 import me.him188.ani.app.ui.lang.notification_announcements_empty
+import me.him188.ani.app.ui.lang.notification_announcements_empty_supporting
 import me.him188.ani.app.ui.lang.notification_announcements_title
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.isLoadingFirstPage
@@ -185,12 +187,11 @@ fun AnnouncementsScreen(
                     },
                 ) {
                     if (announcement == null) {
-                        NotificationHintText(
+                        // 列表为空时没有可选的公告, 详情栏留空
+                        if (loadedItems.isNotEmpty()) NotificationDetailPanePlaceholder(
+                            Icons.Outlined.Campaign,
                             stringResource(Lang.notification_announcement_detail_placeholder),
-                            Modifier
-                                .paneContentPadding()
-                                .detailContentWidth()
-                                .testTag(AnnouncementTestTags.DETAIL_PLACEHOLDER),
+                            Modifier.testTag(AnnouncementTestTags.DETAIL_PLACEHOLDER),
                         )
                     } else {
                         AnnouncementDetailContent(
@@ -263,12 +264,12 @@ private fun LazyListScope.announcementItems(
 
             items.isLoadingFirstPage || items.loadState.refresh is LoadState.Loading -> placeholderItems()
 
-            else -> item(key = "empty", contentType = "empty") {
-                NotificationHintText(
-                    stringResource(Lang.notification_announcements_empty),
-                    Modifier.testTag(AnnouncementTestTags.EMPTY),
-                )
-            }
+            else -> notificationEmptyStateItem(
+                icon = Icons.Outlined.Campaign,
+                title = Lang.notification_announcements_empty,
+                supportingText = Lang.notification_announcements_empty_supporting,
+                testTag = AnnouncementTestTags.EMPTY,
+            )
         }
         return
     }

@@ -33,16 +33,19 @@ private fun PreviewHost(content: @Composable () -> Unit) = ProvideCompositionLoc
 }
 
 /**
- * 每个标签页一个. [NotificationGroup.NOTICE] 显示 [notices], [NotificationGroup.INTERACTION] 显示 [TestInteractionNotifications].
+ * 每个标签页一个. [NotificationGroup.NOTICE] 显示 [notices], [NotificationGroup.INTERACTION] 显示 [interactions].
  */
 @Composable
-private fun rememberPreviewPages(notices: List<AppNotification>): List<NotificationCenterPage> =
+private fun rememberPreviewPages(
+    notices: List<AppNotification>,
+    interactions: List<AppNotification>,
+): List<NotificationCenterPage> =
     NotificationGroup.TABS.map { group ->
         NotificationCenterPage(
             group = group,
             items = rememberTestLazyPagingItems(
                 when (group) {
-                    NotificationGroup.INTERACTION -> TestInteractionNotifications
+                    NotificationGroup.INTERACTION -> interactions
                     NotificationGroup.NOTICE -> notices
                 },
             ),
@@ -50,15 +53,26 @@ private fun rememberPreviewPages(notices: List<AppNotification>): List<Notificat
         )
     }
 
+/**
+ * 没有未读的通知和公告, 公告入口显示最新的公告.
+ */
+private val ReadBadgeState: NotificationBadgeState
+    get() = TestNotificationBadgeState.copy(
+        unreadCounts = emptyMap(),
+        hasUnreadAnnouncements = false,
+        unreadAnnouncementCount = 0,
+    )
+
 @Composable
 private fun PreviewNotificationCenter(
     selectedGroup: NotificationGroup,
     access: NotificationAccess = NotificationAccess.AUTHORIZED,
     notices: List<AppNotification> = TestNotifications,
+    interactions: List<AppNotification> = TestInteractionNotifications,
     badgeState: NotificationBadgeState = TestNotificationBadgeState,
 ) = PreviewHost {
     NotificationCenterScreen(
-        pages = rememberPreviewPages(notices),
+        pages = rememberPreviewPages(notices, interactions),
         selectedGroup = selectedGroup,
         onSelectGroup = {},
         access = access,
@@ -88,12 +102,52 @@ private fun PreviewNotificationCenterGuest() = PreviewNotificationCenter(
     NotificationGroup.NOTICE,
     access = NotificationAccess.GUEST,
     notices = emptyList(),
-    badgeState = TestNotificationBadgeState.copy(
-        unreadCounts = emptyMap(),
-        hasUnreadAnnouncements = false,
-        unreadAnnouncementCount = 0,
-    ),
+    badgeState = ReadBadgeState,
 )
+
+@Composable
+@Preview
+private fun PreviewNotificationCenterNoticeEmpty() = PreviewNotificationCenter(
+    NotificationGroup.NOTICE,
+    notices = emptyList(),
+    badgeState = ReadBadgeState,
+)
+
+@Composable
+@Preview
+private fun PreviewNotificationCenterInteractionEmpty() = PreviewNotificationCenter(
+    NotificationGroup.INTERACTION,
+    interactions = emptyList(),
+    badgeState = ReadBadgeState,
+)
+
+/**
+ * 宽屏双栏, 尚未选择通知.
+ */
+@Composable
+@Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
+private fun PreviewNotificationCenterTwoPane() = PreviewNotificationCenter(
+    NotificationGroup.NOTICE,
+    badgeState = ReadBadgeState,
+)
+
+@Composable
+@Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
+private fun PreviewNotificationCenterTwoPaneEmpty() = PreviewNotificationCenter(
+    NotificationGroup.NOTICE,
+    notices = emptyList(),
+    badgeState = ReadBadgeState,
+)
+
+@Composable
+@Preview
+private fun PreviewNotificationNotFound() = PreviewHost {
+    NotificationDetailScreen(
+        state = DetailLoadState.NotFound,
+        actions = NotificationActions.Noop,
+        onRetry = {},
+    )
+}
 
 @Composable
 @Preview
@@ -169,6 +223,46 @@ private fun PreviewAnnouncements() = PreviewHost {
         onRefresh = {},
         onNavigateToDetail = {},
         onLogin = {},
+    )
+}
+
+@Composable
+@Preview
+private fun PreviewAnnouncementsEmpty() = PreviewHost {
+    AnnouncementsScreen(
+        items = rememberTestLazyPagingItems(emptyList()),
+        access = NotificationAccess.AUTHORIZED,
+        readOverlay = ReadOverlay.Empty,
+        onOpenAnnouncement = {},
+        onRefresh = {},
+        onNavigateToDetail = {},
+        onLogin = {},
+    )
+}
+
+/**
+ * 宽屏双栏, 尚未选择公告.
+ */
+@Composable
+@Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
+private fun PreviewAnnouncementsTwoPane() = PreviewHost {
+    AnnouncementsScreen(
+        items = rememberTestLazyPagingItems(TestAnnouncements),
+        access = NotificationAccess.AUTHORIZED,
+        readOverlay = ReadOverlay.Empty,
+        onOpenAnnouncement = {},
+        onRefresh = {},
+        onNavigateToDetail = {},
+        onLogin = {},
+    )
+}
+
+@Composable
+@Preview
+private fun PreviewAnnouncementNotFound() = PreviewHost {
+    AnnouncementDetailScreen(
+        state = DetailLoadState.NotFound,
+        onRetry = {},
     )
 }
 

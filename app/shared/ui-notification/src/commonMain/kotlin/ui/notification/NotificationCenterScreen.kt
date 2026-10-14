@@ -29,6 +29,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Badge
@@ -62,6 +64,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -94,9 +97,11 @@ import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.notification_detail_placeholder
 import me.him188.ani.app.ui.lang.notification_empty
+import me.him188.ani.app.ui.lang.notification_empty_supporting
 import me.him188.ani.app.ui.lang.notification_group_interaction
 import me.him188.ani.app.ui.lang.notification_group_notice
 import me.him188.ani.app.ui.lang.notification_interaction_empty
+import me.him188.ani.app.ui.lang.notification_interaction_empty_supporting
 import me.him188.ani.app.ui.lang.notification_mark_all_read
 import me.him188.ani.app.ui.lang.notification_settings
 import me.him188.ani.app.ui.lang.notification_title
@@ -348,12 +353,11 @@ fun NotificationCenterScreen(
                     },
                 ) {
                     if (notification == null) {
-                        NotificationHintText(
+                        // 列表为空时没有可选的通知, 详情栏留空
+                        if (!selectedPage?.loadedItems.isNullOrEmpty()) NotificationDetailPanePlaceholder(
+                            Icons.Outlined.Notifications,
                             stringResource(Lang.notification_detail_placeholder),
-                            Modifier
-                                .paneContentPadding()
-                                .detailContentWidth()
-                                .testTag(NotificationTestTags.DETAIL_PLACEHOLDER),
+                            Modifier.testTag(NotificationTestTags.DETAIL_PLACEHOLDER),
                         )
                     } else {
                         NotificationDetailContent(
@@ -694,7 +698,12 @@ private fun LazyListScope.notificationItems(
 
             items.isLoadingFirstPage || items.loadState.refresh is LoadState.Loading -> placeholderItems()
 
-            else -> emptyItem(group)
+            else -> notificationEmptyStateItem(
+                icon = group.emptyIcon,
+                title = group.emptyTextRes,
+                supportingText = group.emptySupportingTextRes,
+                testTag = NotificationTestTags.EMPTY,
+            )
         }
         return
     }
@@ -752,15 +761,6 @@ private fun LazyListScope.notificationItems(
     }
 }
 
-private fun LazyListScope.emptyItem(group: NotificationGroup) {
-    item(key = "empty", contentType = "empty") {
-        NotificationHintText(
-            stringResource(group.emptyTextRes),
-            Modifier.testTag(NotificationTestTags.EMPTY),
-        )
-    }
-}
-
 private fun LazyListScope.placeholderItems() {
     items(6, key = { "placeholder-$it" }, contentType = { "placeholder" }) {
         NotificationListItemPlaceholder()
@@ -814,8 +814,20 @@ val NotificationGroup.labelRes: StringResource
         NotificationGroup.NOTICE -> Lang.notification_group_notice
     }
 
+private val NotificationGroup.emptyIcon: ImageVector
+    get() = when (this) {
+        NotificationGroup.INTERACTION -> Icons.Outlined.Forum
+        NotificationGroup.NOTICE -> Icons.Outlined.Notifications
+    }
+
 private val NotificationGroup.emptyTextRes: StringResource
     get() = when (this) {
         NotificationGroup.INTERACTION -> Lang.notification_interaction_empty
         NotificationGroup.NOTICE -> Lang.notification_empty
+    }
+
+private val NotificationGroup.emptySupportingTextRes: StringResource
+    get() = when (this) {
+        NotificationGroup.INTERACTION -> Lang.notification_interaction_empty_supporting
+        NotificationGroup.NOTICE -> Lang.notification_empty_supporting
     }

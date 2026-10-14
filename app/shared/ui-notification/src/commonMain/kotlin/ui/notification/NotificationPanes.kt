@@ -15,18 +15,14 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.adaptive.PaneScope
@@ -66,7 +62,8 @@ internal fun PaneScope.NotificationDetailPaneLayout(
         Box(
             Modifier
                 .fillMaxSize()
-                .consumeWindowInsets(paneContentWindowInsets.only(WindowInsetsSides.Top)),
+                .consumeWindowInsets(paneContentWindowInsets.only(WindowInsetsSides.Top))
+                .testTag(NotificationTestTags.DETAIL_PANE),
         ) {
             content()
         }
@@ -74,19 +71,23 @@ internal fun PaneScope.NotificationDetailPaneLayout(
 }
 
 /**
- * 列表为空、或宽屏中尚未选择条目时的提示文本.
+ * 宽屏中尚未选择条目时, 在 [NotificationDetailPaneLayout] 的内容区域中央显示的提示.
+ *
+ * @param modifier 作用于提示本身.
  */
 @Composable
-internal fun NotificationHintText(
+internal fun PaneScope.NotificationDetailPanePlaceholder(
+    icon: ImageVector,
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 48.dp), contentAlignment = Alignment.Center) {
-        Text(
-            text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
+    Box(
+        Modifier
+            .paneContentPadding()
+            .paneWindowInsetsPadding()
+            .fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        NotificationEmptyState(icon, title = null, modifier, supportingText = text)
     }
 }

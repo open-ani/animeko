@@ -99,25 +99,4 @@ class DetailContentWidthTest {
         }
         assertFillsWidth(AnnouncementTestTags.DETAIL)
     }
-
-    @Composable
-    private fun NotFoundScreen() {
-        NotificationDetailScreen(
-            state = DetailLoadState.NotFound,
-            actions = NotificationActions.Noop,
-            onRetry = {},
-        )
-    }
-
-    @Test
-    fun `not found hint is centered on wide screens`() = runAniComposeUiTest {
-        showInContainer(WideWidth) { NotFoundScreen() }
-        assertCentered(NotificationTestTags.DETAIL_NOT_FOUND)
-    }
-
-    @Test
-    fun `not found hint fills the width on phones`() = runAniComposeUiTest {
-        showInContainer(NarrowWidth) { NotFoundScreen() }
-        assertFillsWidth(NotificationTestTags.DETAIL_NOT_FOUND)
-    }
 }

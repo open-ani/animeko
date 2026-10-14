@@ -26,9 +26,21 @@ object NotificationTestTags {
     const val ANNOUNCEMENT_ENTRY = "notification-announcement-entry"
     const val ANNOUNCEMENT_ENTRY_DOT = "notification-announcement-entry-dot"
     const val EMPTY = "notification-empty"
+
+    /**
+     * [NotificationEmptyState] 中的圆形图标. 所有空状态共用, 用祖先节点的标签区分.
+     */
+    const val EMPTY_STATE_ICON = "notification-empty-state-icon"
+
     const val UPDATE_BANNER = "notification-update-banner"
     const val UPDATE_BANNER_ACTION = "notification-update-banner-action"
     const val DETAIL = "notification-detail"
+
+    /**
+     * 宽屏双栏中详情栏顶栏下方的内容区域. 通知中心和公告列表共用.
+     */
+    const val DETAIL_PANE = "notification-detail-pane"
+
     const val DETAIL_PLACEHOLDER = "notification-detail-placeholder"
     const val DETAIL_NOT_FOUND = "notification-detail-not-found"
     const val DETAIL_ACTION = "notification-detail-action"
