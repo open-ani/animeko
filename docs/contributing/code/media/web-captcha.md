@@ -140,6 +140,10 @@ iOS 没有浏览器实现: 不支持交互解决, UI 以提示代替 "处理验�
 `navigator.userAgent` (仅主 frame 的渲染进程)。跨站 iframe 里的脚本仍读到 CEF 默认 UA,
 依赖 iframe 内脚本指纹的挑战 (如 Turnstile) 在配置了 UA 时可能更难通过。
 
+桌面端的验证码浏览器和播放页嗅探浏览器都用 CEF 的全局请求上下文: 浏览器解验证码得到的 cookie 对嗅探直接可见,
+同一站点的播放页脚本也走同一份 HTTP 缓存, 再次解析时不必重新下载。请求头覆写和资源拦截挂在各自 client 的
+request handler 上, 只作用于这个 client 的浏览器。
+
 ## 自动解决与备用取数
 
 **[CaptchaSolver]**: 自动与交互的唯一区别是 "谁在驱动浏览器"。`solve(interactive = false)` 在用户开启了自动解决、
