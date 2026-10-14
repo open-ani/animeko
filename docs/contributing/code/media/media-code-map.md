@@ -101,10 +101,11 @@
    并更新记忆。命中则不进入第 7 步。
 7. `MediaSelectorAutoSelectUseCaseImpl` 准备配置并启用上次使用的源，调用
    `MediaAutoSelector.select`；后者统一处理缓存、记忆源、WEB 两段超时或 BT 完成条件。
-8. `EpisodeFetchSelectPlayState.LoadMediaOnSelectExtension` 监听 `mediaSelector.selected` 并调用
-   `PlayerSession.loadMedia(...)`。
+8. `EpisodeFetchSelectPlayState.LoadMediaOnSelectExtension` 监听 `mediaSelector.selected`，先调用各扩展的
+   `onBeforeLoadMedia`（换源时 `RememberPlayProgressExtension` 在这里保存旧资源的进度），再读出本集记忆的播放进度
+   作为起播位置（一起看时从头），调用 `PlayerSession.loadMedia(...)`。
 9. `PlayerSession.loadMedia(...)` 通过 `MediaResolver.resolve(...)` 解析，打开得到的
-   `MediaDataProvider`，然后调用 `player.setMediaData(...)`。
+   `MediaDataProvider`，然后调用 `player.setMediaData(...)`，播放器直接在起播位置打开。
 
 ### 播放拖入的本地文件（桌面端）
 

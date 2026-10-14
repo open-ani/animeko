@@ -36,8 +36,9 @@ import kotlin.time.TimeSource
  *
  * 切换剧集 (手动或自动连播) 或关闭播放页时记录, 每个 [EpisodeSession] 只记录一次. 进程被杀时不会记录.
  *
- * 时长都是墙上时间, 从 [onStart] (进入本集) 起算. 卡顿只统计当前资源起播之后的缓冲, 包括拖动进度 (含恢复播放进度) 后的缓冲;
- * 打开资源后到首次起播之间的加载不算卡顿, 换源后同样重新等起播.
+ * 时长都是墙上时间, 从 [onStart] (进入本集) 起算. 卡顿只统计当前资源起播之后的缓冲, 包括拖动进度后的缓冲;
+ * 打开资源后到首次起播之间的加载不算卡顿, 换源后同样重新等起播. 续播时资源直接在记忆的进度处打开,
+ * 起播耗时就是到在那里开始播放的耗时, 那里的缓冲不算卡顿.
  */
 class EpisodeExitAnalyticsExtension(
     private val context: PlayerExtensionContext,

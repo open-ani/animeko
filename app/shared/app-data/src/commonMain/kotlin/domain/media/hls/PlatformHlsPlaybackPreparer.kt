@@ -645,7 +645,7 @@ private class LocalHlsProxySession private constructor(
         val mayContainAds = !analysis.isConclusive
         val proxyable = if (mayContainAds) parseProxyableMediaPlaylist(content, baseUri) else null
         val startPrefetch = proxyable?.let { startPositionPrefetchOrNull(analysis, baseUri) }
-        // 续播时也要开头的分片: 播放器打开时先读它们分析流信息, 续播的跳转在开始播放之后才执行
+        // 续播时也要开头的分片: 播放器 (如经 FFmpeg 打开 HLS 的 mpv) 打开时先读它们分析流信息, 再定位到起播位置
         proxyable?.segments?.take(STARTUP_PREFETCH_SEGMENTS)?.forEach { segment ->
             prefetchSegment(resolveHlsUri(baseUri, segment.uri))
         }
@@ -696,8 +696,8 @@ private class LocalHlsProxySession private constructor(
     /**
      * 续播时在首片之外预缓存记忆进度处的分片.
      *
-     * 多数播放是从上次看到的地方续播: 播放器打开时先读开头的分片分析流信息, 开始播放后才跳到记忆的进度
-     * (由 RememberPlayProgressExtension 执行), 接着要的是那里的分片. 要是等跳转后才开始下载, 整段探测时间就叠加在续播耗时上.
+     * 多数播放是从上次看到的地方续播: 播放器在记忆的进度处打开 (见 PlayerSession.loadMedia), 起播要的是那里的分片
+     * (有的播放器会先读开头的分片分析流信息). 要是等播放器请求时才开始下载, 整段探测时间就叠加在续播耗时上.
      *
      * 记忆的进度在去除广告后的时间轴上, 对应到远端播放列表的哪个分片取决于它之前有哪些组是广告, 这要等探测给出结论.
      * 所以按组序探测 ([probeFirstPts]), 每当从头连续有结果的组增加, 就用与最终判定相同的规则
