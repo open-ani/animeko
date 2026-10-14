@@ -84,12 +84,10 @@ final class EnhancedPlayerView: UIView {
                 let group = try await item.asset.loadMediaSelectionGroup(for: .legible)
                 let tracks = try await item.asset.loadTracks(withMediaType: .video)
                 let transform = try await tracks.first?.load(.preferredTransform) ?? .identity
-                let naturalSize = try await tracks.first?.load(.naturalSize) ?? .zero
                 guard let self, !Task.isCancelled, self.itemGeneration == generation, self.item === item else { return }
                 self.subtitleGroup = group
                 guard !self.checkSubtitles() else { return }
                 self.renderer?.presentationTransform = transform
-                self.renderer?.naturalSize = naturalSize
                 self.connectOutput(item)
             } catch {
                 guard let self, !Task.isCancelled, self.itemGeneration == generation else { return }

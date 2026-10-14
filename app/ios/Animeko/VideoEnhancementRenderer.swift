@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreVideo
 import MetalKit
 
 final class FrameCounter: @unchecked Sendable {
@@ -10,7 +11,6 @@ final class FrameCounter: @unchecked Sendable {
 
 final class RawMetalRenderer: NSObject, MTKViewDelegate {
     var presentationTransform = CGAffineTransform.identity { didSet { needsRedraw = true } }
-    var naturalSize = CGSize.zero { didSet { needsRedraw = true } }
     var aspectMode = 0 { didSet { if oldValue != aspectMode { needsRedraw = true } } } // fit, stretch, crop
     var onEnhancedFrame: ((Int) -> Void)?
     var onFailure: ((String) -> Void)?
@@ -229,8 +229,7 @@ final class RawMetalRenderer: NSObject, MTKViewDelegate {
         guard let encoder = command.makeRenderCommandEncoder(descriptor: descriptor) else { failure = "render encoder unavailable"; return }
         if let retainedFrame {
             let texture = performanceEnabled ? processedTexture ?? retainedFrame.2 : retainedFrame.2
-            let size = naturalSize.width > 0 && naturalSize.height > 0 ? naturalSize : CGSize(width: texture.width, height: texture.height)
-            let vertices = videoPresentationVertices(sourceSize: size, targetSize: view.drawableSize, transform: presentationTransform, aspectMode: aspectMode)
+            let vertices = videoPresentationVertices(pixelBuffer: retainedFrame.0, targetSize: view.drawableSize, transform: presentationTransform, aspectMode: aspectMode)
             encoder.setRenderPipelineState(performanceEnabled ? ewaPipeline : pipeline)
             vertices.withUnsafeBytes { bytes in
                 encoder.setVertexBytes(bytes.baseAddress!, length: bytes.count, index: 0)
@@ -266,8 +265,12 @@ final class RawMetalRenderer: NSObject, MTKViewDelegate {
     }
 }
 
-/// Positions use the track's display transform; UVs remain in encoded-frame coordinates.
-func videoPresentationVertices(sourceSize: CGSize, targetSize: CGSize, transform: CGAffineTransform, aspectMode: Int) -> [SIMD4<Float>] {
+/// Positions use square-pixel display dimensions and the track transform; UVs cover the frame's clean aperture.
+func videoPresentationVertices(pixelBuffer: CVPixelBuffer, targetSize: CGSize, transform: CGAffineTransform, aspectMode: Int) -> [SIMD4<Float>] {
+    let sourceSize = CVImageBufferGetDisplaySize(pixelBuffer)
+    let cleanRect = CVImageBufferGetCleanRect(pixelBuffer)
+    let width = CGFloat(CVPixelBufferGetWidth(pixelBuffer))
+    let height = CGFloat(CVPixelBufferGetHeight(pixelBuffer))
     let bounds = CGRect(origin: .zero, size: sourceSize).applying(transform)
     let sourceAspect = bounds.width / bounds.height
     let targetAspect = targetSize.width / targetSize.height
@@ -278,8 +281,11 @@ func videoPresentationVertices(sourceSize: CGSize, targetSize: CGSize, transform
     let corners: [CGPoint] = [.zero, CGPoint(x: 1, y: 0), CGPoint(x: 0, y: 1), CGPoint(x: 0, y: 1), CGPoint(x: 1, y: 0), CGPoint(x: 1, y: 1)]
     return corners.map { uv in
         let point = CGPoint(x: uv.x * sourceSize.width, y: uv.y * sourceSize.height).applying(transform)
+        // CoreVideo's clean rect has a lower-left origin; Metal UVs have an upper-left origin.
+        let textureX = (cleanRect.minX + uv.x * cleanRect.width) / width
+        let textureY = (height - cleanRect.maxY + uv.y * cleanRect.height) / height
         return SIMD4(Float(((point.x - bounds.minX) / bounds.width * 2 - 1) * scaleX),
-                     Float((1 - (point.y - bounds.minY) / bounds.height * 2) * scaleY), Float(uv.x), Float(uv.y))
+                     Float((1 - (point.y - bounds.minY) / bounds.height * 2) * scaleY), Float(textureX), Float(textureY))
     }
 }
 
