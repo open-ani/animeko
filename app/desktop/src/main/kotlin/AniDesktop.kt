@@ -132,6 +132,8 @@ import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.currentPlatformDesktop
 import me.him188.ani.utils.platform.isMacOS
+import me.him188.ani.app.desktop.tracking.installAniListOpenUriHandler
+import me.him188.ani.app.desktop.tracking.DesktopAniListAccountConnector
 import me.him188.ani.utils.platform.isWindows
 import me.him188.ani.utils.video.enhancement.shader.provider.VideoEnhancementShaderProvider
 import org.jetbrains.compose.resources.painterResource
@@ -309,6 +311,9 @@ object AniDesktop {
             modules(getCommonKoinModule({ context }, coroutineScope))
             modules(getDesktopModules({ context }, coroutineScope))
         }.startCommonKoinModule(context, coroutineScope)
+        if (currentPlatformDesktop().isMacOS()) {
+            installAniListOpenUriHandler(koin.koin.get<DesktopAniListAccountConnector>(), coroutineScope)
+        }
         startupTimeMonitor.mark(StepName.Modules)
 
         // Startup ok, run test task if needed

@@ -37,15 +37,23 @@ fun interface SetEpisodeCollectionTypeUseCase : UseCase {
     }
 }
 
+fun interface EpisodeTrackingSync {
+    fun onEpisodeWatched(subjectId: Int, episodeId: Int)
+}
+
 class SetEpisodeCollectionTypeUseCaseImpl(
     koin: Koin,
 ) : SetEpisodeCollectionTypeUseCase {
     private val episodeCollectionRepository: EpisodeCollectionRepository by koin.inject()
+    private val trackingSync: EpisodeTrackingSync? by lazy { koin.getOrNull() }
+
     override suspend fun invoke(subjectId: Int, episodeId: Int, collectionType: UnifiedCollectionType) {
         withContext(Dispatchers.Default) {
-            // 只写本地并入队, 不发网络请求; 推送由 EpisodeCollectionSyncer 负责
+            // Persist locally and enqueue server sync before notifying AniList.
             episodeCollectionRepository.setEpisodeCollectionType(subjectId, episodeId, collectionType)
+            if (collectionType == UnifiedCollectionType.DONE) {
+                trackingSync?.onEpisodeWatched(subjectId, episodeId)
+            }
         }
     }
 }
-

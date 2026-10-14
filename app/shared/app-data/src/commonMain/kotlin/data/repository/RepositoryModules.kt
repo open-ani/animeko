@@ -213,6 +213,7 @@ fun KoinApplication.repositoryModules(
             animeScheduleRepository = get(),
             subjectCollectionRepository = inject(),
             getEpisodeTypeFiltersUseCase = get(),
+            trackingSync = getOrNull(),
             onDirtyChanged = { get<EpisodeCollectionSyncer>().requestSync() },
         )
     }

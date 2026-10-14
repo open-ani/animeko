@@ -25,6 +25,7 @@ kotlin {
         namespace = "me.him188.ani.app.application"
     }
     sourceSets.commonMain.dependencies {
+        implementation(projects.tracking.api)
         api(projects.app.shared.appPlatform)
         api(projects.app.shared.uiFoundation)
         api(projects.app.shared)
@@ -40,6 +41,7 @@ kotlin {
     }
     sourceSets.iosMain.dependencies {
         implementation(libs.mediamp.ffmpeg)
+        implementation(projects.tracking.anilist)
     }
 }
 
