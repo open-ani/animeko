@@ -70,16 +70,32 @@ class UpdateManagerTest {
     }
 
     @Test
-    fun `deleteStaleInstallers ignores directories instead of failing`() {
-        // #3441 曾把 dev builds 放在 saveDir/dev-builds, 删除目录抛 IOException, 让整个下载静默失败.
-        val dir = manager.saveDir.resolve("dev-builds").apply { createDirectories() }
-        file(dir.resolve("ani-main-45f0e6fb.dmg"))
-        val stale = file(manager.saveDir.resolve("ani-6.1.0-windows-x86_64.zip"))
+    fun `deleteStaleInstallers removes stale staging directories and keeps the one being downloaded`() {
+        // 桌面增量下载把新版本拼成 `<发布包名>.staging` 目录
+        val keep = manager.saveDir.resolve("ani-6.2.0-beta01-windows-x86_64.zip.staging").apply { createDirectories() }
+        file(keep.resolve("Ani.exe"))
+        val stale = manager.saveDir.resolve("ani-6.1.0-windows-x86_64.zip.staging").apply { createDirectories() }
+        file(stale.resolve("Ani.exe"))
+        val staleFile = file(manager.saveDir.resolve("ani-6.1.0-windows-x86_64.zip"))
 
         manager.deleteStaleInstallers(listOf("ani-6.2.0-beta01-windows-x86_64.zip"))
 
-        assertTrue(dir.exists(), "directories are not installers and must be left alone")
+        assertTrue(keep.exists())
         assertFalse(stale.exists())
+        assertFalse(staleFile.exists())
+    }
+
+    @Test
+    fun `deleteInstalledFiles removes the staging directory of the current version`() {
+        val installed = manager.saveDir.resolve("ani-6.2.0-windows-x86_64.zip.staging").apply { createDirectories() }
+        file(installed.resolve("Ani.exe"))
+        val other = manager.saveDir.resolve("ani-6.3.0-windows-x86_64.zip.staging").apply { createDirectories() }
+        file(other.resolve("Ani.exe"))
+
+        manager.deleteInstalledFiles(currentVersion = "6.2.0")
+
+        assertFalse(installed.exists())
+        assertTrue(other.exists())
     }
 
     @Test

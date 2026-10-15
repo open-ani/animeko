@@ -45,6 +45,15 @@ abstract class PlayerExtension(
     open suspend fun onBeforeSwitchEpisode(newEpisodeId: Int) {}
 
     /**
+     * Before the media selected in [episodeSession] is loaded into the player, replacing the media it is playing.
+     *
+     * The player still holds the previous media of the same episode (or no media, for the first load of the episode),
+     * so this is the last chance to read its state, e.g. to save the playback progress before switching sources.
+     * The start position of the new media is read from the play history after all extensions return.
+     */
+    open suspend fun onBeforeLoadMedia(episodeSession: EpisodeSession) {}
+
+    /**
      * Called typically when view model is being cleared (user exiting the page).
      */
     open suspend fun onClose() {}

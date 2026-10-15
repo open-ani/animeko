@@ -62,7 +62,8 @@ class IosWebMediaResolver(
     }
 
     override fun supports(media: Media): Boolean {
-        return media.download is ResourceLocation.WebVideo
+        // API 签发地址的网页视频由 ApiVideoMediaResolver 解析, 不打开页面
+        return (media.download as? ResourceLocation.WebVideo)?.isResolvedByApi == false
     }
 
     @Composable

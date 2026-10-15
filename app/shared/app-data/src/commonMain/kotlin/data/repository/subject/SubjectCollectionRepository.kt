@@ -706,7 +706,7 @@ data class CollectionsFilterQuery(
     }
 }
 
-private fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
+internal fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
     return SubjectInfo(
         subjectId = subjectId,
         subjectType = SubjectType.ANIME,

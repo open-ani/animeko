@@ -46,6 +46,7 @@ import me.him188.ani.app.ui.lang.settings_mediasource_rss_query_settings
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_search_link
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_search_link_placeholder
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_search_link_supporting_text
+import me.him188.ani.app.ui.settings.mediasource.editor.MediaSourceHeadline
 import me.him188.ani.app.ui.settings.mediasource.MediaSourceConfigurationDefaults
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceState
 import org.jetbrains.compose.resources.stringResource

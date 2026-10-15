@@ -28,8 +28,8 @@
   加载所有 factory，从 `MediaSourceInstanceRepository` 恢复持久化的实例，注入本地缓存数据源，
   创建真正的 `MediaSourceInstance`。
 - `MediaSourceInstanceRepository` 存储本地数据源实例；`MediaSourceSubscriptionRepository` 存储订阅规则。
-- `MediaSourceCodecManager` 编解码导出的数据源定义。目前注册的 codec 有 `RssMediaSourceCodec` 和
-  `SelectorMediaSourceCodec`。
+- `MediaSourceCodecManager` 编解码导出的数据源定义。目前注册的 codec 有 `RssMediaSourceCodec`、
+  `SelectorMediaSourceCodec` 和 `JsonApiMediaSourceCodec`。
 - `MediaSourceSubscriptionUpdater` 下载订阅内容，按 `subscriptionId` 与现有实例 diff，
   然后增/改/删/重排数据源实例。
 - `MediaSourceSubscriptionRequesterImpl` 先直接拉取订阅 JSON，失败后回退到
@@ -39,6 +39,8 @@
 
 - `SelectorMediaSource`（`app/shared/app-data/.../domain/mediasource/web/SelectorMediaSource.kt`）：
   通用 HTML/CSS-selector 网页数据源。
+- `JsonApiMediaSource`（`app/shared/app-data/.../domain/mediasource/jsonapi/JsonApiMediaSource.kt`）：
+  通用 JSON 接口数据源，`JsonApiMediaSourceEngine` 负责按模板构造请求与 JSONPath 解析。
 - `RssMediaSource`（`app/shared/app-data/.../domain/mediasource/rss/RssMediaSource.kt`）：
   通用 RSS BitTorrent 数据源。
 - 本地缓存以数据源形式暴露：`MediaCacheStorageSource`
@@ -63,6 +65,16 @@
   浏览方法的调用方是手动查找（`ManualBrowseState`）与浏览记忆回放（`ReplayBrowseMemoryUseCase`），
   见下文[选源界面](#选源界面)。
 - `SelectorMediaSource.matcher` 提供数据源专属的 `WebVideoMatcher`，供之后播放时提取 URL 使用。
+
+### JSON API 数据源查询/解析管线
+
+1. `JsonApiMediaSource.fetch(...)`：关键字链（`keywordSearchChain`，与 Selector 源共用）
+2. `searchSubjectsOnline(...)`：搜索阶段请求，`JsonApiMediaSourceEngine.parseSubjects(...)`
+3. 按条目名过滤后对每个条目 `loadChannels(...)`：剧集阶段请求，`parseChannels(...)` 按线路格式展开
+4. `selectMedia(...)` 按集号筛选，`createMedia(...)` 产出 `download = ResourceLocation.WebVideo(..., apiParameters)`
+5. 播放时 `JsonApiMediaSource.resolveApiVideo(...)`：播放阶段请求，`parseVideo(...)` 按线路挑候选；剧集列表自带地址的站点改为重取列表读这一集的地址
+
+浏览方法（`searchSubjects` / `browseSubject` / `createMedia`）走同样的请求与解析，不做匹配。
 
 ### RSS 数据源查询/解析管线
 
@@ -89,10 +101,11 @@
    并更新记忆。命中则不进入第 7 步。
 7. `MediaSelectorAutoSelectUseCaseImpl` 准备配置并启用上次使用的源，调用
    `MediaAutoSelector.select`；后者统一处理缓存、记忆源、WEB 两段超时或 BT 完成条件。
-8. `EpisodeFetchSelectPlayState.LoadMediaOnSelectExtension` 监听 `mediaSelector.selected` 并调用
-   `PlayerSession.loadMedia(...)`。
+8. `EpisodeFetchSelectPlayState.LoadMediaOnSelectExtension` 监听 `mediaSelector.selected`，先调用各扩展的
+   `onBeforeLoadMedia`（换源时 `RememberPlayProgressExtension` 在这里保存旧资源的进度），再读出本集记忆的播放进度
+   作为起播位置（一起看时从头），调用 `PlayerSession.loadMedia(...)`。
 9. `PlayerSession.loadMedia(...)` 通过 `MediaResolver.resolve(...)` 解析，打开得到的
-   `MediaDataProvider`，然后调用 `player.setMediaData(...)`。
+   `MediaDataProvider`，然后调用 `player.setMediaData(...)`，播放器直接在起播位置打开。
 
 ### 播放拖入的本地文件（桌面端）
 
@@ -176,6 +189,8 @@
 
 - `TorrentMediaResolver`：解析磁力/种子资源，并在种子内选择具体视频文件。
 - `HttpStreamingMediaResolver`：解析直接 HTTP 流媒体文件。
+- `ApiVideoMediaResolver`：解析 `WebVideo.isResolvedByApi` 的资源，向产生它的数据源
+  （`ApiVideoResolver`，目前是 `JsonApiMediaSource`）当场签发播放地址，不打开页面。
 - 平台 web resolver：
     - Android：`AndroidWebMediaResolver`
     - Desktop：`DesktopWebMediaResolver`
@@ -183,7 +198,8 @@
 
 ### Web 播放的重要细节
 
-- `ResourceLocation.WebVideo` 不能直接播放。
+- `ResourceLocation.WebVideo` 不能直接播放。`apiParameters` 为 `null` 时由平台 web resolver 打开页面拦截；
+  非 `null` 时由 `ApiVideoMediaResolver` 向数据源签发。
 - 平台 web resolver 通过 `MediaSourceManager.webVideoMatcherLoader` 加载数据源提供的
   `WebVideoMatcher`。
 - 对于 Selector 数据源，matcher 来自 `SelectorMediaSource.matcher`，它使用配置的正则/Cookie

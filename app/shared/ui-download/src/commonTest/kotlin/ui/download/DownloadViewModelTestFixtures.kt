@@ -35,6 +35,7 @@ import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
@@ -47,6 +48,7 @@ import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.preference.WatchTogetherSettings
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
@@ -309,6 +311,7 @@ internal class FakeSettingsRepository : SettingsRepository {
     override val analyticsSettings: Settings<AnalyticsSettings> get() = error("Not used")
     override val debugSettings: Settings<DebugSettings> get() = error("Not used")
     override val watchTogetherSettings: Settings<WatchTogetherSettings> get() = error("Not used")
+    override val notificationSettings: Settings<NotificationSettings> get() = error("Not used")
 }
 
 /**
@@ -423,7 +426,13 @@ internal class FakeAddDownloadUseCase(private val storage: FakeDownloadStorage) 
     var gate: CompletableDeferred<Unit>? = null
     var failure: Throwable? = null
 
-    override suspend fun invoke(subject: SubjectInfo, episode: EpisodeInfo, media: Media, metadata: MediaCacheMetadata): MediaCache {
+    override suspend fun invoke(
+        subject: SubjectInfo,
+        episode: EpisodeInfo,
+        media: Media,
+        metadata: MediaCacheMetadata,
+        splitSeason: SplitSeason?,
+    ): MediaCache {
         gate?.await()
         failure?.let { throw it }
         val cache = testDownloadCache(episode.episodeId, subject.subjectId)

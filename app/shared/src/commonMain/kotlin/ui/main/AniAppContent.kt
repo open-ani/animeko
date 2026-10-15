@@ -40,7 +40,9 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiMediaSource
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
+import me.him188.ani.app.domain.notification.NotificationBadgeManager
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
@@ -81,6 +83,16 @@ import me.him188.ani.app.ui.lang.main_network_check_failed
 import me.him188.ani.app.ui.login.EmailLoginStartScreen
 import me.him188.ani.app.ui.login.EmailLoginVerifyScreen
 import me.him188.ani.app.ui.login.EmailLoginViewModel
+import me.him188.ani.app.ui.notification.AnnouncementDetailScreen
+import me.him188.ani.app.ui.notification.AnnouncementDetailViewModel
+import me.him188.ani.app.ui.notification.AnnouncementsScreen
+import me.him188.ani.app.ui.notification.AnnouncementsViewModel
+import me.him188.ani.app.ui.notification.NotificationCenterScreen
+import me.him188.ani.app.ui.notification.NotificationCenterViewModel
+import me.him188.ani.app.ui.notification.NotificationDetailScreen
+import me.him188.ani.app.ui.notification.NotificationDetailViewModel
+import me.him188.ani.app.ui.notification.NotificationForegroundObserver
+import me.him188.ani.app.ui.notification.rememberNotificationActions
 import me.him188.ani.app.ui.oauth.OAuthAuthorizeScreen
 import me.him188.ani.app.ui.oauth.OAuthAuthorizeViewModel
 import me.him188.ani.app.ui.playback.PlaybackHistoryScreen
@@ -96,8 +108,12 @@ import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceViewModel
+import me.him188.ani.app.ui.settings.mediasource.jsonapi.EditJsonApiMediaSourceScreen
+import me.him188.ani.app.ui.settings.mediasource.jsonapi.EditJsonApiMediaSourceViewModel
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceViewModel
+import me.him188.ani.app.ui.settings.notification.NotificationSettingsScreen
+import me.him188.ani.app.ui.settings.notification.NotificationSettingsViewModel
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsScreen
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
@@ -120,6 +136,7 @@ import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
 import me.him188.ani.utils.analytics.recordEvent
 import org.jetbrains.compose.resources.stringResource
+import org.koin.mp.KoinPlatform
 
 /**
  * UI 入口点. 包含所有子页面, 以及组合这些子页面的方式 (navigation).
@@ -162,6 +179,8 @@ fun AniAppContent(aniNavigator: AniNavigator) {
                     aniNavigator = aniNavigator,
                 )
                 PikPakNotEnoughSpaceDialogHost(aniAppViewModel.pikPakNotEnoughSpace)
+                val notificationBadgeManager = remember { KoinPlatform.getKoin().get<NotificationBadgeManager>() }
+                NotificationForegroundObserver(notificationBadgeManager)
             }
         }
     }
@@ -306,12 +325,14 @@ private fun AniAppContentImpl(
                     },
                 ) {
                     val selfInfo by vm.selfInfo.collectAsState() // not -WithLifecycle
+                    val showNotificationDot by vm.showNotificationDot.collectAsStateWithLifecycle()
                     MainScreen(
                         page = currentPage,
                         selfInfo = selfInfo,
                         onNavigateToPage = { currentPage = it },
                         onNavigateToSettings = { aniNavigator.navigateSettings(it) },
                         onNavigateToSearch = { aniNavigator.navigateSubjectSearch() },
+                        showNotificationDot = showNotificationDot,
                         navigationLayoutType = navigationLayoutType,
                     )
                 }
@@ -460,6 +481,65 @@ private fun AniAppContentImpl(
                     windowInsets = windowInsetsWithoutTitleBar,
                 )
             }
+            entry<NavRoutes.Notifications> { route ->
+                NotificationCenterScreen(
+                    vm = viewModel { NotificationCenterViewModel() },
+                    onNavigateToDetail = { aniNavigator.navigateNotificationDetail(it) },
+                    onNavigateToAnnouncements = { aniNavigator.navigateAnnouncements() },
+                    onNavigateToSettings = { aniNavigator.navigateNotificationSettings() },
+                    onLogin = { aniNavigator.navigateEmailLoginStart() },
+                    actions = rememberNotificationActions(aniNavigator),
+                    modifier = Modifier.fillMaxSize(),
+                    navigationIcon = {
+                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                    },
+                    windowInsets = windowInsets,
+                )
+            }
+            entry<NavRoutes.NotificationDetail> { route ->
+                NotificationDetailScreen(
+                    vm = viewModel(key = route.toString()) { NotificationDetailViewModel(route.notificationId) },
+                    actions = rememberNotificationActions(aniNavigator),
+                    modifier = Modifier.fillMaxSize(),
+                    navigationIcon = {
+                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                    },
+                    windowInsets = windowInsetsWithoutTitleBar,
+                )
+            }
+            entry<NavRoutes.Announcements> { route ->
+                AnnouncementsScreen(
+                    vm = viewModel { AnnouncementsViewModel() },
+                    onNavigateToDetail = { aniNavigator.navigateAnnouncementDetail(it) },
+                    onLogin = { aniNavigator.navigateEmailLoginStart() },
+                    modifier = Modifier.fillMaxSize(),
+                    navigationIcon = {
+                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                    },
+                    windowInsets = windowInsets,
+                )
+            }
+            entry<NavRoutes.AnnouncementDetail> { route ->
+                AnnouncementDetailScreen(
+                    vm = viewModel(key = route.toString()) { AnnouncementDetailViewModel(route.announcementId) },
+                    modifier = Modifier.fillMaxSize(),
+                    navigationIcon = {
+                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                    },
+                    windowInsets = windowInsetsWithoutTitleBar,
+                )
+            }
+            entry<NavRoutes.NotificationSettings> { route ->
+                val vm = viewModel { NotificationSettingsViewModel() }
+                NotificationSettingsScreen(
+                    vm.notificationSettings,
+                    modifier = Modifier.fillMaxSize(),
+                    navigationIcon = {
+                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                    },
+                    windowInsets = windowInsetsWithoutTitleBar,
+                )
+            }
             entry<NavRoutes.Caches> { route ->
                 val selfInfo by remember { SelfInfoStateProducer() }.flow.collectAsState(null)
                 DownloadManagementScreen(
@@ -586,6 +666,23 @@ private fun AniAppContentImpl(
                         EditSelectorMediaSourceScreen(
                             viewModel<EditSelectorMediaSourceViewModel>(key = mediaSourceInstanceId) {
                                 EditSelectorMediaSourceViewModel(mediaSourceInstanceId, context)
+                            },
+                            Modifier,
+                            windowInsets = windowInsets,
+                            navigationIcon = {
+                                BackNavigationIconButton(
+                                    {
+                                        aniNavigator.popBackStack(route, inclusive = true)
+                                    },
+                                )
+                            },
+                        )
+                    }
+
+                    JsonApiMediaSource.FactoryId -> {
+                        EditJsonApiMediaSourceScreen(
+                            viewModel<EditJsonApiMediaSourceViewModel>(key = mediaSourceInstanceId) {
+                                EditJsonApiMediaSourceViewModel(mediaSourceInstanceId)
                             },
                             Modifier,
                             windowInsets = windowInsets,

@@ -445,7 +445,10 @@ private class SelectorSearchConfigSurrogate(
     }
 }
 
-private object DurationAsMillisSerializer : KSerializer<Duration> {
+/**
+ * 以毫秒整数读写 [Duration]. 数据源配置里的时长都用它, 订阅文件里直接是数字.
+ */
+internal object DurationAsMillisSerializer : KSerializer<Duration> {
     override val descriptor = PrimitiveSerialDescriptor("Duration", PrimitiveKind.LONG)
     override fun serialize(encoder: Encoder, value: Duration) {
         Long.serializer().serialize(encoder, value.inWholeMilliseconds)

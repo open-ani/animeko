@@ -109,14 +109,18 @@ class MediaSelectionTraceReplayTest {
         replay("fresh-bocchi-01", Scenario.ExactBeforeFuzzy)
 
     @Test
-    fun `recorded fuzzy candidates wait until the fifteen second boundary`() =
+    fun `recorded fuzzy candidates wait until the fifteen second boundary behind a rate limited source`() =
         replay("fresh-bocchi-01", Scenario.FuzzyOnly)
+
+    @Test
+    fun `recorded fuzzy candidates are selected once every source finishes`() =
+        replay("fresh-bocchi-01", Scenario.FuzzyFinished)
 
     @Test
     fun `recorded fast select disabled waits for the slower source`() =
         replay("fresh-bocchi-01", Scenario.FastDisabled)
 
-    private enum class Scenario { Recorded, PreferredXifan, ExactBeforeFuzzy, FuzzyOnly, FastDisabled }
+    private enum class Scenario { Recorded, PreferredXifan, ExactBeforeFuzzy, FuzzyOnly, FuzzyFinished, FastDisabled }
 
     private fun replay(name: String, mode: Scenario = Scenario.Recorded) = runTest {
         val originalCase = MediaSelectionTrace.json.decodeFromString<Map<String, Case>>(resource("index.json")).getValue(name)
@@ -208,27 +212,38 @@ class MediaSelectionTraceReplayTest {
 
     /** Controlled policy regressions retain real candidate attributes and real completion times.
      * The only changes are explicit source/candidate subsets or the preference being exercised.
+     * Deadline scenarios keep an unfinished source without candidates (querying, or rate limited and due to retry),
+     * since selection stops waiting for deadlines once every source has finished.
      */
     private fun withScenario(case: Case, trace: MediaSelectionTrace, scenario: Scenario): Pair<Case, MediaSelectionTrace> {
         if (scenario == Scenario.Recorded) return case to trace
         val xifan = trace.sources.single { it.name == "稀饭动漫" }.id
         val haixing = trace.sources.single { it.name == "海星动漫" }.id
         val dida = trace.sources.single { it.name == "嘀嗒影视" }.id
+        // Still querying at the five second boundary.
+        val sakura = trace.sources.single { it.name == "樱花动漫" }.id
+        // Rate limited from 6.3 s until its automatic retry at 36.4 s.
+        val youku = trace.sources.single { it.name == "新优酷" }.id
         val sourceIds = when (scenario) {
             Scenario.PreferredXifan -> setOf(xifan, dida)
-            Scenario.ExactBeforeFuzzy, Scenario.FuzzyOnly -> setOf(haixing)
+            Scenario.ExactBeforeFuzzy -> setOf(haixing, sakura)
+            Scenario.FuzzyOnly -> setOf(haixing, youku)
+            Scenario.FuzzyFinished -> setOf(haixing)
             Scenario.FastDisabled -> setOf(xifan, dida)
             Scenario.Recorded -> error("Handled above")
         }
+        val withoutCandidates = setOf(sakura, youku)
         val indexes = trace.sources.indices.filter { trace.sources[it].id in sourceIds }
         val frames = trace.frames.map { frame ->
             frame.copy(
                 sources = indexes.map { index ->
                     val source = frame.sources[index]
                     source.copy(results = source.results.filter { media ->
-                        when (scenario) {
-                            Scenario.FuzzyOnly -> media.properties.subjectName!!.startsWith("剧场总集篇")
-                            Scenario.ExactBeforeFuzzy -> media.properties.subjectName!!.startsWith("剧场总集篇") ||
+                        when {
+                            source.id in withoutCandidates -> false
+                            scenario == Scenario.FuzzyOnly || scenario == Scenario.FuzzyFinished ->
+                                media.properties.subjectName!!.startsWith("剧场总集篇")
+                            scenario == Scenario.ExactBeforeFuzzy -> media.properties.subjectName!!.startsWith("剧场总集篇") ||
                                     (media.properties.subjectName == "孤独摇滚！" && media.properties.alliance == "播放Ⅰ")
                             else -> true
                         }
@@ -241,7 +256,8 @@ class MediaSelectionTraceReplayTest {
             when (scenario) {
                 Scenario.PreferredXifan -> media.mediaSourceId == xifan && media.properties.subjectName == "孤独摇滚！"
                 Scenario.ExactBeforeFuzzy -> media.properties.subjectName == "孤独摇滚！"
-                Scenario.FuzzyOnly -> media.properties.subjectName == "剧场总集篇孤独摇滚！ Re:" && media.properties.alliance == "播放Ⅱ"
+                Scenario.FuzzyOnly, Scenario.FuzzyFinished ->
+                    media.properties.subjectName == "剧场总集篇孤独摇滚！ Re:" && media.properties.alliance == "播放Ⅱ"
                 Scenario.FastDisabled -> media.mediaId == case.expectedMediaId
                 Scenario.Recorded -> error("Handled above")
             }
@@ -249,18 +265,20 @@ class MediaSelectionTraceReplayTest {
         val expectedAt = when (scenario) {
             Scenario.ExactBeforeFuzzy -> 5_000L
             Scenario.FuzzyOnly -> 15_000L
+            Scenario.FuzzyFinished -> frames.first { frame -> frame.sources.single().state == "Succeed" }.elapsedMillis
             else -> frames.first { frame -> frame.sources.any { it.id == xifan && it.state == "Succeed" } }.elapsedMillis
         }
         val expectedName = trace.sources.single { it.id == expected.mediaSourceId }.name
         val expectedTier = when (scenario) {
             Scenario.ExactBeforeFuzzy -> 6
-            Scenario.PreferredXifan, Scenario.FuzzyOnly -> 1
+            Scenario.PreferredXifan, Scenario.FuzzyOnly, Scenario.FuzzyFinished -> 1
             else -> 0
         }
         return case.copy(
             expectedMediaId = expected.mediaId, expectedSourceName = expectedName,
             earliestMillis = expectedAt, latestMillis = expectedAt,
-            expectedMatch = if (scenario == Scenario.FuzzyOnly) "FUZZY" else "EXACT", expectedTier = expectedTier,
+            expectedMatch = if (scenario == Scenario.FuzzyOnly || scenario == Scenario.FuzzyFinished) "FUZZY" else "EXACT",
+            expectedTier = expectedTier,
         ) to MediaSelectionTrace(
             capturedAt = trace.capturedAt, applicationVersion = trace.applicationVersion,
             acquisition = trace.acquisition, durationMillis = trace.durationMillis, searchCacheCleared = trace.searchCacheCleared,
@@ -315,8 +333,11 @@ class MediaSelectionTraceReplayTest {
                 "Working" -> MediaSourceFetchState.Working
                 "Disabled" -> MediaSourceFetchState.Disabled
                 "Succeed" -> MediaSourceFetchState.Succeed(update.generation ?: 0)
+                // Rate limiting stays distinct: the fetcher retries it, so selection keeps waiting for deadlines.
+                // The trace does not record the retry time.
+                "RateLimited" -> MediaSourceFetchState.RateLimited(retryAt = 0, id = update.generation ?: 0)
                 // Automatic selection treats these as terminal non-success states; retain the recorded name in the cause.
-                "Failed", "Abandoned", "CaptchaRequired", "RateLimited" ->
+                "Failed", "Abandoned", "CaptchaRequired" ->
                     MediaSourceFetchState.Failed(IllegalStateException(update.state), update.generation ?: 0)
                 else -> error("Unknown recorded state ${update.state}")
             }

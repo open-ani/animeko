@@ -252,7 +252,7 @@ abstract class SelectorMediaSourceEngine {
         subjectName: String,
         parser: LabelFirstRawTitleParser = LabelFirstRawTitleParser(),
     ): DefaultMedia {
-        val subtitleLanguages = guessSubtitleLanguages(info, parser)
+        val subtitleLanguages = guessSubtitleLanguageIds(info.channel, info.name, parser)
         return DefaultMedia(
             mediaId = buildString {
                 append(mediaSourceId)
@@ -293,30 +293,6 @@ abstract class SelectorMediaSourceEngine {
             location = MediaSourceLocation.Online,
             kind = MediaSourceKind.WEB,
         )
-    }
-
-    /**
-     * 有的 channel 会叫 "简中" 和 "繁中"
-     */
-    private fun guessSubtitleLanguages(
-        info: WebSearchEpisodeInfo,
-        parser: LabelFirstRawTitleParser
-    ): List<String>? {
-        val languagesFromChannel = info.channel?.let { parser.parseSubtitleLanguages(it) } ?: emptyList()
-        val languagesFromName = info.name.let { parser.parseSubtitleLanguages(it) }
-
-        return when {
-            languagesFromChannel.isEmpty() && languagesFromName.isEmpty() -> null
-            else -> languagesFromChannel.asSequence()
-                .plus(languagesFromName)
-                .map {
-                    it.id
-                }
-                .toList()
-                .ifEmpty {
-                    null
-                }
-        }
     }
 
     fun shouldLoadPage(url: String, config: SelectorSearchConfig.MatchVideoConfig): Boolean {
@@ -366,6 +342,28 @@ abstract class SelectorMediaSourceEngine {
 
     @Throws(RepositoryException::class, CancellationException::class)
     protected abstract suspend fun doHttpGet(uri: String): Document
+}
+
+/**
+ * 从线路名与剧集名猜测字幕语言: 有的线路会叫 "简中" 和 "繁中". 都猜不出时为 `null`, 由调用方用数据源的默认值.
+ * 在线站点类数据源 (Selector, JSON API) 共用.
+ */
+internal fun guessSubtitleLanguageIds(
+    channel: String?,
+    episodeName: String,
+    parser: LabelFirstRawTitleParser,
+): List<String>? {
+    val languagesFromChannel = channel?.let { parser.parseSubtitleLanguages(it) } ?: emptyList()
+    val languagesFromName = parser.parseSubtitleLanguages(episodeName)
+
+    return when {
+        languagesFromChannel.isEmpty() && languagesFromName.isEmpty() -> null
+        else -> languagesFromChannel.asSequence()
+            .plus(languagesFromName)
+            .map { it.id }
+            .toList()
+            .ifEmpty { null }
+    }
 }
 
 /**

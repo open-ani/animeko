@@ -1,0 +1,5914 @@
+{
+  "316247": {
+    "id": 316247,
+    "type": "ANIME",
+    "name": "Re:ゼロから始める異世界生活 2nd season 後半クール",
+    "nameCn": "Re：从零开始的异世界生活 第二季 后半部分",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2021-01-06",
+    "aliases": [
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2021)",
+      "Re0 第二季后半"
+    ],
+    "favorite": {
+      "wish": 2354,
+      "done": 28468,
+      "doing": 2214,
+      "onHold": 569,
+      "dropped": 248
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "7.6",
+    "scoreDetails": {
+      "1": 24,
+      "2": 18,
+      "3": 31,
+      "4": 116,
+      "5": 345,
+      "6": 1381,
+      "7": 4304,
+      "8": 5744,
+      "9": 1491,
+      "10": 742
+    },
+    "rank": 758,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 994750,
+        "subjectId": 316247,
+        "sort": "39",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "STRAIGHT BET",
+        "nameCn": "孤注一掷",
+        "description": "",
+        "airdate": "2021-01-06",
+        "disc": 0,
+        "duration": "00:28:00",
+        "imageMedium": "https://static.myani.org/episodes/994750/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/994750/still/large"
+      },
+      {
+        "episodeId": 994751,
+        "subjectId": 316247,
+        "sort": "40",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "オットー・スーウェン／信じる理由",
+        "nameCn": "奥托·苏文 / 相信的理由",
+        "description": "",
+        "airdate": "2021-01-13",
+        "disc": 0,
+        "duration": "00:28:00",
+        "imageMedium": "https://static.myani.org/episodes/994751/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/994751/still/large"
+      },
+      {
+        "episodeId": 994752,
+        "subjectId": 316247,
+        "sort": "41",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "クウェインの石は一人じゃ上がらない",
+        "nameCn": "独自一人无法举起女王之石",
+        "description": "",
+        "airdate": "2021-01-20",
+        "disc": 0,
+        "duration": "00:29:30",
+        "imageMedium": "https://static.myani.org/episodes/994752/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/994752/still/large"
+      },
+      {
+        "episodeId": 994753,
+        "subjectId": 316247,
+        "sort": "42",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "記憶の旅路",
+        "nameCn": "记忆的旅途",
+        "description": "",
+        "airdate": "2021-01-27",
+        "disc": 0,
+        "duration": "00:29:30",
+        "imageMedium": "https://static.myani.org/episodes/994753/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/994753/still/large"
+      },
+      {
+        "episodeId": 994754,
+        "subjectId": 316247,
+        "sort": "43",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "平家星の笑った日",
+        "nameCn": "参宿四（Betelgeuse）微笑的日子",
+        "description": "",
+        "airdate": "2021-02-03",
+        "disc": 0,
+        "duration": "00:29:30",
+        "imageMedium": "https://static.myani.org/episodes/994754/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/994754/still/large"
+      },
+      {
+        "episodeId": 994755,
+        "subjectId": 316247,
+        "sort": "44",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "エリオール大森林の永久凍土",
+        "nameCn": "艾力欧尔大森林的永久冻土",
+        "description": "",
+        "airdate": "2021-02-10",
+        "disc": 0,
+        "duration": "00:29:30",
+        "imageMedium": "https://static.myani.org/episodes/994755/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/994755/still/large"
+      },
+      {
+        "episodeId": 994756,
+        "subjectId": 316247,
+        "sort": "45",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "聖域の始まりと、崩壊の始まり",
+        "nameCn": "圣域的开始与，崩坏的开始",
+        "description": "",
+        "airdate": "2021-02-17",
+        "disc": 0,
+        "duration": "00:29:30",
+        "imageMedium": "https://static.myani.org/episodes/994756/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/994756/still/large"
+      },
+      {
+        "episodeId": 994757,
+        "subjectId": 316247,
+        "sort": "46",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "咆哮の再会",
+        "nameCn": "咆哮的再会",
+        "description": "",
+        "airdate": "2021-02-24",
+        "disc": 0,
+        "duration": "00:29:30",
+        "imageMedium": "https://static.myani.org/episodes/994757/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/994757/still/large"
+      },
+      {
+        "episodeId": 994758,
+        "subjectId": 316247,
+        "sort": "47",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "水面に映る幸せ",
+        "nameCn": "映照在水面上的幸福",
+        "description": "",
+        "airdate": "2021-03-03",
+        "disc": 0,
+        "duration": "00:29:00",
+        "imageMedium": "https://static.myani.org/episodes/994758/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/994758/still/large"
+      },
+      {
+        "episodeId": 994759,
+        "subjectId": 316247,
+        "sort": "48",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "血と臓物まで愛して",
+        "nameCn": "连鲜血与内脏都一并痛爱",
+        "description": "",
+        "airdate": "2021-03-10",
+        "disc": 0,
+        "duration": "00:29:30",
+        "imageMedium": "https://static.myani.org/episodes/994759/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/994759/still/large"
+      },
+      {
+        "episodeId": 994760,
+        "subjectId": 316247,
+        "sort": "49",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "俺を選べ",
+        "nameCn": "选我吧",
+        "description": "",
+        "airdate": "2021-03-17",
+        "disc": 0,
+        "duration": "00:29:30",
+        "imageMedium": "https://static.myani.org/episodes/994760/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/994760/still/large"
+      },
+      {
+        "episodeId": 994761,
+        "subjectId": 316247,
+        "sort": "50",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "月下、出鱈目なステップ",
+        "nameCn": "月下、随性的舞步",
+        "description": "",
+        "airdate": "2021-03-24",
+        "disc": 0,
+        "duration": "",
+        "imageMedium": "https://static.myani.org/episodes/994761/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/994761/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2021-01-06T13:30:00Z",
+      "recurrence": {
+        "startTime": "2021-01-06T13:30:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        140001,
+        278826,
+        316247,
+        425998,
+        510728,
+        547888,
+        633836
+      ],
+      "seriesMainSubjectNames": [
+        "Re:ゼロから始める異世界生活",
+        "Re：从零开始的异世界生活",
+        "Re:ゼロから始める異世界生活 2nd season",
+        "Re：从零开始的异世界生活 第二季",
+        "Re:ゼロから始める異世界生活 2nd season 後半クール",
+        "Re：从零开始的异世界生活 第二季 后半部分",
+        "Re:ゼロから始める異世界生活 3rd season 襲擊編",
+        "Re：从零开始的异世界生活 第三季 袭击篇",
+        "Re:ゼロから始める異世界生活 3rd season 反擊編",
+        "Re：从零开始的异世界生活 第三季 反击篇",
+        "Re:ゼロから始める異世界生活 4th season 喪失編",
+        "Re：从零开始的异世界生活 第四季 丧失篇",
+        "Re:ゼロから始める異世界生活 4th season 奪還編",
+        "Re：从零开始的异世界生活 第四季 夺还篇"
+      ],
+      "sequelSubjects": [
+        425998,
+        310194,
+        510728,
+        513713,
+        516311,
+        516311,
+        547888,
+        516311,
+        638494,
+        633836,
+        638494
+      ],
+      "sequelSubjectNames": [
+        "Re:ゼロから始める休憩時間 2nd Season",
+        "Re：从零开始的休息时间2",
+        "Re:ゼロから始める異世界生活 3rd season 襲擊編",
+        "Re：从零开始的异世界生活 第三季 袭击篇",
+        "Re:ゼロから始める異世界生活 3rd season 反擊編",
+        "Re：从零开始的异世界生活 第三季 反击篇",
+        "Re:ゼロから始める休憩時間 3rd season",
+        "Re：从零开始的休息时间3",
+        "Re:ゼロから始める異世界生活 4th season 喪失編",
+        "Re：从零开始的异世界生活 第四季 丧失篇",
+        "Re:ゼロから始める異世界生活 4th season 奪還編",
+        "Re：从零开始的异世界生活 第四季 夺还篇",
+        "Re:ゼロから始める休憩時間 4th season",
+        "Re：从零开始的休息时间4"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 278826,
+            "names": [
+              "Re:ゼロから始める異世界生活 2nd season",
+              "Re：从零开始的异世界生活 第二季"
+            ],
+            "markers": [],
+            "firstSort": 26,
+            "episodeCount": 13,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 316247,
+            "names": [
+              "Re:ゼロから始める異世界生活 2nd season 後半クール",
+              "Re：从零开始的异世界生活 第二季 后半部分"
+            ],
+            "markers": [
+              "後半クール",
+              "后半部分"
+            ],
+            "firstSort": 39,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "Re:ゼロから始める異世界生活 2nd season",
+          "Re：从零开始的异世界生活 第二季"
+        ],
+        "otherSeasonNumbers": [
+          1,
+          3,
+          4
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/316247/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/316247/cover/thumb"
+  },
+  "510728": {
+    "id": 510728,
+    "type": "ANIME",
+    "name": "Re:ゼロから始める異世界生活 3rd season 反擊編",
+    "nameCn": "Re：从零开始的异世界生活 第三季 反击篇",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2025-02-05",
+    "aliases": [
+      "Re：從零開始的異世界生活 第三季 反擊篇",
+      "Re:Zero kara Hajimeru Isekai Seikatsu (2025)",
+      "Re:Zero - Starting Life in Another World (2025)",
+      "re0 第三季 反击篇",
+      "re0 第三季 反擊篇"
+    ],
+    "favorite": {
+      "wish": 3626,
+      "done": 16668,
+      "doing": 3055,
+      "onHold": 465,
+      "dropped": 162
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "7.0",
+    "scoreDetails": {
+      "1": 21,
+      "2": 11,
+      "3": 15,
+      "4": 87,
+      "5": 327,
+      "6": 1707,
+      "7": 3781,
+      "8": 1572,
+      "9": 231,
+      "10": 173
+    },
+    "rank": 2797,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1388677,
+        "subjectId": 510728,
+        "sort": "59",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "混戦都市",
+        "nameCn": "混战都市",
+        "description": "",
+        "airdate": "2025-02-05",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1388677/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1388677/still/large"
+      },
+      {
+        "episodeId": 1388678,
+        "subjectId": 510728,
+        "sort": "60",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "強欲攻略戦",
+        "nameCn": "强欲攻略战",
+        "description": "",
+        "airdate": "2025-02-12",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1388678/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1388678/still/large"
+      },
+      {
+        "episodeId": 1388679,
+        "subjectId": 510728,
+        "sort": "61",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "リリアナ・マスカレード",
+        "nameCn": "莉莉安娜·玛斯柯瑞德",
+        "description": "",
+        "airdate": "2025-02-19",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1388679/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1388679/still/large"
+      },
+      {
+        "episodeId": 1388680,
+        "subjectId": 510728,
+        "sort": "62",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "レグルス・コルニアス",
+        "nameCn": "雷格鲁斯·柯尼亚斯",
+        "description": "",
+        "airdate": "2025-02-26",
+        "disc": 0,
+        "duration": "00:28:10",
+        "imageMedium": "https://static.myani.org/episodes/1388680/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1388680/still/large"
+      },
+      {
+        "episodeId": 1388681,
+        "subjectId": 510728,
+        "sort": "63",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "戦士の称賛",
+        "nameCn": "战士的称赞",
+        "description": "",
+        "airdate": "2025-03-05",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1388681/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1388681/still/large"
+      },
+      {
+        "episodeId": 1388682,
+        "subjectId": 510728,
+        "sort": "64",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "テレシア・ヴァン・アストレア",
+        "nameCn": "特蕾西亚·梵·阿斯特雷亚",
+        "description": "",
+        "airdate": "2025-03-12",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1388682/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1388682/still/large"
+      },
+      {
+        "episodeId": 1388683,
+        "subjectId": 510728,
+        "sort": "65",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "醜悪なる晩餐会",
+        "nameCn": "丑恶的晚餐会",
+        "description": "",
+        "airdate": "2025-03-19",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1388683/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1388683/still/large"
+      },
+      {
+        "episodeId": 1388684,
+        "subjectId": 510728,
+        "sort": "66",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "プリステラ攻防戦リザルト",
+        "nameCn": "扑利斯提拉政防战结果",
+        "description": "",
+        "airdate": "2025-03-26",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1388684/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1388684/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2025-02-05T14:30:00Z",
+      "recurrence": {
+        "startTime": "2025-02-05T14:30:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        140001,
+        278826,
+        316247,
+        425998,
+        510728,
+        547888,
+        633836
+      ],
+      "seriesMainSubjectNames": [
+        "Re:ゼロから始める異世界生活",
+        "Re：从零开始的异世界生活",
+        "Re:ゼロから始める異世界生活 2nd season",
+        "Re：从零开始的异世界生活 第二季",
+        "Re:ゼロから始める異世界生活 2nd season 後半クール",
+        "Re：从零开始的异世界生活 第二季 后半部分",
+        "Re:ゼロから始める異世界生活 3rd season 襲擊編",
+        "Re：从零开始的异世界生活 第三季 袭击篇",
+        "Re:ゼロから始める異世界生活 3rd season 反擊編",
+        "Re：从零开始的异世界生活 第三季 反击篇",
+        "Re:ゼロから始める異世界生活 4th season 喪失編",
+        "Re：从零开始的异世界生活 第四季 丧失篇",
+        "Re:ゼロから始める異世界生活 4th season 奪還編",
+        "Re：从零开始的异世界生活 第四季 夺还篇"
+      ],
+      "sequelSubjects": [
+        547888,
+        516311,
+        633836,
+        638494,
+        638494,
+        638494
+      ],
+      "sequelSubjectNames": [
+        "Re:ゼロから始める休憩時間 3rd season",
+        "Re：从零开始的休息时间3",
+        "Re:ゼロから始める異世界生活 4th season 喪失編",
+        "Re：从零开始的异世界生活 第四季 丧失篇",
+        "Re:ゼロから始める異世界生活 4th season 奪還編",
+        "Re：从零开始的异世界生活 第四季 夺还篇",
+        "Re:ゼロから始める休憩時間 4th season",
+        "Re：从零开始的休息时间4"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 425998,
+            "names": [
+              "Re:ゼロから始める異世界生活 3rd season 襲擊編",
+              "Re：从零开始的异世界生活 第三季 袭击篇"
+            ],
+            "markers": [
+              "襲擊編",
+              "袭击篇"
+            ],
+            "firstSort": 51,
+            "episodeCount": 8,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 510728,
+            "names": [
+              "Re:ゼロから始める異世界生活 3rd season 反擊編",
+              "Re：从零开始的异世界生活 第三季 反击篇"
+            ],
+            "markers": [
+              "反擊編",
+              "反击篇"
+            ],
+            "firstSort": 59,
+            "episodeCount": 8,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "Re:ゼロから始める異世界生活 3rd season",
+          "Re：从零开始的异世界生活 第三季"
+        ],
+        "otherSeasonNumbers": [
+          1,
+          2,
+          4
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/510728/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/510728/cover/thumb"
+  },
+  "547888": {
+    "id": 547888,
+    "type": "ANIME",
+    "name": "Re:ゼロから始める異世界生活 4th season 喪失編",
+    "nameCn": "Re：从零开始的异世界生活 第四季 丧失篇",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2026-04-08",
+    "aliases": [
+      "Re:Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re:ZERO -Starting Life in Another World- Season 4",
+      "Re Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re：從零開始的異世界生活 第四季 喪失篇",
+      "re0 第四季 丧失篇",
+      "re0 第四季 喪失篇"
+    ],
+    "favorite": {
+      "wish": 5723,
+      "done": 12997,
+      "doing": 8335,
+      "onHold": 379,
+      "dropped": 136
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "7.8",
+    "scoreDetails": {
+      "1": 18,
+      "2": 8,
+      "3": 11,
+      "4": 43,
+      "5": 77,
+      "6": 376,
+      "7": 1783,
+      "8": 3332,
+      "9": 766,
+      "10": 400
+    },
+    "rank": 486,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1656866,
+        "subjectId": 547888,
+        "sort": "67",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "君を連れ出す理由／ゴージャス・タイガー・リローデッド",
+        "nameCn": "带妳出来的原因／华丽猛虎，重装上阵",
+        "description": "",
+        "airdate": "2026-04-08",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1656866/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656866/still/large"
+      },
+      {
+        "episodeId": 1656867,
+        "subjectId": 547888,
+        "sort": "68",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "砂時間を越えろ",
+        "nameCn": "穿越沙时间吧",
+        "description": "",
+        "airdate": "2026-04-15",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1656867/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656867/still/large"
+      },
+      {
+        "episodeId": 1656868,
+        "subjectId": 547888,
+        "sort": "69",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "監視塔の番人",
+        "nameCn": "监视塔的守卫",
+        "description": "",
+        "airdate": "2026-04-22",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1656868/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656868/still/large"
+      },
+      {
+        "episodeId": 1656869,
+        "subjectId": 547888,
+        "sort": "70",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "白い星空のアステリズム",
+        "nameCn": "白色星空之星群",
+        "description": "",
+        "airdate": "2026-04-29",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1656869/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656869/still/large"
+      },
+      {
+        "episodeId": 1656870,
+        "subjectId": 547888,
+        "sort": "71",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "棒振り",
+        "nameCn": "挥棒的",
+        "description": "",
+        "airdate": "2026-05-06",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1656870/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656870/still/large"
+      },
+      {
+        "episodeId": 1656871,
+        "subjectId": 547888,
+        "sort": "72",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "ユリウス・ユークリウス",
+        "nameCn": "由里乌斯·尤克历乌斯",
+        "description": "",
+        "airdate": "2026-05-13",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1656871/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656871/still/large"
+      },
+      {
+        "episodeId": 1656872,
+        "subjectId": 547888,
+        "sort": "73",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "コンビニを出ると、そこは不思議の世界でした",
+        "nameCn": "一走出便利商店，就到了神奇世界",
+        "description": "",
+        "airdate": "2026-05-20",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1656872/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656872/still/large"
+      },
+      {
+        "episodeId": 1656873,
+        "subjectId": 547888,
+        "sort": "74",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "オマエハダレダ",
+        "nameCn": "你是谁",
+        "description": "",
+        "airdate": "2026-05-27",
+        "disc": 0,
+        "duration": "00:24:00",
+        "imageMedium": "https://static.myani.org/episodes/1656873/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656873/still/large"
+      },
+      {
+        "episodeId": 1656874,
+        "subjectId": 547888,
+        "sort": "75",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "残骸",
+        "nameCn": "残骸",
+        "description": "",
+        "airdate": "2026-06-03",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1656874/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656874/still/large"
+      },
+      {
+        "episodeId": 1656875,
+        "subjectId": 547888,
+        "sort": "76",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "殺人は癖になる",
+        "nameCn": "杀人会变成一种习惯",
+        "description": "",
+        "airdate": "2026-06-10",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1656875/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656875/still/large"
+      },
+      {
+        "episodeId": 1656876,
+        "subjectId": 547888,
+        "sort": "77",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "Re:ゼロから始まる異世界生活",
+        "nameCn": "Re:从零开始的异世界生活",
+        "description": "",
+        "airdate": "2026-06-17",
+        "disc": 0,
+        "duration": "00:24:30",
+        "imageMedium": "https://static.myani.org/episodes/1656876/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656876/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2026-04-08T14:00:00Z",
+      "recurrence": {
+        "startTime": "2026-04-08T14:00:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        140001,
+        278826,
+        316247,
+        425998,
+        510728,
+        547888,
+        633836
+      ],
+      "seriesMainSubjectNames": [
+        "Re:ゼロから始める異世界生活",
+        "Re：从零开始的异世界生活",
+        "Re:ゼロから始める異世界生活 2nd season",
+        "Re：从零开始的异世界生活 第二季",
+        "Re:ゼロから始める異世界生活 2nd season 後半クール",
+        "Re：从零开始的异世界生活 第二季 后半部分",
+        "Re:ゼロから始める異世界生活 3rd season 襲擊編",
+        "Re：从零开始的异世界生活 第三季 袭击篇",
+        "Re:ゼロから始める異世界生活 3rd season 反擊編",
+        "Re：从零开始的异世界生活 第三季 反击篇",
+        "Re:ゼロから始める異世界生活 4th season 喪失編",
+        "Re：从零开始的异世界生活 第四季 丧失篇",
+        "Re:ゼロから始める異世界生活 4th season 奪還編",
+        "Re：从零开始的异世界生活 第四季 夺还篇"
+      ],
+      "sequelSubjects": [
+        633836,
+        638494,
+        638494
+      ],
+      "sequelSubjectNames": [
+        "Re:ゼロから始める異世界生活 4th season 奪還編",
+        "Re：从零开始的异世界生活 第四季 夺还篇",
+        "Re:ゼロから始める休憩時間 4th season",
+        "Re：从零开始的休息时间4"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 547888,
+            "names": [
+              "Re:ゼロから始める異世界生活 4th season 喪失編",
+              "Re：从零开始的异世界生活 第四季 丧失篇"
+            ],
+            "markers": [
+              "喪失編",
+              "丧失篇"
+            ],
+            "firstSort": 67,
+            "episodeCount": 11,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 633836,
+            "names": [
+              "Re:ゼロから始める異世界生活 4th season 奪還編",
+              "Re：从零开始的异世界生活 第四季 夺还篇"
+            ],
+            "markers": [
+              "奪還編",
+              "夺还篇"
+            ],
+            "firstSort": 78,
+            "episodeCount": 8,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 0,
+        "baseNames": [
+          "Re:ゼロから始める異世界生活 4th season",
+          "Re：从零开始的异世界生活 第四季"
+        ],
+        "otherSeasonNumbers": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/547888/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/547888/cover/thumb"
+  },
+  "633836": {
+    "id": 633836,
+    "type": "ANIME",
+    "name": "Re:ゼロから始める異世界生活 4th season 奪還編",
+    "nameCn": "Re：从零开始的异世界生活 第四季 夺还篇",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2026-08-12",
+    "aliases": [
+      "Re:Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re:ZERO -Starting Life in Another World- Season 4",
+      "Re Zero kara Hajimeru Isekai Seikatsu 4th Season",
+      "Re：從零開始的異世界生活 第四季 奪還篇",
+      "re0 第四季 夺还篇",
+      "re0 第四季 奪還篇"
+    ],
+    "favorite": {
+      "wish": 3926,
+      "done": 6703,
+      "doing": 6120,
+      "onHold": 214,
+      "dropped": 83
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "7.3",
+    "scoreDetails": {
+      "1": 19,
+      "2": 5,
+      "3": 10,
+      "4": 45,
+      "5": 115,
+      "6": 544,
+      "7": 1667,
+      "8": 1209,
+      "9": 205,
+      "10": 165
+    },
+    "rank": 1669,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1656858,
+        "subjectId": 633836,
+        "sort": "78",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "これからの話",
+        "nameCn": "接下来的事",
+        "description": "",
+        "airdate": "2026-08-12",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1656858/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656858/still/large"
+      },
+      {
+        "episodeId": 1656859,
+        "subjectId": 633836,
+        "sort": "79",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "立ちなさい",
+        "nameCn": "站起来",
+        "description": "",
+        "airdate": "2026-08-19",
+        "disc": 0,
+        "duration": "00:28:59",
+        "imageMedium": "https://static.myani.org/episodes/1656859/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656859/still/large"
+      },
+      {
+        "episodeId": 1656860,
+        "subjectId": 633836,
+        "sort": "80",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "五つの障害",
+        "nameCn": "五个障碍",
+        "description": "",
+        "airdate": "2026-08-26",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1656860/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656860/still/large"
+      },
+      {
+        "episodeId": 1656861,
+        "subjectId": 633836,
+        "sort": "81",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "一途な星",
+        "nameCn": "专一之星",
+        "description": "",
+        "airdate": "2026-09-02",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1656861/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656861/still/large"
+      },
+      {
+        "episodeId": 1656862,
+        "subjectId": 633836,
+        "sort": "82",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "ナツキ・スバル",
+        "nameCn": "菜月昴",
+        "description": "",
+        "airdate": "2026-09-09",
+        "disc": 0,
+        "duration": "00:26:40",
+        "imageMedium": "https://static.myani.org/episodes/1656862/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656862/still/large"
+      },
+      {
+        "episodeId": 1656863,
+        "subjectId": 633836,
+        "sort": "83",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "グッドルーザー",
+        "nameCn": "Good Loser",
+        "description": "",
+        "airdate": "2026-09-16",
+        "disc": 0,
+        "duration": "00:24:30",
+        "imageMedium": "https://static.myani.org/episodes/1656863/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656863/still/large"
+      },
+      {
+        "episodeId": 1656864,
+        "subjectId": 633836,
+        "sort": "84",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "ラム",
+        "nameCn": "拉姆",
+        "description": "",
+        "airdate": "2026-09-23",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1656864/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656864/still/large"
+      },
+      {
+        "episodeId": 1656865,
+        "subjectId": 633836,
+        "sort": "85",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "シャウラ／英雄",
+        "nameCn": "夏乌拉／英雄",
+        "description": "",
+        "airdate": "2026-09-30",
+        "disc": 0,
+        "duration": "00:41:10",
+        "imageMedium": "https://static.myani.org/episodes/1656865/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1656865/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2026-08-12T14:00:00Z",
+      "recurrence": {
+        "startTime": "2026-08-12T14:00:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        140001,
+        278826,
+        316247,
+        425998,
+        510728,
+        547888,
+        633836
+      ],
+      "seriesMainSubjectNames": [
+        "Re:ゼロから始める異世界生活",
+        "Re：从零开始的异世界生活",
+        "Re:ゼロから始める異世界生活 2nd season",
+        "Re：从零开始的异世界生活 第二季",
+        "Re:ゼロから始める異世界生活 2nd season 後半クール",
+        "Re：从零开始的异世界生活 第二季 后半部分",
+        "Re:ゼロから始める異世界生活 3rd season 襲擊編",
+        "Re：从零开始的异世界生活 第三季 袭击篇",
+        "Re:ゼロから始める異世界生活 3rd season 反擊編",
+        "Re：从零开始的异世界生活 第三季 反击篇",
+        "Re:ゼロから始める異世界生活 4th season 喪失編",
+        "Re：从零开始的异世界生活 第四季 丧失篇",
+        "Re:ゼロから始める異世界生活 4th season 奪還編",
+        "Re：从零开始的异世界生活 第四季 夺还篇"
+      ],
+      "sequelSubjects": [
+        638494
+      ],
+      "sequelSubjectNames": [
+        "Re:ゼロから始める休憩時間 4th season",
+        "Re：从零开始的休息时间4"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 547888,
+            "names": [
+              "Re:ゼロから始める異世界生活 4th season 喪失編",
+              "Re：从零开始的异世界生活 第四季 丧失篇"
+            ],
+            "markers": [
+              "喪失編",
+              "丧失篇"
+            ],
+            "firstSort": 67,
+            "episodeCount": 11,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 633836,
+            "names": [
+              "Re:ゼロから始める異世界生活 4th season 奪還編",
+              "Re：从零开始的异世界生活 第四季 夺还篇"
+            ],
+            "markers": [
+              "奪還編",
+              "夺还篇"
+            ],
+            "firstSort": 78,
+            "episodeCount": 8,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "Re:ゼロから始める異世界生活 4th season",
+          "Re：从零开始的异世界生活 第四季"
+        ],
+        "otherSeasonNumbers": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/633836/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/633836/cover/thumb"
+  },
+  "325585": {
+    "id": 325585,
+    "type": "ANIME",
+    "name": "無職転生 ～異世界行ったら本気だす～ 第2クール",
+    "nameCn": "无职转生～到了异世界就拿出真本事～ 第2部分",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2021-10-03",
+    "aliases": [
+      "无职转生 ～在异世界认真地活下去～ 第2部分",
+      "Mushoku Tensei: Isekai Ittara Honki Dasu Part 2",
+      "Mushoku Tensei: Jobless Reincarnation Part 2",
+      "無職轉生 到了異世界就拿出真本事 後半",
+      "无职转生 ～在异世界认真地活下去～ 后半"
+    ],
+    "favorite": {
+      "wish": 4197,
+      "done": 45579,
+      "doing": 3989,
+      "onHold": 679,
+      "dropped": 462
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "8.3",
+    "scoreDetails": {
+      "1": 173,
+      "2": 45,
+      "3": 53,
+      "4": 79,
+      "5": 224,
+      "6": 829,
+      "7": 3262,
+      "8": 9243,
+      "9": 7542,
+      "10": 4189
+    },
+    "rank": 85,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1055863,
+        "subjectId": 325585,
+        "sort": "0",
+        "type": "TRAILER",
+        "name": "第2クール放送直前スペシャル",
+        "nameCn": "",
+        "description": "",
+        "airdate": "2021-09-26",
+        "disc": 0,
+        "duration": ""
+      },
+      {
+        "episodeId": 1002052,
+        "subjectId": 325585,
+        "sort": "12",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "魔眼を持つ女",
+        "nameCn": "持有魔眼的女人",
+        "description": "",
+        "airdate": "2021-10-03",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1002052/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1002052/still/large"
+      },
+      {
+        "episodeId": 1002053,
+        "subjectId": 325585,
+        "sort": "13",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "すれ違い",
+        "nameCn": "擦肩而过",
+        "description": "",
+        "airdate": "2021-10-10",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1002053/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1002053/still/large"
+      },
+      {
+        "episodeId": 1002054,
+        "subjectId": 325585,
+        "sort": "14",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "只より高いものはない",
+        "nameCn": "没有比免费更贵的东西",
+        "description": "",
+        "airdate": "2021-10-17",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1002054/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1002054/still/large"
+      },
+      {
+        "episodeId": 1002055,
+        "subjectId": 325585,
+        "sort": "15",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "ドルディア村のスローライフ",
+        "nameCn": "德路迪亚村的悠哉生活",
+        "description": "",
+        "airdate": "2021-10-24",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1002055/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1002055/still/large"
+      },
+      {
+        "episodeId": 1002056,
+        "subjectId": 325585,
+        "sort": "16",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "親子げんか",
+        "nameCn": "父子吵架",
+        "description": "",
+        "airdate": "2021-10-31",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1002056/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1002056/still/large"
+      },
+      {
+        "episodeId": 1002057,
+        "subjectId": 325585,
+        "sort": "17",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "再会",
+        "nameCn": "再会",
+        "description": "",
+        "airdate": "2021-11-07",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1002057/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1002057/still/large"
+      },
+      {
+        "episodeId": 1002058,
+        "subjectId": 325585,
+        "sort": "18",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "それぞれの旅",
+        "nameCn": "各自的旅行",
+        "description": "",
+        "airdate": "2021-11-14",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1002058/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1002058/still/large"
+      },
+      {
+        "episodeId": 1002059,
+        "subjectId": 325585,
+        "sort": "19",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "ルート選択",
+        "nameCn": "路线选择",
+        "description": "",
+        "airdate": "2021-11-21",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1002059/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1002059/still/large"
+      },
+      {
+        "episodeId": 1002060,
+        "subjectId": 325585,
+        "sort": "20",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "妹侍女の生まれた日",
+        "nameCn": "妹妹女仆诞生之日",
+        "description": "",
+        "airdate": "2021-11-28",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1002060/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1002060/still/large"
+      },
+      {
+        "episodeId": 1002061,
+        "subjectId": 325585,
+        "sort": "21",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "ターニングポイント2",
+        "nameCn": "转折点2",
+        "description": "",
+        "airdate": "2021-12-05",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1002061/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1002061/still/large"
+      },
+      {
+        "episodeId": 1002062,
+        "subjectId": 325585,
+        "sort": "22",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "現実（ユメ）",
+        "nameCn": "现实（梦）",
+        "description": "",
+        "airdate": "2021-12-12",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1002062/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1002062/still/large"
+      },
+      {
+        "episodeId": 1002063,
+        "subjectId": 325585,
+        "sort": "23",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "目覚め、一歩、",
+        "nameCn": "醒来，跨出一步",
+        "description": "",
+        "airdate": "2021-12-19",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1002063/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1002063/still/large"
+      },
+      {
+        "episodeId": 1066854,
+        "subjectId": 325585,
+        "sort": "24",
+        "type": "SPECIAL",
+        "name": "エリスのゴブリン討伐",
+        "nameCn": "艾莉丝的哥布林讨伐",
+        "description": "",
+        "airdate": "2022-03-16",
+        "disc": 0,
+        "duration": "00:23:35"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2021-10-03T15:00:00Z",
+      "recurrence": {
+        "startTime": "2021-10-03T15:00:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        277554,
+        325585,
+        373247,
+        444557,
+        501963
+      ],
+      "seriesMainSubjectNames": [
+        "無職転生 ～異世界行ったら本気だす～",
+        "无职转生～到了异世界就拿出真本事～",
+        "無職転生 ～異世界行ったら本気だす～ 第2クール",
+        "无职转生～到了异世界就拿出真本事～ 第2部分",
+        "無職転生Ⅱ ～異世界行ったら本気だす～",
+        "无职转生 第二季 ～到了异世界就拿出真本事～",
+        "無職転生Ⅱ ～異世界行ったら本気だす～ 第2クール",
+        "无职转生 第二季 ～到了异世界就拿出真本事～ 第2部分",
+        "無職転生Ⅲ ～異世界行ったら本気だす～",
+        "无职转生 第三季 ～到了异世界就拿出真本事～"
+      ],
+      "sequelSubjects": [
+        373247,
+        444557,
+        501963,
+        708197
+      ],
+      "sequelSubjectNames": [
+        "無職転生Ⅱ ～異世界行ったら本気だす～",
+        "无职转生 第二季 ～到了异世界就拿出真本事～",
+        "無職転生Ⅱ ～異世界行ったら本気だす～ 第2クール",
+        "无职转生 第二季 ～到了异世界就拿出真本事～ 第2部分",
+        "無職転生Ⅲ ～異世界行ったら本気だす～",
+        "无职转生 第三季 ～到了异世界就拿出真本事～",
+        "無職転生Ⅲ ～異世界行ったら本気だす～ 第2クール",
+        "无职转生 第三季 ～到了异世界就拿出真本事～ 第2部分"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 277554,
+            "names": [
+              "無職転生 ～異世界行ったら本気だす～",
+              "无职转生～到了异世界就拿出真本事～"
+            ],
+            "markers": [],
+            "firstSort": 1,
+            "episodeCount": 11,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 325585,
+            "names": [
+              "無職転生 ～異世界行ったら本気だす～ 第2クール",
+              "无职转生～到了异世界就拿出真本事～ 第2部分"
+            ],
+            "markers": [
+              "第2クール",
+              "第2部分"
+            ],
+            "firstSort": 12,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "無職転生 ～異世界行ったら本気だす～",
+          "无职转生～到了异世界就拿出真本事～"
+        ],
+        "otherSeasonNumbers": [
+          2,
+          3
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/325585/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/325585/cover/thumb"
+  },
+  "444557": {
+    "id": 444557,
+    "type": "ANIME",
+    "name": "無職転生Ⅱ ～異世界行ったら本気だす～ 第2クール",
+    "nameCn": "无职转生 第二季 ～到了异世界就拿出真本事～ 第2部分",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2024-04-07",
+    "aliases": [
+      "无职转生 第二季 ～在异世界认真地活下去～ 第2部分",
+      "Mushoku Tensei II: Isekai Ittara Honki Dasu (2024)",
+      "Mushoku Tensei: Jobless Reincarnation Season 2 (2024)",
+      "Mushoku Tensei: Jobless Reincarnation Season 2 part 2",
+      "Mushoku Tensei II: Isekai Ittara Honki Dasu part 2"
+    ],
+    "favorite": {
+      "wish": 3662,
+      "done": 29134,
+      "doing": 3747,
+      "onHold": 587,
+      "dropped": 280
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "7.6",
+    "scoreDetails": {
+      "1": 78,
+      "2": 26,
+      "3": 37,
+      "4": 111,
+      "5": 314,
+      "6": 1367,
+      "7": 5046,
+      "8": 6104,
+      "9": 1402,
+      "10": 985
+    },
+    "rank": 785,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1233194,
+        "subjectId": 444557,
+        "sort": "13",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "夢のマイホーム",
+        "nameCn": "我梦想中的家",
+        "description": "",
+        "airdate": "2024-04-07",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1233194/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1233194/still/large"
+      },
+      {
+        "episodeId": 1233195,
+        "subjectId": 444557,
+        "sort": "14",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "披露宴",
+        "nameCn": "婚礼",
+        "description": "",
+        "airdate": "2024-04-14",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1233195/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1233195/still/large"
+      },
+      {
+        "episodeId": 1233196,
+        "subjectId": 444557,
+        "sort": "15",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "遥か",
+        "nameCn": "遥远",
+        "description": "",
+        "airdate": "2024-04-21",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1233196/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1233196/still/large"
+      },
+      {
+        "episodeId": 1233197,
+        "subjectId": 444557,
+        "sort": "16",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "ノルンとアイシャ",
+        "nameCn": "诺伦与爱夏",
+        "description": "",
+        "airdate": "2024-04-28",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1233197/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1233197/still/large"
+      },
+      {
+        "episodeId": 1233198,
+        "subjectId": 444557,
+        "sort": "17",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "兄貴の気持ち",
+        "nameCn": "大哥的心意",
+        "description": "",
+        "airdate": "2024-05-05",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1233198/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1233198/still/large"
+      },
+      {
+        "episodeId": 1233199,
+        "subjectId": 444557,
+        "sort": "18",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "ターニングポイント3",
+        "nameCn": "转折点3",
+        "description": "",
+        "airdate": "2024-05-12",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1233199/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1233199/still/large"
+      },
+      {
+        "episodeId": 1347148,
+        "subjectId": 444557,
+        "sort": "18.5",
+        "type": "SPECIAL",
+        "name": "無職転生Ⅱ ～異世界行ったら本気だす～ 【転移迷宮編】直前スペシャル",
+        "nameCn": "",
+        "description": "",
+        "airdate": "2024-05-19",
+        "disc": 0,
+        "duration": ""
+      },
+      {
+        "episodeId": 1233200,
+        "subjectId": 444557,
+        "sort": "19",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "砂漠の旅",
+        "nameCn": "沙漠之旅",
+        "description": "",
+        "airdate": "2024-05-26",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1233200/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1233200/still/large"
+      },
+      {
+        "episodeId": 1233201,
+        "subjectId": 444557,
+        "sort": "20",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "迷宮入り",
+        "nameCn": "进入迷宫",
+        "description": "",
+        "airdate": "2024-06-02",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1233201/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1233201/still/large"
+      },
+      {
+        "episodeId": 1233202,
+        "subjectId": 444557,
+        "sort": "21",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "第六階層の魔法陣",
+        "nameCn": "第六层的魔法阵",
+        "description": "",
+        "airdate": "2024-06-09",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1233202/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1233202/still/large"
+      },
+      {
+        "episodeId": 1233203,
+        "subjectId": 444557,
+        "sort": "22",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "親",
+        "nameCn": "双亲",
+        "description": "",
+        "airdate": "2024-06-16",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1233203/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1233203/still/large"
+      },
+      {
+        "episodeId": 1233204,
+        "subjectId": 444557,
+        "sort": "23",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "帰ろう",
+        "nameCn": "回去吧",
+        "description": "",
+        "airdate": "2024-06-23",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1233204/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1233204/still/large"
+      },
+      {
+        "episodeId": 1233205,
+        "subjectId": 444557,
+        "sort": "24",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "嗣ぐ",
+        "nameCn": "继承",
+        "description": "",
+        "airdate": "2024-06-30",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1233205/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1233205/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2024-04-07T15:00:00Z",
+      "recurrence": {
+        "startTime": "2024-04-07T15:00:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        277554,
+        325585,
+        373247,
+        444557,
+        501963
+      ],
+      "seriesMainSubjectNames": [
+        "無職転生 ～異世界行ったら本気だす～",
+        "无职转生～到了异世界就拿出真本事～",
+        "無職転生 ～異世界行ったら本気だす～ 第2クール",
+        "无职转生～到了异世界就拿出真本事～ 第2部分",
+        "無職転生Ⅱ ～異世界行ったら本気だす～",
+        "无职转生 第二季 ～到了异世界就拿出真本事～",
+        "無職転生Ⅱ ～異世界行ったら本気だす～ 第2クール",
+        "无职转生 第二季 ～到了异世界就拿出真本事～ 第2部分",
+        "無職転生Ⅲ ～異世界行ったら本気だす～",
+        "无职转生 第三季 ～到了异世界就拿出真本事～"
+      ],
+      "sequelSubjects": [
+        501963,
+        708197
+      ],
+      "sequelSubjectNames": [
+        "無職転生Ⅲ ～異世界行ったら本気だす～",
+        "无职转生 第三季 ～到了异世界就拿出真本事～",
+        "無職転生Ⅲ ～異世界行ったら本気だす～ 第2クール",
+        "无职转生 第三季 ～到了异世界就拿出真本事～ 第2部分"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 373247,
+            "names": [
+              "無職転生Ⅱ ～異世界行ったら本気だす～",
+              "无职转生 第二季 ～到了异世界就拿出真本事～"
+            ],
+            "markers": [],
+            "firstSort": 0,
+            "episodeCount": 13,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 444557,
+            "names": [
+              "無職転生Ⅱ ～異世界行ったら本気だす～ 第2クール",
+              "无职转生 第二季 ～到了异世界就拿出真本事～ 第2部分"
+            ],
+            "markers": [
+              "第2クール",
+              "第2部分"
+            ],
+            "firstSort": 13,
+            "episodeCount": 12,
+            "inlineSpecialCount": 1
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "無職転生Ⅱ ～異世界行ったら本気だす～",
+          "无职转生 第二季 ～到了异世界就拿出真本事～"
+        ],
+        "otherSeasonNumbers": [
+          1,
+          3
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/444557/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/444557/cover/thumb"
+  },
+  "263750": {
+    "id": 263750,
+    "type": "ANIME",
+    "name": "進撃の巨人 Season 3 Part.2",
+    "nameCn": "进击的巨人 第三季 Part.2",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2019-04-28",
+    "aliases": [
+      "自由之翼 3 Part.2",
+      "Attack on Titan Season 3 Part.2",
+      "Shingeki no Kyojin Season 3 Part.2"
+    ],
+    "favorite": {
+      "wish": 2520,
+      "done": 43013,
+      "doing": 1519,
+      "onHold": 452,
+      "dropped": 340
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "8.7",
+    "scoreDetails": {
+      "1": 149,
+      "2": 27,
+      "3": 35,
+      "4": 50,
+      "5": 130,
+      "6": 458,
+      "7": 1629,
+      "8": 6031,
+      "9": 8780,
+      "10": 6639
+    },
+    "rank": 16,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 792615,
+        "subjectId": 263750,
+        "sort": "50",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "はじまりの街",
+        "nameCn": "初始的街道",
+        "description": "",
+        "airdate": "2019-04-28",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/792615/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/792615/still/large"
+      },
+      {
+        "episodeId": 792616,
+        "subjectId": 263750,
+        "sort": "51",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "雷槍",
+        "nameCn": "雷枪",
+        "description": "",
+        "airdate": "2019-05-05",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/792616/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/792616/still/large"
+      },
+      {
+        "episodeId": 792617,
+        "subjectId": 263750,
+        "sort": "52",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "光臨",
+        "nameCn": "光临",
+        "description": "",
+        "airdate": "2019-05-12",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/792617/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/792617/still/large"
+      },
+      {
+        "episodeId": 792618,
+        "subjectId": 263750,
+        "sort": "53",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "完全試合（パーフェクトゲーム）",
+        "nameCn": "完全比赛",
+        "description": "",
+        "airdate": "2019-05-19",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/792618/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/792618/still/large"
+      },
+      {
+        "episodeId": 792619,
+        "subjectId": 263750,
+        "sort": "54",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "勇者",
+        "nameCn": "勇者",
+        "description": "",
+        "airdate": "2019-05-26",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/792619/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/792619/still/large"
+      },
+      {
+        "episodeId": 792620,
+        "subjectId": 263750,
+        "sort": "55",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "白夜",
+        "nameCn": "白夜",
+        "description": "",
+        "airdate": "2019-06-02",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/792620/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/792620/still/large"
+      },
+      {
+        "episodeId": 792621,
+        "subjectId": 263750,
+        "sort": "56",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "地下室",
+        "nameCn": "地下室",
+        "description": "",
+        "airdate": "2019-06-09",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/792621/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/792621/still/large"
+      },
+      {
+        "episodeId": 792622,
+        "subjectId": 263750,
+        "sort": "57",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "あの日",
+        "nameCn": "那一天",
+        "description": "",
+        "airdate": "2019-06-16",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/792622/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/792622/still/large"
+      },
+      {
+        "episodeId": 792623,
+        "subjectId": 263750,
+        "sort": "58",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "進撃の巨人",
+        "nameCn": "进击的巨人",
+        "description": "",
+        "airdate": "2019-06-23",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/792623/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/792623/still/large"
+      },
+      {
+        "episodeId": 792624,
+        "subjectId": 263750,
+        "sort": "59",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "壁の向こう側",
+        "nameCn": "墙的那边",
+        "description": "",
+        "airdate": "2019-06-30",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/792624/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/792624/still/large"
+      }
+    ],
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        55770,
+        118335,
+        217300,
+        263750,
+        285666,
+        331752
+      ],
+      "seriesMainSubjectNames": [
+        "進撃の巨人",
+        "进击的巨人",
+        "進撃の巨人 Season 2",
+        "进击的巨人 第二季",
+        "進撃の巨人 Season 3",
+        "进击的巨人 第三季",
+        "進撃の巨人 Season 3 Part.2",
+        "进击的巨人 第三季 Part.2",
+        "進撃の巨人 The Final Season",
+        "进击的巨人 最终季",
+        "進撃の巨人 The Final Season Part.2",
+        "进击的巨人 最终季 Part.2"
+      ],
+      "sequelSubjects": [
+        285666,
+        285061,
+        331752,
+        354778,
+        354778,
+        376739,
+        415779,
+        461545
+      ],
+      "sequelSubjectNames": [
+        "ちみキャラ劇場 4コマ!調査兵団リヴァイ班",
+        "进击的巨人 Q版剧场 4格!调查兵团利威尔班",
+        "進撃の巨人 The Final Season",
+        "进击的巨人 最终季",
+        "進撃の巨人 The Final Season Part.2",
+        "进击的巨人 最终季 Part.2",
+        "ちみキャラ劇場 4コマ!調査兵団ファイナル",
+        "进击的巨人 Q版剧场 四格!调查兵团final",
+        "進撃の巨人 The Final Season 完結編 前編",
+        "进击的巨人 最终季 完结篇 前篇",
+        "進撃の巨人 The Final Season 完結編 後編",
+        "进击的巨人 最终季 完结篇 后篇",
+        "プロフェッショナル 仕事の流儀 エレン・イェーガー スペシャル",
+        "Professional 行家本色 艾伦·耶格尔特辑"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 217300,
+            "names": [
+              "進撃の巨人 Season 3",
+              "进击的巨人 第三季"
+            ],
+            "markers": [],
+            "firstSort": 38,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 263750,
+            "names": [
+              "進撃の巨人 Season 3 Part.2",
+              "进击的巨人 第三季 Part.2"
+            ],
+            "markers": [
+              "Part.2"
+            ],
+            "firstSort": 50,
+            "episodeCount": 10,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "進撃の巨人 Season 3",
+          "进击的巨人 第三季"
+        ],
+        "otherSeasonNumbers": [
+          1,
+          2
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/263750/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/263750/cover/thumb"
+  },
+  "331752": {
+    "id": 331752,
+    "type": "ANIME",
+    "name": "進撃の巨人 The Final Season Part.2",
+    "nameCn": "进击的巨人 最终季 Part.2",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2022-01-09",
+    "aliases": [
+      "Attack on Titan Final Season Part 2",
+      "Shingeki no Kyojin: The Final Season Part 2"
+    ],
+    "favorite": {
+      "wish": 2244,
+      "done": 26286,
+      "doing": 1638,
+      "onHold": 541,
+      "dropped": 316
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "7.7",
+    "scoreDetails": {
+      "1": 107,
+      "2": 39,
+      "3": 48,
+      "4": 95,
+      "5": 281,
+      "6": 1007,
+      "7": 3808,
+      "8": 5328,
+      "9": 1687,
+      "10": 1237
+    },
+    "rank": 550,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1061918,
+        "subjectId": 331752,
+        "sort": "1",
+        "type": "SPECIAL",
+        "name": "特別総集編 第1夜",
+        "nameCn": "特别总集编 第一夜",
+        "description": "",
+        "airdate": "2021-10-24",
+        "disc": 0,
+        "duration": ""
+      },
+      {
+        "episodeId": 1061919,
+        "subjectId": 331752,
+        "sort": "2",
+        "type": "SPECIAL",
+        "name": "特別総集編 第2夜",
+        "nameCn": "特别总集编 第二夜",
+        "description": "",
+        "airdate": "2021-11-07",
+        "disc": 0,
+        "duration": ""
+      },
+      {
+        "episodeId": 1061920,
+        "subjectId": 331752,
+        "sort": "3",
+        "type": "SPECIAL",
+        "name": "特別総集編 第3夜",
+        "nameCn": "特别总集编 第三夜",
+        "description": "",
+        "airdate": "2021-11-14",
+        "disc": 0,
+        "duration": ""
+      },
+      {
+        "episodeId": 1061921,
+        "subjectId": 331752,
+        "sort": "4",
+        "type": "SPECIAL",
+        "name": "特別総集編 第4夜",
+        "nameCn": "特别总集编 第四夜",
+        "description": "",
+        "airdate": "2021-11-21",
+        "disc": 0,
+        "duration": ""
+      },
+      {
+        "episodeId": 1067034,
+        "subjectId": 331752,
+        "sort": "5",
+        "type": "SPECIAL",
+        "name": "特別総集編 第5夜",
+        "nameCn": "特别总集编 第五夜",
+        "description": "",
+        "airdate": "2021-12-05",
+        "disc": 0,
+        "duration": ""
+      },
+      {
+        "episodeId": 1067035,
+        "subjectId": 331752,
+        "sort": "6",
+        "type": "SPECIAL",
+        "name": "特別総集編 第6夜",
+        "nameCn": "特别总集编 第六夜",
+        "description": "",
+        "airdate": "2021-12-12",
+        "disc": 0,
+        "duration": ""
+      },
+      {
+        "episodeId": 1018455,
+        "subjectId": 331752,
+        "sort": "76",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "断罪",
+        "nameCn": "断罪",
+        "description": "",
+        "airdate": "2022-01-09",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/1018455/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1018455/still/large"
+      },
+      {
+        "episodeId": 1074744,
+        "subjectId": 331752,
+        "sort": "77",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "騙し討ち",
+        "nameCn": "暗算",
+        "description": "",
+        "airdate": "2022-01-16",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/1074744/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1074744/still/large"
+      },
+      {
+        "episodeId": 1074745,
+        "subjectId": 331752,
+        "sort": "78",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "兄と弟",
+        "nameCn": "兄与弟",
+        "description": "",
+        "airdate": "2022-01-23",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/1074745/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1074745/still/large"
+      },
+      {
+        "episodeId": 1074746,
+        "subjectId": 331752,
+        "sort": "79",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "未来の記憶",
+        "nameCn": "未来的记忆",
+        "description": "",
+        "airdate": "2022-01-30",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/1074746/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1074746/still/large"
+      },
+      {
+        "episodeId": 1074747,
+        "subjectId": 331752,
+        "sort": "80",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "二千年前の君から",
+        "nameCn": "2000年前的你留下的...",
+        "description": "",
+        "airdate": "2022-02-06",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/1074747/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1074747/still/large"
+      },
+      {
+        "episodeId": 1074748,
+        "subjectId": 331752,
+        "sort": "81",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "氷解",
+        "nameCn": "融解",
+        "description": "",
+        "airdate": "2022-02-13",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/1074748/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1074748/still/large"
+      },
+      {
+        "episodeId": 1074749,
+        "subjectId": 331752,
+        "sort": "82",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "夕焼け",
+        "nameCn": "晚霞",
+        "description": "",
+        "airdate": "2022-02-20",
+        "disc": 0,
+        "duration": "00:23:50",
+        "imageMedium": "https://static.myani.org/episodes/1074749/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1074749/still/large"
+      },
+      {
+        "episodeId": 1074750,
+        "subjectId": 331752,
+        "sort": "83",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "矜持",
+        "nameCn": "尊严",
+        "description": "",
+        "airdate": "2022-02-27",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/1074750/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1074750/still/large"
+      },
+      {
+        "episodeId": 1074751,
+        "subjectId": 331752,
+        "sort": "84",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "終末の夜",
+        "nameCn": "终末之夜",
+        "description": "",
+        "airdate": "2022-03-06",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/1074751/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1074751/still/large"
+      },
+      {
+        "episodeId": 1074752,
+        "subjectId": 331752,
+        "sort": "85",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "裏切り者",
+        "nameCn": "叛徒",
+        "description": "",
+        "airdate": "2022-03-13",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/1074752/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1074752/still/large"
+      },
+      {
+        "episodeId": 1074753,
+        "subjectId": 331752,
+        "sort": "86",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "懐古",
+        "nameCn": "怀旧",
+        "description": "",
+        "airdate": "2022-03-20",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/1074753/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1074753/still/large"
+      },
+      {
+        "episodeId": 1074754,
+        "subjectId": 331752,
+        "sort": "87",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "人類の夜明け",
+        "nameCn": "人类的黎明",
+        "description": "",
+        "airdate": "2022-04-03",
+        "disc": 0,
+        "duration": "00:23:55",
+        "imageMedium": "https://static.myani.org/episodes/1074754/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1074754/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2022-01-09T15:05:00Z",
+      "recurrence": {
+        "startTime": "2022-01-09T15:05:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        55770,
+        118335,
+        217300,
+        263750,
+        285666,
+        331752
+      ],
+      "seriesMainSubjectNames": [
+        "進撃の巨人",
+        "进击的巨人",
+        "進撃の巨人 Season 2",
+        "进击的巨人 第二季",
+        "進撃の巨人 Season 3",
+        "进击的巨人 第三季",
+        "進撃の巨人 Season 3 Part.2",
+        "进击的巨人 第三季 Part.2",
+        "進撃の巨人 The Final Season",
+        "进击的巨人 最终季",
+        "進撃の巨人 The Final Season Part.2",
+        "进击的巨人 最终季 Part.2"
+      ],
+      "sequelSubjects": [
+        376739,
+        415779,
+        461545
+      ],
+      "sequelSubjectNames": [
+        "進撃の巨人 The Final Season 完結編 前編",
+        "进击的巨人 最终季 完结篇 前篇",
+        "進撃の巨人 The Final Season 完結編 後編",
+        "进击的巨人 最终季 完结篇 后篇",
+        "プロフェッショナル 仕事の流儀 エレン・イェーガー スペシャル",
+        "Professional 行家本色 艾伦·耶格尔特辑"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 285666,
+            "names": [
+              "進撃の巨人 The Final Season",
+              "进击的巨人 最终季"
+            ],
+            "markers": [],
+            "firstSort": 60,
+            "episodeCount": 16,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 331752,
+            "names": [
+              "進撃の巨人 The Final Season Part.2",
+              "进击的巨人 最终季 Part.2"
+            ],
+            "markers": [
+              "Part.2"
+            ],
+            "firstSort": 76,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "進撃の巨人 The Final Season",
+          "进击的巨人 最终季"
+        ],
+        "otherSeasonNumbers": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/331752/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/331752/cover/thumb"
+  },
+  "373267": {
+    "id": 373267,
+    "type": "ANIME",
+    "name": "SPY×FAMILY 第2クール",
+    "nameCn": "间谍过家家 第2部分",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2022-10-01",
+    "aliases": [
+      "Spy x Family (2022)",
+      "スパイファミリー 第2クール",
+      "SPY×FAMILY Part 2"
+    ],
+    "favorite": {
+      "wish": 2155,
+      "done": 27414,
+      "doing": 2416,
+      "onHold": 974,
+      "dropped": 498
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "7.3",
+    "scoreDetails": {
+      "1": 21,
+      "2": 10,
+      "3": 20,
+      "4": 61,
+      "5": 352,
+      "6": 1744,
+      "7": 6484,
+      "8": 5310,
+      "9": 623,
+      "10": 390
+    },
+    "rank": 1379,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1130480,
+        "subjectId": 373267,
+        "sort": "0",
+        "type": "SPECIAL",
+        "name": "「SPY×FAMILY」第2クールスタート記念！ 真夜中のＭＩＳＳＩＯＮ　みんなで魅力を語ろうＳＰ",
+        "nameCn": "",
+        "description": "",
+        "airdate": "2022-09-27",
+        "disc": 0,
+        "duration": ""
+      },
+      {
+        "episodeId": 1124319,
+        "subjectId": 373267,
+        "sort": "13",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "プロジェクト〈アップル〉",
+        "nameCn": "〈苹果〉计划",
+        "description": "",
+        "airdate": "2022-10-01",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1124319/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1124319/still/large"
+      },
+      {
+        "episodeId": 1126225,
+        "subjectId": 373267,
+        "sort": "14",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "時限爆弾を解除せよ",
+        "nameCn": "拆除定时炸弹",
+        "description": "",
+        "airdate": "2022-10-08",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1126225/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1126225/still/large"
+      },
+      {
+        "episodeId": 1126226,
+        "subjectId": 373267,
+        "sort": "15",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "新しい家族",
+        "nameCn": "新的家人",
+        "description": "",
+        "airdate": "2022-10-15",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1126226/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1126226/still/large"
+      },
+      {
+        "episodeId": 1139716,
+        "subjectId": 373267,
+        "sort": "15.5",
+        "type": "SPECIAL",
+        "name": "ABEMA第2クール放送記念特番",
+        "nameCn": "",
+        "description": "",
+        "airdate": "2022-10-22",
+        "disc": 0,
+        "duration": ""
+      },
+      {
+        "episodeId": 1126227,
+        "subjectId": 373267,
+        "sort": "16",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "ヨル's キッチン／情報屋の恋愛大作戦",
+        "nameCn": "约尔的厨房／情报贩子的恋爱大作战",
+        "description": "",
+        "airdate": "2022-10-22",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1126227/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1126227/still/large"
+      },
+      {
+        "episodeId": 1126228,
+        "subjectId": 373267,
+        "sort": "17",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "ぐりほんさくせんを決行せよ／〈鋼鉄の淑女（フルメタルレディ）〉／オムライス♡",
+        "nameCn": "执行狮啾行动／〈钢铁淑女〉／蛋包饭♡",
+        "description": "",
+        "airdate": "2022-10-29",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1126228/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1126228/still/large"
+      },
+      {
+        "episodeId": 1126229,
+        "subjectId": 373267,
+        "sort": "18",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "家庭教師の叔父／〈東雲（しののめ）〉",
+        "nameCn": "家庭教师舅舅／〈东云〉",
+        "description": "",
+        "airdate": "2022-11-05",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1126229/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1126229/still/large"
+      },
+      {
+        "episodeId": 1126230,
+        "subjectId": 373267,
+        "sort": "19",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "デズモンドへの復讐計画／母、風になる",
+        "nameCn": "对戴斯蒙复仇计划／母亲，幻化成风",
+        "description": "",
+        "airdate": "2022-11-12",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1126230/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1126230/still/large"
+      },
+      {
+        "episodeId": 1126231,
+        "subjectId": 373267,
+        "sort": "20",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "総合病院を調査せよ／難解な暗号を解読せよ",
+        "nameCn": "调查综合医​​​​​院／解读难懂密文",
+        "description": "",
+        "airdate": "2022-11-19",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1126231/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1126231/still/large"
+      },
+      {
+        "episodeId": 1126232,
+        "subjectId": 373267,
+        "sort": "21",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "夜帷（とばり）／はじめての嫉妬",
+        "nameCn": "夜帷／第一次嫉妒",
+        "description": "",
+        "airdate": "2022-11-26",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1126232/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1126232/still/large"
+      },
+      {
+        "episodeId": 1126233,
+        "subjectId": 373267,
+        "sort": "22",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "地下テニス大会 キャンベルトン",
+        "nameCn": "地下网球赛 坎贝尔顿",
+        "description": "",
+        "airdate": "2022-12-03",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1126233/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1126233/still/large"
+      },
+      {
+        "episodeId": 1126234,
+        "subjectId": 373267,
+        "sort": "23",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "揺るがぬ軌道",
+        "nameCn": "坚定不移的轨道",
+        "description": "",
+        "airdate": "2022-12-10",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1126234/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1126234/still/large"
+      },
+      {
+        "episodeId": 1126235,
+        "subjectId": 373267,
+        "sort": "24",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "母役と妻役／ともだちとかいもの",
+        "nameCn": "母亲角色与妻子角色／和朋友购物",
+        "description": "",
+        "airdate": "2022-12-17",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1126235/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1126235/still/large"
+      },
+      {
+        "episodeId": 1126236,
+        "subjectId": 373267,
+        "sort": "25",
+        "ep": "13",
+        "type": "MAIN",
+        "name": "接敵作戦（ファーストコンタクト）",
+        "nameCn": "接敌行动（首次接触）",
+        "description": "",
+        "airdate": "2022-12-24",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1126236/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1126236/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2022-10-01T14:00:00Z",
+      "recurrence": {
+        "startTime": "2022-10-01T14:00:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        329906,
+        373267,
+        411427,
+        498378
+      ],
+      "seriesMainSubjectNames": [
+        "SPY×FAMILY",
+        "间谍过家家",
+        "SPY×FAMILY 第2クール",
+        "间谍过家家 第2部分",
+        "SPY×FAMILY Season 2",
+        "间谍过家家 第二季",
+        "SPY×FAMILY Season 3",
+        "间谍过家家 第三季"
+      ],
+      "sequelSubjects": [
+        411427,
+        411428,
+        498378,
+        411428
+      ],
+      "sequelSubjectNames": [
+        "SPY×FAMILY Season 2",
+        "间谍过家家 第二季",
+        "劇場版 SPY×FAMILY CODE: White",
+        "剧场版 间谍过家家 代号：白",
+        "SPY×FAMILY Season 3",
+        "间谍过家家 第三季"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 329906,
+            "names": [
+              "SPY×FAMILY",
+              "间谍过家家"
+            ],
+            "markers": [],
+            "firstSort": 1,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 373267,
+            "names": [
+              "SPY×FAMILY 第2クール",
+              "间谍过家家 第2部分"
+            ],
+            "markers": [
+              "第2クール",
+              "第2部分"
+            ],
+            "firstSort": 13,
+            "episodeCount": 13,
+            "inlineSpecialCount": 1
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "SPY×FAMILY",
+          "间谍过家家"
+        ],
+        "otherSeasonNumbers": [
+          2,
+          3
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/373267/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/373267/cover/thumb"
+  },
+  "442523": {
+    "id": 442523,
+    "type": "ANIME",
+    "name": "魔法使いの嫁 SEASON2 第2クール",
+    "nameCn": "魔法使的新娘 第二季 第2部分",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2023-10-05",
+    "aliases": [
+      "Mahoutsukai no Yome Season 2 Part 2",
+      "The Ancient Magus' Bride Season 2 Part 2"
+    ],
+    "favorite": {
+      "wish": 736,
+      "done": 1684,
+      "doing": 222,
+      "onHold": 127,
+      "dropped": 80
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "6.5",
+    "scoreDetails": {
+      "1": 0,
+      "2": 5,
+      "3": 8,
+      "4": 25,
+      "5": 75,
+      "6": 294,
+      "7": 379,
+      "8": 98,
+      "9": 13,
+      "10": 12
+    },
+    "rank": 4998,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1240283,
+        "subjectId": 442523,
+        "sort": "13",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "Nothing venture, nothing have.Ⅰ",
+        "nameCn": "不入虎穴，焉得虎子1",
+        "description": "",
+        "airdate": "2023-10-05",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1240283/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1240283/still/large"
+      },
+      {
+        "episodeId": 1240284,
+        "subjectId": 442523,
+        "sort": "14",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "Nothing venture, nothing have.Ⅱ",
+        "nameCn": "不入虎穴，焉得虎子2",
+        "description": "",
+        "airdate": "2023-10-12",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1240284/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1240284/still/large"
+      },
+      {
+        "episodeId": 1240285,
+        "subjectId": 442523,
+        "sort": "15",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "Needs must when the devil drives.Ⅰ",
+        "nameCn": "形式所迫，不得不为1",
+        "description": "",
+        "airdate": "2023-10-19",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1240285/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1240285/still/large"
+      },
+      {
+        "episodeId": 1240286,
+        "subjectId": 442523,
+        "sort": "16",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "Needs must when the devil drives.Ⅱ",
+        "nameCn": "形式所迫，不得不为2",
+        "description": "",
+        "airdate": "2023-10-26",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1240286/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1240286/still/large"
+      },
+      {
+        "episodeId": 1240287,
+        "subjectId": 442523,
+        "sort": "17",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "Gather ye rosebuds while ye may.",
+        "nameCn": "花开堪折直须折",
+        "description": "",
+        "airdate": "2023-11-02",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1240287/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1240287/still/large"
+      },
+      {
+        "episodeId": 1240288,
+        "subjectId": 442523,
+        "sort": "18",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "Coming events cast their shadows before.",
+        "nameCn": "未来之事，必有微兆",
+        "description": "",
+        "airdate": "2023-11-09",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1240288/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1240288/still/large"
+      },
+      {
+        "episodeId": 1240289,
+        "subjectId": 442523,
+        "sort": "19",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "Man’s extremity is God’s opportunity.",
+        "nameCn": "人的绝境是神的良机",
+        "description": "",
+        "airdate": "2023-11-16",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1240289/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1240289/still/large"
+      },
+      {
+        "episodeId": 1240290,
+        "subjectId": 442523,
+        "sort": "20",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "Even a worm will turn.",
+        "nameCn": "狗急跳墙",
+        "description": "",
+        "airdate": "2023-11-23",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1240290/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1240290/still/large"
+      },
+      {
+        "episodeId": 1240291,
+        "subjectId": 442523,
+        "sort": "21",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "A burnt child dreads the fire.",
+        "nameCn": "一朝被蛇咬, 十年怕草绳",
+        "description": "",
+        "airdate": "2023-11-30",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1240291/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1240291/still/large"
+      },
+      {
+        "episodeId": 1240292,
+        "subjectId": 442523,
+        "sort": "22",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "Give a thief enough rope and he’ll hang himself.",
+        "nameCn": "多行不义必自毙",
+        "description": "",
+        "airdate": "2023-12-07",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1240292/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1240292/still/large"
+      },
+      {
+        "episodeId": 1240293,
+        "subjectId": 442523,
+        "sort": "23",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "Of two evils choose the less.",
+        "nameCn": "两害相权取其轻",
+        "description": "",
+        "airdate": "2023-12-14",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1240293/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1240293/still/large"
+      },
+      {
+        "episodeId": 1240294,
+        "subjectId": 442523,
+        "sort": "24",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "The show must go on.Ⅰ",
+        "nameCn": "戏还是要演下去1",
+        "description": "",
+        "airdate": "2023-12-21",
+        "disc": 0,
+        "duration": "00:24:10",
+        "imageMedium": "https://static.myani.org/episodes/1240294/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1240294/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2023-10-05T13:00:00Z",
+      "recurrence": {
+        "startTime": "2023-10-05T13:00:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        210864,
+        399820,
+        442523
+      ],
+      "seriesMainSubjectNames": [
+        "魔法使いの嫁",
+        "魔法使的新娘",
+        "魔法使いの嫁 SEASON2",
+        "魔法使的新娘 第二季",
+        "魔法使いの嫁 SEASON2 第2クール",
+        "魔法使的新娘 第二季 第2部分"
+      ],
+      "sequelSubjects": [],
+      "sequelSubjectNames": [],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 399820,
+            "names": [
+              "魔法使いの嫁 SEASON2",
+              "魔法使的新娘 第二季"
+            ],
+            "markers": [],
+            "firstSort": 1,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 442523,
+            "names": [
+              "魔法使いの嫁 SEASON2 第2クール",
+              "魔法使的新娘 第二季 第2部分"
+            ],
+            "markers": [
+              "第2クール",
+              "第2部分"
+            ],
+            "firstSort": 13,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "魔法使いの嫁 SEASON2",
+          "魔法使的新娘 第二季"
+        ],
+        "otherSeasonNumbers": [
+          1
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/442523/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/442523/cover/thumb"
+  },
+  "331887": {
+    "id": 331887,
+    "type": "ANIME",
+    "name": "86―エイティシックス― 第2クール",
+    "nameCn": "86 -不存在的战区- 第2部分",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2021-10-02",
+    "aliases": [
+      "86: Eighty Six 2nd Season",
+      "86: Eighty Six Part 2"
+    ],
+    "favorite": {
+      "wish": 5471,
+      "done": 28560,
+      "doing": 2168,
+      "onHold": 829,
+      "dropped": 264
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "8.0",
+    "scoreDetails": {
+      "1": 36,
+      "2": 21,
+      "3": 42,
+      "4": 94,
+      "5": 265,
+      "6": 885,
+      "7": 3192,
+      "8": 6612,
+      "9": 3321,
+      "10": 1499
+    },
+    "rank": 258,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1033660,
+        "subjectId": 331887,
+        "sort": "12",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "ようこそ",
+        "nameCn": "欢迎",
+        "description": "",
+        "airdate": "2021-10-02",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1033660/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1033660/still/large"
+      },
+      {
+        "episodeId": 1033661,
+        "subjectId": 331887,
+        "sort": "13",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "今更そんなこと",
+        "nameCn": "那种事 事到如今",
+        "description": "",
+        "airdate": "2021-10-09",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1033661/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1033661/still/large"
+      },
+      {
+        "episodeId": 1033662,
+        "subjectId": 331887,
+        "sort": "14",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "よろしく",
+        "nameCn": "请多指教",
+        "description": "",
+        "airdate": "2021-10-16",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1033662/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1033662/still/large"
+      },
+      {
+        "episodeId": 1033663,
+        "subjectId": 331887,
+        "sort": "15",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "おかえりなさい",
+        "nameCn": "欢迎归来",
+        "description": "",
+        "airdate": "2021-10-23",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1033663/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1033663/still/large"
+      },
+      {
+        "episodeId": 1033664,
+        "subjectId": 331887,
+        "sort": "16",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "それでも",
+        "nameCn": "即使如此",
+        "description": "",
+        "airdate": "2021-10-30",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1033664/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1033664/still/large"
+      },
+      {
+        "episodeId": 1033665,
+        "subjectId": 331887,
+        "sort": "17",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "忘れません",
+        "nameCn": "我不会忘记",
+        "description": "",
+        "airdate": "2021-11-06",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1033665/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1033665/still/large"
+      },
+      {
+        "episodeId": 1066136,
+        "subjectId": 331887,
+        "sort": "17.5",
+        "type": "SPECIAL",
+        "name": "TVアニメ「８６―エイティシックス―」 ビジュアルコメンタリー特番",
+        "nameCn": "TV动画「86 -不存在的战区-」 影像对谈特别节目",
+        "description": "",
+        "airdate": "2021-11-13",
+        "disc": 0,
+        "duration": "00:23:50",
+        "imageMedium": "https://static.myani.org/episodes/1066136/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1066136/still/large"
+      },
+      {
+        "episodeId": 1033666,
+        "subjectId": 331887,
+        "sort": "18",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "本当は",
+        "nameCn": "实际上",
+        "description": "",
+        "airdate": "2021-11-20",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1033666/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1033666/still/large"
+      },
+      {
+        "episodeId": 1067871,
+        "subjectId": 331887,
+        "sort": "18.5",
+        "type": "SPECIAL",
+        "name": "TVアニメ「８６―エイティシックス―」Special Edition『死して甲斐あるものなれば』",
+        "nameCn": "TV动画「86 -不存在的战区-」 特别篇「若是死得其所」",
+        "description": "",
+        "airdate": "2021-11-27",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1067871/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1067871/still/large"
+      },
+      {
+        "episodeId": 1033667,
+        "subjectId": 331887,
+        "sort": "19",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "いっそ このまま",
+        "nameCn": "干脆就这么走下去",
+        "description": "",
+        "airdate": "2021-12-04",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1033667/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1033667/still/large"
+      },
+      {
+        "episodeId": 1033668,
+        "subjectId": 331887,
+        "sort": "20",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "死ぬまで一緒に",
+        "nameCn": "至死相伴",
+        "description": "",
+        "airdate": "2021-12-18",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1033668/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1033668/still/large"
+      },
+      {
+        "episodeId": 1033669,
+        "subjectId": 331887,
+        "sort": "21",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "もうこれしか",
+        "nameCn": "仅剩如此",
+        "description": "",
+        "airdate": "2021-12-25",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1033669/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1033669/still/large"
+      },
+      {
+        "episodeId": 1086963,
+        "subjectId": 331887,
+        "sort": "21.5",
+        "type": "SPECIAL",
+        "name": "Special Edition『せめて人間たらんと』",
+        "nameCn": "",
+        "description": "",
+        "airdate": "2022-03-05",
+        "disc": 0,
+        "duration": "",
+        "imageMedium": "https://static.myani.org/episodes/1086963/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1086963/still/large"
+      },
+      {
+        "episodeId": 1033670,
+        "subjectId": 331887,
+        "sort": "22",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "シン",
+        "nameCn": "辛",
+        "description": "",
+        "airdate": "2022-03-12",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1033670/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1033670/still/large"
+      },
+      {
+        "episodeId": 1033671,
+        "subjectId": 331887,
+        "sort": "23",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "ハンドラー・ワン",
+        "nameCn": "管制一号",
+        "description": "",
+        "airdate": "2022-03-19",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1033671/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1033671/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2021-10-02T15:00:00Z",
+      "recurrence": {
+        "startTime": "2021-10-02T15:00:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        302189,
+        331887
+      ],
+      "seriesMainSubjectNames": [
+        "86―エイティシックス―",
+        "86 -不存在的战区-",
+        "86―エイティシックス― 第2クール",
+        "86 -不存在的战区- 第2部分"
+      ],
+      "sequelSubjects": [],
+      "sequelSubjectNames": [],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 302189,
+            "names": [
+              "86―エイティシックス―",
+              "86 -不存在的战区-"
+            ],
+            "markers": [],
+            "firstSort": 1,
+            "episodeCount": 11,
+            "inlineSpecialCount": 1
+          },
+          {
+            "subjectId": 331887,
+            "names": [
+              "86―エイティシックス― 第2クール",
+              "86 -不存在的战区- 第2部分"
+            ],
+            "markers": [
+              "第2クール",
+              "第2部分"
+            ],
+            "firstSort": 12,
+            "episodeCount": 12,
+            "inlineSpecialCount": 3
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "86―エイティシックス―",
+          "86 -不存在的战区-"
+        ],
+        "otherSeasonNumbers": []
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/331887/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/331887/cover/thumb"
+  },
+  "319252": {
+    "id": 319252,
+    "type": "ANIME",
+    "name": "憂国のモリアーティ 2クール目",
+    "nameCn": "忧国的莫里亚蒂 第二季",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2021-04-04",
+    "aliases": [
+      "Moriarty the Patriot",
+      "Yuukoku no Moriarty"
+    ],
+    "favorite": {
+      "wish": 440,
+      "done": 2607,
+      "doing": 183,
+      "onHold": 120,
+      "dropped": 103
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "6.6",
+    "scoreDetails": {
+      "1": 3,
+      "2": 3,
+      "3": 16,
+      "4": 39,
+      "5": 108,
+      "6": 433,
+      "7": 538,
+      "8": 164,
+      "9": 32,
+      "10": 29
+    },
+    "rank": 4676,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 988443,
+        "subjectId": 319252,
+        "sort": "12",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "大英帝国の醜聞 第一幕",
+        "nameCn": "大英帝国的丑闻 第一幕",
+        "description": "",
+        "airdate": "2021-04-04",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/988443/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/988443/still/large"
+      },
+      {
+        "episodeId": 988444,
+        "subjectId": 319252,
+        "sort": "13",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "大英帝国の醜聞 第二幕",
+        "nameCn": "大英帝国的丑闻 第二幕",
+        "description": "",
+        "airdate": "2021-04-11",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/988444/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/988444/still/large"
+      },
+      {
+        "episodeId": 988445,
+        "subjectId": 319252,
+        "sort": "14",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "大英帝国の醜聞 第三幕",
+        "nameCn": "大英帝国的丑闻 第三幕",
+        "description": "",
+        "airdate": "2021-04-18",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/988445/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/988445/still/large"
+      },
+      {
+        "episodeId": 988446,
+        "subjectId": 319252,
+        "sort": "15",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "ホワイトチャペルの亡霊 第一幕",
+        "nameCn": "白教堂的亡灵 第一幕",
+        "description": "",
+        "airdate": "2021-04-25",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/988446/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/988446/still/large"
+      },
+      {
+        "episodeId": 988447,
+        "subjectId": 319252,
+        "sort": "16",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "ホワイトチャペルの亡霊 第二幕",
+        "nameCn": "白教堂的亡灵 第二幕",
+        "description": "",
+        "airdate": "2021-05-02",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/988447/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/988447/still/large"
+      },
+      {
+        "episodeId": 988448,
+        "subjectId": 319252,
+        "sort": "17",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "スコットランドヤード狂騒曲",
+        "nameCn": "苏格兰场狂想曲",
+        "description": "",
+        "airdate": "2021-05-09",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/988448/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/988448/still/large"
+      },
+      {
+        "episodeId": 988449,
+        "subjectId": 319252,
+        "sort": "18",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "ロンドンの証人",
+        "nameCn": "伦敦的证人",
+        "description": "",
+        "airdate": "2021-05-16",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/988449/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/988449/still/large"
+      },
+      {
+        "episodeId": 988450,
+        "subjectId": 319252,
+        "sort": "19",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "ロンドンの騎士 第一幕",
+        "nameCn": "伦敦的骑士 第一幕",
+        "description": "",
+        "airdate": "2021-05-23",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/988450/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/988450/still/large"
+      },
+      {
+        "episodeId": 988451,
+        "subjectId": 319252,
+        "sort": "20",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "ロンドンの騎士 第二幕",
+        "nameCn": "伦敦的骑士 第二幕",
+        "description": "",
+        "airdate": "2021-05-30",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/988451/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/988451/still/large"
+      },
+      {
+        "episodeId": 988452,
+        "subjectId": 319252,
+        "sort": "21",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "四つの署名",
+        "nameCn": "四签名",
+        "description": "",
+        "airdate": "2021-06-06",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/988452/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/988452/still/large"
+      },
+      {
+        "episodeId": 988453,
+        "subjectId": 319252,
+        "sort": "22",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "犯人は二人",
+        "nameCn": "凶犯有两人",
+        "description": "",
+        "airdate": "2021-06-13",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/988453/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/988453/still/large"
+      },
+      {
+        "episodeId": 988454,
+        "subjectId": 319252,
+        "sort": "23",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "最後の事件 第一幕",
+        "nameCn": "最后一案 第一幕",
+        "description": "",
+        "airdate": "2021-06-20",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/988454/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/988454/still/large"
+      },
+      {
+        "episodeId": 997055,
+        "subjectId": 319252,
+        "sort": "24",
+        "ep": "13",
+        "type": "MAIN",
+        "name": "最後の事件 第二幕",
+        "nameCn": "最后一案 第二幕",
+        "description": "",
+        "airdate": "2021-06-27",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/997055/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/997055/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2021-04-04T13:30:00Z",
+      "recurrence": {
+        "startTime": "2021-04-04T13:30:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        297022,
+        319252
+      ],
+      "seriesMainSubjectNames": [
+        "憂国のモリアーティ",
+        "忧国的莫里亚蒂",
+        "憂国のモリアーティ 2クール目",
+        "忧国的莫里亚蒂 第二季"
+      ],
+      "sequelSubjects": [
+        347818
+      ],
+      "sequelSubjectNames": [
+        "憂国のモリアーティ～百合の追憶～",
+        "忧国的莫里亚蒂～百合的追忆～"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 297022,
+            "names": [
+              "憂国のモリアーティ",
+              "忧国的莫里亚蒂"
+            ],
+            "markers": [],
+            "firstSort": 1,
+            "episodeCount": 11,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 319252,
+            "names": [
+              "憂国のモリアーティ 2クール目",
+              "忧国的莫里亚蒂 第二季"
+            ],
+            "markers": [
+              "2クール目"
+            ],
+            "firstSort": 12,
+            "episodeCount": 13,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "憂国のモリアーティ",
+          "忧国的莫里亚蒂",
+          "忧国的莫里亚蒂 第二季"
+        ],
+        "otherSeasonNumbers": []
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/319252/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/319252/cover/thumb"
+  },
+  "295421": {
+    "id": 295421,
+    "type": "ANIME",
+    "name": "ハイキュー!! TO THE TOP 第2クール",
+    "nameCn": "排球少年 TO THE TOP 第二期",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2020-10-02",
+    "aliases": [
+      "Haikyuu!! To the Top (2020)",
+      "Haikyu!! To the Top (2020)",
+      "排球少年 第四季 第二期"
+    ],
+    "favorite": {
+      "wish": 693,
+      "done": 6008,
+      "doing": 262,
+      "onHold": 101,
+      "dropped": 70
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "7.7",
+    "scoreDetails": {
+      "1": 3,
+      "2": 1,
+      "3": 5,
+      "4": 14,
+      "5": 39,
+      "6": 225,
+      "7": 997,
+      "8": 1532,
+      "9": 262,
+      "10": 153
+    },
+    "rank": 639,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 941214,
+        "subjectId": 295421,
+        "sort": "14",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "リズム",
+        "nameCn": "节奏",
+        "description": "",
+        "airdate": "2020-10-02",
+        "disc": 0,
+        "duration": "00:23:57",
+        "imageMedium": "https://static.myani.org/episodes/941214/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/941214/still/large"
+      },
+      {
+        "episodeId": 941215,
+        "subjectId": 295421,
+        "sort": "15",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "見つける",
+        "nameCn": "寻觅",
+        "description": "",
+        "airdate": "2020-10-09",
+        "disc": 0,
+        "duration": "00:23:57",
+        "imageMedium": "https://static.myani.org/episodes/941215/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/941215/still/large"
+      },
+      {
+        "episodeId": 941216,
+        "subjectId": 295421,
+        "sort": "16",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "失恋",
+        "nameCn": "失恋",
+        "description": "",
+        "airdate": "2020-10-16",
+        "disc": 0,
+        "duration": "00:23:57",
+        "imageMedium": "https://static.myani.org/episodes/941216/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/941216/still/large"
+      },
+      {
+        "episodeId": 941217,
+        "subjectId": 295421,
+        "sort": "17",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "ネコVSサル",
+        "nameCn": "猫VS猴子",
+        "description": "",
+        "airdate": "2020-10-23",
+        "disc": 0,
+        "duration": "00:23:57",
+        "imageMedium": "https://static.myani.org/episodes/941217/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/941217/still/large"
+      },
+      {
+        "episodeId": 941218,
+        "subjectId": 295421,
+        "sort": "18",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "罠",
+        "nameCn": "陷阱",
+        "description": "",
+        "airdate": "2020-10-30",
+        "disc": 0,
+        "duration": "00:23:56",
+        "imageMedium": "https://static.myani.org/episodes/941218/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/941218/still/large"
+      },
+      {
+        "episodeId": 941219,
+        "subjectId": 295421,
+        "sort": "19",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "最強の挑戦者",
+        "nameCn": "最强的挑战者",
+        "description": "",
+        "airdate": "2020-11-06",
+        "disc": 0,
+        "duration": "00:23:57",
+        "imageMedium": "https://static.myani.org/episodes/941219/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/941219/still/large"
+      },
+      {
+        "episodeId": 941220,
+        "subjectId": 295421,
+        "sort": "20",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "頭",
+        "nameCn": "首领",
+        "description": "",
+        "airdate": "2020-11-13",
+        "disc": 0,
+        "duration": "00:23:57",
+        "imageMedium": "https://static.myani.org/episodes/941220/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/941220/still/large"
+      },
+      {
+        "episodeId": 941221,
+        "subjectId": 295421,
+        "sort": "21",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "ヒーロー",
+        "nameCn": "英雄",
+        "description": "",
+        "airdate": "2020-11-20",
+        "disc": 0,
+        "duration": "00:23:57",
+        "imageMedium": "https://static.myani.org/episodes/941221/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/941221/still/large"
+      },
+      {
+        "episodeId": 941222,
+        "subjectId": 295421,
+        "sort": "22",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "ハーケン",
+        "nameCn": "楔钉",
+        "description": "",
+        "airdate": "2020-11-27",
+        "disc": 0,
+        "duration": "00:23:57",
+        "imageMedium": "https://static.myani.org/episodes/941222/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/941222/still/large"
+      },
+      {
+        "episodeId": 941223,
+        "subjectId": 295421,
+        "sort": "23",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "静かなる王の誕生",
+        "nameCn": "国王于寂静中诞生",
+        "description": "",
+        "airdate": "2020-12-04",
+        "disc": 0,
+        "duration": "00:23:57",
+        "imageMedium": "https://static.myani.org/episodes/941223/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/941223/still/large"
+      },
+      {
+        "episodeId": 941224,
+        "subjectId": 295421,
+        "sort": "24",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "バケモンたちの宴",
+        "nameCn": "怪物们的宴会",
+        "description": "",
+        "airdate": "2020-12-11",
+        "disc": 0,
+        "duration": "00:23:57",
+        "imageMedium": "https://static.myani.org/episodes/941224/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/941224/still/large"
+      },
+      {
+        "episodeId": 941225,
+        "subjectId": 295421,
+        "sort": "25",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "約束の地",
+        "nameCn": "约定之地",
+        "description": "",
+        "airdate": "2020-12-18",
+        "disc": 0,
+        "duration": "00:23:57",
+        "imageMedium": "https://static.myani.org/episodes/941225/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/941225/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2020-10-02T17:25:00Z",
+      "recurrence": {
+        "startTime": "2020-10-02T17:25:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        84171,
+        120236,
+        173849,
+        269918,
+        295421
+      ],
+      "seriesMainSubjectNames": [
+        "ハイキュー!!",
+        "排球少年",
+        "ハイキュー!! セカンドシーズン",
+        "排球少年 第二季",
+        "ハイキュー!! 烏野高校 VS 白鳥沢学園高校",
+        "排球少年 乌野高校 VS 白鸟泽学园高校",
+        "ハイキュー!! TO THE TOP",
+        "排球少年 TO THE TOP",
+        "ハイキュー!! TO THE TOP 第2クール",
+        "排球少年 TO THE TOP 第二期"
+      ],
+      "sequelSubjects": [
+        394621,
+        396016,
+        499292,
+        541282
+      ],
+      "sequelSubjectNames": [
+        "劇場版ハイキュー!! ゴミ捨て場の決戦",
+        "排球少年！！垃圾场决战",
+        "劇場版ハイキュー!! VS小さな巨人",
+        "剧场版排球少年 VS小巨人",
+        "ハイキュー!! バケモノたちの行くところ",
+        "排球少年 怪物们的远征"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 269918,
+            "names": [
+              "ハイキュー!! TO THE TOP",
+              "排球少年 TO THE TOP"
+            ],
+            "markers": [],
+            "firstSort": 1,
+            "episodeCount": 13,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 295421,
+            "names": [
+              "ハイキュー!! TO THE TOP 第2クール",
+              "排球少年 TO THE TOP 第二期"
+            ],
+            "markers": [
+              "第2クール"
+            ],
+            "firstSort": 14,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "ハイキュー!! TO THE TOP",
+          "排球少年 TO THE TOP",
+          "排球少年 TO THE TOP 第二期"
+        ],
+        "otherSeasonNumbers": [
+          1,
+          2
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/295421/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/295421/cover/thumb"
+  },
+  "502876": {
+    "id": 502876,
+    "type": "ANIME",
+    "name": "炎炎ノ消防隊 参ノ章 第2クール",
+    "nameCn": "炎炎消防队 叁之章 第2部分",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2026-01-09",
+    "aliases": [
+      "Fire Force Season 3 Part 2",
+      "Enen no Shouboutai 3rd Season Part 2",
+      "Enen no Shouboutai: San no Shou Part 2",
+      "炎炎消防队 第三季 第2部分"
+    ],
+    "favorite": {
+      "wish": 797,
+      "done": 1559,
+      "doing": 664,
+      "onHold": 105,
+      "dropped": 79
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "6.2",
+    "scoreDetails": {
+      "1": 5,
+      "2": 2,
+      "3": 5,
+      "4": 32,
+      "5": 119,
+      "6": 335,
+      "7": 200,
+      "8": 51,
+      "9": 10,
+      "10": 4
+    },
+    "rank": 7050,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1575924,
+        "subjectId": 502876,
+        "sort": "13",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "無自覚",
+        "nameCn": "无自觉",
+        "description": "",
+        "airdate": "2026-01-09",
+        "disc": 0,
+        "duration": "00:24:27",
+        "imageMedium": "https://static.myani.org/episodes/1575924/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1575924/still/large"
+      },
+      {
+        "episodeId": 1575925,
+        "subjectId": 502876,
+        "sort": "14",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "日輪を背に",
+        "nameCn": "背负着日轮",
+        "description": "",
+        "airdate": "2026-01-16",
+        "disc": 0,
+        "duration": "00:24:27",
+        "imageMedium": "https://static.myani.org/episodes/1575925/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1575925/still/large"
+      },
+      {
+        "episodeId": 1575926,
+        "subjectId": 502876,
+        "sort": "15",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "出生",
+        "nameCn": "出生",
+        "description": "",
+        "airdate": "2026-01-23",
+        "disc": 0,
+        "duration": "00:24:27",
+        "imageMedium": "https://static.myani.org/episodes/1575926/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1575926/still/large"
+      },
+      {
+        "episodeId": 1575927,
+        "subjectId": 502876,
+        "sort": "16",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "救世主",
+        "nameCn": "救世主",
+        "description": "",
+        "airdate": "2026-01-30",
+        "disc": 0,
+        "duration": "00:24:27",
+        "imageMedium": "https://static.myani.org/episodes/1575927/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1575927/still/large"
+      },
+      {
+        "episodeId": 1575928,
+        "subjectId": 502876,
+        "sort": "17",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "世界の中心で",
+        "nameCn": "在世界的中心",
+        "description": "",
+        "airdate": "2026-02-06",
+        "disc": 0,
+        "duration": "00:24:27",
+        "imageMedium": "https://static.myani.org/episodes/1575928/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1575928/still/large"
+      },
+      {
+        "episodeId": 1575929,
+        "subjectId": 502876,
+        "sort": "18",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "滅びの呪文",
+        "nameCn": "毁灭咒语",
+        "description": "",
+        "airdate": "2026-02-13",
+        "disc": 0,
+        "duration": "00:24:27",
+        "imageMedium": "https://static.myani.org/episodes/1575929/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1575929/still/large"
+      },
+      {
+        "episodeId": 1575930,
+        "subjectId": 502876,
+        "sort": "19",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "抗う者たち / 終末想像",
+        "nameCn": "反抗者们",
+        "description": "",
+        "airdate": "2026-02-20",
+        "disc": 0,
+        "duration": "00:24:27",
+        "imageMedium": "https://static.myani.org/episodes/1575930/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1575930/still/large"
+      },
+      {
+        "episodeId": 1575931,
+        "subjectId": 502876,
+        "sort": "20",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "希望の在処",
+        "nameCn": "希望的所在",
+        "description": "",
+        "airdate": "2026-02-27",
+        "disc": 0,
+        "duration": "00:24:27",
+        "imageMedium": "https://static.myani.org/episodes/1575931/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1575931/still/large"
+      },
+      {
+        "episodeId": 1575932,
+        "subjectId": 502876,
+        "sort": "21",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "竜騎衝天",
+        "nameCn": "龙骑冲天",
+        "description": "",
+        "airdate": "2026-03-06",
+        "disc": 0,
+        "duration": "00:24:12",
+        "imageMedium": "https://static.myani.org/episodes/1575932/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1575932/still/large"
+      },
+      {
+        "episodeId": 1575933,
+        "subjectId": 502876,
+        "sort": "22",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "ヒーロー復活",
+        "nameCn": "英雄复活",
+        "description": "",
+        "airdate": "2026-03-13",
+        "disc": 0,
+        "duration": "00:24:12",
+        "imageMedium": "https://static.myani.org/episodes/1575933/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1575933/still/large"
+      },
+      {
+        "episodeId": 1575934,
+        "subjectId": 502876,
+        "sort": "23",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "絶望の聖女",
+        "nameCn": "绝望的圣女",
+        "description": "",
+        "airdate": "2026-03-20",
+        "disc": 0,
+        "duration": "00:24:12",
+        "imageMedium": "https://static.myani.org/episodes/1575934/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1575934/still/large"
+      },
+      {
+        "episodeId": 1575935,
+        "subjectId": 502876,
+        "sort": "24",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "答え",
+        "nameCn": "答案",
+        "description": "",
+        "airdate": "2026-03-27",
+        "disc": 0,
+        "duration": "00:24:12",
+        "imageMedium": "https://static.myani.org/episodes/1575935/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1575935/still/large"
+      },
+      {
+        "episodeId": 1621793,
+        "subjectId": 502876,
+        "sort": "25",
+        "ep": "13",
+        "type": "MAIN",
+        "name": "ヒーローの物語",
+        "nameCn": "英雄的故事",
+        "description": "",
+        "airdate": "2026-04-03",
+        "disc": 0,
+        "duration": "00:24:12",
+        "imageMedium": "https://static.myani.org/episodes/1621793/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1621793/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2026-01-09T16:53:00Z",
+      "recurrence": {
+        "startTime": "2026-01-09T16:53:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        266372,
+        297342,
+        382126,
+        502876
+      ],
+      "seriesMainSubjectNames": [
+        "炎炎ノ消防隊",
+        "炎炎消防队",
+        "炎炎ノ消防隊 弐ノ章",
+        "炎炎消防队 二之章",
+        "炎炎ノ消防隊 参ノ章",
+        "炎炎消防队 叁之章",
+        "炎炎ノ消防隊 参ノ章 第2クール",
+        "炎炎消防队 叁之章 第2部分"
+      ],
+      "sequelSubjects": [],
+      "sequelSubjectNames": [],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 382126,
+            "names": [
+              "炎炎ノ消防隊 参ノ章",
+              "炎炎消防队 叁之章"
+            ],
+            "markers": [],
+            "firstSort": 1,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 502876,
+            "names": [
+              "炎炎ノ消防隊 参ノ章 第2クール",
+              "炎炎消防队 叁之章 第2部分"
+            ],
+            "markers": [
+              "第2クール",
+              "第2部分"
+            ],
+            "firstSort": 13,
+            "episodeCount": 13,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "炎炎ノ消防隊 参ノ章",
+          "炎炎消防队 叁之章"
+        ],
+        "otherSeasonNumbers": [
+          1
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/502876/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/502876/cover/thumb"
+  },
+  "524005": {
+    "id": 524005,
+    "type": "ANIME",
+    "name": "SAKAMOTO DAYS 第2クール",
+    "nameCn": "坂本日常 第2部分",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2025-07-14",
+    "aliases": [
+      "SAKAMOTO DAYS Part 2",
+      "サカモトデイズ 第2クール",
+      "坂本 DAYS 第2部分"
+    ],
+    "favorite": {
+      "wish": 953,
+      "done": 3745,
+      "doing": 1137,
+      "onHold": 170,
+      "dropped": 189
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "6.1",
+    "scoreDetails": {
+      "1": 6,
+      "2": 7,
+      "3": 24,
+      "4": 74,
+      "5": 251,
+      "6": 813,
+      "7": 503,
+      "8": 95,
+      "9": 8,
+      "10": 16
+    },
+    "rank": 7279,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1507626,
+        "subjectId": 524005,
+        "sort": "12",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "Overload",
+        "nameCn": "过载",
+        "description": "",
+        "airdate": "2025-07-14",
+        "disc": 0,
+        "duration": "00:23:26",
+        "imageMedium": "https://static.myani.org/episodes/1507626/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1507626/still/large"
+      },
+      {
+        "episodeId": 1507627,
+        "subjectId": 524005,
+        "sort": "13",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "ばちあたり",
+        "nameCn": "狭路相逢",
+        "description": "",
+        "airdate": "2025-07-21",
+        "disc": 0,
+        "duration": "00:23:26",
+        "imageMedium": "https://static.myani.org/episodes/1507627/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1507627/still/large"
+      },
+      {
+        "episodeId": 1507628,
+        "subjectId": 524005,
+        "sort": "14",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "強襲",
+        "nameCn": "猛攻",
+        "description": "",
+        "airdate": "2025-07-28",
+        "disc": 0,
+        "duration": "00:23:26",
+        "imageMedium": "https://static.myani.org/episodes/1507628/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1507628/still/large"
+      },
+      {
+        "episodeId": 1507629,
+        "subjectId": 524005,
+        "sort": "15",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "ぐるぐるタワー",
+        "nameCn": "转转塔",
+        "description": "",
+        "airdate": "2025-08-04",
+        "disc": 0,
+        "duration": "00:23:26",
+        "imageMedium": "https://static.myani.org/episodes/1507629/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1507629/still/large"
+      },
+      {
+        "episodeId": 1507630,
+        "subjectId": 524005,
+        "sort": "16",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "斬斬舞",
+        "nameCn": "斩斩舞",
+        "description": "",
+        "airdate": "2025-08-11",
+        "disc": 0,
+        "duration": "00:23:26",
+        "imageMedium": "https://static.myani.org/episodes/1507630/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1507630/still/large"
+      },
+      {
+        "episodeId": 1507631,
+        "subjectId": 524005,
+        "sort": "17",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "Have a Nice Flight",
+        "nameCn": "飞行愉快",
+        "description": "",
+        "airdate": "2025-08-18",
+        "disc": 0,
+        "duration": "00:23:26",
+        "imageMedium": "https://static.myani.org/episodes/1507631/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1507631/still/large"
+      },
+      {
+        "episodeId": 1507632,
+        "subjectId": 524005,
+        "sort": "18",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "カナグリ",
+        "nameCn": "京",
+        "description": "",
+        "airdate": "2025-08-25",
+        "disc": 0,
+        "duration": "00:23:26",
+        "imageMedium": "https://static.myani.org/episodes/1507632/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1507632/still/large"
+      },
+      {
+        "episodeId": 1507633,
+        "subjectId": 524005,
+        "sort": "19",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "三次試験",
+        "nameCn": "三试",
+        "description": "",
+        "airdate": "2025-09-01",
+        "disc": 0,
+        "duration": "00:23:26",
+        "imageMedium": "https://static.myani.org/episodes/1507633/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1507633/still/large"
+      },
+      {
+        "episodeId": 1507634,
+        "subjectId": 524005,
+        "sort": "20",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "推し被り",
+        "nameCn": "同担",
+        "description": "",
+        "airdate": "2025-09-08",
+        "disc": 0,
+        "duration": "00:23:26",
+        "imageMedium": "https://static.myani.org/episodes/1507634/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1507634/still/large"
+      },
+      {
+        "episodeId": 1507635,
+        "subjectId": 524005,
+        "sort": "21",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "ハードモード",
+        "nameCn": "困难模式",
+        "description": "",
+        "airdate": "2025-09-15",
+        "disc": 0,
+        "duration": "00:23:26",
+        "imageMedium": "https://static.myani.org/episodes/1507635/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1507635/still/large"
+      },
+      {
+        "episodeId": 1507636,
+        "subjectId": 524005,
+        "sort": "22",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "それぞれのミッション",
+        "nameCn": "各自的任务",
+        "description": "",
+        "airdate": "2025-09-22",
+        "disc": 0,
+        "duration": "00:23:26",
+        "imageMedium": "https://static.myani.org/episodes/1507636/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1507636/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2025-07-14T15:00:00Z",
+      "recurrence": {
+        "startTime": "2025-07-14T15:00:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        496617,
+        524005
+      ],
+      "seriesMainSubjectNames": [
+        "SAKAMOTO DAYS",
+        "坂本日常",
+        "SAKAMOTO DAYS 第2クール",
+        "坂本日常 第2部分"
+      ],
+      "sequelSubjects": [
+        616760,
+        529781
+      ],
+      "sequelSubjectNames": [
+        "SAKAMOTO DAYS 第2期",
+        "坂本日常 第二季"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 496617,
+            "names": [
+              "SAKAMOTO DAYS",
+              "坂本日常"
+            ],
+            "markers": [],
+            "firstSort": 1,
+            "episodeCount": 11,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 524005,
+            "names": [
+              "SAKAMOTO DAYS 第2クール",
+              "坂本日常 第2部分"
+            ],
+            "markers": [
+              "第2クール",
+              "第2部分"
+            ],
+            "firstSort": 12,
+            "episodeCount": 11,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "SAKAMOTO DAYS",
+          "坂本日常"
+        ],
+        "otherSeasonNumbers": []
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/524005/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/524005/cover/thumb"
+  },
+  "332261": {
+    "id": 332261,
+    "type": "ANIME",
+    "name": "ジョジョの奇妙な冒険 ストーンオーシャン",
+    "nameCn": "JOJO的奇妙冒险 石之海",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2022-01-07",
+    "aliases": [
+      "JoJo no Kimyou na Bouken Part 6",
+      "JoJo no Kimyou na Bouken: Stone Ocean",
+      "JoJo’s Bizarre Adventure STONE OCEAN"
+    ],
+    "favorite": {
+      "wish": 2386,
+      "done": 19387,
+      "doing": 2086,
+      "onHold": 1015,
+      "dropped": 275
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "7.2",
+    "scoreDetails": {
+      "1": 15,
+      "2": 7,
+      "3": 22,
+      "4": 94,
+      "5": 365,
+      "6": 1681,
+      "7": 4235,
+      "8": 3223,
+      "9": 517,
+      "10": 320
+    },
+    "rank": 1728,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1066892,
+        "subjectId": 332261,
+        "sort": "1",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "石作りの海（ストーンオーシャン）",
+        "nameCn": "石之海（Stone ocean）",
+        "description": "",
+        "airdate": "2022-01-07",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1066892/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1066892/still/large"
+      },
+      {
+        "episodeId": 1066893,
+        "subjectId": 332261,
+        "sort": "2",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "ストーン・フリー",
+        "nameCn": "石之自由",
+        "description": "",
+        "airdate": "2022-01-14",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1066893/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1066893/still/large"
+      },
+      {
+        "episodeId": 1066894,
+        "subjectId": 332261,
+        "sort": "3",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "面会人 その①",
+        "nameCn": "会见人 其一",
+        "description": "",
+        "airdate": "2022-01-21",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1066894/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1066894/still/large"
+      },
+      {
+        "episodeId": 1066895,
+        "subjectId": 332261,
+        "sort": "4",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "面会人 その②",
+        "nameCn": "会见人 其二",
+        "description": "",
+        "airdate": "2022-01-28",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1066895/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1066895/still/large"
+      },
+      {
+        "episodeId": 1066896,
+        "subjectId": 332261,
+        "sort": "5",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "プリズナー・オブ・ラヴ",
+        "nameCn": "爱的囚徒",
+        "description": "",
+        "airdate": "2022-02-04",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1066896/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1066896/still/large"
+      },
+      {
+        "episodeId": 1066897,
+        "subjectId": 332261,
+        "sort": "6",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "エルメェスのシール",
+        "nameCn": "艾梅斯的贴纸",
+        "description": "",
+        "airdate": "2022-02-11",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1066897/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1066897/still/large"
+      },
+      {
+        "episodeId": 1066898,
+        "subjectId": 332261,
+        "sort": "7",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "6人いる！",
+        "nameCn": "有六个人！",
+        "description": "",
+        "airdate": "2022-02-18",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1066898/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1066898/still/large"
+      },
+      {
+        "episodeId": 1066899,
+        "subjectId": 332261,
+        "sort": "8",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "フー・ファイターズ",
+        "nameCn": "幽浮一族",
+        "description": "",
+        "airdate": "2022-02-25",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1066899/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1066899/still/large"
+      },
+      {
+        "episodeId": 1066900,
+        "subjectId": 332261,
+        "sort": "9",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "取り立て人マリリン・マンソン",
+        "nameCn": "讨债人玛丽莲·曼森",
+        "description": "",
+        "airdate": "2022-03-04",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1066900/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1066900/still/large"
+      },
+      {
+        "episodeId": 1066901,
+        "subjectId": 332261,
+        "sort": "10",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "サヴェジ・ガーデン作戦（中庭へ向かえ！） その①",
+        "nameCn": "野人花园行动（向中庭进发！） 其一",
+        "description": "",
+        "airdate": "2022-03-11",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1066901/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1066901/still/large"
+      },
+      {
+        "episodeId": 1066902,
+        "subjectId": 332261,
+        "sort": "11",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "サヴェジ・ガーデン作戦（中庭へ向かえ！） その②",
+        "nameCn": "野人花园行动（向中庭进发！） 其二",
+        "description": "",
+        "airdate": "2022-03-18",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1066902/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1066902/still/large"
+      },
+      {
+        "episodeId": 1066903,
+        "subjectId": 332261,
+        "sort": "12",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "集中豪雨警報発令",
+        "nameCn": "集中暴雨警报发布",
+        "description": "",
+        "airdate": "2022-03-25",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1066903/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1066903/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2022-01-07T15:30:00Z",
+      "recurrence": {
+        "startTime": "2022-01-07T15:30:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        43558,
+        85631,
+        113292,
+        150490,
+        235128,
+        332261,
+        375913,
+        395782
+      ],
+      "seriesMainSubjectNames": [
+        "ジョジョの奇妙な冒険",
+        "JOJO的奇妙冒险",
+        "ジョジョの奇妙な冒険 スターダストクルセイダース",
+        "JOJO的奇妙冒险 星尘斗士",
+        "ジョジョの奇妙な冒険 スターダストクルセイダース エジプト編",
+        "JOJO的奇妙冒险 星尘斗士 埃及篇",
+        "ジョジョの奇妙な冒険 ダイヤモンドは砕けない",
+        "JOJO的奇妙冒险 不灭钻石",
+        "ジョジョの奇妙な冒険 黄金の風",
+        "JOJO的奇妙冒险 黄金之风",
+        "ジョジョの奇妙な冒険 ストーンオーシャン",
+        "JOJO的奇妙冒险 石之海",
+        "ジョジョの奇妙な冒険 ストーンオーシャン 第2クール",
+        "JOJO的奇妙冒险 石之海 第2部分",
+        "ジョジョの奇妙な冒険 ストーンオーシャン 第3クール",
+        "JOJO的奇妙冒险 石之海 第3部分"
+      ],
+      "sequelSubjects": [
+        375913,
+        517161,
+        395782,
+        517161
+      ],
+      "sequelSubjectNames": [
+        "ジョジョの奇妙な冒険 ストーンオーシャン 第2クール",
+        "JOJO的奇妙冒险 石之海 第2部分",
+        "ジョジョの奇妙な冒険 ストーンオーシャン 第3クール",
+        "JOJO的奇妙冒险 石之海 第3部分"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 332261,
+            "names": [
+              "ジョジョの奇妙な冒険 ストーンオーシャン",
+              "JOJO的奇妙冒险 石之海"
+            ],
+            "markers": [],
+            "firstSort": 1,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 375913,
+            "names": [
+              "ジョジョの奇妙な冒険 ストーンオーシャン 第2クール",
+              "JOJO的奇妙冒险 石之海 第2部分"
+            ],
+            "markers": [
+              "第2クール",
+              "第2部分"
+            ],
+            "firstSort": 13,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 395782,
+            "names": [
+              "ジョジョの奇妙な冒険 ストーンオーシャン 第3クール",
+              "JOJO的奇妙冒险 石之海 第3部分"
+            ],
+            "markers": [
+              "第3クール",
+              "第3部分"
+            ],
+            "firstSort": 25,
+            "episodeCount": 14,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 0,
+        "baseNames": [
+          "ジョジョの奇妙な冒険 ストーンオーシャン",
+          "JOJO的奇妙冒险 石之海"
+        ],
+        "otherSeasonNumbers": [
+          1
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/332261/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/332261/cover/thumb"
+  },
+  "375913": {
+    "id": 375913,
+    "type": "ANIME",
+    "name": "ジョジョの奇妙な冒険 ストーンオーシャン 第2クール",
+    "nameCn": "JOJO的奇妙冒险 石之海 第2部分",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2022-10-07",
+    "aliases": [
+      "JoJo's Bizarre Adventure: STONE OCEAN Part 2",
+      "JoJo no Kimyou na Bouken: Stone Ocean Part 2"
+    ],
+    "favorite": {
+      "wish": 1596,
+      "done": 13486,
+      "doing": 931,
+      "onHold": 451,
+      "dropped": 135
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "7.0",
+    "scoreDetails": {
+      "1": 10,
+      "2": 14,
+      "3": 16,
+      "4": 91,
+      "5": 313,
+      "6": 1418,
+      "7": 3193,
+      "8": 1525,
+      "9": 219,
+      "10": 154
+    },
+    "rank": 2675,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1093116,
+        "subjectId": 375913,
+        "sort": "13",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "愛と復讐のキッス　その①",
+        "nameCn": "爱与复仇之吻 其一",
+        "description": "",
+        "airdate": "2022-10-07",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1093116/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1093116/still/large"
+      },
+      {
+        "episodeId": 1093117,
+        "subjectId": 375913,
+        "sort": "14",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "愛と復讐のキッス　その②",
+        "nameCn": "爱与复仇之吻 其二",
+        "description": "",
+        "airdate": "2022-10-14",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1093117/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1093117/still/large"
+      },
+      {
+        "episodeId": 1093118,
+        "subjectId": 375913,
+        "sort": "15",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "ウルトラセキュリティ懲罰房",
+        "nameCn": "严密戒备禁闭牢房",
+        "description": "",
+        "airdate": "2022-10-21",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1093118/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1093118/still/large"
+      },
+      {
+        "episodeId": 1093119,
+        "subjectId": 375913,
+        "sort": "16",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "看守ウエストウッドの秘密",
+        "nameCn": "狱警伍斯伍德的秘密",
+        "description": "",
+        "airdate": "2022-10-28",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1093119/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1093119/still/large"
+      },
+      {
+        "episodeId": 1093120,
+        "subjectId": 375913,
+        "sort": "17",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "燃えよ龍の夢（ドラゴンズ・ドリーム）",
+        "nameCn": "燃烧吧 龙之梦",
+        "description": "",
+        "airdate": "2022-11-04",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1093120/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1093120/still/large"
+      },
+      {
+        "episodeId": 1093121,
+        "subjectId": 375913,
+        "sort": "18",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "燃えよフー・ファイターズ",
+        "nameCn": "燃烧吧 幽浮一族",
+        "description": "",
+        "airdate": "2022-11-11",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1093121/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1093121/still/large"
+      },
+      {
+        "episodeId": 1093122,
+        "subjectId": 375913,
+        "sort": "19",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "「緑色」の誕生",
+        "nameCn": "「绿色」的诞生",
+        "description": "",
+        "airdate": "2022-11-18",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1093122/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1093122/still/large"
+      },
+      {
+        "episodeId": 1093123,
+        "subjectId": 375913,
+        "sort": "20",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "F・F－目撃者",
+        "nameCn": "F.F 目击者",
+        "description": "",
+        "airdate": "2022-11-25",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1093123/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1093123/still/large"
+      },
+      {
+        "episodeId": 1093124,
+        "subjectId": 375913,
+        "sort": "21",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "AWAKEN -目醒め-",
+        "nameCn": "觉醒",
+        "description": "",
+        "airdate": "2022-12-02",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1093124/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1093124/still/large"
+      },
+      {
+        "episodeId": 1093125,
+        "subjectId": 375913,
+        "sort": "22",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "天国の時！新月の時！新（ニュー）神父！",
+        "nameCn": "天堂之时！新月之时！新神父！",
+        "description": "",
+        "airdate": "2022-12-09",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1093125/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1093125/still/large"
+      },
+      {
+        "episodeId": 1093126,
+        "subjectId": 375913,
+        "sort": "23",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "ジェイル・ハウス・ロック！",
+        "nameCn": "恶魔枷锁",
+        "description": "",
+        "airdate": "2022-12-16",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1093126/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1093126/still/large"
+      },
+      {
+        "episodeId": 1093127,
+        "subjectId": 375913,
+        "sort": "24",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "脱獄へ・・・",
+        "nameCn": "向着越狱…",
+        "description": "",
+        "airdate": "2022-12-23",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1093127/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1093127/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2022-10-07T15:30:00Z",
+      "recurrence": {
+        "startTime": "2022-10-07T15:30:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        43558,
+        85631,
+        113292,
+        150490,
+        235128,
+        332261,
+        375913,
+        395782
+      ],
+      "seriesMainSubjectNames": [
+        "ジョジョの奇妙な冒険",
+        "JOJO的奇妙冒险",
+        "ジョジョの奇妙な冒険 スターダストクルセイダース",
+        "JOJO的奇妙冒险 星尘斗士",
+        "ジョジョの奇妙な冒険 スターダストクルセイダース エジプト編",
+        "JOJO的奇妙冒险 星尘斗士 埃及篇",
+        "ジョジョの奇妙な冒険 ダイヤモンドは砕けない",
+        "JOJO的奇妙冒险 不灭钻石",
+        "ジョジョの奇妙な冒険 黄金の風",
+        "JOJO的奇妙冒险 黄金之风",
+        "ジョジョの奇妙な冒険 ストーンオーシャン",
+        "JOJO的奇妙冒险 石之海",
+        "ジョジョの奇妙な冒険 ストーンオーシャン 第2クール",
+        "JOJO的奇妙冒险 石之海 第2部分",
+        "ジョジョの奇妙な冒険 ストーンオーシャン 第3クール",
+        "JOJO的奇妙冒险 石之海 第3部分"
+      ],
+      "sequelSubjects": [
+        395782,
+        517161,
+        517161
+      ],
+      "sequelSubjectNames": [
+        "ジョジョの奇妙な冒険 ストーンオーシャン 第3クール",
+        "JOJO的奇妙冒险 石之海 第3部分"
+      ],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 332261,
+            "names": [
+              "ジョジョの奇妙な冒険 ストーンオーシャン",
+              "JOJO的奇妙冒险 石之海"
+            ],
+            "markers": [],
+            "firstSort": 1,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 375913,
+            "names": [
+              "ジョジョの奇妙な冒険 ストーンオーシャン 第2クール",
+              "JOJO的奇妙冒险 石之海 第2部分"
+            ],
+            "markers": [
+              "第2クール",
+              "第2部分"
+            ],
+            "firstSort": 13,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 395782,
+            "names": [
+              "ジョジョの奇妙な冒険 ストーンオーシャン 第3クール",
+              "JOJO的奇妙冒险 石之海 第3部分"
+            ],
+            "markers": [
+              "第3クール",
+              "第3部分"
+            ],
+            "firstSort": 25,
+            "episodeCount": 14,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "ジョジョの奇妙な冒険 ストーンオーシャン",
+          "JOJO的奇妙冒险 石之海"
+        ],
+        "otherSeasonNumbers": [
+          1
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/375913/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/375913/cover/thumb"
+  },
+  "395782": {
+    "id": 395782,
+    "type": "ANIME",
+    "name": "ジョジョの奇妙な冒険 ストーンオーシャン 第3クール",
+    "nameCn": "JOJO的奇妙冒险 石之海 第3部分",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2023-01-06",
+    "aliases": [
+      "JoJo no Kimyou na Bouken: Stone Ocean (Part 3)",
+      "JoJo`s Bizarre Adventure: Stone Ocean (Part 3)"
+    ],
+    "favorite": {
+      "wish": 1522,
+      "done": 12541,
+      "doing": 678,
+      "onHold": 375,
+      "dropped": 101
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "7.1",
+    "scoreDetails": {
+      "1": 9,
+      "2": 11,
+      "3": 22,
+      "4": 83,
+      "5": 288,
+      "6": 1191,
+      "7": 2828,
+      "8": 1569,
+      "9": 284,
+      "10": 150
+    },
+    "rank": 2365,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1122368,
+        "subjectId": 395782,
+        "sort": "25",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "自由人の狂想曲（ボヘミアン・ラプソディー）その①",
+        "nameCn": "波西米亚狂想曲 其一",
+        "description": "",
+        "airdate": "2023-01-06",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122368/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122368/still/large"
+      },
+      {
+        "episodeId": 1122369,
+        "subjectId": 395782,
+        "sort": "26",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "自由人の狂想曲（ボヘミアン・ラプソディー）その②",
+        "nameCn": "波西米亚狂想曲 其二",
+        "description": "",
+        "airdate": "2023-01-13",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122369/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122369/still/large"
+      },
+      {
+        "episodeId": 1122370,
+        "subjectId": 395782,
+        "sort": "27",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "スカイ・ハイ",
+        "nameCn": "骇飞天外",
+        "description": "",
+        "airdate": "2023-01-20",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122370/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122370/still/large"
+      },
+      {
+        "episodeId": 1122371,
+        "subjectId": 395782,
+        "sort": "28",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "天国の時　新月まであと３日",
+        "nameCn": "距离天堂之时 新月之夜还有3天",
+        "description": "",
+        "airdate": "2023-01-27",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122371/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122371/still/large"
+      },
+      {
+        "episodeId": 1122372,
+        "subjectId": 395782,
+        "sort": "29",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "アンダー・ワールド",
+        "nameCn": "地下世界",
+        "description": "",
+        "airdate": "2023-02-03",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122372/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122372/still/large"
+      },
+      {
+        "episodeId": 1122373,
+        "subjectId": 395782,
+        "sort": "30",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "ヘビー・ウェザー　その①",
+        "nameCn": "狂风骤雨 其一",
+        "description": "",
+        "airdate": "2023-02-10",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122373/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122373/still/large"
+      },
+      {
+        "episodeId": 1122374,
+        "subjectId": 395782,
+        "sort": "31",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "ヘビー・ウェザー　その②",
+        "nameCn": "狂风骤雨 其二",
+        "description": "",
+        "airdate": "2023-02-17",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122374/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122374/still/large"
+      },
+      {
+        "episodeId": 1122375,
+        "subjectId": 395782,
+        "sort": "32",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "ヘビー・ウェザー　その③",
+        "nameCn": "狂风骤雨 其三",
+        "description": "",
+        "airdate": "2023-02-24",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122375/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122375/still/large"
+      },
+      {
+        "episodeId": 1122376,
+        "subjectId": 395782,
+        "sort": "33",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "新月の重力",
+        "nameCn": "新月的重力",
+        "description": "",
+        "airdate": "2023-03-03",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122376/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122376/still/large"
+      },
+      {
+        "episodeId": 1122377,
+        "subjectId": 395782,
+        "sort": "34",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "CーMOON　その①",
+        "nameCn": "新月 其一",
+        "description": "",
+        "airdate": "2023-03-10",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122377/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122377/still/large"
+      },
+      {
+        "episodeId": 1122378,
+        "subjectId": 395782,
+        "sort": "35",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "CーMOON　その②",
+        "nameCn": "新月 其二",
+        "description": "",
+        "airdate": "2023-03-17",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122378/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122378/still/large"
+      },
+      {
+        "episodeId": 1122379,
+        "subjectId": 395782,
+        "sort": "36",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "メイド・イン・ヘブン　その①",
+        "nameCn": "天堂制造 其一",
+        "description": "",
+        "airdate": "2023-03-24",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122379/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122379/still/large"
+      },
+      {
+        "episodeId": 1122380,
+        "subjectId": 395782,
+        "sort": "37",
+        "ep": "13",
+        "type": "MAIN",
+        "name": "メイド・イン・ヘブン　その②",
+        "nameCn": "天堂制造 其二",
+        "description": "",
+        "airdate": "2023-03-31",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122380/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122380/still/large"
+      },
+      {
+        "episodeId": 1122381,
+        "subjectId": 395782,
+        "sort": "38",
+        "ep": "14",
+        "type": "MAIN",
+        "name": "ホワット・ア・ワンダフル・ワールド",
+        "nameCn": "美好新世界",
+        "description": "",
+        "airdate": "2023-04-07",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1122381/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1122381/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2023-01-06T15:30:00Z",
+      "recurrence": {
+        "startTime": "2023-01-06T15:30:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        43558,
+        85631,
+        113292,
+        150490,
+        235128,
+        332261,
+        375913,
+        395782
+      ],
+      "seriesMainSubjectNames": [
+        "ジョジョの奇妙な冒険",
+        "JOJO的奇妙冒险",
+        "ジョジョの奇妙な冒険 スターダストクルセイダース",
+        "JOJO的奇妙冒险 星尘斗士",
+        "ジョジョの奇妙な冒険 スターダストクルセイダース エジプト編",
+        "JOJO的奇妙冒险 星尘斗士 埃及篇",
+        "ジョジョの奇妙な冒険 ダイヤモンドは砕けない",
+        "JOJO的奇妙冒险 不灭钻石",
+        "ジョジョの奇妙な冒険 黄金の風",
+        "JOJO的奇妙冒险 黄金之风",
+        "ジョジョの奇妙な冒険 ストーンオーシャン",
+        "JOJO的奇妙冒险 石之海",
+        "ジョジョの奇妙な冒険 ストーンオーシャン 第2クール",
+        "JOJO的奇妙冒险 石之海 第2部分",
+        "ジョジョの奇妙な冒険 ストーンオーシャン 第3クール",
+        "JOJO的奇妙冒险 石之海 第3部分"
+      ],
+      "sequelSubjects": [
+        517161
+      ],
+      "sequelSubjectNames": [],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 332261,
+            "names": [
+              "ジョジョの奇妙な冒険 ストーンオーシャン",
+              "JOJO的奇妙冒险 石之海"
+            ],
+            "markers": [],
+            "firstSort": 1,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 375913,
+            "names": [
+              "ジョジョの奇妙な冒険 ストーンオーシャン 第2クール",
+              "JOJO的奇妙冒险 石之海 第2部分"
+            ],
+            "markers": [
+              "第2クール",
+              "第2部分"
+            ],
+            "firstSort": 13,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 395782,
+            "names": [
+              "ジョジョの奇妙な冒険 ストーンオーシャン 第3クール",
+              "JOJO的奇妙冒险 石之海 第3部分"
+            ],
+            "markers": [
+              "第3クール",
+              "第3部分"
+            ],
+            "firstSort": 25,
+            "episodeCount": 14,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 2,
+        "baseNames": [
+          "ジョジョの奇妙な冒険 ストーンオーシャン",
+          "JOJO的奇妙冒险 石之海"
+        ],
+        "otherSeasonNumbers": [
+          1
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/395782/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/395782/cover/thumb"
+  },
+  "455981": {
+    "id": 455981,
+    "type": "ANIME",
+    "name": "魔王学院の不適合者 ～史上最強の魔王の始祖、転生して子孫たちの学校へ通う～ Ⅱ 2ndクール",
+    "nameCn": "魔王学院的不适任者～史上最强的魔王始祖，转生就读子孙们的学校～ 第二季 第2部分",
+    "platform": 1,
+    "summary": "",
+    "nsfw": false,
+    "airDate": "2024-04-12",
+    "aliases": [
+      "The Misfit of Demon King Academy: History`s Strongest Demon King Reincarnates and Goes to School with His Descendants II Part 2",
+      "Maou Gakuin no Futekigousha: Shijou Saikyou no Maou no Shiso, Tensei shite Shison-tachi no Gakkou e Kayou II Part 2"
+    ],
+    "favorite": {
+      "wish": 760,
+      "done": 3379,
+      "doing": 534,
+      "onHold": 282,
+      "dropped": 229
+    },
+    "tags": [],
+    "metaTags": [],
+    "score": "5.4",
+    "scoreDetails": {
+      "1": 11,
+      "2": 31,
+      "3": 67,
+      "4": 190,
+      "5": 519,
+      "6": 622,
+      "7": 159,
+      "8": 39,
+      "9": 9,
+      "10": 21
+    },
+    "rank": 9409,
+    "selfRating": {
+      "score": 0,
+      "tags": [],
+      "isPrivate": false
+    },
+    "episodes": [
+      {
+        "episodeId": 1306666,
+        "subjectId": 455981,
+        "sort": "13",
+        "ep": "1",
+        "type": "MAIN",
+        "name": "創造の月",
+        "nameCn": "创造之月",
+        "description": "",
+        "airdate": "2024-04-12",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1306666/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1306666/still/large"
+      },
+      {
+        "episodeId": 1306667,
+        "subjectId": 455981,
+        "sort": "14",
+        "ep": "2",
+        "type": "MAIN",
+        "name": "選定の神",
+        "nameCn": "选定之神",
+        "description": "",
+        "airdate": "2024-04-19",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1306667/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1306667/still/large"
+      },
+      {
+        "episodeId": 1306668,
+        "subjectId": 455981,
+        "sort": "15",
+        "ep": "3",
+        "type": "MAIN",
+        "name": "神代の学府",
+        "nameCn": "神代的学府",
+        "description": "",
+        "airdate": "2024-04-26",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1306668/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1306668/still/large"
+      },
+      {
+        "episodeId": 1306669,
+        "subjectId": 455981,
+        "sort": "16",
+        "ep": "4",
+        "type": "MAIN",
+        "name": "ちっぽけな勇気を合わせながら",
+        "nameCn": "集结起渺小的勇气",
+        "description": "",
+        "airdate": "2024-05-03",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1306669/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1306669/still/large"
+      },
+      {
+        "episodeId": 1306670,
+        "subjectId": 455981,
+        "sort": "17",
+        "ep": "5",
+        "type": "MAIN",
+        "name": "誇りの戦い",
+        "nameCn": "荣耀之战",
+        "description": "",
+        "airdate": "2024-05-10",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1306670/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1306670/still/large"
+      },
+      {
+        "episodeId": 1306671,
+        "subjectId": 455981,
+        "sort": "18",
+        "ep": "6",
+        "type": "MAIN",
+        "name": "全能なる魔王",
+        "nameCn": "全能的魔王",
+        "description": "",
+        "airdate": "2024-05-17",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1306671/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1306671/still/large"
+      },
+      {
+        "episodeId": 1306672,
+        "subjectId": 455981,
+        "sort": "19",
+        "ep": "7",
+        "type": "MAIN",
+        "name": "大魔王教練",
+        "nameCn": "大魔王教练",
+        "description": "",
+        "airdate": "2024-05-31",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1306672/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1306672/still/large"
+      },
+      {
+        "episodeId": 1306673,
+        "subjectId": 455981,
+        "sort": "20",
+        "ep": "8",
+        "type": "MAIN",
+        "name": "神竜の国",
+        "nameCn": "神龙之国",
+        "description": "",
+        "airdate": "2024-06-07",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1306673/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1306673/still/large"
+      },
+      {
+        "episodeId": 1306674,
+        "subjectId": 455981,
+        "sort": "21",
+        "ep": "9",
+        "type": "MAIN",
+        "name": "魔王讃美歌第6番『隣人』",
+        "nameCn": "魔王赞美歌第六号“邻人”",
+        "description": "",
+        "airdate": "2024-06-14",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1306674/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1306674/still/large"
+      },
+      {
+        "episodeId": 1306675,
+        "subjectId": 455981,
+        "sort": "22",
+        "ep": "10",
+        "type": "MAIN",
+        "name": "痕跡神リーバルシュネッド",
+        "nameCn": "痕迹神利巴尔修涅多",
+        "description": "",
+        "airdate": "2024-06-28",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1306675/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1306675/still/large"
+      },
+      {
+        "episodeId": 1306676,
+        "subjectId": 455981,
+        "sort": "23",
+        "ep": "11",
+        "type": "MAIN",
+        "name": "夢で交わした約束",
+        "nameCn": "在梦中许下的约定",
+        "description": "",
+        "airdate": "2024-07-03",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1306676/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1306676/still/large"
+      },
+      {
+        "episodeId": 1306677,
+        "subjectId": 455981,
+        "sort": "24",
+        "ep": "12",
+        "type": "MAIN",
+        "name": "神の見た夢",
+        "nameCn": "",
+        "description": "",
+        "airdate": "2024-07-24",
+        "disc": 0,
+        "duration": "00:23:40",
+        "imageMedium": "https://static.myani.org/episodes/1306677/still/thumb",
+        "imageLarge": "https://static.myani.org/episodes/1306677/still/large"
+      }
+    ],
+    "airingInfo": {
+      "begin": "2024-04-12T13:00:00Z",
+      "recurrence": {
+        "startTime": "2024-04-12T13:00:00Z",
+        "intervalMillis": 604800000
+      }
+    },
+    "relations": {
+      "subjectId": 0,
+      "seriesMainSubjectIds": [
+        292222,
+        330054,
+        455981
+      ],
+      "seriesMainSubjectNames": [
+        "魔王学院の不適合者 ～史上最強の魔王の始祖、転生して子孫たちの学校へ通う～",
+        "魔王学院的不适任者～史上最强的魔王始祖，转生就读子孙们的学校～",
+        "魔王学院の不適合者 ～史上最強の魔王の始祖、転生して子孫たちの学校へ通う～ Ⅱ",
+        "魔王学院的不适任者～史上最强的魔王始祖，转生就读子孙们的学校～ 第二季",
+        "魔王学院の不適合者 ～史上最強の魔王の始祖、転生して子孫たちの学校へ通う～ Ⅱ 2ndクール",
+        "魔王学院的不适任者～史上最强的魔王始祖，转生就读子孙们的学校～ 第二季 第2部分"
+      ],
+      "sequelSubjects": [
+        512182
+      ],
+      "sequelSubjectNames": [],
+      "splitSeason": {
+        "parts": [
+          {
+            "subjectId": 330054,
+            "names": [
+              "魔王学院の不適合者 ～史上最強の魔王の始祖、転生して子孫たちの学校へ通う～ Ⅱ",
+              "魔王学院的不适任者～史上最强的魔王始祖，转生就读子孙们的学校～ 第二季"
+            ],
+            "markers": [],
+            "firstSort": 1,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          },
+          {
+            "subjectId": 455981,
+            "names": [
+              "魔王学院の不適合者 ～史上最強の魔王の始祖、転生して子孫たちの学校へ通う～ Ⅱ 2ndクール",
+              "魔王学院的不适任者～史上最强的魔王始祖，转生就读子孙们的学校～ 第二季 第2部分"
+            ],
+            "markers": [
+              "第2部分"
+            ],
+            "firstSort": 13,
+            "episodeCount": 12,
+            "inlineSpecialCount": 0
+          }
+        ],
+        "selfIndex": 1,
+        "baseNames": [
+          "魔王学院の不適合者 ～史上最強の魔王の始祖、転生して子孫たちの学校へ通う～ Ⅱ",
+          "魔王学院的不适任者～史上最强的魔王始祖，转生就读子孙们的学校～ 第二季",
+          "魔王学院の不適合者 ～史上最強の魔王の始祖、転生して子孫たちの学校へ通う～ Ⅱ 2ndクール"
+        ],
+        "otherSeasonNumbers": [
+          1
+        ]
+      }
+    },
+    "imageLarge": "https://static.myani.org/subjects/455981/cover/large",
+    "imageThumb": "https://static.myani.org/subjects/455981/cover/thumb"
+  }
+}
