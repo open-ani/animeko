@@ -204,8 +204,16 @@ interface MediaSelector {
     /** Build coherent decision inputs from the fetch session, independently of UI candidate caches. */
     fun autoSelectSnapshots(sources: Flow<List<MediaSourceSelectionSnapshot>>): Flow<MediaAutoSelectSnapshot>
 
-    /** Commit only if selection has not changed since the automatic decision started. Does not save preferences. */
-    suspend fun selectAutomatically(candidate: Media, expectedSelection: Media?): Media?
+    /**
+     * Commit only if selection has not changed since the automatic decision started. Does not save preferences.
+     *
+     * @param trigger 广播的 [SelectEvent.trigger], 须是 [SelectOrigin.AUTOMATIC] 的入口.
+     */
+    suspend fun selectAutomatically(
+        candidate: Media,
+        expectedSelection: Media?,
+        trigger: SelectTrigger = SelectTrigger.AUTO_OTHER,
+    ): Media?
 
     /**
      * 选择一个 [Media]. 该 [Media] 可以是位于 [preferredCandidatesMedia] 中的, 也可以不是.
@@ -215,10 +223,15 @@ interface MediaSelector {
      *
      * 重复 [select] 同一个 [Media] 时, 本函数立即返回 `false`, 不会做重复广播事件等.
      *
-     * @param origin 广播的 [SelectEvent.origin]. 选择会照常更新偏好, 与来源无关.
+     * @param trigger 广播的 [SelectEvent.trigger], 其 [SelectTrigger.origin] 即事件的 [SelectEvent.origin]. 选择会照常更新偏好, 与来源无关.
      * @return 当成功将 [selected] 更新为 [candidate] 时返回 `true`. 当 [selected] 已经是 [candidate] 时返回 `false`.
      */
-    suspend fun select(candidate: Media, origin: SelectOrigin = SelectOrigin.MANUAL): Boolean
+    suspend fun select(candidate: Media, trigger: SelectTrigger = SelectTrigger.MANUAL_OTHER): Boolean
+
+    /**
+     * 以 [origin] 对应的默认入口 ([SelectOrigin.defaultTrigger]) 选择, 见 [select].
+     */
+    suspend fun select(candidate: Media, origin: SelectOrigin): Boolean = select(candidate, origin.defaultTrigger)
 
     /**
      * 选择一个 [Media], 只对本次会话有效: 与 [select] 一样更新 [selected] 并广播 [MediaSelectorEvents.onSelect],
@@ -227,9 +240,10 @@ interface MediaSelector {
      *
      * 用于播放不来自任何数据源的资源, 例如用户拖入播放页的本地文件 ([DroppedFileMedia]).
      *
+     * @param trigger 广播的 [SelectEvent.trigger].
      * @return 当成功将 [selected] 更新为 [candidate] 时返回 `true`. 当 [selected] 已经是 [candidate] 时返回 `false`.
      */
-    suspend fun selectTemporarily(candidate: Media): Boolean
+    suspend fun selectTemporarily(candidate: Media, trigger: SelectTrigger = SelectTrigger.MANUAL_OTHER): Boolean
 
     /**
      * 清除当前的选择, 不会更新配置
@@ -513,10 +527,16 @@ class DefaultMediaSelector(
             )
         }
 
-    override suspend fun selectAutomatically(candidate: Media, expectedSelection: Media?): Media? {
+    override suspend fun selectAutomatically(
+        candidate: Media,
+        expectedSelection: Media?,
+        trigger: SelectTrigger,
+    ): Media? {
+        require(trigger.origin == SelectOrigin.AUTOMATIC) { "selectAutomatically requires an AUTOMATIC trigger, got $trigger" }
         if (selected.value != expectedSelection || candidate == expectedSelection) return null
         val event = SelectEvent(
-            candidate, subtitleLanguageId = null, previousMedia = expectedSelection, origin = SelectOrigin.AUTOMATIC,
+            candidate, subtitleLanguageId = null, previousMedia = expectedSelection,
+            origin = SelectOrigin.AUTOMATIC, trigger = trigger,
         )
         events.onBeforeSelect.emit(event)
         if (!selected.compareAndSet(expectedSelection, candidate)) return null
@@ -524,12 +544,12 @@ class DefaultMediaSelector(
         return candidate
     }
 
-    override suspend fun select(candidate: Media, origin: SelectOrigin): Boolean {
-        return selectImpl(candidate, updatePreference = true, origin = origin)
+    override suspend fun select(candidate: Media, trigger: SelectTrigger): Boolean {
+        return selectImpl(candidate, updatePreference = true, trigger = trigger)
     }
 
-    override suspend fun selectTemporarily(candidate: Media): Boolean {
-        return selectImpl(candidate, updatePreference = false, origin = SelectOrigin.MANUAL)
+    override suspend fun selectTemporarily(candidate: Media, trigger: SelectTrigger): Boolean {
+        return selectImpl(candidate, updatePreference = false, trigger = trigger)
     }
 
     /**
@@ -542,14 +562,14 @@ class DefaultMediaSelector(
      *
      * @param candidate 待选中的媒体项。
      * @param updatePreference 是否根据此媒体更新用户偏好（如分辨率、联盟、字幕语言等）。
-     * @param origin 事件的 [SelectEvent.origin]。
+     * @param trigger 事件的 [SelectEvent.trigger], 其 origin 即 [SelectEvent.origin]。
      * @param force 是否强制切换媒体。若为 true，则即使媒体未变也会触发切换。
      * @return 若成功完成切换则返回 true，否则为 false。
      */
     private suspend fun selectImpl(
         candidate: Media,
         updatePreference: Boolean,
-        origin: SelectOrigin,
+        trigger: SelectTrigger,
         force: Boolean = false
     ): Boolean {
         val previous = selected.value
@@ -557,15 +577,15 @@ class DefaultMediaSelector(
         // 若未启用强制切换，且目标与当前项相同，则跳过
         if (!force && previous == candidate) return false
 
-        // 发出切换前事件
-        events.onBeforeSelect.emit(
-            SelectEvent(
-                media = candidate,
-                subtitleLanguageId = null,
-                previousMedia = previous,
-                origin = origin,
-            ),
+        val event = SelectEvent(
+            media = candidate,
+            subtitleLanguageId = null,
+            previousMedia = previous,
+            origin = trigger.origin,
+            trigger = trigger,
         )
+        // 发出切换前事件
+        events.onBeforeSelect.emit(event)
 
         selected.value = candidate // MSF, will not trigger new emit
 
@@ -585,14 +605,7 @@ class DefaultMediaSelector(
         }
 
         // 发出选择完成事件
-        events.onSelect.emit(
-            SelectEvent(
-                media = candidate,
-                subtitleLanguageId = null,
-                previousMedia = previous,
-                origin = origin,
-            ),
-        )
+        events.onSelect.emit(event)
 
         return true
     }
@@ -697,7 +710,7 @@ class DefaultMediaSelector(
 
         return selected?.let {
             if (overrideUserSelection) {
-                if (selectImpl(it, updatePreference = false, origin = SelectOrigin.AUTOMATIC)) {
+                if (selectImpl(it, updatePreference = false, trigger = SelectTrigger.AUTO_OTHER)) {
                     it
                 } else {
                     null
@@ -748,7 +761,7 @@ class DefaultMediaSelector(
             .first()
 
         return if (overrideUserSelection) {
-            if (selectImpl(selected, updatePreference = false, origin = SelectOrigin.AUTOMATIC)) {
+            if (selectImpl(selected, updatePreference = false, trigger = SelectTrigger.AUTO_OTHER)) {
                 selected
             } else {
                 null

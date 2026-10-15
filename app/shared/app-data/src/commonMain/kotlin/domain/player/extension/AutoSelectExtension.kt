@@ -17,16 +17,29 @@ import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.awaitCompletedResults
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
+import me.him188.ani.app.domain.media.selector.MediaAutoSelectExhaustCause
+import me.him188.ani.app.domain.media.selector.MediaAutoSelectListener
+import me.him188.ani.app.domain.media.selector.MediaAutoSelectOutcome
+import me.him188.ani.app.domain.media.selector.MediaAutoSelectReason
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.ReplayBrowseMemoryUseCase
+import me.him188.ani.app.domain.media.selector.ReplayMissReason
+import me.him188.ani.app.domain.media.selector.ReplayResult
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
+import me.him188.ani.app.domain.player.analytics.PlayFlowEpisode
+import me.him188.ani.app.domain.player.analytics.PlayFlowStep
+import me.him188.ani.app.domain.player.analytics.toPlayFlowKind
+import me.him188.ani.app.domain.player.analytics.toPlayFlowMatch
+import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
 
 /**
  * 自动选择数据源. 切集时按「本地缓存 → 浏览记忆回放 → 自动选择」的顺序在同一协程内串行决定,
@@ -34,6 +47,9 @@ import kotlin.time.Duration.Companion.seconds
  *
  * 本任务挂在 session 的 sessionScope 下, 未捕获的异常会包成 ExtensionException 并终止任务, 之后本集及每次 bundle 重建都失去自动选择;
  * 所以缓存检查与回放都自行捕获非取消异常, 失败只是退回自动选择.
+ *
+ * 每个 bundle 的自动选择以一条 `play_flow auto_select_done` 收尾: 选到了哪个资源、靠什么选到的 (`method`), 或为什么没选到 (`outcome`).
+ * 三个步骤的耗时合并计入 `duration_ms`.
  *
  * @see MediaSelector
  * @see ReplayBrowseMemoryUseCase
@@ -54,26 +70,44 @@ class AutoSelectExtension(
             // 直接用 onStart 的 episodeSession, 不经 context.sessionFlow.
             episodeSession.fetchSelectFlow.collectLatest { fetchSelect ->
                 if (fetchSelect == null) return@collectLatest
-                // fetchSelect 由 infoBundleFlow 派生, 拿到非空 bundle 时 replayCache 已有对应的 infoBundle.
-                // infoBundleFlow 首值 null, 网络错误后也会回到 null; 用 replayCache 而不是 filterNotNull().first(), 否则会连自动选择一起挂住.
-                val episodeInfo = episodeSession.infoBundleFlow.replayCache.lastOrNull()?.episodeInfo
-                val replayed = episodeInfo != null
-                        && !hasLocalCacheForEpisode(fetchSelect.mediaFetchSession, fetchSelect.mediaSelector)
-                        && replayBrowseMemoryOrFalse(episodeInfo, fetchSelect.mediaSelector)
-                if (!replayed) {
-                    mediaSelectorAutoSelectUseCase(fetchSelect.mediaFetchSession, fetchSelect.mediaSelector)
+                val report = AutoSelectReport(episodeSession.playFlowEpisode, context.playFlow.markNow())
+                try {
+                    // fetchSelect 由 infoBundleFlow 派生, 拿到非空 bundle 时 replayCache 已有对应的 infoBundle.
+                    // infoBundleFlow 首值 null, 网络错误后也会回到 null; 用 replayCache 而不是 filterNotNull().first(), 否则会连自动选择一起挂住.
+                    val episodeInfo = episodeSession.infoBundleFlow.replayCache.lastOrNull()?.episodeInfo
+                    if (episodeInfo == null) {
+                        report.replaySkipped = true
+                    }
+                    val replayed = episodeInfo != null
+                            && checkLocalCacheForEpisode(fetchSelect.mediaFetchSession, fetchSelect.mediaSelector) != LocalCacheCheck.CACHED_FOR_EPISODE
+                            && replayBrowseMemory(episodeInfo, fetchSelect.mediaSelector, report)
+                    if (!replayed) {
+                        mediaSelectorAutoSelectUseCase(fetchSelect.mediaFetchSession, fetchSelect.mediaSelector, report)
+                    }
+                } finally {
+                    report.recordIfNeeded()
                 }
             }
         }
     }
 
-    private suspend fun replayBrowseMemoryOrFalse(episodeInfo: EpisodeInfo, mediaSelector: MediaSelector): Boolean {
+    private suspend fun replayBrowseMemory(
+        episodeInfo: EpisodeInfo,
+        mediaSelector: MediaSelector,
+        report: AutoSelectReport,
+    ): Boolean {
         return try {
-            replayBrowseMemory(context.subjectId, episodeInfo, mediaSelector).isHit
+            val result = replayBrowseMemory(context.subjectId, episodeInfo, mediaSelector)
+            report.replayResult = result
+            if (result is ReplayResult.Selected) {
+                report.recordSelected(mediaSelector.selected.value, "browse_memory", mediaSelector)
+            }
+            result.isHit
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             logger.warn(e) { "Replaying browse memory failed, falling back to auto select" }
+            report.replayResult = ReplayResult.NotFound(ReplayMissReason.EXCEPTION)
             false
         }
     }
@@ -82,27 +116,141 @@ class AutoSelectExtension(
      * 本地缓存的优先级高于浏览记忆 (`MediaAutoSelector.decide` 第一步就是 selectCache, 回放不能反转它).
      * 本地源是毫秒级完成的: 等它们完成, 再等 [MediaSelector.filteredCandidates] 反映它们的结果
      * (候选列表经共享流异步传播, 刚完成时可能仍是本地源完成前的快照), 然后看其中有没有本集的缓存候选.
-     * 超时 ([CACHE_CHECK_TIMEOUT]) 或异常 (非 Cancellation) → false (照常回放).
+     * 超时 ([CACHE_CHECK_TIMEOUT]) 或异常 (非 Cancellation) 视为没有缓存 (照常回放).
      */
     @OptIn(UnsafeOriginalMediaAccess::class)
-    private suspend fun hasLocalCacheForEpisode(session: MediaFetchSession, mediaSelector: MediaSelector): Boolean {
+    private suspend fun checkLocalCacheForEpisode(session: MediaFetchSession, mediaSelector: MediaSelector): LocalCacheCheck {
         val cacheResults = session.mediaSourceResults.filter { it.kind == MediaSourceKind.LocalCache }
-        if (cacheResults.isEmpty()) return false
+        if (cacheResults.isEmpty()) return LocalCacheCheck.NO_CACHE_SOURCE
         return try {
             withTimeoutOrNull(CACHE_CHECK_TIMEOUT) {
                 val cachedMediaIds = cacheResults.flatMapTo(HashSet()) { result ->
                     result.awaitCompletedResults().map { it.mediaId }
                 }
-                if (cachedMediaIds.isEmpty()) return@withTimeoutOrNull false
-                mediaSelector.filteredCandidates
+                if (cachedMediaIds.isEmpty()) return@withTimeoutOrNull LocalCacheCheck.NO_CACHED_MEDIA
+                val forEpisode = mediaSelector.filteredCandidates
                     .first { candidates -> candidates.any { it.original.mediaId in cachedMediaIds } }
                     .any { it is MaybeExcludedMedia.Included && it.result.kind == MediaSourceKind.LocalCache }
-            } == true
+                if (forEpisode) LocalCacheCheck.CACHED_FOR_EPISODE else LocalCacheCheck.NO_CACHED_MEDIA
+            } ?: LocalCacheCheck.TIMEOUT
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             logger.warn(e) { "Checking local cache failed, replaying browse memory as usual" }
-            false
+            LocalCacheCheck.ERROR
+        }
+    }
+
+    /**
+     * 本地缓存预检的结果.
+     */
+    internal enum class LocalCacheCheck {
+        /** 本会话没有本地缓存数据源. */
+        NO_CACHE_SOURCE,
+
+        /** 本地缓存源没有返回本集的缓存. */
+        NO_CACHED_MEDIA,
+
+        /** 本集已有可用的本地缓存. */
+        CACHED_FOR_EPISODE,
+
+        /** 等待本地缓存源超时. */
+        TIMEOUT,
+
+        /** 检查出错. */
+        ERROR,
+    }
+
+    /**
+     * 一个 bundle 的自动选择报告. 作为 [MediaAutoSelectListener] 接收 [MediaAutoSelector][me.him188.ani.app.domain.media.selector.MediaAutoSelector]
+     * 的结果; 浏览记忆回放命中时由扩展直接记录. 只记录一次.
+     */
+    private inner class AutoSelectReport(
+        private val episode: PlayFlowEpisode,
+        private val start: TimeMark,
+    ) : MediaAutoSelectListener {
+        var replaySkipped = false
+        var replayResult: ReplayResult? = null
+        private var recorded = false
+
+        override fun onFinished(outcome: MediaAutoSelectOutcome, elapsed: Duration) {
+            if (recorded) return
+            when (outcome) {
+                is MediaAutoSelectOutcome.Selected -> record {
+                    put("outcome", "selected")
+                    put("method", outcome.reason.toMethod())
+                    put("media_source_id", outcome.media.mediaSourceId)
+                    put("kind", outcome.media.toPlayFlowKind())
+                    put("match", outcome.matchKind?.toPlayFlowMatch())
+                    put("tier", outcome.tier?.value?.toLong())
+                    put("sel_no", episode.selectionNoOf(outcome.media.mediaId))
+                }
+
+                is MediaAutoSelectOutcome.Rejected -> record {
+                    put("outcome", "preempted_by_user")
+                    put("method", outcome.reason.toMethod())
+                    put("media_source_id", outcome.media.mediaSourceId)
+                }
+
+                is MediaAutoSelectOutcome.Exhausted -> record {
+                    put("outcome", outcome.cause.toOutcome())
+                    put("reason", outcome.cause.name.lowercase())
+                }
+
+                MediaAutoSelectOutcome.Cancelled -> record {
+                    put("outcome", "skipped")
+                    put("reason", "cancelled")
+                }
+            }
+        }
+
+        fun recordSelected(media: Media?, method: String, mediaSelector: MediaSelector) {
+            if (recorded) return
+            record {
+                put("outcome", "selected")
+                put("method", method)
+                put("media_source_id", media?.mediaSourceId)
+                put("kind", media?.toPlayFlowKind())
+                put("sel_no", media?.let { episode.selectionNoOf(it.mediaId) })
+            }
+        }
+
+        /**
+         * 自动选择没有进行 (剧集信息缺失) 或被取消时, 仍以一条 `skipped` 收尾.
+         */
+        fun recordIfNeeded() {
+            if (recorded) return
+            record {
+                put("outcome", "skipped")
+                put("reason", if (replaySkipped) "info_missing" else "cancelled")
+            }
+        }
+
+        private fun record(build: me.him188.ani.app.domain.player.analytics.PlayFlowProps.() -> Unit) {
+            recorded = true
+            context.playFlow.record(PlayFlowStep.AUTO_SELECT_DONE, episode) {
+                build()
+                put("duration_ms", start.elapsedNow())
+                (replayResult as? ReplayResult.NotFound)?.let { put("reason", it.reason.name.lowercase()) }
+            }
+        }
+
+        private fun MediaAutoSelectReason.toMethod(): String = when (this) {
+            MediaAutoSelectReason.LOCAL_CACHE -> "local_cache"
+            MediaAutoSelectReason.PREFERRED_SOURCE -> "preferred_source"
+            MediaAutoSelectReason.PREFERRED_KIND_COMPLETED -> "bt"
+            MediaAutoSelectReason.WEB_INSTANT -> "instant"
+            MediaAutoSelectReason.WEB_EXACT -> "exact"
+            MediaAutoSelectReason.WEB_FUZZY -> "fuzzy"
+            MediaAutoSelectReason.BT_FALLBACK -> "bt"
+        }
+
+        private fun MediaAutoSelectExhaustCause.toOutcome(): String = when (this) {
+            MediaAutoSelectExhaustCause.PRECONDITION_SELECTED, MediaAutoSelectExhaustCause.PREEMPTED -> "preempted_by_user"
+            MediaAutoSelectExhaustCause.NO_PREFERRED_CANDIDATES, MediaAutoSelectExhaustCause.NO_WEB_CANDIDATES,
+            MediaAutoSelectExhaustCause.NO_PREFERENCE_MATCH -> "no_media"
+
+            MediaAutoSelectExhaustCause.FUZZY_DEADLINE -> "timeout"
         }
     }
 

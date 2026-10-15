@@ -29,6 +29,7 @@ import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.app.domain.player.analytics.PlayFlowRecorder
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeExit
 import me.him188.ani.utils.coroutines.childScope
 import org.openani.mediamp.PlaybackErrorCode
@@ -52,7 +53,8 @@ class EpisodeExitAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
         val suite = EpisodePlayerTestSuite(this, scope)
         suite.registerComponent<MediaResolver> { TestUniversalMediaResolver }
         val state = suite.createState(
-            listOf(
+            playFlow = PlayFlowRecorder(subjectId, playSessionId = "sid"),
+            extensions = listOf(
                 EpisodePlayerExtensionFactory { context, _ ->
                     EpisodeExitAnalyticsExtension(context, analytics, testScheduler.timeSource)
                 },
@@ -102,6 +104,8 @@ class EpisodeExitAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
             mapOf(
                 "subject_id" to subjectId.toLong(),
                 "episode_id" to initialEpisodeId.toLong(),
+                "play_session_id" to "sid",
+                "episode_attempt" to 1L,
                 "exit_reason" to "close",
                 "reached_playing" to 1L,
                 "first_frame_ms" to 1_000L,
@@ -131,6 +135,8 @@ class EpisodeExitAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
             mapOf(
                 "subject_id" to subjectId.toLong(),
                 "episode_id" to initialEpisodeId.toLong(),
+                "play_session_id" to "sid",
+                "episode_attempt" to 1L,
                 "exit_reason" to "close",
                 "reached_playing" to 0L,
                 "watched_ms" to 0L,

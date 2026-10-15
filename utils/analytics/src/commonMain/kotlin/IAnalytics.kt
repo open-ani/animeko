@@ -62,6 +62,12 @@ value class AnalyticsEvent(val event: String) {
         val EpisodeExit = AnalyticsEvent("episode_exit")
         val MediaFetchResult = AnalyticsEvent("media_fetch_result")
 
+        /**
+         * 播放页加载流程中的一步, 以 `step` 属性区分. 同一播放页的事件共享 `play_session_id`, 按 `seq` 排序即可重放.
+         * 见 `docs/contributing/code/analytics-play-flow.md`.
+         */
+        val PlayFlow = AnalyticsEvent("play_flow")
+
         val CacheCreate = AnalyticsEvent("cache_create")
 
         val RatingEnter = AnalyticsEvent("rating_enter")

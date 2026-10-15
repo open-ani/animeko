@@ -17,8 +17,8 @@ import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodePlaying
 import org.koin.core.Koin
 
 /**
- * 进入播放页后是否成功播放了视频.
- * 只记录一次, 用来检验 MediaSelector 的质量.
+ * 进入播放页后是否成功播放了视频 ([EpisodePlaying]).
+ * 每个播放页只记录一次, 用来检验 MediaSelector 的质量; 每集 (每次剧集尝试) 的首次起播看 `play_flow playback_started`.
  */
 class AnalyticsExtension(
     private val context: PlayerExtensionContext
@@ -34,10 +34,11 @@ class AnalyticsExtension(
                     if (state.isPlaying) {
                         Analytics.recordEvent(
                             EpisodePlaying,
-                            mapOf(
-                                "subject_id" to context.subjectId,
-                                "episode_id" to episodeSession.episodeId,
-                            ),
+                            buildMap {
+                                put("subject_id", context.subjectId)
+                                put("episode_id", episodeSession.episodeId)
+                                putAll(context.playFlow.legacyProperties(episodeSession.playFlowEpisode))
+                            },
                         )
                         hasPlayedOnce.value = true // side effect
                     }

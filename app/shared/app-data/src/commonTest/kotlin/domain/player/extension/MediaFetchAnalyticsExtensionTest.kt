@@ -36,6 +36,7 @@ import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceTier
+import me.him188.ani.app.domain.player.analytics.PlayFlowRecorder
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.MediaFetchResult
 import me.him188.ani.utils.coroutines.childScope
 import kotlin.test.Test
@@ -87,7 +88,8 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
 
     private fun TestScope.start(case: Case) {
         case.state = case.suite.createState(
-            listOf(
+            playFlow = PlayFlowRecorder(subjectId, playSessionId = "sid"),
+            extensions = listOf(
                 EpisodePlayerExtensionFactory { context, _ ->
                     MediaFetchAnalyticsExtension(
                         context,
@@ -131,6 +133,8 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
             mapOf(
                 "subject_id" to subjectId.toLong(),
                 "episode_id" to initialEpisodeId.toLong(),
+                "play_session_id" to "sid",
+                "episode_attempt" to 1L,
                 "outcome" to "selected",
                 "sources_total" to 2L,
                 "sources_succeeded" to 1L,
@@ -167,6 +171,8 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
             mapOf(
                 "subject_id" to subjectId.toLong(),
                 "episode_id" to initialEpisodeId.toLong(),
+                "play_session_id" to "sid",
+                "episode_attempt" to 1L,
                 "outcome" to "no_media",
                 "sources_total" to 2L,
                 "sources_succeeded" to 2L,
@@ -221,6 +227,8 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
             mapOf(
                 "subject_id" to subjectId.toLong(),
                 "episode_id" to initialEpisodeId.toLong(),
+                "play_session_id" to "sid",
+                "episode_attempt" to 1L,
                 "outcome" to "left_before_select",
                 "sources_total" to 2L,
                 "sources_succeeded" to 1L,

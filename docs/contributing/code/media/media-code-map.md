@@ -34,6 +34,9 @@
   然后增/改/删/重排数据源实例。
 - `MediaSourceSubscriptionRequesterImpl` 先直接拉取订阅 JSON，失败后回退到
   `SubscriptionsAniApi.proxy(...)`。
+- 播放流程埋点（`app/shared/app-data/.../domain/player/analytics/`）：`PlayFlowRecorder` 持有一次播放会话的
+  `play_session_id`，`PlayFlowFetchObserver` 记录条目级查询会话每轮的逐源结果，`EpisodeFlowExtension` /
+  `PlaybackFlowExtension` 记录剧集信息、用户选择与起播。详见 [播放加载流程埋点](../analytics-play-flow.md)。
 
 ## 重要的通用数据源实现
 
@@ -98,14 +101,18 @@
 6. `AutoSelectExtension` 在同一协程里先做本地缓存检查与浏览记忆回放：等本会话的本地缓存源完成，
    本集已有可用缓存则跳过回放；否则调用 `ReplayBrowseMemoryUseCase`，按 `ManualBrowseMemoryRepository`
    里该条目的记忆 `browseSubject` 记住的条目、在记住的线路里按位置找目标集，`createMedia` 后 `select`，
-   并更新记忆。命中则不进入第 7 步。
+   并更新记忆。命中则不进入第 7 步。回放结果 `ReplayResult` 是 `Selected` 或带原因的 `NotFound`。
 7. `MediaSelectorAutoSelectUseCaseImpl` 准备配置并启用上次使用的源，调用
-   `MediaAutoSelector.select`；后者统一处理缓存、记忆源、WEB 两段超时或 BT 完成条件。
+   `MediaAutoSelector.select`；后者统一处理缓存、记忆源、WEB 两段超时或 BT 完成条件，并通过
+   `MediaAutoSelectListener` 报告阶段变化与结构化结果 `MediaAutoSelectOutcome`。
 8. `EpisodeFetchSelectPlayState.LoadMediaOnSelectExtension` 监听 `mediaSelector.selected`，先调用各扩展的
    `onBeforeLoadMedia`（换源时 `RememberPlayProgressExtension` 在这里保存旧资源的进度），再读出本集记忆的播放进度
    作为起播位置（一起看时从头），调用 `PlayerSession.loadMedia(...)`。
 9. `PlayerSession.loadMedia(...)` 通过 `MediaResolver.resolve(...)` 解析，打开得到的
-   `MediaDataProvider`，然后调用 `player.setMediaData(...)`，播放器直接在起播位置打开。
+   `MediaDataProvider`，然后调用 `player.setMediaData(...)`，播放器直接在起播位置打开；各阶段与结果通过 `MediaLoadListener` 回调。
+
+每次选择都带 `SelectTrigger`（`SelectEvent.trigger`），区分自动匹配页、BT 页、手动查找、拖入文件、TV 与启动时 / 失败换源的自动选择。
+整个流程的埋点见 [播放加载流程埋点](../analytics-play-flow.md)。
 
 ### 播放拖入的本地文件（桌面端）
 
@@ -164,9 +171,10 @@
       用户在自动匹配或 BT 页换源、关掉「记住选择」时在此删除记忆。
 - 状态（`app/shared/ui-mediaselect/src/commonMain/kotlin/ui/`）：
     - `mediafetch/MediaSelectorState.kt`：包装 `MediaSelector`，产出自动匹配页与 BT 页的列表投影、
-      四维偏好 chip 状态与临时选择。
+      四维偏好 chip 状态与临时选择；`MediaSelectorStateListener` 向宿主报告点选与验证码处理结果。
     - `mediafetch/MediaSourceResultPresentation.kt`：数据源查询状态的展示模型（自动匹配页的源行、BT 页的数据源面板）。
-    - `mediaselect/manual/ManualBrowseState.kt`：手动查找的搜索、浏览、选择与播放，含验证码交互。
+    - `mediaselect/manual/ManualBrowseState.kt`：手动查找的搜索、浏览、选择与播放，含验证码交互；
+      `ManualBrowseListener` 向宿主报告每一步的结果。
     - `mediaselect/bt/BtListPresentation.kt`：BT 页的会话内筛选状态与列表投影纯函数。
 - 页面与公共件（同目录）：
     - `mediaselect/MediaSelectorMode.kt`：模式枚举、「正在观看」模型、版式阈值与侧边栏换容器的判定。

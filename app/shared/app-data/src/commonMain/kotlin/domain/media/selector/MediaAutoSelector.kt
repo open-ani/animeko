@@ -30,14 +30,22 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 /**
  * Owns one automatic selection: source subscriptions, deadlines, decisions and the final write.
  * Startup and player-error replacement share this entry point. Each call has its own lifecycle.
+ *
+ * [listener] observes stage changes and the final [MediaAutoSelectOutcome] of each [select] call.
  */
-internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
+internal class MediaAutoSelector(
+    private val mediaSelector: MediaSelector,
+    private val listener: MediaAutoSelectListener = MediaAutoSelectListener.Noop,
+) {
     data class Config(
         val preferredSourceId: String? = null,
+        /** [SelectEvent.trigger] of the selection this call makes. */
+        val trigger: SelectTrigger = SelectTrigger.AUTO_STARTUP,
         /** Select available local caches first; otherwise wait for their lookups before considering network media. */
         val selectCache: Boolean = true,
         val blacklist: Set<String> = emptySet(),
@@ -71,52 +79,81 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         }
     }
 
-    /** A selection made while suspended ends this call; only [expectedSelection] may be replaced. */
+    /**
+     * A selection made while suspended ends this call; only [expectedSelection] may be replaced.
+     *
+     * Returns the selected media, or `null` when nothing was selected; the precise reason is reported to the listener
+     * as a [MediaAutoSelectOutcome].
+     */
     suspend fun select(
         session: MediaFetchSession,
         config: Config = Config(),
         expectedSelection: Media? = null,
     ): Media? = coroutineScope {
-        if (mediaSelector.selected.value != expectedSelection) return@coroutineScope null
-        val stage = MutableStateFlow(Stage.PreferredSource)
+        val start = TimeSource.Monotonic.markNow()
+        var outcome: MediaAutoSelectOutcome? = null
+        if (mediaSelector.selected.value != expectedSelection) {
+            listener.onFinished(
+                MediaAutoSelectOutcome.Exhausted(MediaAutoSelectExhaustCause.PRECONDITION_SELECTED), start.elapsedNow(),
+            )
+            return@coroutineScope null
+        }
+        val stage = MutableStateFlow(MediaAutoSelectStage.PREFERRED_SOURCE)
         var result: Media? = null
         var deadlines: Job? = null
         try {
             combine(
                 mediaSelector.autoSelectSnapshots(sourceSnapshots(session)), stage, mediaSelector.selected,
             ) { snapshot, phase, currentSelection ->
-                if (currentSelection != expectedSelection) Decision.Exhausted
+                if (currentSelection != expectedSelection) Decision.Exhausted(MediaAutoSelectExhaustCause.PREEMPTED)
                 else decide(snapshot, config, phase)
             }.first { decision ->
                 when (decision) {
                     Decision.StartFallback -> {
-                        if (stage.value == Stage.PreferredSource) {
+                        if (stage.value == MediaAutoSelectStage.PREFERRED_SOURCE) {
                             val web = checkNotNull(config.web)
-                            stage.value = if (web.fastSelect) Stage.Instant else Stage.Exact
+                            advanceStage(stage, if (web.fastSelect) MediaAutoSelectStage.INSTANT else MediaAutoSelectStage.EXACT)
                             deadlines = launch {
                                 delay(web.exactStageAfter)
-                                stage.value = Stage.Exact
+                                advanceStage(stage, MediaAutoSelectStage.EXACT)
                                 delay((web.fuzzyMatchAfter - web.exactStageAfter).coerceAtLeast(Duration.ZERO))
-                                stage.value = Stage.Fuzzy
+                                advanceStage(stage, MediaAutoSelectStage.FUZZY)
                             }
                         }
                         false
                     }
                     Decision.Wait -> false
-                    Decision.Exhausted -> true
+                    is Decision.Exhausted -> {
+                        outcome = MediaAutoSelectOutcome.Exhausted(decision.cause)
+                        true
+                    }
                     is Decision.Select -> {
                         logger.info {
-                            "Auto select: reason=${decision.reason}, source=${decision.media.mediaSourceId}, media=${decision.media.mediaId}"
+                            "Auto select: reason=${decision.reason}, stage=${stage.value}, source=${decision.media.mediaSourceId}, media=${decision.media.mediaId}"
                         }
-                        result = mediaSelector.selectAutomatically(decision.media, expectedSelection)
+                        result = mediaSelector.selectAutomatically(decision.media, expectedSelection, config.trigger)
+                        outcome = if (result != null) {
+                            MediaAutoSelectOutcome.Selected(
+                                decision.media, decision.reason, stage.value, decision.matchKind, decision.tier,
+                            )
+                        } else {
+                            MediaAutoSelectOutcome.Rejected(decision.media, decision.reason)
+                        }
                         true
                     }
                 }
             }
         } finally {
             deadlines?.cancel()
+            listener.onFinished(outcome ?: MediaAutoSelectOutcome.Cancelled, start.elapsedNow())
         }
         result
+    }
+
+    private fun advanceStage(stage: MutableStateFlow<MediaAutoSelectStage>, next: MediaAutoSelectStage) {
+        if (stage.value == next) return
+        stage.value = next
+        listener.onStageChanged(next)
     }
 
     private fun sourceSnapshots(session: MediaFetchSession): Flow<List<MediaSourceSelectionSnapshot>> {
@@ -139,17 +176,20 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         }) { it.toList() }
     }
 
-    private enum class Stage { PreferredSource, Instant, Exact, Fuzzy }
-
     private sealed interface Decision {
         data object Wait : Decision
         data object StartFallback : Decision
-        data object Exhausted : Decision
-        data class Select(val media: Media, val reason: String) : Decision
+        data class Exhausted(val cause: MediaAutoSelectExhaustCause) : Decision
+        data class Select(
+            val media: Media,
+            val reason: MediaAutoSelectReason,
+            val matchKind: SubjectMatchKind? = null,
+            val tier: MediaSourceTier? = null,
+        ) : Decision
     }
 
     /** Pure decision over a coherent snapshot. Only [select] advances time or writes selection. */
-    private fun decide(snapshot: MediaAutoSelectSnapshot, config: Config, stage: Stage): Decision {
+    private fun decide(snapshot: MediaAutoSelectSnapshot, config: Config, stage: MediaAutoSelectStage): Decision {
         val preferredSource = snapshot.sources.firstOrNull {
             it.kind == MediaSourceKind.WEB && it.mediaSourceId == config.preferredSourceId
         }
@@ -162,23 +202,25 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
             if (!snapshot.context.hasEpisode) return Decision.Wait
             (preferred.firstOrNull { it.result.kind == MediaSourceKind.LocalCache }
                 ?: candidates.firstOrNull { it.result.kind == MediaSourceKind.LocalCache })?.let {
-                return Decision.Select(it.result, "local cache")
+                return Decision.Select(it.result, MediaAutoSelectReason.LOCAL_CACHE)
             }
             if (snapshot.sources.any { it.kind == MediaSourceKind.LocalCache && !it.state.isFinal }) {
                 return Decision.Wait
             }
         }
 
-        if (stage == Stage.PreferredSource && preferredSource?.state?.isFinal == true &&
+        if (stage == MediaAutoSelectStage.PREFERRED_SOURCE && preferredSource?.state?.isFinal == true &&
             snapshot.context.allFieldsLoaded()
         ) {
             findWebCandidate(snapshot, preferred.filter { it.result.mediaSourceId == preferredSource.mediaSourceId })?.let {
-                return Decision.Select(it, "preferred source")
+                return Decision.Select(it, MediaAutoSelectReason.PREFERRED_SOURCE)
             }
         }
 
-        if (config.web == null) return decideOnCompletion(snapshot, preferred)
-        if (stage == Stage.PreferredSource) {
+        if (config.web == null) {
+            return decideOnCompletion(snapshot, preferred, MediaAutoSelectReason.PREFERRED_KIND_COMPLETED)
+        }
+        if (stage == MediaAutoSelectStage.PREFERRED_SOURCE) {
             if (preferredSource != null && !preferredSource.state.isFinal) return Decision.Wait
             if (preferredSource != null && preferredSource.results.isNotEmpty() &&
                 !snapshot.context.allFieldsLoaded()
@@ -191,6 +233,7 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
     private fun decideOnCompletion(
         snapshot: MediaAutoSelectSnapshot,
         preferred: List<MaybeExcludedMedia.Included>,
+        reason: MediaAutoSelectReason,
     ): Decision {
         // With no enabled sources of the preferred kind, wait for every source (CompletedConditions semantics).
         val preferredSources = snapshot.sources.filter {
@@ -198,18 +241,18 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         }
         val waitingFor = preferredSources.ifEmpty { snapshot.sources }
         if (waitingFor.any { !it.state.isFinal }) return Decision.Wait
-        if (preferred.isEmpty()) return Decision.Exhausted
+        if (preferred.isEmpty()) return Decision.Exhausted(MediaAutoSelectExhaustCause.NO_PREFERRED_CANDIDATES)
         if (!snapshot.context.allFieldsLoaded()) return Decision.Wait
         val media = MediaSelectionDecider.findByPreference(
             preferred, snapshot.preference, snapshot.availableAlliances, snapshot.context, snapshot.settings,
-        ) ?: return Decision.Exhausted
-        return Decision.Select(media, "preferred kind completed")
+        ) ?: return Decision.Exhausted(MediaAutoSelectExhaustCause.NO_PREFERENCE_MATCH)
+        return Decision.Select(media, reason)
     }
 
     private fun decideWeb(
         snapshot: MediaAutoSelectSnapshot,
         config: Config,
-        stage: Stage,
+        stage: MediaAutoSelectStage,
         candidates: List<MaybeExcludedMedia.Included>,
         preferred: List<MaybeExcludedMedia.Included>,
     ): Decision {
@@ -226,12 +269,12 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         val eligible = webCandidates.filter { candidate ->
             val exact = candidate.metadata.subjectMatchKind == SubjectMatchKind.EXACT
             when (effectiveStage) {
-                Stage.Instant -> exact && web.sourceTiers.get(
+                MediaAutoSelectStage.INSTANT -> exact && web.sourceTiers.get(
                     candidate.result.mediaSourceId, candidate.result.properties.alliance,
                 ) <= web.instantTier
-                Stage.Exact -> exact
-                Stage.Fuzzy -> true
-                Stage.PreferredSource -> error("Handled before Web fallback")
+                MediaAutoSelectStage.EXACT -> exact
+                MediaAutoSelectStage.FUZZY -> true
+                MediaAutoSelectStage.PREFERRED_SOURCE -> error("Handled before Web fallback")
             }
         }
         // Preferences apply within each match/tier group, never ahead of match quality or tier.
@@ -249,8 +292,14 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
                 val candidate = group.first { it.result == media }
                 return Decision.Select(
                     media,
-                    "${effectiveStage.name}${if (effectiveStage != stage) " (sources settled)" else ""}, " +
-                            "match=${candidate.metadata.subjectMatchKind}, tier=${web.sourceTiers.get(media.mediaSourceId, media.properties.alliance)}",
+                    when (effectiveStage) {
+                        MediaAutoSelectStage.INSTANT -> MediaAutoSelectReason.WEB_INSTANT
+                        MediaAutoSelectStage.EXACT -> MediaAutoSelectReason.WEB_EXACT
+                        MediaAutoSelectStage.FUZZY -> MediaAutoSelectReason.WEB_FUZZY
+                        MediaAutoSelectStage.PREFERRED_SOURCE -> error("Handled before Web fallback")
+                    },
+                    candidate.metadata.subjectMatchKind,
+                    web.sourceTiers.get(media.mediaSourceId, media.properties.alliance),
                 )
             }
         }
@@ -258,10 +307,14 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         // Empty final results can finish early; candidates belonging to a later phase must wait.
         if (allCompleted && webCandidates.isEmpty()) {
             return if (config.fallbackToOtherKinds) {
-                decideOnCompletion(snapshot, preferred.filter { it.result.kind != MediaSourceKind.WEB })
-            } else Decision.Exhausted
+                decideOnCompletion(
+                    snapshot, preferred.filter { it.result.kind != MediaSourceKind.WEB }, MediaAutoSelectReason.BT_FALLBACK,
+                )
+            } else Decision.Exhausted(MediaAutoSelectExhaustCause.NO_WEB_CANDIDATES)
         }
-        if (effectiveStage == Stage.Fuzzy && (allCompleted || !web.waitForPendingSources)) return Decision.Exhausted
+        if (effectiveStage == MediaAutoSelectStage.FUZZY && (allCompleted || !web.waitForPendingSources)) {
+            return Decision.Exhausted(MediaAutoSelectExhaustCause.FUZZY_DEADLINE)
+        }
         return Decision.Wait
     }
 
@@ -269,11 +322,11 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
     private val Web.exactStageAfter: Duration get() = if (fastSelect) exactMatchAfter else Duration.ZERO
 
     /** The last stage the deadline timer reaches; it stays behind an infinite deadline. */
-    private val Web.lastStage: Stage
+    private val Web.lastStage: MediaAutoSelectStage
         get() = when {
-            exactStageAfter.isInfinite() -> Stage.Instant
-            fuzzyMatchAfter.isInfinite() -> Stage.Exact
-            else -> Stage.Fuzzy
+            exactStageAfter.isInfinite() -> MediaAutoSelectStage.INSTANT
+            fuzzyMatchAfter.isInfinite() -> MediaAutoSelectStage.EXACT
+            else -> MediaAutoSelectStage.FUZZY
         }
 
     /**
@@ -298,4 +351,99 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
     private companion object {
         val logger = logger<MediaAutoSelector>()
     }
+}
+
+/**
+ * 自动选择的阶段. 记忆的 Web 源完成前为 [PREFERRED_SOURCE]; 之后按 Web 的两个截止时间依次放宽到
+ * [INSTANT] (精确匹配且阶级不超过 [MediaAutoSelector.Web.instantTier]), [EXACT] (任意阶级的精确匹配), [FUZZY] (允许模糊匹配).
+ */
+enum class MediaAutoSelectStage { PREFERRED_SOURCE, INSTANT, EXACT, FUZZY }
+
+/**
+ * 自动选择选中某个资源的依据.
+ */
+enum class MediaAutoSelectReason {
+    /** 本集已有本地缓存. */
+    LOCAL_CACHE,
+
+    /** 记忆的 Web 源返回了可用资源. */
+    PREFERRED_SOURCE,
+
+    /** 偏好类型 (非 Web) 的数据源全部完成后按偏好选出. */
+    PREFERRED_KIND_COMPLETED,
+
+    /** Web 第一阶段: 精确匹配且阶级足够高. */
+    WEB_INSTANT,
+
+    /** Web 第二阶段: 精确匹配. */
+    WEB_EXACT,
+
+    /** Web 第三阶段: 允许模糊匹配. */
+    WEB_FUZZY,
+
+    /** Web 源全部完成且没有 Web 候选, 回退到其他类型. */
+    BT_FALLBACK,
+}
+
+/**
+ * 自动选择没有选出资源的原因.
+ */
+enum class MediaAutoSelectExhaustCause {
+    /** 调用时已经有选择. */
+    PRECONDITION_SELECTED,
+
+    /** 等待期间选择被别人 (通常是用户) 改变. */
+    PREEMPTED,
+
+    /** 偏好类型的源全部完成, 没有候选. */
+    NO_PREFERRED_CANDIDATES,
+
+    /** 有候选但没有一个满足偏好. */
+    NO_PREFERENCE_MATCH,
+
+    /** Web 源全部完成, 没有 Web 候选, 且不回退到其他类型. */
+    NO_WEB_CANDIDATES,
+
+    /** 已到模糊匹配阶段, 源已完成 (或不等待), 仍没有候选. */
+    FUZZY_DEADLINE,
+}
+
+/**
+ * 一次 [MediaAutoSelector.select] 的结果.
+ */
+sealed interface MediaAutoSelectOutcome {
+    /** 选中并写入. */
+    data class Selected(
+        val media: Media,
+        val reason: MediaAutoSelectReason,
+        val stage: MediaAutoSelectStage,
+        val matchKind: SubjectMatchKind?,
+        val tier: MediaSourceTier?,
+    ) : MediaAutoSelectOutcome
+
+    /** 做出了决定但写入失败: 决定与写入之间选择被改变. */
+    data class Rejected(val media: Media, val reason: MediaAutoSelectReason) : MediaAutoSelectOutcome
+
+    /** 没有可选的资源. */
+    data class Exhausted(val cause: MediaAutoSelectExhaustCause) : MediaAutoSelectOutcome
+
+    /** 调用被取消 (切集, 查询条件变化等). */
+    data object Cancelled : MediaAutoSelectOutcome
+}
+
+/**
+ * 观察一次自动选择的过程.
+ */
+interface MediaAutoSelectListener {
+    /**
+     * 进入了新的阶段. [MediaAutoSelectStage.PREFERRED_SOURCE] 是起始阶段, 不通知.
+     */
+    fun onStageChanged(stage: MediaAutoSelectStage) {}
+
+    /**
+     * 本次自动选择结束. [elapsed] 为自调用 [MediaAutoSelector.select] 起的时长.
+     */
+    fun onFinished(outcome: MediaAutoSelectOutcome, elapsed: Duration) {}
+
+    companion object Noop : MediaAutoSelectListener
 }

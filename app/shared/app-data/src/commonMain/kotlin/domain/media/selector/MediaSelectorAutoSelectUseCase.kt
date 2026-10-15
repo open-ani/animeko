@@ -22,7 +22,14 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 interface MediaSelectorAutoSelectUseCase : UseCase {
-    suspend operator fun invoke(session: MediaFetchSession, mediaSelector: MediaSelector)
+    /**
+     * @param listener 观察这次自动选择的过程与结果.
+     */
+    suspend operator fun invoke(
+        session: MediaFetchSession,
+        mediaSelector: MediaSelector,
+        listener: MediaAutoSelectListener = MediaAutoSelectListener.Noop,
+    )
 }
 
 class MediaSelectorAutoSelectUseCaseImpl(
@@ -32,7 +39,11 @@ class MediaSelectorAutoSelectUseCaseImpl(
     private val getMediaSelectorSourceTiers: GetMediaSelectorSourceTiersUseCase by inject()
     private val getPreferredWebMediaSource: GetPreferredWebMediaSourceUseCase by inject()
 
-    override suspend fun invoke(session: MediaFetchSession, mediaSelector: MediaSelector) {
+    override suspend fun invoke(
+        session: MediaFetchSession,
+        mediaSelector: MediaSelector,
+        listener: MediaAutoSelectListener,
+    ) {
         val settings = getMediaSelectorSettingsFlow().first()
         // #355 Restore a temporarily enabled source using the merged media preference.
         // Enable it before selecting: a disabled source counts as finished, and once every Web source has finished
@@ -43,7 +54,7 @@ class MediaSelectorAutoSelectUseCaseImpl(
         }
 
         val subjectId = session.request.first().subjectId.toIntOrNull()
-        MediaAutoSelector(mediaSelector).select(
+        MediaAutoSelector(mediaSelector, listener).select(
             session,
             MediaAutoSelector.Config(
                 preferredSourceId = subjectId?.let { getPreferredWebMediaSource(it).first() },

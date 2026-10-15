@@ -14,6 +14,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
@@ -29,8 +30,10 @@ import me.him188.ani.test.DisabledOnNative
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 @DisabledOnNative
@@ -53,7 +56,46 @@ class MediaAutoSelectorTest {
         testScope().runCurrent()
         assertEquals(sources.bt1.instance.mediaSourceId, selection.await()?.mediaSourceId)
         assertEquals(1, sources.web1.fetchCount)
-        assertNull(MediaAutoSelector(selector).select(session))
+        val outcomes = mutableListOf<MediaAutoSelectOutcome>()
+        val listener = object : MediaAutoSelectListener {
+            override fun onFinished(outcome: MediaAutoSelectOutcome, elapsed: Duration) {
+                outcomes += outcome
+            }
+        }
+        assertNull(MediaAutoSelector(selector, listener).select(session))
+        assertEquals<List<MediaAutoSelectOutcome>>(
+            listOf(MediaAutoSelectOutcome.Exhausted(MediaAutoSelectExhaustCause.PRECONDITION_SELECTED)), outcomes,
+        )
+    }
+
+    @Test
+    fun `listener receives the structured reason of a completed BT selection`() = runFetchMediaSelectorTestSuite {
+        initSelection()
+        val (_, session, sources) = configureFetchSession(startInBackground = false) {
+            object {
+                val bt1 by bt()
+            }
+        }
+        val outcomes = mutableListOf<MediaAutoSelectOutcome>()
+        val stages = mutableListOf<MediaAutoSelectStage>()
+        val listener = object : MediaAutoSelectListener {
+            override fun onStageChanged(stage: MediaAutoSelectStage) {
+                stages += stage
+            }
+
+            override fun onFinished(outcome: MediaAutoSelectOutcome, elapsed: Duration) {
+                outcomes += outcome
+            }
+        }
+        val selection = testScope().async { MediaAutoSelector(selector, listener).select(session) }
+        sources.bt1.complete(media(kind = BitTorrent, subjectName = "Example Series"))
+        testScope().advanceUntilIdle()
+
+        val selected = assertIs<MediaAutoSelectOutcome.Selected>(outcomes.single())
+        assertEquals(selection.await()?.mediaId, selected.media.mediaId)
+        assertEquals(MediaAutoSelectReason.PREFERRED_KIND_COMPLETED, selected.reason)
+        assertEquals(MediaAutoSelectStage.PREFERRED_SOURCE, selected.stage)
+        assertTrue(stages.isEmpty())
     }
 
     @Test

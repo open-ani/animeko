@@ -52,12 +52,14 @@ interface MediaSelectorEvents {
  * @property subtitleLanguageId 当前选择的字幕语言 ID，可能为 null。
  * @property previousMedia 上一次被选中的媒体项。
  * @property origin 这次选择由谁发起。
+ * @property trigger 这次选择的具体入口, 比 [origin] 更细; [origin] 总等于 [SelectTrigger.origin].
  */
 data class SelectEvent(
     val media: Media?,
     val subtitleLanguageId: String?,
     val previousMedia: Media?,
     val origin: SelectOrigin = SelectOrigin.MANUAL,
+    val trigger: SelectTrigger = SelectTrigger.MANUAL_OTHER,
 )
 
 /**
@@ -77,7 +79,52 @@ enum class SelectOrigin {
     /**
      * 切集时回放用户在手动查找中记住的线路.
      */
-    BROWSE_MEMORY,
+    BROWSE_MEMORY;
+
+    /**
+     * 只知道来源、不知道具体入口时使用的 [SelectTrigger].
+     */
+    val defaultTrigger: SelectTrigger
+        get() = when (this) {
+            MANUAL -> SelectTrigger.MANUAL_OTHER
+            AUTOMATIC -> SelectTrigger.AUTO_OTHER
+            BROWSE_MEMORY -> SelectTrigger.BROWSE_MEMORY_REPLAY
+        }
+}
+
+/**
+ * 一次选择的具体入口. 供埋点区分用户从哪个界面选的, 以及自动选择是启动时的还是播放失败后换源.
+ */
+enum class SelectTrigger(val origin: SelectOrigin) {
+    /** 自动匹配页点选线路. */
+    MANUAL_AUTO_PAGE(SelectOrigin.MANUAL),
+
+    /** BT 资源页点选资源. */
+    MANUAL_BT_PAGE(SelectOrigin.MANUAL),
+
+    /** 手动查找中点选剧集播放. */
+    MANUAL_BROWSE(SelectOrigin.MANUAL),
+
+    /** TV 端选择资源. */
+    MANUAL_TV(SelectOrigin.MANUAL),
+
+    /** 用户拖入播放页的本地文件. */
+    DROPPED_FILE(SelectOrigin.MANUAL),
+
+    /** 其他手动选择, 例如下载时选择资源. */
+    MANUAL_OTHER(SelectOrigin.MANUAL),
+
+    /** 进入剧集时的自动选择. */
+    AUTO_STARTUP(SelectOrigin.AUTOMATIC),
+
+    /** 播放失败后的自动换源. */
+    AUTO_ERROR_SWITCH(SelectOrigin.AUTOMATIC),
+
+    /** 其他自动选择. */
+    AUTO_OTHER(SelectOrigin.AUTOMATIC),
+
+    /** 切集时回放浏览记忆. */
+    BROWSE_MEMORY_REPLAY(SelectOrigin.BROWSE_MEMORY),
 }
 
 /**

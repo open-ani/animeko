@@ -47,6 +47,7 @@ import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
+import kotlin.time.TimeSource
 
 /**
  * 当前条目与剧集 (VM 从 SubjectEpisodeInfoBundle 派生); null 表示会话未就绪, 页面禁用播放按钮.
@@ -221,6 +222,7 @@ data class ManualBrowsePresentation(
  * @param onRememberSelectionChange 用户切换开关: 写设置; 关掉时宿主顺带删除本条目已有的浏览记忆. 在 [backgroundScope] 内执行.
  * @param onPlay 把点选交给宿主: 播放页把 `pick.media` 交给当前会话的 MediaSelector, memory != null → `select` 并写记忆, null → `selectTemporarily`;
  *        下载弹窗把 `pick.media` 作为本集的选择, 并按位置为其他集生成候选. 在 [backgroundScope] 内执行, 不随 UI 作用域取消.
+ * @param listener 观察搜索、打开条目、选线路与播放的结果, 供埋点使用.
  */
 @Stable
 class ManualBrowseState(
@@ -232,6 +234,7 @@ class ManualBrowseState(
     private val onRememberSelectionChange: suspend (Boolean) -> Unit,
     private val onPlay: suspend (pick: ManualBrowsePick, memory: ManualBrowseMemory?) -> Unit,
     private val backgroundScope: CoroutineScope,
+    private val listener: ManualBrowseListener = ManualBrowseListener.Noop,
 ) {
     private val browsableSources: Flow<List<MediaSourceInstance>> = browsableSources
     private val target: Flow<ManualBrowseTarget?> = target
@@ -402,7 +405,14 @@ class ManualBrowseState(
                 }
             }
             if (!started) return@launch
-            val result = runBrowse { instance.source.searchSubjects(keyword) }
+            val start = TimeSource.Monotonic.markNow()
+            val (result, outcome) = runBrowse { instance.source.searchSubjects(keyword) }
+            listener.onSearchFinished(
+                instance.mediaSourceId,
+                outcome.orEmptyIf(result, List<BrowseSubject>::isEmpty),
+                (result as? ManualLoadState.Success)?.value?.size ?: 0,
+                start.elapsedNow(),
+            )
             session.update { s ->
                 if (s.searches[sourceId]?.generation == generation) {
                     s.copy(searches = s.searches + (sourceId to SourceSearch(keyword, result, generation)))
@@ -430,10 +440,19 @@ class ManualBrowseState(
         browseJob = backgroundScope.launch {
             val presentation = presentationSource.first()
             val instance = presentation.selectedSourceId?.let { findInstance(it) }
-            val result = if (instance == null) {
-                ManualLoadState.Failed(IllegalStateException("No browsable source selected"))
+            val start = TimeSource.Monotonic.markNow()
+            val (result, outcome) = if (instance == null) {
+                ManualLoadState.Failed(IllegalStateException("No browsable source selected")) to ManualBrowseOutcome.FAILED
             } else {
                 runBrowse { instance.source.browseSubject(subject) }
+            }
+            if (instance != null) {
+                listener.onSubjectOpened(
+                    instance.mediaSourceId,
+                    outcome.orEmptyIf(result, List<BrowseChannel>::isEmpty),
+                    (result as? ManualLoadState.Success)?.value?.size ?: 0,
+                    start.elapsedNow(),
+                )
             }
             session.update { s ->
                 if (s.browseGeneration == generation) {
@@ -478,7 +497,14 @@ class ManualBrowseState(
      * 清空用户剧集选择.
      */
     fun selectChannel(index: Int) {
-        session.update { it.copy(channelIndex = index, userEpisodeIndex = null) }
+        val updated = session.updateAndGet { it.copy(channelIndex = index, userEpisodeIndex = null) }
+        val channel = (updated.channels as? ManualLoadState.Success)?.value?.getOrNull(index) ?: return
+        val sourceId = updated.explicitSourceId
+        backgroundScope.launch {
+            val mediaSourceId = (sourceId ?: presentationSource.first().selectedSourceId)
+                ?.let { findInstance(it) }?.mediaSourceId ?: return@launch
+            listener.onChannelSelected(mediaSourceId, channel.episodes.size)
+        }
     }
 
     /**
@@ -505,19 +531,26 @@ class ManualBrowseState(
         session.update { it.copy(isPlaying = true) }
         try {
             val presentation = presentationSource.first()
-            val target = presentation.target ?: return false
+            val remember = presentation.rememberSelection
+            val sourceId = presentation.selectedSource?.mediaSourceId
+            fun invalid(): Boolean {
+                sourceId?.let { listener.onPlay(it, remember, ManualBrowsePlayResult.INVALID_STATE) }
+                return false
+            }
+            val target = presentation.target ?: return invalid()
             session.update { it.copy(userEpisodeIndex = episodeIndex, userEpisodeTarget = target) }
-            val source = presentation.selectedSource ?: return false
-            val subject = presentation.openedSubject ?: return false
-            val channel = presentation.selectedChannel ?: return false
-            val episode = channel.episodes.getOrNull(episodeIndex) ?: return false
-            val instance = findInstance(source.instanceId) ?: return false
+            val source = presentation.selectedSource ?: return invalid()
+            val subject = presentation.openedSubject ?: return invalid()
+            val channel = presentation.selectedChannel ?: return invalid()
+            val episode = channel.episodes.getOrNull(episodeIndex) ?: return invalid()
+            val instance = findInstance(source.instanceId) ?: return invalid()
             val media = try {
                 instance.source.createMedia(subject, channel.name, episode, target.episodeSort)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 logger.warn(e) { "ManualBrowseState: createMedia failed for ${episode.url}" }
+                listener.onPlay(instance.mediaSourceId, remember, ManualBrowsePlayResult.CREATE_MEDIA_FAILED)
                 return false
             }
             val memory = if (presentation.rememberSelection) {
@@ -542,13 +575,16 @@ class ManualBrowseState(
             }
             return try {
                 job.await()
+                listener.onPlay(instance.mediaSourceId, remember, ManualBrowsePlayResult.PLAYED)
                 true
             } catch (e: CancellationException) {
                 // 调用方自己被取消则继续传播; 只有 onPlay 所在的后台任务被取消才算失败
                 currentCoroutineContext().ensureActive()
+                listener.onPlay(instance.mediaSourceId, remember, ManualBrowsePlayResult.ON_PLAY_FAILED)
                 false
             } catch (e: Exception) {
                 logger.warn(e) { "ManualBrowseState: onPlay failed" }
+                listener.onPlay(instance.mediaSourceId, remember, ManualBrowsePlayResult.ON_PLAY_FAILED)
                 false
             }
         } finally {
@@ -564,31 +600,44 @@ class ManualBrowseState(
 
     /**
      * 统一的请求异常处理: 验证码按 [webSessionManager] 的交互能力决定是提示不支持还是交互解决后重试一次; 其余异常直接失败.
+     *
+     * @return 结果与其分类 ([ManualBrowseOutcome]); 成功时分类为 [ManualBrowseOutcome.SUCCESS], 空结果由调用方按值判断.
      */
-    private suspend fun <T> runBrowse(request: suspend () -> T): ManualLoadState<T> {
+    private suspend fun <T> runBrowse(request: suspend () -> T): Pair<ManualLoadState<T>, ManualBrowseOutcome> {
         val blocked = try {
-            return ManualLoadState.Success(request())
+            return ManualLoadState.Success(request()) to ManualBrowseOutcome.SUCCESS
         } catch (e: CancellationException) {
             throw e
         } catch (e: BlockedException) {
             e
         } catch (e: Exception) {
             logger.warn(e) { "ManualBrowseState: request failed" }
-            return ManualLoadState.Failed(e)
+            return ManualLoadState.Failed(e) to ManualBrowseOutcome.FAILED
         }
-        if (blocked.reason !is BlockReason.Captcha) return ManualLoadState.Failed(blocked)
-        if (!webSessionManager.isInteractiveSupported) return ManualLoadState.Failed(blocked, captchaUnsupported = true)
+        if (blocked.reason !is BlockReason.Captcha) return ManualLoadState.Failed(blocked) to ManualBrowseOutcome.FAILED
+        if (!webSessionManager.isInteractiveSupported) {
+            return ManualLoadState.Failed(blocked, captchaUnsupported = true) to ManualBrowseOutcome.CAPTCHA_UNSUPPORTED
+        }
         if (webSessionManager.solve(blocked.request, interactive = true) != SolveOutcome.Solved) {
-            return ManualLoadState.Failed(blocked)
+            return ManualLoadState.Failed(blocked) to ManualBrowseOutcome.CAPTCHA_FAILED
         }
         return try {
-            ManualLoadState.Success(request())
+            ManualLoadState.Success(request()) to ManualBrowseOutcome.CAPTCHA_SOLVED_THEN_SUCCESS
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             logger.warn(e) { "ManualBrowseState: request failed after solving captcha" }
-            ManualLoadState.Failed(e)
+            ManualLoadState.Failed(e) to ManualBrowseOutcome.CAPTCHA_SOLVED_THEN_FAILED
         }
+    }
+
+    /**
+     * 成功但结果为空时归为 [ManualBrowseOutcome.EMPTY].
+     */
+    private fun <T> ManualBrowseOutcome.orEmptyIf(result: ManualLoadState<T>, isEmpty: (T) -> Boolean): ManualBrowseOutcome {
+        if (this != ManualBrowseOutcome.SUCCESS) return this
+        val value = (result as? ManualLoadState.Success)?.value ?: return this
+        return if (isEmpty(value)) ManualBrowseOutcome.EMPTY else this
     }
 
     private companion object {
