@@ -36,7 +36,6 @@ import me.him188.ani.utils.logging.error
  */
 class SubjectSearchCompletionRepository(
     private val aniSubjectSearchService: AniSubjectSearchService,
-    private val subjectCollectionRepository: SubjectCollectionRepository,
     settingsRepository: SettingsRepository,
     private val subjectService: SubjectService,
     private val episodeService: EpisodeService,
@@ -47,13 +46,7 @@ class SubjectSearchCompletionRepository(
 
     fun completionsFlow(query: String): Flow<PagingData<String>> = flow {
         val nsfwMode = nsfwSettings.first()
-        val excludedIds = if (ignoreDoneAndDroppedFlow.first()) {
-            subjectCollectionRepository.getSubjectIdsByCollectionType(
-                types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
-            ).first().toSet()
-        } else {
-            emptySet()
-        }
+        val excludedIds = emptySet<Int>()
         emitAll(
             SubjectSearchCompletions.flow(
                 query = query,
@@ -69,6 +62,11 @@ class SubjectSearchCompletionRepository(
                         nsfw = when (nsfwMode) {
                             NsfwMode.DISPLAY -> null
                             NsfwMode.BLUR, NsfwMode.HIDE -> false
+                        },
+                        excludeCollectionTypes = if (ignoreDoneAndDroppedFlow.first()) {
+                            listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED)
+                        } else {
+                            null
                         },
                     ),
                     fields = listOf(SubjectSearchField.NAME),
