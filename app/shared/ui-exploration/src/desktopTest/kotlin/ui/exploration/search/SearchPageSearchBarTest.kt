@@ -21,9 +21,11 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.pressKey
@@ -103,23 +105,26 @@ class SearchPageSearchBarTest {
     @Test
     fun `late specific candidates appear above already displayed ordinary candidates`() = runAniComposeUiTest {
         val resolved = CompletableDeferred<Unit>()
+        val ordinaryCandidates = List(12) { "普通候选$it" }
         val fixture = Fixture {
             flow {
-                emit(PagingData.from(listOf("普通候选")))
+                emit(PagingData.from(ordinaryCandidates))
                 resolved.await()
-                emit(PagingData.from(candidates + "普通候选"))
+                emit(PagingData.from(candidates + ordinaryCandidates))
             }
         }
         showSearchBar(fixture)
         enterQuery(url)
-        candidate("普通候选").assertIsDisplayed()
+        candidate(ordinaryCandidates.first()).assertIsDisplayed()
         onNodeWithText(candidates.first()).assertDoesNotExist()
+        onNodeWithTag("search-suggestions").performScrollToIndex(ordinaryCandidates.lastIndex)
         runOnIdle { resolved.complete(Unit) }
         waitForIdle()
-        val tops = (candidates + "普通候选").map {
+        val tops = candidates.map {
             candidate(it).assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
         }
         assertTrue(tops.zipWithNext().all { (first, second) -> first < second })
+        candidate(candidates.first()).assertIsDisplayed()
         candidate(candidates.first()).performClick()
         runOnIdle {
             assertEquals(candidates.first(), (fixture.intents.single() as SearchPageIntent.UpdateQuery).query.keywords)

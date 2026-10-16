@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -66,6 +67,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -420,8 +422,21 @@ private fun SearchPageSearchBar(
                 }
             }
         }.collectAsLazyPagingItemsWithLifecycle()
+        val lazyListState = rememberLazyListState()
 
-        LazyColumn {
+        LaunchedEffect(previewType, values.itemCount) {
+            if (previewType == SuggestionSearchPreviewType.SUGGESTIONS &&
+                values.itemCount > 0 &&
+                lazyListState.firstVisibleItemIndex > 0
+            ) {
+                lazyListState.scrollToItem(0)
+            }
+        }
+
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier.testTag("search-suggestions"),
+        ) {
             items(
                 count = values.itemCount,
                 key = values.itemKey { "search-suggestion-$it" },
