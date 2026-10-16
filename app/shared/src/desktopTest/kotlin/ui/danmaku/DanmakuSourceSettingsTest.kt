@@ -21,19 +21,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.ui.episode.danmaku.DanmakuSourceItem
+import me.him188.ani.app.ui.episode.danmaku.DanmakuTextConversionSettingsDialog
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.subject.episode.details.DanmakuListContent
@@ -46,6 +52,7 @@ import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuTextConversion
+import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -350,6 +357,54 @@ class DanmakuSourceSettingsTest {
         onNodeWithTag("danmaku-text-conversion").performClick()
         onNodeWithTag("danmaku-text-conversion-dialog").assertIsDisplayed()
         onNodeWithTag("danmaku-text-conversion-reset").assertDoesNotExist()
+    }
+
+    @Test
+    fun `text conversion dialog keeps source names readable on a phone width dialog`() {
+        val previous = Locale.getDefault()
+        // 英文的 "Follow global · Traditional" 很长, 和来源名挤在一行时会把来源名压成竖排
+        Locale.setDefault(Locale.ENGLISH)
+        try {
+            runAniComposeUiTest {
+                setContent {
+                    ProvideCompositionLocalsForPreview {
+                        DanmakuTextConversionSettingsDialog(
+                            sources = listOf(ani, dandan),
+                            global = DanmakuTextConversion.TRADITIONAL,
+                            overrides = mapOf(ani to DanmakuTextConversion.HONG_KONG),
+                            onSetGlobal = {},
+                            onSetOverride = { _, _ -> },
+                            onResetOverrides = {},
+                            onDismissRequest = {},
+                            modifier = Modifier.width(320.dp),
+                        )
+                    }
+                }
+                for ((id, name) in listOf(ani to "Animeko", dandan to "Dandanplay")) {
+                    val rowTag = "danmaku-text-conversion-source-${id.value}"
+                    val nameNode = onNode(
+                        hasText(name) and hasAnyAncestor(hasTestTag(rowTag)),
+                        useUnmergedTree = true,
+                    )
+                    assertEquals(1, nameNode.lineCount(), "$name wraps")
+                    val row = onNodeWithTag(rowTag).fetchSemanticsNode().boundsInRoot
+                    assertTrue(row.height <= 64f, "$name row is ${row.height}px tall")
+                }
+                // 示例在后台加载词典后才出现; 一行放不下时整段换行, 转换结果不被拆开
+                waitUntil(timeoutMillis = 10_000) {
+                    onAllNodesWithTag("danmaku-text-conversion-preview").fetchSemanticsNodes().isNotEmpty()
+                }
+                assertEquals(1, onNodeWithTag("danmaku-text-conversion-preview").lineCount(), "preview wraps")
+            }
+        } finally {
+            Locale.setDefault(previous)
+        }
+    }
+
+    private fun SemanticsNodeInteraction.lineCount(): Int {
+        val layouts = mutableListOf<TextLayoutResult>()
+        fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+        return layouts.single().lineCount
     }
 
     @Composable

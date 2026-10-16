@@ -48,7 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.danmaku.DanmakuTextConversionPreview
 import me.him188.ani.app.domain.danmaku.DanmakuTextConversionSample
@@ -90,14 +90,15 @@ fun DanmakuTextConversionSettingsDialog(
 ) {
     val confirmText = stringResource(Lang.settings_danmaku_confirm)
     val followGlobalText = stringResource(Lang.subject_episode_danmaku_text_conversion_follow_global)
-    // 转换结果与来源无关, 示例只按目标文字算一次, 供所有来源行共用
-    val previews by produceState<Map<DanmakuTextConversion, DanmakuTextConversionSample>>(
+    // 转换结果与来源无关, 示例只按目标文字算一次, 供所有来源行共用.
+    // 在这里读出值再传进对话框: 只在对话框内容里读这个 State 时, 示例加载完成后对话框可能不会重组.
+    val previews = produceState<Map<DanmakuTextConversion, DanmakuTextConversionSample>>(
         initialValue = emptyMap(),
     ) {
         value = DanmakuTextConversion.entries.associateWith { target ->
             DanmakuTextConversionPreview.sample(target)
         }
-    }
+    }.value
 
     AlertDialog(
         modifier = modifier.testTag("danmaku-text-conversion-dialog"),
@@ -213,10 +214,11 @@ private fun GlobalConversionPreview(
     // 原样不转换, 没有可展示的变化, 省掉这一行让默认状态更干净
     if (global == DanmakuTextConversion.ORIGINAL) return
     val preview = previews[global] ?: return
-    Row(
-        Modifier.fillMaxWidth().padding(start = 8.dp, top = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    // 窄对话框里一行放不下时按片段整体换行, 不把示例文字逐字拆开
+    FlowRow(
+        Modifier.fillMaxWidth().padding(start = 4.dp, top = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
             stringResource(Lang.subject_episode_danmaku_text_conversion_preview_hint),
@@ -229,22 +231,28 @@ private fun GlobalConversionPreview(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+        // 箭头跟着结果走, 换行后新的一行以 "→" 开头
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (preview.isChanged) {
+                Text(
+                    "→",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
             Text(
-                "→",
+                preview.convertedText,
+                Modifier.testTag("danmaku-text-conversion-preview"),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.outline,
+                color = if (preview.isChanged) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                fontWeight = if (preview.isChanged) FontWeight.Medium else FontWeight.Normal,
             )
         }
-        Text(
-            preview.convertedText,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (preview.isChanged) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            fontWeight = if (preview.isChanged) FontWeight.Medium else FontWeight.Normal,
-        )
     }
 }
 
@@ -264,34 +272,36 @@ private fun PerSourceConversionRow(
                 .fillMaxWidth()
                 .testTag("danmaku-text-conversion-source-${serviceId.value}")
                 .clickable { expanded = true }
-                .heightIn(min = 52.dp)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .heightIn(min = 56.dp)
+                .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             DanmakuServiceIcon(serviceId, size = 24)
             Spacer(Modifier.width(12.dp))
-            Text(
-                renderDanmakuServiceId(serviceId),
-                Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            Text(
-                text = override?.let { danmakuTextConversionText(it) } ?: followGlobalText,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (override != null) FontWeight.Medium else FontWeight.Normal,
-                color = if (override != null) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                textAlign = TextAlign.End,
-            )
-            if (override == null && global != DanmakuTextConversion.ORIGINAL) {
-                // "跟随全局" 具体跟随到什么, 直接写出来, 免得用户回上面找
+            // 来源名与生效目标分两行: 英文的 "Follow global · Traditional" 很长, 与来源名同行会把来源名挤成竖排
+            Column(Modifier.weight(1f)) {
                 Text(
-                    " · ${danmakuTextConversionText(global)}",
+                    renderDanmakuServiceId(serviceId),
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = when {
+                        override != null -> danmakuTextConversionText(override)
+                        // "跟随全局" 具体跟随到什么, 直接写出来, 免得用户回上面找
+                        global != DanmakuTextConversion.ORIGINAL ->
+                            "$followGlobalText · ${danmakuTextConversionText(global)}"
+
+                        else -> followGlobalText
+                    },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (override != null) FontWeight.Medium else FontWeight.Normal,
+                    color = if (override != null) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
             }
             Icon(

@@ -1798,7 +1798,7 @@
     <string name="subject_episode_danmaku_text_conversion_follow_global">Follow global</string>
     <string name="subject_episode_danmaku_text_conversion_section_all">All sources</string>
     <string name="subject_episode_danmaku_text_conversion_section_per_source">Individual sources</string>
-    <string name="subject_episode_danmaku_text_conversion_reset_overrides">Reset individual settings</string>
+    <string name="subject_episode_danmaku_text_conversion_reset_overrides">Reset overrides</string>
     <string name="subject_episode_danmaku_sources_empty">No danmaku sources available</string>
     <string name="video_player_screenshot">Screenshot</string>
     <string name="video_player_screenshot_share">Share</string>
