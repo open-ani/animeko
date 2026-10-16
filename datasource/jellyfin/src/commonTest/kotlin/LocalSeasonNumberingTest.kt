@@ -168,6 +168,7 @@ class LocalSeasonNumberingTest {
                         episodeSort = EpisodeSort(1),
                         episodeEp = EpisodeSort(1),
                         episodeName = "Expected episode",
+                        episodes = listOf(MediaFetchRequest.Episode("456", EpisodeSort(1))),
                     ),
                 ).results.toList()
 
