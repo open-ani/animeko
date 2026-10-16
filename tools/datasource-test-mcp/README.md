@@ -183,15 +183,17 @@ gh run download "$run" -R open-ani/animeko -n datasource-test-mcp-windows-x64 -D
 ```
 
 Run `smoke-test.py` in the distribution directory to check the machine. It starts the server, plays a video
-with mpv and intercepts the video URL of a play page with CEF, all against a local HTTP server. On Linux
-without a desktop, CEF needs an X server: `xvfb-run -a python3 smoke-test.py`.
+with mpv and intercepts the video URL of a play page with CEF, all against a local HTTP server.
 
-On Linux the bundled mpv also needs these system libraries: `libpulse.so.0`, `libasound.so.2`, `libGL.so.1`,
-`libEGL.so.1`, `libvulkan.so.1`, `libdrm.so.2`, `libfontconfig.so.1`, `libX11.so.6`, `libX11-xcb.so.1` and
-`libxcb.so.1`. On Ubuntu 24.04:
+On Linux, mpv has no windowless rendering: its render context has to join the OpenGL context of the playback
+window, so `probe_video` always opens the window there. Without a desktop, run under an X server with OpenGL,
+e.g. Xvfb with Mesa: `xvfb-run -a python3 smoke-test.py`. The bundled mpv also needs `libpulse.so.0`,
+`libasound.so.2`, `libGL.so.1`, `libEGL.so.1`, `libvulkan.so.1`, `libdrm.so.2`, `libfontconfig.so.1`,
+`libX11.so.6`, `libX11-xcb.so.1` and `libxcb.so.1`. On Ubuntu 24.04:
 
 ```bash
-sudo apt-get install libpulse0 libasound2t64 libgl1 libegl1 libvulkan1 libdrm2 libfontconfig1 libx11-6 libx11-xcb1 libxcb1
+sudo apt-get install xvfb libgl1-mesa-dri libglx-mesa0 libegl-mesa0 \
+  libpulse0 libasound2t64 libgl1 libegl1 libvulkan1 libdrm2 libfontconfig1 libx11-6 libx11-xcb1 libxcb1
 ```
 
 ## Test

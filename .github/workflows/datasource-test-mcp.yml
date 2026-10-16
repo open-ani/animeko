@@ -99,10 +99,10 @@ jobs:
       - name: Smoke test
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            # mpv 原生库依赖的系统库, 与 tools/datasource-test-mcp/README.md 一致
+            # Xvfb 与 Mesa 软件 OpenGL, 以及 mpv 原生库依赖的系统库, 与 tools/datasource-test-mcp/README.md 一致
             sudo apt-get update
-            sudo apt-get install -y --no-install-recommends xvfb libpulse0 libasound2t64 libgl1 libegl1 \
-              libvulkan1 libdrm2 libfontconfig1 libx11-6 libx11-xcb1 libxcb1
+            sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 libegl-mesa0 \
+              libpulse0 libasound2t64 libgl1 libegl1 libvulkan1 libdrm2 libfontconfig1 libx11-6 libx11-xcb1 libxcb1
             xvfb-run -a python3 "$DIST/smoke-test.py"
           else
             python "$DIST/smoke-test.py"

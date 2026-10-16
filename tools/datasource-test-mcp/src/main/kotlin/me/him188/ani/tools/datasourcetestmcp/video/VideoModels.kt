@@ -47,7 +47,7 @@ data class ProbeVideoInput(
      */
     val playTimeoutMillis: Long = 60_000,
     /**
-     * 是否弹出 Compose 测试窗口实时显示播放画面
+     * 是否弹出 Compose 测试窗口实时显示播放画面. Linux 不支持无窗口渲染, 总是弹出.
      */
     val showWindow: Boolean = true,
     /**

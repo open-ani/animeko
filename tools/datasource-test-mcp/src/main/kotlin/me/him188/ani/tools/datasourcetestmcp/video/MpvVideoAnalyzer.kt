@@ -33,6 +33,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import me.him188.ani.utils.platform.currentPlatformDesktop
+import me.him188.ani.utils.platform.isLinux
 import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.features.Screenshots
 import org.openani.mediamp.mpv.MPVHandle
@@ -48,8 +50,8 @@ import kotlin.coroutines.coroutineContext
  * 视频能力: 用与 Animeko 桌面端完全相同的播放器 (mediamp-mpv, hwdec=videotoolbox) 真实播放视频,
  * 验证可播放性并读取真实媒体信息 (分辨率/时长/编码/帧率/码率).
  *
- * 默认会弹出一个 Compose 测试窗口实时显示播放画面 (showWindow=false 可关;
- * 无窗口时使用无窗口渲染上下文, 播放进度照常推进).
+ * 默认会弹出一个 Compose 测试窗口实时显示播放画面 (showWindow=false 可关, 此时使用无窗口渲染上下文;
+ * Linux 不支持无窗口渲染, 总是打开窗口).
  *
  * 原生库来源 (dev): `-Dani.mpv.native.dir=<dir>` 或默认的 mediamp worktree dev-native 构建.
  */
@@ -95,9 +97,11 @@ class MpvVideoAnalyzer {
         // 测试只关心画面与播放时钟. 无头环境的音频设备可能接收数据却从不消费, 让播放卡在首帧, 所以不输出音频.
         val player = MpvMediampPlayer(Any(), coroutineContext, configureOptions = { it.option("ao", "null") })
         val handle = player.impl as MPVHandle
-        val window = if (input.showWindow) createWindow(player, input.videoUrl) else null
+        // Linux 上 mpv 的渲染上下文必须加入播放窗口 (Skiko) 的 GLX share group, 没有无窗口渲染, 总是打开窗口
+        val showWindow = input.showWindow || currentPlatformDesktop().isLinux()
+        val window = if (showWindow) createWindow(player, input.videoUrl) else null
         if (window == null && !createHeadlessRenderContext(player)) {
-            errors += "无法创建无窗口渲染上下文, Windows/Linux 上打开媒体会一直等待"
+            errors += "无法创建无窗口渲染上下文, 打开媒体会一直等待"
         }
         return try {
             val playbackTest = runPlaybackTest(player, handle, input, errors, frames)
@@ -366,7 +370,7 @@ class MpvVideoAnalyzer {
     }
 
     /**
-     * Windows 与 Linux 上 mpv 要等渲染上下文就绪才会打开媒体, 渲染上下文通常在播放窗口首次绘制时创建;
+     * Windows 上 mpv 要等渲染上下文就绪才会打开媒体, 渲染上下文通常在播放窗口首次绘制时创建;
      * 没有窗口时显式创建一个无窗口的. macOS 构造播放器时就已创建, 再调用是幂等的.
      *
      * mediamp 0.5.2 的 `MpvMediampPlayer.createRenderContext()` 是 internal 的, 编译后的方法名带模块后缀,
