@@ -26,7 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -42,8 +42,6 @@ import org.openani.mediamp.source.MediaExtraFiles
 import org.openani.mediamp.source.UriMediaData
 import java.awt.Dimension
 import java.io.File
-import java.util.concurrent.Executors
-import javax.swing.SwingUtilities
 import kotlin.coroutines.coroutineContext
 
 /**
@@ -85,16 +83,9 @@ class MpvVideoAnalyzer {
                 emptyList(),
             )
         }
-        // 播放器要求单线程调用
-        val executor = Executors.newSingleThreadExecutor { runnable ->
-            Thread(runnable, "mpv-video-analyzer").apply { isDaemon = true }
-        }
-        return try {
-            withContext(executor.asCoroutineDispatcher()) {
-                analyzeWithPlayer(input)
-            }
-        } finally {
-            executor.shutdown()
+        // 播放器命令必须在它的 mainDispatcher (默认 Dispatchers.Main, 即 Swing EDT) 上调用
+        return withContext(Dispatchers.Main) {
+            analyzeWithPlayer(input)
         }
     }
 
@@ -167,7 +158,7 @@ class MpvVideoAnalyzer {
             )
         } finally {
             runCatching { player.close() }
-            window?.let { w -> SwingUtilities.invokeLater { w.dispose() } }
+            window?.dispose()
         }
     }
 
@@ -355,19 +346,14 @@ class MpvVideoAnalyzer {
         return null
     }
 
-    private fun createWindow(player: MpvMediampPlayer, videoUrl: String): ComposeWindow {
-        lateinit var window: ComposeWindow
-        SwingUtilities.invokeAndWait {
-            window = ComposeWindow().apply {
-                title = "Animeko 数据源测试 - probe_video (mpv)"
-                size = Dimension(960, 600)
-                setLocationRelativeTo(null)
-                setContent { ProbeWindowContent(player, videoUrl) }
-                isVisible = true
-            }
+    private fun createWindow(player: MpvMediampPlayer, videoUrl: String): ComposeWindow =
+        ComposeWindow().apply {
+            title = "Animeko 数据源测试 - probe_video (mpv)"
+            size = Dimension(960, 600)
+            setLocationRelativeTo(null)
+            setContent { ProbeWindowContent(player, videoUrl) }
+            isVisible = true
         }
-        return window
-    }
 }
 
 @Composable
