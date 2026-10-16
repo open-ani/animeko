@@ -30,6 +30,7 @@
 - [站内通知](code/notifications.md)
 - [Android TV 导航焦点](code/android-tv-focus.md)
 - [Android TV 加载占位](code/android-tv-loading.md)
+- [播放器键盘与焦点](code/player-keyboard.md)
 - [播放器截图](code/player-screenshot.md)
 - [Media Framework](code/media-framework.md)
     - [MediaSource](code/media/media-source.md)

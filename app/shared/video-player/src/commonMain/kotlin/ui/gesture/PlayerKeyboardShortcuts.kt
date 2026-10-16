@@ -9,15 +9,17 @@
 
 package me.him188.ani.app.videoplayer.ui.gesture
 
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import me.him188.ani.app.ui.foundation.effects.ComposeKey
-import me.him188.ani.app.ui.foundation.effects.onKey
+import me.him188.ani.app.videoplayer.ui.PlayerKeyboardHandler
 import me.him188.ani.app.videoplayer.ui.nextPlaybackSpeed
 
 private val PLAYBACK_SPEED_SHORTCUTS = listOf(
@@ -29,13 +31,9 @@ private val PLAYBACK_SPEED_SHORTCUTS = listOf(
     ComposeKey.NumPad3 to 3f,
 )
 
-/**
- * Installs the player keyboard commands on a single focus target.
- *
- * The caller owns focus policy. Commands are active only while the modified node owns focus, so a text field or
- * another player control can temporarily take keyboard input without triggering playback commands.
- */
-internal fun Modifier.playerKeyboardShortcuts(
+/** Builds the playback commands dispatched by the player's keyboard scope. */
+@Composable
+internal fun rememberPlayerKeyboardShortcuts(
     seekerState: SwipeSeekerState,
     fastSkipState: FastSkipState?,
     currentPlaybackSpeed: Float?,
@@ -48,57 +46,54 @@ internal fun Modifier.playerKeyboardShortcuts(
     onToggleFullscreen: () -> Unit,
     onToggleDanmaku: () -> Unit,
     onTogglePlayerStats: () -> Unit,
-): Modifier {
-    var result = keyboardSeekAndFastForward(
+): PlayerKeyboardHandler {
+    val seekHandler = rememberKeyboardSeekHandler(
         onSeekBackward = { seekerState.onSeek(-5) },
         onSeekForward = { seekerState.onSeek(5) },
         fastSkipState = fastSkipState,
     )
-    if (volumeEnabled) {
-        result = result.onKeyEvent { event ->
-            if (event.type == KeyEventType.KeyUp) return@onKeyEvent false
-            when (event.key) {
-                ComposeKey.DirectionUp -> {
-                    onVolumeUp(event.isShiftPressed)
-                    true
-                }
-
-                ComposeKey.DirectionDown -> {
-                    onVolumeDown(event.isShiftPressed)
-                    true
-                }
-
-                else -> false
+    val volumeCommands by rememberUpdatedState<(KeyEvent) -> Boolean> volume@{ event ->
+        if (!volumeEnabled) return@volume false
+        when (event.key) {
+            ComposeKey.DirectionUp -> {
+                if (event.type == KeyEventType.KeyDown) onVolumeUp(event.isShiftPressed)
+                true
             }
+            ComposeKey.DirectionDown -> {
+                if (event.type == KeyEventType.KeyDown) onVolumeDown(event.isShiftPressed)
+                true
+            }
+            else -> false
         }
     }
-    result = result
-        .onKey(ComposeKey.Spacebar, onTogglePauseResume)
-        .onKey(ComposeKey.F, onToggleFullscreen)
-    if (currentPlaybackSpeed != null) {
-        result = result
-            .onKey(ComposeKey.A) {
-                onPlaybackSpeedChanged(nextPlaybackSpeed(currentPlaybackSpeed, playbackSpeedRange, -1))
-            }
-            .onKey(ComposeKey.D) {
-                onPlaybackSpeedChanged(nextPlaybackSpeed(currentPlaybackSpeed, playbackSpeedRange, 1))
-            }
-            .onKey(ComposeKey.S) {
-                onPlaybackSpeedChanged(1f.coerceIn(playbackSpeedRange))
-            }
-        for ((key, speed) in PLAYBACK_SPEED_SHORTCUTS) {
-            result = result.onKey(key) {
-                onPlaybackSpeedChanged(speed.coerceIn(playbackSpeedRange))
-            }
+    val releaseCommands by rememberUpdatedState<(KeyEvent) -> Boolean> release@{ event ->
+        val action = when (event.key) {
+            ComposeKey.Spacebar -> onTogglePauseResume
+            ComposeKey.F -> onToggleFullscreen
+            ComposeKey.B -> onToggleDanmaku
+            ComposeKey.I -> onTogglePlayerStats
+            else -> null
+        }
+        if (action != null) {
+            if (event.type == KeyEventType.KeyUp) action()
+            return@release true
+        }
+        if (currentPlaybackSpeed == null) return@release false
+        val speed = when (event.key) {
+            ComposeKey.A -> nextPlaybackSpeed(currentPlaybackSpeed, playbackSpeedRange, -1)
+            ComposeKey.D -> nextPlaybackSpeed(currentPlaybackSpeed, playbackSpeedRange, 1)
+            ComposeKey.S -> 1f.coerceIn(playbackSpeedRange)
+            else -> PLAYBACK_SPEED_SHORTCUTS.firstOrNull { it.first == event.key }?.second
+                ?.coerceIn(playbackSpeedRange) ?: return@release false
+        }
+        if (event.type == KeyEventType.KeyUp) onPlaybackSpeedChanged(speed)
+        true
+    }
+    return remember(seekHandler) {
+        object : PlayerKeyboardHandler {
+            override fun invoke(event: KeyEvent): Boolean =
+                seekHandler(event) || volumeCommands(event) || releaseCommands(event)
+            override fun cancel() = seekHandler.cancel()
         }
     }
-    return result
-        .onKey(ComposeKey.B, onToggleDanmaku)
-        .onKey(ComposeKey.I, onTogglePlayerStats)
-        // The same node carries combinedClickable, which treats Enter as a click when focused.
-        // Enter is not a player shortcut, so swallow it; DPad center is left for clickable so that
-        // remote/DPad activation still works like a tap.
-        .onPreviewKeyEvent { event ->
-            event.key == ComposeKey.Enter || event.key == ComposeKey.NumPadEnter
-        }
 }

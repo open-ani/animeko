@@ -1380,7 +1380,7 @@ class EpisodeVideoControllerTest {
         }
 
     @Test
-    fun `mouse - keyboard shortcuts - reclaim focus from editor on mouse move`() = runAniComposeUiTest {
+    fun `mouse - keyboard shortcuts - keep editor focus on mouse move`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {
             Player(
@@ -1396,7 +1396,8 @@ class EpisodeVideoControllerTest {
 
         videoGestureHost.slightlyMoveFromCenterToRight()
         waitForIdle()
-        videoGestureHost.assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
+        videoGestureHost.assertIsNotFocused()
     }
 
     @Test
@@ -1531,7 +1532,7 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
-    fun `touch - keyboard shortcuts - reclaim focus from editor on mouse move`() = runAniComposeUiTest {
+    fun `touch - keyboard shortcuts - keep editor focus on mouse move`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {
             CompositionLocalProvider(LocalPlatform provides Platform.Android(Arch.ARMV8A)) {
@@ -1549,7 +1550,8 @@ class EpisodeVideoControllerTest {
 
         videoGestureHost.slightlyMoveFromCenterToRight()
         waitForIdle()
-        videoGestureHost.assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
+        videoGestureHost.assertIsNotFocused()
     }
 
     @Test

@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.videoplayer.ui
 
+import androidx.compose.foundation.focusGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
@@ -16,17 +17,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import me.him188.ani.app.ui.foundation.effects.ComposeKey
-import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.interaction.hoverable
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -43,84 +45,57 @@ fun rememberVideoControllerState(
     }
 }
 
-enum class PlayerFocusTarget {
-    PLAYER,
-    TEXT_INPUT,
-}
-
-/** Coordinates focus policy; [preferredTarget] is intent, not the currently focused Compose node. */
+/** Holds the player focus requester and observes cleared focus within its keyboard scopes. */
 @Stable
 class PlayerFocusState {
-    var preferredTarget: PlayerFocusTarget by mutableStateOf(PlayerFocusTarget.PLAYER)
+    internal val requester = FocusRequester()
+
+    internal var focusClearedCount by mutableIntStateOf(0)
         private set
 
-    internal val requester = FocusRequester()
-    private var textInputOwner: Any? = null
-
-    fun preferPlayer() {
-        textInputOwner = null
-        preferredTarget = PlayerFocusTarget.PLAYER
-    }
-
-    internal fun preferTextInput(owner: Any) {
-        textInputOwner = owner
-        preferredTarget = PlayerFocusTarget.TEXT_INPUT
-    }
-
-    internal fun releaseTextInput(owner: Any) {
-        if (textInputOwner === owner) {
-            preferPlayer()
-        }
-    }
-
-    internal fun requestPlayerFocus() {
-        preferPlayer()
-        requester.requestFocus()
-    }
-
-    internal fun restorePlayerFocusIfPreferred() {
-        if (preferredTarget == PlayerFocusTarget.PLAYER) {
-            requester.requestFocus()
-        }
+    internal fun onFocusCleared() {
+        focusClearedCount++
     }
 }
 
-/** Attaches the player requester and restores focus when its policy or [reapplyKey] changes. */
+/** Attaches the player requester and restores focus when a keyboard scope loses its focused node. */
 @Composable
-internal fun Modifier.playerFocusHost(
-    state: PlayerFocusState,
-    reapplyKey: Any?,
-): Modifier {
-    val preferredTarget = state.preferredTarget
-
-    LaunchedEffect(state, preferredTarget, reapplyKey) {
-        state.restorePlayerFocusIfPreferred()
+internal fun Modifier.playerFocusHost(state: PlayerFocusState): Modifier {
+    LaunchedEffect(state, state.focusClearedCount) {
+        state.requester.requestFocus()
     }
     return focusRequester(state.requester)
 }
 
-fun Modifier.playerTextInputFocus(
-    state: PlayerFocusState,
-    onEscape: (() -> Unit)? = null,
-): Modifier = composed {
-    val owner = remember { Any() }
-    DisposableEffect(state, owner) {
-        onDispose {
-            state.releaseTextInput(owner)
+/**
+ * Makes the player the default keyboard target of the modified subtree.
+ *
+ * When the focused node inside the subtree is removed (a side sheet or popup closes, a controller bar hides) or focus
+ * is cleared with `FocusManager.clearFocus`, no node holds focus and player keyboard shortcuts stop working. This
+ * returns focus to the player in that case.
+ *
+ * Focus moving to another target, inside or outside the subtree, is left alone. Moving out of the subtree calls the
+ * group's `onExit` with the direction of the move; clearing calls it with [FocusDirection.Exit], and removing the
+ * focused node does not call it.
+ *
+ * [PlayerKeyboardScope] applies this to the subtree that dispatches player shortcuts.
+ */
+internal fun Modifier.restorePlayerFocusWhenCleared(state: PlayerFocusState): Modifier = composed {
+    val tracker = remember { FocusClearTracker() }
+    focusProperties {
+        onExit = { tracker.movingOut = requestedFocusDirection != FocusDirection.Exit }
+    }.onFocusChanged {
+        if (tracker.hadFocus && !it.hasFocus && !tracker.movingOut) {
+            state.onFocusCleared()
         }
-    }
+        tracker.hadFocus = it.hasFocus
+        tracker.movingOut = false
+    }.focusGroup()
+}
 
-    onFocusChanged {
-        if (it.hasFocus) {
-            state.preferTextInput(owner)
-        }
-    }.onKey(ComposeKey.Escape) {
-        if (onEscape == null) {
-            state.requestPlayerFocus()
-        } else {
-            onEscape()
-        }
-    }
+private class FocusClearTracker {
+    var hadFocus = false
+    var movingOut = false
 }
 
 @Immutable
@@ -191,6 +166,7 @@ class PlayerControllerState(
     }
 
     val focusState = PlayerFocusState()
+    internal val keyboard = PlayerKeyboardState()
 
     private var fullVisible by mutableStateOf(initialVisibility == ControllerVisibility.Visible)
     private val hasProgressBarRequester by derivedStateOf { progressBarRequesters.isNotEmpty() }
