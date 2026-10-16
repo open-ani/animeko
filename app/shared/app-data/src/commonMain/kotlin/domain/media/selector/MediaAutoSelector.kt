@@ -47,18 +47,27 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         val fallbackToOtherKinds: Boolean = false,
     )
 
-    /** Web deadlines start only after the remembered source has finished without a selection. */
+    /**
+     * Web deadlines start only after the remembered source has finished without a selection.
+     * Deadlines only wait for pending sources: once every Web source has settled, the selection is the one the
+     * last reachable stage would make. An infinite deadline is never reached, so its stages stay closed.
+     */
     data class Web(
         val sourceTiers: MediaSelectorSourceTiers,
         val fastSelect: Boolean = true,
         val exactMatchAfter: Duration = 5.seconds,
         val fuzzyMatchAfter: Duration = 15.seconds,
-        val instantTier: MediaSourceTier = MediaSourceTier(0u),
+        val instantTier: MediaSourceTier = DefaultInstantTier,
         val waitForPendingSources: Boolean = true,
     ) {
         init {
             require(exactMatchAfter >= Duration.ZERO)
             require(fuzzyMatchAfter >= Duration.ZERO)
+        }
+
+        companion object {
+            /** First-deadline stage accepts exact matches whose effective tier is at most this. */
+            val DefaultInstantTier = MediaSourceTier(0u)
         }
     }
 
@@ -85,10 +94,9 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
                             val web = checkNotNull(config.web)
                             stage.value = if (web.fastSelect) Stage.Instant else Stage.Exact
                             deadlines = launch {
-                                val exactAfter = if (web.fastSelect) web.exactMatchAfter else Duration.ZERO
-                                delay(exactAfter)
+                                delay(web.exactStageAfter)
                                 stage.value = Stage.Exact
-                                delay((web.fuzzyMatchAfter - exactAfter).coerceAtLeast(Duration.ZERO))
+                                delay((web.fuzzyMatchAfter - web.exactStageAfter).coerceAtLeast(Duration.ZERO))
                                 stage.value = Stage.Fuzzy
                             }
                         }
@@ -209,13 +217,15 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
         val webSources = snapshot.sources.filter { it.kind == MediaSourceKind.WEB }
         val allCompleted = webSources.all { it.state.isFinal }
         if (!web.fastSelect && !allCompleted) return Decision.Wait
+        // Settled sources produce no new candidates, so waiting for the remaining deadlines cannot change the choice.
+        val effectiveStage = if (webSources.all { it.state.isSettled }) web.lastStage else stage
         val succeededIds = webSources.filter { it.state is MediaSourceFetchState.Succeed }.map { it.mediaSourceId }.toSet()
         val webCandidates = candidates.filter { it.result.kind == MediaSourceKind.WEB && it.result.mediaSourceId in succeededIds }
         if (webSources.any { it.results.isNotEmpty() } && !snapshot.context.allFieldsLoaded()) return Decision.Wait
 
         val eligible = webCandidates.filter { candidate ->
             val exact = candidate.metadata.subjectMatchKind == SubjectMatchKind.EXACT
-            when (stage) {
+            when (effectiveStage) {
                 Stage.Instant -> exact && web.sourceTiers.get(
                     candidate.result.mediaSourceId, candidate.result.properties.alliance,
                 ) <= web.instantTier
@@ -239,7 +249,8 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
                 val candidate = group.first { it.result == media }
                 return Decision.Select(
                     media,
-                    "${stage.name}, match=${candidate.metadata.subjectMatchKind}, tier=${web.sourceTiers.get(media.mediaSourceId, media.properties.alliance)}",
+                    "${effectiveStage.name}${if (effectiveStage != stage) " (sources settled)" else ""}, " +
+                            "match=${candidate.metadata.subjectMatchKind}, tier=${web.sourceTiers.get(media.mediaSourceId, media.properties.alliance)}",
                 )
             }
         }
@@ -250,9 +261,27 @@ internal class MediaAutoSelector(private val mediaSelector: MediaSelector) {
                 decideOnCompletion(snapshot, preferred.filter { it.result.kind != MediaSourceKind.WEB })
             } else Decision.Exhausted
         }
-        if (stage == Stage.Fuzzy && (allCompleted || !web.waitForPendingSources)) return Decision.Exhausted
+        if (effectiveStage == Stage.Fuzzy && (allCompleted || !web.waitForPendingSources)) return Decision.Exhausted
         return Decision.Wait
     }
+
+    /** Fast select disabled skips the instant stage. */
+    private val Web.exactStageAfter: Duration get() = if (fastSelect) exactMatchAfter else Duration.ZERO
+
+    /** The last stage the deadline timer reaches; it stays behind an infinite deadline. */
+    private val Web.lastStage: Stage
+        get() = when {
+            exactStageAfter.isInfinite() -> Stage.Instant
+            fuzzyMatchAfter.isInfinite() -> Stage.Exact
+            else -> Stage.Fuzzy
+        }
+
+    /**
+     * Final with no automatic retry pending. A rate-limited source restarts itself after its cooldown and may
+     * still return results, so it keeps the deadlines in effect like a running source.
+     */
+    private val MediaSourceFetchState.isSettled: Boolean
+        get() = isFinal && this !is MediaSourceFetchState.RateLimited
 
     private fun findWebCandidate(
         snapshot: MediaAutoSelectSnapshot,

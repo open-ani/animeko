@@ -68,8 +68,8 @@ class MediaSourceLoader(
                     parameters = factory.parameters,
                     connectionTester = connectionTesters.getOrCreate(instance),
                     instance,
-                    ownerSubscriptionUrl = instance.config.subscriptionId?.let { subscriptionId ->
-                        subscriptions.find { it.subscriptionId == subscriptionId }?.url
+                    ownerSubscriptionId = instance.config.subscriptionId?.takeIf { subscriptionId ->
+                        subscriptions.any { it.subscriptionId == subscriptionId }
                     },
                 )
             }
@@ -168,8 +168,23 @@ class MediaSourceGroupState(
     val mediaSources by mediaSourcesState
     val availableMediaSourceTemplates by availableMediaSourceTemplatesState
 
-    val mediaSourceTesters by derivedStateOf {
-        DefaultConnectionTesterRunner(
+    /**
+     * 不属于任何订阅的数据源, 用户可以自由编辑和排序.
+     */
+    val localMediaSources by derivedStateOf {
+        mediaSources.filter { it.ownerSubscriptionId == null }
+    }
+
+    val localMediaSourceTesters by derivedStateOf {
+        createTesterRunner(localMediaSources)
+    }
+
+    fun mediaSourcesOfSubscription(subscriptionId: String): List<MediaSourcePresentation> {
+        return mediaSources.filter { it.ownerSubscriptionId == subscriptionId }
+    }
+
+    fun createTesterRunner(mediaSources: List<MediaSourcePresentation>): DefaultConnectionTesterRunner<ConnectionTester> {
+        return DefaultConnectionTesterRunner(
             mediaSources.map { it.connectionTester },
             backgroundScope,
         )
@@ -310,8 +325,10 @@ class MediaSourcePresentation(
     val parameters: MediaSourceParameters,
     val connectionTester: ConnectionTester,
     val instance: MediaSourceInstance,
-
-    val ownerSubscriptionUrl: String?,
+    /**
+     * 该数据源所属的订阅. 不属于订阅, 或所属订阅已被删除时为 `null`.
+     */
+    val ownerSubscriptionId: String?,
 )
 
 /**

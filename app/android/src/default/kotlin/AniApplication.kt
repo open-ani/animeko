@@ -18,15 +18,11 @@ import android.util.Log
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.generalk1ng.sokkuri.Sokkuri
 import com.generalk1ng.sokkuri.init
-import dev.gitlive.firebase.Firebase
-import dev.gitlive.firebase.analytics.analytics
-import dev.gitlive.firebase.initialize
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -36,8 +32,6 @@ import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.persistent.database.dao.TorrentCacheEpisodeEntity
 import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoEntity
-import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
@@ -48,15 +42,12 @@ import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.JvmLogHelper
 import me.him188.ani.app.platform.StartupTimeMonitor
 import me.him188.ani.app.platform.StepName
-import me.him188.ani.app.platform.create
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.platform.trace.recordAppStart
 import me.him188.ani.app.ui.settings.tabs.log.getLogsDir
 import me.him188.ani.utils.analytics.Analytics
-import me.him188.ani.utils.analytics.AnalyticsConfig
-import me.him188.ani.utils.analytics.AnalyticsImpl
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
@@ -162,34 +153,7 @@ class AniApplication : Application() {
         startupTimeMonitor.mark(StepName.Modules)
 
         val koin = getKoin()
-        val analyticsInitializer = scope.launch {
-            val settingsRepository = koin.get<SettingsRepository>()
-            val userRepository = koin.get<UserRepository>()
-            val settings = settingsRepository.analyticsSettings.flow.first()
-            settingsRepository.analyticsSettings.update { settings }
-            if (settings.isBugReportEnabled) {
-                AppStartupTasks.initializeSentry(settings.deviceId)
-            }
-            if (settings.isAnalyticsEnabled) {
-                AppStartupTasks.initializeAnalytics {
-                    AnalyticsImpl(
-                        AnalyticsConfig.create(),
-                    ).apply {
-                        Firebase.initialize(applicationContext) // Use google-services.json
-                        init()
-
-                        userRepository.selfInfoFlow.first()?.id?.let {
-                            Firebase.analytics.setUserId(it.toString())
-                        }
-                        scope.launch {
-                            userRepository.selfInfoFlow.map { it?.id }.collect {
-                                Firebase.analytics.setUserId(it?.toString())
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        val analyticsInitializer = launchTelemetryInitialization(scope, applicationContext, koin)
 
         // torrent_cache rows carry no engine; MediaCacheSave.engine says which engine owns a media.
         val anitorrentMediaIds = dataStores.mediaCacheMetadataStore.data.map { saves ->

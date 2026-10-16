@@ -44,7 +44,8 @@ The transport is a stateless subset of the MCP Streamable HTTP spec: JSON-RPC me
 
 ### 兼容保留
 
-- `test_subject_episode_source` — 任意数据源工厂 (dmhy/mikan/selector/...) 的端到端测试.
+- `test_subject_episode_source` — 任意数据源工厂 (dmhy/mikan/selector/json-api/...) 的端到端测试.
+  `json-api` 源的资源由接口签发播放地址, 逐线路测试直接向源取地址 (`ApiVideoResolver`), 不经过 WebView.
 - `test_resource_page_url` — 任意播放页的 WebView 视频解析 + 探测.
 
 `probe_video_url` 已被 `probe_video` 取代 (输入兼容, 输出更丰富).
@@ -109,7 +110,8 @@ fetch subject and episode metadata from the Ani API. Ani API is the metadata sou
 
 For web media sources, the playback path in the client is:
 
-1. `WebVideoMatcher` produces a `WebVideo` with `headers`
+1. `WebVideoMatcher` produces a `WebVideo` with `headers` (for `json-api` sources, the source's
+   `ApiVideoResolver` produces it from the playback API instead of a page)
 2. resolver returns `HttpStreamingMediaDataProvider`
 3. `HttpStreamingMediaDataProvider.open()` creates `UriMediaData`
 4. player and cache downloader consume `UriMediaData.headers`

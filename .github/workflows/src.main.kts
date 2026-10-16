@@ -592,6 +592,7 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             // buildIosIpaRelease()
         }
         packageDesktopAndUpload()
+        uploadUpdateE2eRunner()
 
         if (!matrix.isUbuntu) {
             gradleCheck() // save time
@@ -737,6 +738,9 @@ object ArtifactNames {
     fun macosPortable(arch: Arch) = "ani-macos-portable-${arch}"
     fun iosIpa() = "ani-ios-ipa"
     fun linuxAppImage(arch: Arch) = "ani-linux-appimage-${arch}"
+
+    /** 自动更新端到端测试的驱动器 jar, Verify job 下载后直接运行. */
+    fun updateE2eRunner(os: OS, arch: Arch) = "ani-update-e2e-${os}-${arch}"
 }
 
 fun getVerifyJobBody(
@@ -944,6 +948,75 @@ fun getVerifyJobBody(
 
         else -> error("Unsupported OS and arch combination: ${runner.os} ${runner.arch}")
     }
+
+    addDesktopUpdateE2e(runner)
+}
+
+/**
+ * 自动更新端到端测试 (tools/desktop-update-e2e): 用这个 job 下载下来的打包产物, 对着本机 mock 的更新服务器走一遍检查、下载、
+ * 安装、重启. 驱动器是 Build job 上传的独立 jar, 用 setup-java 装的 JDK 直接运行, 不需要 Gradle. Linux 的 AppImage 走 zsync, 不在其中.
+ */
+fun JobBuilder<*>.addDesktopUpdateE2e(runner: Runner) {
+    val appDir = when (runner.os) {
+        OS.WINDOWS -> """${expr { github.workspace }}/ci-helper/verify"""
+        OS.MACOS -> """${expr { github.workspace }}/extracted_dmg"""
+        OS.UBUNTU -> return
+    }
+    val runnerDir = """${expr { github.workspace }}/update-e2e-runner"""
+    val workDir = """${expr { github.workspace }}/update-e2e"""
+    usesWithAttempts(
+        name = "Download update E2E runner",
+        action = DownloadArtifact(
+            name = ArtifactNames.updateE2eRunner(runner.os, runner.arch),
+            path = runnerDir,
+        ),
+    )
+    if (runner.os == OS.MACOS) {
+        // 验证脚本用 7z 解 dmg, 解出来的文件没有可执行位, 它只给启动器补了 chmod. 这里要的是和用户装的一样的 bundle
+        // (权限、签名都在), 所以挂载 dmg 后用 ditto 复制. 目录名沿用验证脚本的 extracted_dmg, 先清掉它留下的.
+        // dmg 带许可协议, hdiutil 会把全文打出来并等输入, 从 stdin 给它一个 y, 全文不进日志.
+        run(
+            name = "Extract DMG for the update E2E test",
+            command = shell(
+                $$"""
+                    rm -rf extracted_dmg && mkdir extracted_dmg
+                    MOUNT_POINT="$(mktemp -d)"
+                    echo y | hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT_POINT" "$GITHUB_WORKSPACE"/*.dmg > /dev/null
+                    for app in "$MOUNT_POINT"/*.app; do ditto "$app" "extracted_dmg/$(basename "$app")"; done
+                    hdiutil detach "$MOUNT_POINT"
+                    ls -l extracted_dmg extracted_dmg/*/Contents/MacOS
+                """.trimIndent(),
+            ),
+            shell = Shell.Bash,
+        )
+    }
+    uses(
+        name = "Setup JDK 21 for the update E2E test",
+        action = SetupJava_Untyped(
+            distribution_Untyped = "temurin",
+            javaVersion_Untyped = "21",
+        ),
+    )
+    run(
+        name = "Desktop update E2E test",
+        command = shell("""java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "$runnerDir/desktop-update-e2e.jar" --app "$appDir" --work-dir "$workDir""""),
+        shell = Shell.Bash,
+        timeoutMinutes = 40,
+    )
+    uses(
+        name = "Upload desktop update E2E logs",
+        `if` = "failure()",
+        action = UploadArtifact(
+            name = "update-e2e-${runner.id}",
+            path_Untyped = $$"""
+                update-e2e/**/*.log
+                update-e2e/**/*.json
+                update-e2e/**/*.jsonl
+                update-e2e/**/*.txt
+            """.trimIndent(),
+            ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
+        ),
+    )
 }
 
 fun WorkflowBuilder.addVerifyJob(build: Job<BuildJobOutputs>, runner: Runner, ifExpr: String) {
@@ -2025,7 +2098,7 @@ class WithMatrix(
         }
 
         // 脚本第一条命令留下的标记. 没有标记说明失败发生在下载 SDK 或启动模拟器阶段 (例如开机后 adb 短暂 offline),
-        // 与测试无关, 可以重试. 测试开始后的失败不重试, 以免掩盖不稳定的测试.
+        // 与测试无关, 可以重试. 测试开始后的失败只有 ART 崩溃会在 run-android-device-tests.sh 里重跑, 这里不重试, 以免掩盖不稳定的测试.
         val startedMarker = "android-instrumented-test-started-${emulator.artifactSuffix}"
         val emulatorRunner = AndroidEmulatorRunner(
             apiLevel = emulator.apiLevel.toString(),
@@ -2036,16 +2109,15 @@ class WithMatrix(
             script = buildString {
                 append("touch $startedMarker; ")
                 append("./ci-helper/prepare-android-emulator.sh; ")
-                append("./gradlew ")
+                append("./ci-helper/run-android-device-tests.sh logcat-${emulator.artifactSuffix}.txt ")
                 append(emulator.gradleTasks("connectedDeviceTest").joinToString(" "))
                 // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
                 append(" --continue \"-Pandroid.min.sdk=30\" ")
                 // 测试 APK 已在上一步打包好, 这里 Gradle 只负责安装和运行, 用小堆给模拟器留内存.
                 append(matrix.gradleArgsWith(gradleHeap = "3g", kotlinCompilerHeap = "2g"))
-                // 结束 crashpad_handler 后要以 Gradle 的退出码退出, 否则测试失败不会让步骤失败.
+                // 结束 crashpad_handler 后要以测试脚本的退出码退出, 否则测试失败不会让步骤失败.
                 // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
-                // 测试进程在启动阶段崩溃时不会留下按测试拆分的 logcat, 整机 logcat 是唯一线索.
-                append("; status=\$?; adb logcat -d > logcat-${emulator.artifactSuffix}.txt || true; ")
+                append("; status=\$?; ")
                 if (matrix.selfHosted) {
                     // 自托管机器上还有其他程序, 只结束模拟器自己的 crashpad_handler.
                     append("pkill -INT -f \"\$ANDROID_HOME/emulator/crashpad_handler\" || true; exit \$status")
@@ -2233,6 +2305,26 @@ class WithMatrix(
                 )
             }
         }
+    }
+
+    /**
+     * 自动更新端到端测试的驱动器 (tools/desktop-update-e2e) 打成独立 jar 上传, Verify job 用它对下载的产物跑测试, 见 addDesktopUpdateE2e.
+     */
+    fun JobBuilder<*>.uploadUpdateE2eRunner() {
+        if (!matrix.uploadDesktopInstallers || !(matrix.isWindows || matrix.isMacOS)) return
+        runGradle(
+            name = "Build update E2E runner",
+            tasks = arrayOf(":tools:desktop-update-e2e:standaloneJar"),
+        )
+        usesWithAttempts(
+            name = "Upload update E2E runner",
+            action = UploadArtifact(
+                name = ArtifactNames.updateE2eRunner(matrix.os, matrix.arch),
+                path_Untyped = "tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar",
+                overwrite = true,
+                ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
+            ),
+        )
     }
 
     fun JobBuilder<*>.uploadComposeLogs() {

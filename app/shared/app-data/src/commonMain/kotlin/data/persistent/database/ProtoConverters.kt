@@ -11,6 +11,7 @@ package me.him188.ani.app.data.persistent.database
 
 import androidx.room.TypeConverter
 import kotlinx.serialization.Serializable
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectTmdbArt
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.datasources.api.EpisodeSort
@@ -68,6 +69,18 @@ object ProtoConverters {
         @TypeConverter
         override fun fromList(list: List<Tag>): ByteArray {
             return DatabaseProtoBuf.encodeToByteArray(Node.serializer(), Node(list))
+        }
+    }
+
+    object SplitSeasonConverter {
+        @TypeConverter
+        fun fromByteArray(value: ByteArray?): SplitSeason? {
+            return value?.let { DatabaseProtoBuf.decodeFromByteArray(SplitSeason.serializer(), it) }
+        }
+
+        @TypeConverter
+        fun toByteArray(value: SplitSeason?): ByteArray? {
+            return value?.let { DatabaseProtoBuf.encodeToByteArray(SplitSeason.serializer(), it) }
         }
     }
 

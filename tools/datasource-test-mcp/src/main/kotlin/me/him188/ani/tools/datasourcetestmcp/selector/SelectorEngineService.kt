@@ -568,7 +568,7 @@ class SelectorEngineService(
     private fun stepMatchWebVideo(input: SelectorRunStepInput): SelectorRunStepResult {
         val config = requireConfig(input)
         val url = requireNotNull(input.url) { "matchWebVideo 步骤需要 url 参数" }
-        val matchResult = engine.matchWebVideo(url, config.matchVideo)
+        val matchResult = engine.matchWebVideo(url, config.matchVideo, config.userAgentOrNull)
         val (kind, video) = when (matchResult) {
             is WebVideoMatcher.MatchResult.Matched -> "matched" to matchResult.video
             WebVideoMatcher.MatchResult.LoadPage -> "loadPage" to null
@@ -677,9 +677,9 @@ class SelectorEngineService(
             ?: SelectorSearchConfig.Empty.requestInterval
     }
 
-    /** 与 App 的 `SelectorMediaSource.matcher` 一致: 配置里的 cookies 之上再叠加验证码会话的 cookies. */
+    /** 与 App 的 `SelectorMediaSource.matcher` 一致: 配置里的 cookies 之上再叠加验证码会话的 cookies, 并应用配置的 User-Agent. */
     private fun selectorWebVideoMatcher(config: SelectorSearchConfig): SelectorWebVideoMatcher {
-        return SelectorWebVideoMatcher(engine, config.matchVideo) {
+        return SelectorWebVideoMatcher(engine, config.matchVideo, config.userAgentOrNull) {
             webSource.cookieJar.getCookieHeaderValues(config.searchUrl)
         }
     }
@@ -833,6 +833,8 @@ class SelectorEngineService(
 class SelectorWebVideoMatcher(
     private val engine: SelectorMediaSourceEngine,
     private val matchVideoConfig: SelectorSearchConfig.MatchVideoConfig,
+    /** 数据源配置的 UA ([SelectorSearchConfig.userAgentOrNull]). */
+    private val userAgent: String? = null,
     /**
      * 该站点已解出的验证码会话 cookies. 与 App 一样, HTTP 与播放器 WebView 共用同一份 cookie 真相,
      * 播放页才能沿用刚刚解掉验证码的会话.
@@ -842,15 +844,10 @@ class SelectorWebVideoMatcher(
     override fun match(
         url: String,
         context: WebVideoMatcherContext,
-    ): WebVideoMatcher.MatchResult = engine.matchWebVideo(url, matchVideoConfig)
+    ): WebVideoMatcher.MatchResult = engine.matchWebVideo(url, matchVideoConfig, userAgent)
 
-    override fun patchConfig(config: WebViewConfig): WebViewConfig {
-        val configuredCookies = matchVideoConfig.cookies.lines().filter { it.isNotBlank() }
-        // 复用 SelectorMediaSource.matcher 的合并实现: 按 cookie 名去重, 后面的覆盖前面的
-        return config.copy(
-            cookies = SelectorMediaSource.mergeCookies(config.cookies, configuredCookies, captchaCookies()),
-        )
-    }
+    override fun patchConfig(config: WebViewConfig): WebViewConfig =
+        SelectorMediaSource.patchWebViewConfig(config, matchVideoConfig, userAgent, captchaCookies())
 }
 
 internal fun createWebMediaForPage(pageUrl: String, mediaSourceId: String): DefaultMedia {

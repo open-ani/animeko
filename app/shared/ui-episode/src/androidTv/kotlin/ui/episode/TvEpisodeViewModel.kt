@@ -77,6 +77,10 @@ import me.him188.ani.tv.ui.episode.source.TvSourceSelectionState
 import me.him188.ani.tv.ui.episode.source.tvSourceGroups
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectRecommendationClick
+import me.him188.ani.utils.analytics.recordEvent
 import org.koin.core.Koin
 import org.openani.mediamp.features.AspectRatioMode
 import org.openani.mediamp.features.PlaybackSpeed
@@ -519,6 +523,13 @@ class TvEpisodeViewModel(
                 val recommendation = intent.recommendation
                 val targetSubjectId = recommendation.tvNavigationSubjectId
                 if (targetSubjectId != null) {
+                    Analytics.recordEvent(SubjectRecommendationClick) {
+                        put("subject_id", targetSubjectId)
+                    }
+                    Analytics.recordEvent(SubjectEnter) {
+                        put("source", "episode_recommendation")
+                        put("subject_id", targetSubjectId)
+                    }
                     navigation.emit(
                         TvNavigationEvent.Subject(
                             targetSubjectId,

@@ -30,7 +30,6 @@ import me.him188.ani.app.domain.update.UpdateManager
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.MonoTasker
-import me.him188.ani.app.tools.update.DefaultFileDownloader
 import me.him188.ani.app.tools.update.PARALLEL_DOWNLOAD_CONNECTIONS
 import me.him188.ani.app.tools.update.FileDownloaderState
 import me.him188.ani.app.tools.update.InstallationResult
@@ -50,9 +49,13 @@ import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * 主页使用的自动更新检查
+ *
+ * @param updateChecker 端到端测试传入指向 mock 服务器的检查器, 其余流程与正常使用完全相同.
  */
 @Stable
-class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
+open class AppUpdateViewModel(
+    private val updateChecker: UpdateChecker = UpdateChecker(),
+) : AbstractViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val updateSettings = settingsRepository.updateSettings.flow
     private val updateManager: UpdateManager by inject()
@@ -61,15 +64,26 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
     private val installationRunner by lazy { UpdateInstallationRunner(updateInstaller) }
 
     private val fileDownloader by lazy {
-        DefaultFileDownloader(clientProvider.get(maxRequestsPerHost = PARALLEL_DOWNLOAD_CONNECTIONS))
+        updateInstaller.createPackageDownloader(clientProvider.get(maxRequestsPerHost = PARALLEL_DOWNLOAD_CONNECTIONS))
     }
-    private val updateChecker: UpdateChecker = UpdateChecker()
 
     /**
-     * 最新的版本. 当 [checked] 为 `true` 时, `null` 表示没有新版本. 否则表示还没有检查过.
+     * 一次检查的结果. 版本和检查时间放在同一个值里一起更新: 分成两个流时 [presentationFlow] 可能先看到检查时间已记下、
+     * 新版本还没送到, 瞬时呈现「已是最新」.
      */
-    private val latestVersionFlow = MutableStateFlow<NewVersion?>(null)
-    private val lastCheckTime: MutableStateFlow<Long> = MutableStateFlow(0L)
+    private class CheckResult(
+        /**
+         * `null` 表示没有新版本.
+         */
+        val latestVersion: NewVersion?,
+        val checkedAt: Long,
+    )
+
+    /**
+     * `null` 表示还没有检查过.
+     */
+    private val checkResultFlow = MutableStateFlow<CheckResult?>(null)
+    private val latestVersion: NewVersion? get() = checkResultFlow.value?.latestVersion
 
     /**
      * 新版本下载进度
@@ -82,16 +96,16 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
     private val checkUpdateErrorFlow = MutableStateFlow<LoadError?>(null)
 
     val presentationFlow = combine(
-        latestVersionFlow,
+        checkResultFlow,
         fileDownloaderPresenter.flow,
         autoCheckTasker.isRunning,
         installationRunner.state,
         checkUpdateErrorFlow,
-    ) { latestVersion, fileDownloaderStats, isCheckingUpdate, installationState, checkUpdateError ->
-        val latestVersion = latestVersion
+    ) { checkResult, fileDownloaderStats, isCheckingUpdate, installationState, checkUpdateError ->
+        val latestVersion = checkResult?.latestVersion
         val state = when {
             // 还没检查过
-            lastCheckTime.value == 0L -> AppUpdateState.ClickToCheck
+            checkResult == null -> AppUpdateState.ClickToCheck
             latestVersion == null -> AppUpdateState.AlreadyUpToDate
             installationState is UpdateInstallationState.Installing -> AppUpdateState.Installing(latestVersion)
             else -> {
@@ -137,7 +151,8 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
         if (autoCheckTasker.isRunning.value) {
             return
         } else {
-            if (currentTimeMillis() - lastCheckTime.value < 1000 * 60 * 60 * 1) {
+            val checkedAt = checkResultFlow.value?.checkedAt ?: 0L
+            if (currentTimeMillis() - checkedAt < 1000 * 60 * 60 * 1) {
                 return // 1 小时内检查过
             }
 
@@ -162,18 +177,18 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
                 }
                 logger.info { "Checking latest version, updateSettings=${updateSettings}" }
 
-                updateChecker.checkLatestVersion(updateSettings.releaseClass)
+                updateChecker.checkLatestVersion(updateSettings.releaseClass).also {
+                    checkResultFlow.value = CheckResult(it, currentTimeMillis())
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
                 checkUpdateErrorFlow.value = LoadError.fromException(e)
                 logger.info { "Auto update checking failed due to IOException: $e" } // 故意不打印堆栈
+                // 失败也算检查过, 一小时内不再自动重试; 上次的结果保留
+                checkResultFlow.value = CheckResult(latestVersion, currentTimeMillis())
                 return@launch
-            } finally {
-                lastCheckTime.value = currentTimeMillis()
             }
-
-            latestVersionFlow.update { ver }
 
             if (ver != null && updateSettings.autoDownloadUpdate) {
                 logger.info { "autoDownloadUpdate is true, starting download" }
@@ -220,7 +235,7 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
     }
 
     fun restartDownload(uriHandler: UriHandler) {
-        latestVersionFlow.value?.let { startDownload(it, uriHandler) }
+        latestVersion?.let { startDownload(it, uriHandler) }
     }
 
     fun install(context: ContextMP) {

@@ -52,3 +52,8 @@ class AnalyticsExtension(
         }
     }
 }
+
+/**
+ * 布尔属性上报为 1/0. Firebase Android SDK 只接受 String, long 和 double 类型的参数.
+ */
+internal fun Boolean.toAnalyticsFlag(): Long = if (this) 1L else 0L

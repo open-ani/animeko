@@ -31,6 +31,7 @@ import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
+import me.him188.ani.app.domain.media.resolver.ApiVideoMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
@@ -164,6 +165,7 @@ fun getAndroidModules(
             torrentMediaResolvers(get<TorrentManager>().engines, get())
                 .plus(LocalFileMediaResolver())
                 .plus(HttpStreamingMediaResolver())
+                .plus(ApiVideoMediaResolver(get<MediaSourceManager>().apiVideoResolverLoader))
                 .plus(
                     AndroidWebMediaResolver(
                         get<MediaSourceManager>().webVideoMatcherLoader,

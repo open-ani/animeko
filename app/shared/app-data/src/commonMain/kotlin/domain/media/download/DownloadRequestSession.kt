@@ -32,6 +32,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.preference.MediaPreference
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
@@ -267,6 +268,7 @@ class DownloadRequestSession internal constructor(
         mutableState.value = DownloadRequestState.Preparing(episodeId, pending)
         val collection = subjects.subjectCollectionFlow(subjectId).first()
         val subject = collection.subjectInfo
+        val splitSeason = collection.relations.splitSeason
         val episodes = collection.episodes.map { it.episodeInfo }
         val episode = episodes.firstOrNull { it.episodeId == episodeId }
             ?: throw NoSuchElementException("Episode $episodeId is not in subject $subjectId")
@@ -274,14 +276,14 @@ class DownloadRequestSession internal constructor(
         // 还没上映的集不复用已有合集: 整季合集会把它算作覆盖, 但种子里还没有对应文件, 会建出永远下载不到的记录.
         if (episode.isAired()) {
             BatchDownloadPlanner.findReusableSeasonMedia(episode, existing.map { it.origin })?.let { media ->
-                createAll(subject, listOf(episode to media), pending)
+                createAll(subject, splitSeason, listOf(episode to media), pending)
                 return setOf(episodeId)
             }
         }
 
         val batch = awaitSelection(episodeId, pending, subject, episode, episodes, existing)
         // 发起下载的那一集已有记录时不在这一批里, 也算处理完, 否则会反复回到选源
-        return createAll(subject, batch, pending) + episodeId
+        return createAll(subject, splitSeason, batch, pending) + episodeId
     }
 
     /**
@@ -299,6 +301,7 @@ class DownloadRequestSession internal constructor(
      */
     private suspend fun createAll(
         subject: SubjectInfo,
+        splitSeason: SplitSeason?,
         batch: List<Pair<EpisodeInfo, Media>>,
         pending: List<Int>,
     ): Set<Int> {
@@ -309,7 +312,7 @@ class DownloadRequestSession internal constructor(
                 for ((target, media) in batch) {
                     val pendingNow = batchIds.filter { it !in handled } + pending.filter { it !in batchIds }
                     setStateUnlessFinished(DownloadRequestState.Creating(target.episodeId, pendingNow))
-                    addDownload(subject, target, media, MediaCacheMetadata(MediaFetchRequest.create(subject, target)))
+                    addDownload(subject, target, media, MediaCacheMetadata(MediaFetchRequest.create(subject, target)), splitSeason)
                     created += ExistingDownload(media, target.episodeId)
                     handled += target.episodeId
                 }

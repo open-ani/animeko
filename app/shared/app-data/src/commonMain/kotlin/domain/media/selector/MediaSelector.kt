@@ -88,7 +88,8 @@ import kotlin.coroutines.CoroutineContext
  *   接受所有 tier 的精确匹配资源，按有效 tier 升序选择。
  * - 累计 15 秒后允许模糊匹配兜底，但精确匹配始终优先于模糊匹配。
  * 有效 tier 优先取 channel 配置，再取数据源配置；同匹配等级、同 tier 内才比较偏好。
- * 全部源提前完成不会跳过截止时间。无限等待不会进入后续降级阶段。
+ * Web 源全部结束后不再等待截止时间，直接做出等到截止时间后的同一选择；被限流、到点会自动重试的源不算结束。
+ * 无限等待不会进入后续降级阶段。
  *
  * ## 使用示例
  *
@@ -186,6 +187,15 @@ interface MediaSelector {
     val selected: StateFlow<Media?>
 
     /**
+     * [selected] 按当前条件过滤的结果, 包含匹配信息. 未选择时为 `null`.
+     *
+     * [selected] 不一定在 [filteredCandidates] 中: 浏览手动选集和浏览记忆回放现场创建资源, 用户拖入的本地文件不来自任何数据源.
+     * 此时对它单独执行与 [filteredCandidates] 相同的过滤, 名称对得上条目名或别名的照样是精确匹配.
+     * 条目信息等条件在选择之后才加载完时, 结果随之更新.
+     */
+    val selectedMaybeExcludedMedia: Flow<MaybeExcludedMedia?>
+
+    /**
      * 用于监听 [select] 等事件
      * @see eventHandling
      */
@@ -205,9 +215,10 @@ interface MediaSelector {
      *
      * 重复 [select] 同一个 [Media] 时, 本函数立即返回 `false`, 不会做重复广播事件等.
      *
+     * @param origin 广播的 [SelectEvent.origin]. 选择会照常更新偏好, 与来源无关.
      * @return 当成功将 [selected] 更新为 [candidate] 时返回 `true`. 当 [selected] 已经是 [candidate] 时返回 `false`.
      */
-    suspend fun select(candidate: Media): Boolean
+    suspend fun select(candidate: Media, origin: SelectOrigin = SelectOrigin.MANUAL): Boolean
 
     /**
      * 选择一个 [Media], 只对本次会话有效: 与 [select] 一样更新 [selected] 并广播 [MediaSelectorEvents.onSelect],
@@ -472,6 +483,20 @@ class DefaultMediaSelector(
         preferredCandidates.map { list -> list.mapNotNull { it.result } }
 
     override val selected: MutableStateFlow<Media?> = MutableStateFlow(null)
+
+    @OptIn(UnsafeOriginalMediaAccess::class)
+    override val selectedMaybeExcludedMedia: Flow<MaybeExcludedMedia?> = combine(
+        selected,
+        filteredCandidates,
+        savedDefaultPreference,
+        this.mediaSelectorSettings,
+        this.mediaSelectorContext,
+    ) { selected, candidates, pref, settings, context ->
+        if (selected == null) return@combine null
+        candidates.firstOrNull { it.original === selected } // identity check is enough and fast
+            ?: algorithm.filterMediaList(listOf(selected), pref, settings, context).single()
+    }.flowOn(flowCoroutineContext)
+
     override val events = MutableMediaSelectorEvents()
 
     override fun autoSelectSnapshots(sources: Flow<List<MediaSourceSelectionSnapshot>>): Flow<MediaAutoSelectSnapshot> =
@@ -490,19 +515,21 @@ class DefaultMediaSelector(
 
     override suspend fun selectAutomatically(candidate: Media, expectedSelection: Media?): Media? {
         if (selected.value != expectedSelection || candidate == expectedSelection) return null
-        val event = SelectEvent(candidate, subtitleLanguageId = null, previousMedia = expectedSelection)
+        val event = SelectEvent(
+            candidate, subtitleLanguageId = null, previousMedia = expectedSelection, origin = SelectOrigin.AUTOMATIC,
+        )
         events.onBeforeSelect.emit(event)
         if (!selected.compareAndSet(expectedSelection, candidate)) return null
         events.onSelect.emit(event)
         return candidate
     }
 
-    override suspend fun select(candidate: Media): Boolean {
-        return selectImpl(candidate, updatePreference = true)
+    override suspend fun select(candidate: Media, origin: SelectOrigin): Boolean {
+        return selectImpl(candidate, updatePreference = true, origin = origin)
     }
 
     override suspend fun selectTemporarily(candidate: Media): Boolean {
-        return selectImpl(candidate, updatePreference = false)
+        return selectImpl(candidate, updatePreference = false, origin = SelectOrigin.MANUAL)
     }
 
     /**
@@ -515,12 +542,14 @@ class DefaultMediaSelector(
      *
      * @param candidate 待选中的媒体项。
      * @param updatePreference 是否根据此媒体更新用户偏好（如分辨率、联盟、字幕语言等）。
+     * @param origin 事件的 [SelectEvent.origin]。
      * @param force 是否强制切换媒体。若为 true，则即使媒体未变也会触发切换。
      * @return 若成功完成切换则返回 true，否则为 false。
      */
     private suspend fun selectImpl(
         candidate: Media,
         updatePreference: Boolean,
+        origin: SelectOrigin,
         force: Boolean = false
     ): Boolean {
         val previous = selected.value
@@ -534,6 +563,7 @@ class DefaultMediaSelector(
                 media = candidate,
                 subtitleLanguageId = null,
                 previousMedia = previous,
+                origin = origin,
             ),
         )
 
@@ -560,6 +590,7 @@ class DefaultMediaSelector(
                 media = candidate,
                 subtitleLanguageId = null,
                 previousMedia = previous,
+                origin = origin,
             ),
         )
 
@@ -666,7 +697,7 @@ class DefaultMediaSelector(
 
         return selected?.let {
             if (overrideUserSelection) {
-                if (selectImpl(it, updatePreference = false)) {
+                if (selectImpl(it, updatePreference = false, origin = SelectOrigin.AUTOMATIC)) {
                     it
                 } else {
                     null
@@ -717,7 +748,7 @@ class DefaultMediaSelector(
             .first()
 
         return if (overrideUserSelection) {
-            if (selectImpl(selected, updatePreference = false)) {
+            if (selectImpl(selected, updatePreference = false, origin = SelectOrigin.AUTOMATIC)) {
                 selected
             } else {
                 null

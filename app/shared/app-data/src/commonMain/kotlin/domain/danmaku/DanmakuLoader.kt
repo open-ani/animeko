@@ -217,23 +217,29 @@ class DanmakuLoaderImpl internal constructor(
             result.list.isNotEmpty() || result.matchInfo.method !is DanmakuMatchMethod.NoMatch
         }
     }
+}
 
-    private fun SearchDanmakuRequest.toFetchRequest(): DanmakuFetchRequest {
-        return DanmakuFetchRequest(
-            subjectId = subjectInfo.subjectId,
-            subjectPrimaryName = subjectInfo.displayName,
-            subjectNames = subjectInfo.allNames,
-            subjectPublishDate = subjectInfo.airDate,
-            episodeId = episodeInfo.episodeId,
-            episodeSort = episodeInfo.sort,
-            episodeEp = episodeInfo.ep,
-            episodeName = episodeInfo.displayName,
-            episodeNames = episodeInfo.allNames,
-            filename = filename,
-            fileHash = fileHash,
-            fileSize = fileLength,
-            videoDuration = videoDuration,
-        )
-    }
+internal fun SearchDanmakuRequest.toFetchRequest(): DanmakuFetchRequest {
+    return DanmakuFetchRequest(
+        subjectId = subjectInfo.subjectId,
+        subjectPrimaryName = subjectInfo.displayName,
+        subjectNames = subjectInfo.allNames,
+        subjectPublishDate = subjectInfo.airDate,
+        episodeId = episodeInfo.episodeId,
+        episodeSort = episodeInfo.sort,
+        episodeEp = episodeInfo.ep,
+        episodeName = episodeInfo.displayName,
+        episodeNames = episodeInfo.allNames,
+        filename = filename,
+        fileHash = fileHash,
+        fileSize = fileLength,
+        videoDuration = videoDuration,
+        splitSeason = SplitSeasonDanmakuMatcher.create(
+            splitSeason,
+            subjectInfo.allNames,
+            episodeInfo.sort,
+            episodeInfo.ep,
+        ),
+    )
 }
 

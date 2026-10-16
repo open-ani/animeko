@@ -34,6 +34,9 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import me.him188.ani.app.domain.foundation.WebSourceIdentityFeatureHandler
+import me.him188.ani.app.domain.media.resolver.WebResource
+import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
 import me.him188.ani.app.domain.mediasource.web.BlockReason
 import me.him188.ani.app.domain.mediasource.web.LoadedPage
 import me.him188.ani.app.domain.mediasource.web.PageEvaluator
@@ -70,6 +73,7 @@ class WebSessionManagerTest {
 
     private val searchUrl = "https://example.com/search/?wd=frieren"
     private val expectation get() = PageExpectation.SearchResults(searchConfig)
+    private val mobileExpectation get() = PageExpectation.SearchResults(searchConfig.copy(userAgent = MOBILE_UA))
 
     private val parseableHtml = """
         <html><body>
@@ -104,7 +108,7 @@ class WebSessionManagerTest {
         ) {
             expectSuccess = true
             install(HttpCookies)
-        }.asScopedHttpClient()
+        }.also { WebSourceIdentityFeatureHandler.applyToClient(it, identityRegistry) }.asScopedHttpClient()
 
         /**
          * 手动时钟. 不能用 `testScheduler.currentTime`: runTestWithMainDispatcher 在测试协程等待真实线程
@@ -200,7 +204,7 @@ class WebSessionManagerTest {
         }
     }
 
-    private fun solveRequest() = SolveRequest(
+    private fun solveRequest(expectation: PageExpectation<*> = this.expectation) = SolveRequest(
         mediaSourceId = "test-source",
         pageUrl = searchUrl,
         kind = WebCaptchaKind.Cloudflare,
@@ -359,6 +363,88 @@ class WebSessionManagerTest {
         assertTrue(browser.closed)
     }
 
+    // 数据源的 UA 全程一致: HTTP 请求、验证码浏览器, 以及 solve 后同步给 HTTP 侧的身份
+    @Test
+    fun `source user agent is used by http requests and the captcha browser`() = runTestExt {
+        val requestUserAgents = mutableListOf<String?>()
+        val fixture = Fixture(this) { request ->
+            requestUserAgents += request.headers[HttpHeaders.UserAgent]
+            challengeHtml to HttpStatusCode.Forbidden
+        }
+
+        assertIs<PageVerdict.Blocked>(fixture.manager.fetchPage(searchUrl, mobileExpectation))
+        assertEquals(listOf<String?>(MOBILE_UA), requestUserAgents)
+
+        val result = async { fixture.manager.solve(solveRequest(mobileExpectation), interactive = true) }
+        fixture.manager.interactiveUi.first { it != null }
+        val browser = fixture.factory.created.single()
+        assertEquals(MOBILE_UA, browser.userAgent)
+        browser.script(finalUrl = searchUrl, html = parseableHtml)
+        assertEquals(SolveOutcome.Solved, result.await())
+        assertEquals(MOBILE_UA, fixture.identityRegistry.userAgentFor("example.com"))
+    }
+
+    // 暖会话只给 UA 相同的请求复用: 播放页嗅探与直连被挡后的浏览器重载
+    @Test
+    fun `warm session is reused only with the same user agent`() = runTestExt {
+        val fixture = Fixture(this) { _ -> challengeHtml to HttpStatusCode.Forbidden }
+
+        val result = async { fixture.manager.solve(solveRequest(mobileExpectation), interactive = true) }
+        fixture.manager.interactiveUi.first { it != null }
+        val browser = fixture.factory.created.single()
+        browser.script(finalUrl = searchUrl, html = parseableHtml)
+        assertEquals(SolveOutcome.Solved, result.await())
+
+        browser.navigations.clear()
+        val playUrl = "https://example.com/play/1.html"
+        val videoUrl = "https://cdn.example.com/1.m3u8"
+        browser.resourcesOnNavigate = { url -> if (url == playUrl) listOf(videoUrl) else emptyList() }
+        val resourceMatcher = { url: String ->
+            if (url == videoUrl) WebViewVideoExtractor.Instruction.FoundResource else WebViewVideoExtractor.Instruction.Continue
+        }
+
+        assertEquals(
+            WebResource(videoUrl),
+            fixture.manager.extractVideoResource(
+                playUrl, userAgent = MOBILE_UA, timeoutMillis = 1_000, resourceMatcher = resourceMatcher,
+            ),
+        )
+        assertNull(
+            fixture.manager.extractVideoResource(
+                playUrl, userAgent = null, timeoutMillis = 1_000, resourceMatcher = resourceMatcher,
+            ),
+        )
+        assertEquals(listOf(playUrl), browser.navigations)
+
+        browser.navigations.clear()
+        assertIs<PageVerdict.Blocked>(fixture.manager.fetchPage(searchUrl, expectation))
+        assertEquals(emptyList(), browser.navigations)
+        assertIs<PageVerdict.Ok<*>>(fixture.manager.fetchPage(searchUrl, mobileExpectation))
+        assertEquals(listOf(searchUrl), browser.navigations)
+    }
+
+    // 同一 host 的 cookie 只能绑定一个 UA: 以另一个 UA 解验证码时, 旧会话作废
+    @Test
+    fun `solve with another user agent replaces the warm session`() = runTestExt {
+        val fixture = Fixture(this) { _ -> challengeHtml to HttpStatusCode.Forbidden }
+
+        val result1 = async { fixture.manager.solve(solveRequest(), interactive = true) }
+        fixture.manager.interactiveUi.first { it != null }
+        val first = fixture.factory.created.single()
+        first.script(finalUrl = searchUrl, html = parseableHtml)
+        assertEquals(SolveOutcome.Solved, result1.await())
+
+        val result2 = async { fixture.manager.solve(solveRequest(mobileExpectation), interactive = true) }
+        fixture.manager.interactiveUi.first { it != null }
+        assertEquals(2, fixture.factory.createCount)
+        assertTrue(first.closed)
+        val second = fixture.factory.created.last()
+        assertEquals(MOBILE_UA, second.userAgent)
+        second.script(finalUrl = searchUrl, html = parseableHtml)
+        assertEquals(SolveOutcome.Solved, result2.await())
+        assertEquals(MOBILE_UA, fixture.identityRegistry.userAgentFor("example.com"))
+    }
+
     // 直连正常时不碰浏览器
     @Test
     fun `direct http ok does not touch browser`() = runTestExt {
@@ -457,19 +543,23 @@ class WebSessionManagerTest {
     }
 }
 
+private const val MOBILE_UA = "MobileUA/1.0"
+
 private class FakeCaptchaBrowserFactory : CaptchaBrowserFactory {
     val created = mutableListOf<FakeCaptchaBrowser>()
     val createCount get() = created.size
 
     override val isSupported: Boolean get() = true
 
-    override suspend fun create(): CaptchaBrowser {
-        return FakeCaptchaBrowser().also { created.add(it) }
+    override suspend fun create(userAgent: String?): CaptchaBrowser {
+        return FakeCaptchaBrowser(userAgent).also { created.add(it) }
     }
 }
 
-private class FakeCaptchaBrowser : CaptchaBrowser {
-    override val userAgent: String get() = "FakeBrowserUA/1.0"
+private class FakeCaptchaBrowser(
+    private val configuredUserAgent: String?,
+) : CaptchaBrowser {
+    override val userAgent: String get() = configuredUserAgent ?: "FakeBrowserUA/1.0"
 
     private val _pageLoads = MutableSharedFlow<LoadedPage>(
         extraBufferCapacity = 16,
@@ -496,7 +586,16 @@ private class FakeCaptchaBrowser : CaptchaBrowser {
         _pageLoads.tryEmit(page)
     }
 
+    val navigations = mutableListOf<String>()
+
+    /** [navigate] 到某个 URL 时, 依次交给资源拦截器的资源请求. */
+    var resourcesOnNavigate: (url: String) -> List<String> = { emptyList() }
+
+    private var resourceInterceptor: ((url: String) -> InterceptDecision)? = null
+
     override suspend fun navigate(url: String) {
+        navigations += url
+        resourcesOnNavigate(url).forEach { resourceInterceptor?.invoke(it) }
     }
 
     override suspend fun currentPage(): LoadedPage? = current
@@ -507,6 +606,7 @@ private class FakeCaptchaBrowser : CaptchaBrowser {
     override suspend fun collectCookies(urls: List<String>): List<BrowserCookie> = cookies
 
     override fun setResourceInterceptor(handler: ((url: String) -> InterceptDecision)?) {
+        resourceInterceptor = handler
     }
 
     @Composable

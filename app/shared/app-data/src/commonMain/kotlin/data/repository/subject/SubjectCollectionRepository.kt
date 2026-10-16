@@ -54,6 +54,7 @@ import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
@@ -89,6 +90,7 @@ import me.him188.ani.client.models.AniEpisodeType
 import me.him188.ani.client.models.AniFavourite
 import me.him188.ani.client.models.AniSelfRatingInfo
 import me.him188.ani.client.models.AniSubjectCollection
+import me.him188.ani.client.models.AniSplitSeason
 import me.him188.ani.client.models.AniSubjectRelations
 import me.him188.ani.client.models.AniTag
 import me.him188.ani.client.models.AniTmdbImage
@@ -98,7 +100,6 @@ import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.combine
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.logging.debug
@@ -456,7 +457,7 @@ class SubjectCollectionRepositoryImpl(
 
         // 执行网络请求查询好需要的 subject 和 episodes
         val items = subjectService.getSubjectCollections(
-            type = type?.toSubjectCollectionType(),
+            type = type?.toAniSubjectCollectionType(),
             offset = offset,
             limit = limit,
         )
@@ -705,7 +706,7 @@ data class CollectionsFilterQuery(
     }
 }
 
-private fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
+internal fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
     return SubjectInfo(
         subjectId = subjectId,
         subjectType = SubjectType.ANIME,
@@ -868,8 +869,25 @@ fun AniSubjectRelations.toSubjectRelationsEntity(): SubjectRelations {
         seriesMainSubjectNames,
         sequelSubjects,
         sequelSubjectNames,
+        splitSeason = splitSeason?.toSplitSeason(),
     )
 }
+
+private fun AniSplitSeason.toSplitSeason(): SplitSeason = SplitSeason(
+    parts = parts.map { part ->
+        SplitSeason.Part(
+            subjectId = part.subjectId,
+            names = part.names,
+            markers = part.markers,
+            firstSort = part.firstSort,
+            episodeCount = part.episodeCount,
+            inlineSpecialCount = part.inlineSpecialCount,
+        )
+    },
+    selfIndex = selfIndex,
+    baseNames = baseNames,
+    otherSeasonNumbers = otherSeasonNumbers,
+)
 
 fun AniTag.toTag(): Tag = Tag(
     name = name,

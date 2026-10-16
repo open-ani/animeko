@@ -42,6 +42,7 @@ import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
@@ -212,6 +213,7 @@ class UserCollectionsViewModelTest {
         override val analyticsSettings: Settings<AnalyticsSettings> by lazy { error("not implemented") }
         override val debugSettings: Settings<DebugSettings> by lazy { error("not implemented") }
         override val watchTogetherSettings: Settings<WatchTogetherSettings> by lazy { error("not implemented") }
+        override val notificationSettings: Settings<NotificationSettings> by lazy { error("not implemented") }
     }
 
     private object UnusedSubjectsApi : ApiInvoker<SubjectsAniApi> {

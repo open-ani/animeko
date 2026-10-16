@@ -37,7 +37,7 @@ data class HlsPlaybackOptions(
 
 interface HlsPlaybackPreparer {
     /**
-     * @param startPositionHintMillis 播放预计从哪里开始 (续播时为记忆的进度), 在去除广告后的时间轴上.
+     * @param startPositionHintMillis 播放器的起播位置 (续播时为记忆的进度), 在去除广告后的时间轴上.
      * 只用于决定起播前预先下载哪个分片, 不影响播放列表; 给错了只会白下载一个分片.
      * 它是单次播放的输入, 不是用户开关, 所以不放进 [HlsPlaybackOptions].
      */

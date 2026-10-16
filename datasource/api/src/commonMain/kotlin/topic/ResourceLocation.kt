@@ -62,7 +62,16 @@ sealed class ResourceLocation {
     }
 
     /**
-     * 需要 WebView 去里面解析视频链接
+     * 站点上的播放页面, 播放前需要解析出视频链接.
+     *
+     * 解析方式由 [apiParameters] 决定:
+     * - `null`: 用 WebView 加载 [uri], 拦截页面发出的请求, 由 `WebVideoMatcher` 匹配出视频链接;
+     * - 非 `null`: 不打开页面. 站点通过 API 按需签发有时效的视频地址 (例如几十分钟后过期), 所以查询资源时不解析,
+     *   每次播放或开始下载前由查询出该资源的数据源 (实现 [me.him188.ani.datasources.api.matcher.ApiVideoResolver])
+     *   向站点重新获取, [apiParameters] 是它需要的参数, 含义由数据源自己定义.
+     *
+     * 两种方式用同一个类而不是两个子类: 这个值会随下载记录持久化, 旧版本客户端读到不认识的子类会把整个下载列表当作损坏数据丢弃;
+     * 多一个它不认识的字段则只是按 WebView 方式处理这一条.
      */
     @Serializable
     data class WebVideo(
@@ -70,12 +79,18 @@ sealed class ResourceLocation {
          * Web 页面地址
          */
         override val uri: String,
+        val apiParameters: Map<String, String>? = null,
     ) : ResourceLocation() {
         init {
             require(uri.startsWith("https://") || uri.startsWith("http://")) {
                 "WebVideo uri must start with 'http://' or 'https://', but was $uri"
             }
         }
+
+        /**
+         * 是否由数据源通过 API 解析, 而不是用 WebView 加载页面.
+         */
+        val isResolvedByApi: Boolean get() = apiParameters != null
     }
 
     /**

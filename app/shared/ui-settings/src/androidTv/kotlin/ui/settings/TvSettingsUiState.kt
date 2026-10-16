@@ -45,7 +45,10 @@ data class TvSettingsSource(
     val subscription: String?,
 )
 
-data class TvSettingsSubscription(val id: String, val url: String, val enabled: Boolean)
+/**
+ * @param name 订阅作者提供的名称, 没有时为订阅链接
+ */
+data class TvSettingsSubscription(val id: String, val name: String, val enabled: Boolean)
 
 data class TvSettingsLibrary(
     val id: String,

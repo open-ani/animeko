@@ -21,6 +21,7 @@ import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
+import me.him188.ani.app.ui.settings.mediasource.editor.MediaSourceEditorTestTags
 import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
 import me.him188.ani.datasources.api.source.MediaSourceTier
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -58,13 +59,13 @@ class SelectorConfigPaneTest {
                 SelectorConfigurationPane(state)
             }
         }
-        onNodeWithTag(SelectorConfigPaneTestTags.AUTO_MATCH_ENABLED).assertDoesNotExist()
+        onNodeWithTag(MediaSourceEditorTestTags.AUTO_MATCH_ENABLED).assertDoesNotExist()
 
-        onNodeWithTag(SelectorConfigPaneTestTags.AUTO_MATCH_HEADER).performScrollTo().performClick()
+        onNodeWithTag(MediaSourceEditorTestTags.AUTO_MATCH_HEADER).performScrollTo().performClick()
         waitForIdle()
 
-        onNodeWithTag(SelectorConfigPaneTestTags.AUTO_MATCH_ENABLED).performScrollTo().assertExists()
-        onNodeWithTag(SelectorConfigPaneTestTags.TIER).performScrollTo().assertExists()
+        onNodeWithTag(MediaSourceEditorTestTags.AUTO_MATCH_ENABLED).performScrollTo().assertExists()
+        onNodeWithTag(MediaSourceEditorTestTags.TIER).performScrollTo().assertExists()
     }
 
     @Test
@@ -75,14 +76,14 @@ class SelectorConfigPaneTest {
                 SelectorConfigurationPane(state)
             }
         }
-        onNodeWithTag(SelectorConfigPaneTestTags.AUTO_MATCH_HEADER).performScrollTo().performClick()
+        onNodeWithTag(MediaSourceEditorTestTags.AUTO_MATCH_HEADER).performScrollTo().performClick()
         waitForIdle()
         assertTrue(container.value!!.searchConfig.autoMatch.enabled)
 
-        onNodeWithTag(SelectorConfigPaneTestTags.AUTO_MATCH_ENABLED).performScrollTo().performClick()
+        onNodeWithTag(MediaSourceEditorTestTags.AUTO_MATCH_ENABLED).performScrollTo().performClick()
         waitForIdle()
 
-        onNodeWithTag(SelectorConfigPaneTestTags.AUTO_MATCH_ENABLED).assertIsOff()
+        onNodeWithTag(MediaSourceEditorTestTags.AUTO_MATCH_ENABLED).assertIsOff()
         assertFalse(container.value!!.searchConfig.autoMatch.enabled)
     }
 
@@ -94,11 +95,11 @@ class SelectorConfigPaneTest {
                 SelectorConfigurationPane(state)
             }
         }
-        onNodeWithTag(SelectorConfigPaneTestTags.AUTO_MATCH_HEADER).performScrollTo().performClick()
+        onNodeWithTag(MediaSourceEditorTestTags.AUTO_MATCH_HEADER).performScrollTo().performClick()
         waitForIdle()
 
-        onNodeWithTag(SelectorConfigPaneTestTags.TIER).performScrollTo().performTextClearance()
-        onNodeWithTag(SelectorConfigPaneTestTags.TIER).performTextInput("0")
+        onNodeWithTag(MediaSourceEditorTestTags.TIER).performScrollTo().performTextClearance()
+        onNodeWithTag(MediaSourceEditorTestTags.TIER).performTextInput("0")
         waitForIdle()
 
         assertEquals(MediaSourceTier(0u), container.value!!.tier)

@@ -141,6 +141,7 @@ internal fun TvSubjectDetailsPanels(
         return
     }
     if (panel.kind == TvDetailsPanelKind.Rating && state.loggedIn == true) {
+        LaunchedEffect(presentation.generation) { onIntent(TvSubjectDetailsIntent.EnterRating) }
         val operation = state.operation.takeIf { it.requestId == presentation.generation }
         TvSubjectRatingPanel(initialTvRatingScore(details.selfRating.score, details.info.ratingInfo.score),
             backdrop, anchorBounds ?: return, anchorButton,
@@ -177,7 +178,7 @@ internal fun TvSubjectDetailsPanels(
             entries += TvDetailsPanelEntry("subject:${item.subjectId}") { modifier ->
                 items[index]?.let {
                     TvOptionRow(it.displayName, modifier = modifier) {
-                        onIntent(TvSubjectDetailsIntent.OpenRelatedSubject(it.subjectId))
+                        onIntent(TvSubjectDetailsIntent.OpenTagSubject(it.subjectId))
                     }
                 }
             }

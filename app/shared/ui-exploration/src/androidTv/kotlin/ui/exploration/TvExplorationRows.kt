@@ -220,7 +220,7 @@ internal fun TvExplorationRowItem(
                         TvLandscapeCard(
                             imageUrl = media.backdropCache[subject.subjectId] ?: subject.imageUrl,
                             title = subject.title, width = null,
-                            onClick = { onIntent(TvExplorationIntent.OpenSubject(subject)) },
+                            onClick = { onIntent(TvExplorationIntent.OpenSubject(subject, row.area)) },
                             onFocused = { onCardFocused(row, subject) },
                             memoryId = "exploration-rec-${subject.subjectId}",
                             modifier = Modifier.weight(1f).testTag("tv-exploration-rec-${subject.subjectId}")
@@ -286,9 +286,9 @@ internal fun TvExplorationRowItem(
                         onClick = {
                             val episodeId = card.episodeId
                             if (episodeId != null) onIntent(TvExplorationIntent.ContinueWatching(subject, episodeId))
-                            else onIntent(TvExplorationIntent.OpenSubject(subject))
+                            else onIntent(TvExplorationIntent.OpenSubject(subject, row.area))
                         },
-                        onLongClick = { onIntent(TvExplorationIntent.OpenSubject(subject)) },
+                        onLongClick = { onIntent(TvExplorationIntent.OpenSubject(subject, row.area)) },
                         onFocused = { onCardFocused(row, subject) },
                         modifier = Modifier.testTag("tv-exploration-${row.key}-${subject.subjectId}")
                             .tvFocusAnchor(focus, TvExplorationCardKey(row.area, subject.subjectId))

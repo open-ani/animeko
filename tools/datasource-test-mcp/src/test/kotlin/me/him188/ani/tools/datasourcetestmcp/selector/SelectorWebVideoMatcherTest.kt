@@ -17,10 +17,11 @@ import me.him188.ani.datasources.api.matcher.WebViewConfig
 import me.him188.ani.utils.xml.Document
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /**
- * [SelectorWebVideoMatcher.patchConfig] 的 cookie 合并必须与 App 内
- * `SelectorMediaSource.matcher` 一致: 按 cookie 名去重, 后面的列表覆盖前面的.
+ * [SelectorWebVideoMatcher.patchConfig] 必须与 App 内 `SelectorMediaSource.matcher` 一致:
+ * cookie 按名去重, 后面的列表覆盖前面的; 配置了 User-Agent 时覆盖上游的.
  */
 class SelectorWebVideoMatcherTest {
     private val engine = object : SelectorMediaSourceEngine() {
@@ -31,9 +32,10 @@ class SelectorWebVideoMatcherTest {
             throw UnsupportedOperationException()
     }
 
-    private fun matcher(cookies: String) = SelectorWebVideoMatcher(
+    private fun matcher(cookies: String = "", userAgent: String? = null) = SelectorWebVideoMatcher(
         engine,
         SelectorSearchConfig.MatchVideoConfig(cookies = cookies),
+        userAgent,
     )
 
     @Test
@@ -64,5 +66,17 @@ class SelectorWebVideoMatcherTest {
             WebViewConfig(cookies = listOf(" quality=720 ")),
         )
         assertEquals(listOf("quality=1080"), result.cookies)
+    }
+
+    @Test
+    fun `configured user agent overrides upstream user agent`() {
+        val result = matcher(userAgent = "Mobile UA").patchConfig(WebViewConfig(userAgent = "Upstream UA"))
+        assertEquals("Mobile UA", result.userAgent)
+    }
+
+    @Test
+    fun `absent user agent keeps upstream user agent`() {
+        assertEquals("Upstream UA", matcher().patchConfig(WebViewConfig(userAgent = "Upstream UA")).userAgent)
+        assertNull(matcher().patchConfig(WebViewConfig.Empty).userAgent)
     }
 }

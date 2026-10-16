@@ -13,6 +13,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
+import me.him188.ani.app.data.models.preference.HlsAdFilteringMode
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
@@ -77,7 +78,12 @@ import me.him188.ani.app.ui.lang.settings_player_enable_regex_filter
 import me.him188.ani.app.ui.lang.settings_player_exoplayer_preinit_effect_graph
 import me.him188.ani.app.ui.lang.settings_player_exoplayer_preinit_effect_graph_desc
 import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter
-import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_description
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_all
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_all_description
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_off
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_off_description
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_smart
+import me.him188.ani.app.ui.lang.settings_player_hls_ad_filter_smart_description
 import me.him188.ani.app.ui.lang.settings_player_frame_preview
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_always_show
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_auto_hide
@@ -293,10 +299,20 @@ private fun TvSettingsItems.playerDanmaku(displayModes: List<TvSettingsDisplayMo
 @Composable
 private fun TvSettingsItems.playerAdvanced() {
     val video = state.video
-    toggle(
-        "hls-filter", stringResource(Lang.settings_player_hls_ad_filter), video.enableHlsAdFiltering,
-        stringResource(Lang.settings_player_hls_ad_filter_description),
-    ) { onIntent(TvSettingsIntent.Video { copy(enableHlsAdFiltering = it) }) }
+    choice(
+        "hls-filter", stringResource(Lang.settings_player_hls_ad_filter), video.effectiveHlsAdFilteringMode,
+        HlsAdFilteringMode.entries,
+        listOf(
+            stringResource(Lang.settings_player_hls_ad_filter_all),
+            stringResource(Lang.settings_player_hls_ad_filter_smart),
+            stringResource(Lang.settings_player_hls_ad_filter_off),
+        ),
+        when (video.effectiveHlsAdFilteringMode) {
+            HlsAdFilteringMode.ALL -> stringResource(Lang.settings_player_hls_ad_filter_all_description)
+            HlsAdFilteringMode.SMART -> stringResource(Lang.settings_player_hls_ad_filter_smart_description)
+            HlsAdFilteringMode.OFF -> stringResource(Lang.settings_player_hls_ad_filter_off_description)
+        },
+    ) { value -> onIntent(TvSettingsIntent.Video { copy(hlsAdFilteringMode = value) }) }
     toggle(
         "preinit-effects", stringResource(Lang.settings_player_exoplayer_preinit_effect_graph), state.kernel.exoPlayerInitEffectGraphInAdvance,
         stringResource(Lang.settings_player_exoplayer_preinit_effect_graph_desc),
@@ -433,7 +449,7 @@ internal fun TvSettingsItems.sources(openSubscriptions: () -> Unit) {
 internal fun TvSettingsItems.subscriptions() {
     state.subscriptions.forEach { subscription ->
         toggle(
-            "subscription-${subscription.id}", subscription.url.removePrefix("https://").removePrefix("http://"),
+            "subscription-${subscription.id}", subscription.name,
             subscription.enabled,
             stringResource(Lang.tv_settings_subscription_sources_count, state.sources.count { it.subscription == subscription.id }),
         ) { onIntent(TvSettingsIntent.SubscriptionEnabled(subscription.id, it)) }
