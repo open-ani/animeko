@@ -716,7 +716,7 @@ fun PlayerGestureHost(
                 combinedClickable(
                     remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = remember(family, inputSourceState) {
+                    onClick = remember(family, playerFocusState, inputSourceState) {
                         {
                             // 按本次事件的指针类型解析, 组合期算好的 family 会慢一拍
                             val tapFamily = gestureFamilyOf(inputSourceState.latest, family)
@@ -726,9 +726,11 @@ fun PlayerGestureHost(
                             if (tapFamily.clickToToggleController) {
                                 controllerState.toggleFullVisible()
                             }
+                            // 触摸点击不会让 clickable 获得焦点; 点击视频时统一由播放器取得焦点
+                            playerFocusState.requester.requestFocus()
                         }
                     },
-                    onDoubleClick = remember(family, fullscreenState, inputSourceState) {
+                    onDoubleClick = remember(family, fullscreenState, playerFocusState, inputSourceState) {
                         {
                             val tapFamily = gestureFamilyOf(inputSourceState.latest, family)
                             if (tapFamily.doubleClickToFullscreen) {
@@ -737,6 +739,7 @@ fun PlayerGestureHost(
                             if (tapFamily.doubleClickToPauseResume) {
                                 onTogglePauseResumeState()
                             }
+                            playerFocusState.requester.requestFocus()
                         }
                     },
                 )
