@@ -292,7 +292,12 @@ private fun KoinApplication.otherModules(
             sessionManager = get(),
         )
     }
-    single<EpisodeService> { EpisodeServiceImpl(aniApiProvider.subjectApi, aniApiProvider.episodesApi) }
+    single<EpisodeService> {
+        EpisodeServiceImpl(
+            subjectApi = aniApiProvider.subjectApi,
+            bangumiClient = get<HttpClientProvider>().get(ScopedHttpClientUserAgent.NONE),
+        )
+    }
     single { EpisodeSubjectRepository(aniApiProvider.episodesApi) }
 
     single<BangumiRelatedPeopleService> { BangumiRelatedPeopleService(get<AniApiProvider>().subjectApi) }
