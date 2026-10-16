@@ -4,7 +4,7 @@
 
 `pr-images.yml` 直接维护，拒绝 PR 在资源目录以外新增图片和视频，防止验证截图进入 git 历史。
 
-`datasource-test-mcp.yml` 直接维护，构建自带 JBR 的 `tools/datasource-test-mcp` 发行包，不依赖仓库环境即可运行，用法见该工具的 README。
+`datasource-test-mcp.yml` 直接维护，构建自带 JBR 的 `tools/datasource-test-mcp` Windows 发行包，不依赖仓库环境即可运行，用法见该工具的 README。
 
 `codex-agent.yml` 直接维护。新 issue 的分类器会读取组织级 `Priority` 字段的选项，校验模型输出后填写空缺的优先级，保留已有值。P0–P3 labels 已过时，不参与分类。
 

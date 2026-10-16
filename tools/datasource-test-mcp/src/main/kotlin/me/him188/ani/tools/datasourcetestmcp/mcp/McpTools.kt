@@ -315,10 +315,7 @@ fun buildToolRegistrations(
                     "playTimeoutMillis",
                     integerSchema("Timeout for entering/finishing playback in milliseconds, default 60000"),
                 )
-                put(
-                    "showWindow",
-                    booleanSchema("Show a Compose window with the live playback, default true; always shown on Linux"),
-                )
+                put("showWindow", booleanSchema("Show a Compose window with the live playback, default true"))
                 put(
                     "detectAds",
                     booleanSchema(

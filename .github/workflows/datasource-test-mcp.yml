@@ -5,8 +5,9 @@
 #
 #  https://github.com/open-ani/ani/blob/main/LICENSE
 
-# 构建 tools/datasource-test-mcp 的发行包, 内置带 JCEF 的 JBR, 解压即可运行, 不依赖仓库与构建环境.
+# 构建 tools/datasource-test-mcp 的 Windows 发行包, 内置带 JCEF 的 JBR, 解压即可运行, 不依赖仓库与构建环境.
 # 产物作为 artifact 上传, 下载与使用见 tools/datasource-test-mcp/README.md.
+# 只构建 Windows: Linux 上 mpv 的渲染上下文必须加入播放窗口的 GLX 环境, 没有桌面时无法实播.
 name: Build datasource-test-mcp
 
 on:
@@ -30,24 +31,15 @@ permissions:
 
 jobs:
   build:
-    name: Build (${{ matrix.triple }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: ubuntu-24.04
-            triple: linux-x64
-            jbr: jbr_jcef-21.0.11-linux-x64-b1163.116.tar.gz
-          - runner: windows-2022
-            triple: windows-x64
-            jbr: jbr_jcef-21.0.11-windows-x64-b1163.116.tar.gz
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 90
+    name: Build (windows-x64)
+    runs-on: windows-2022
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
     env:
       DIST: tools/datasource-test-mcp/build/install/datasource-test-mcp
+      JBR: jbr_jcef-21.0.11-windows-x64-b1163.116.tar.gz
     steps:
       - uses: actions/checkout@v4
 
@@ -57,8 +49,8 @@ jobs:
         run: python .github/workflows/download_jbr.py
         env:
           RUNNER_TOOL_CACHE: ${{ runner.tool_cache }}
-          JBR_URL: https://cache-redirector.jetbrains.com/intellij-jbr/${{ matrix.jbr }}
-          JBR_CHECKSUM_URL: https://cache-redirector.jetbrains.com/intellij-jbr/${{ matrix.jbr }}.checksum
+          JBR_URL: https://cache-redirector.jetbrains.com/intellij-jbr/${{ env.JBR }}
+          JBR_CHECKSUM_URL: https://cache-redirector.jetbrains.com/intellij-jbr/${{ env.JBR }}.checksum
 
       - name: Setup JBR
         uses: gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d
@@ -85,7 +77,6 @@ jobs:
       - name: Bundle JBR
         env:
           JBR_ARCHIVE: ${{ steps.jbr.outputs.jbrLocation }}
-          JBR_NAME: ${{ matrix.jbr }}
         run: |
           mkdir -p "$DIST/jbr"
           tar -xzf "$JBR_ARCHIVE" --force-local --strip-components=1 -C "$DIST/jbr"
@@ -93,42 +84,16 @@ jobs:
           commit: $GITHUB_SHA
           ref: $GITHUB_REF_NAME
           run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
-          jbr: $JBR_NAME
+          jbr: $JBR
           EOF
 
       - name: Smoke test
-        run: |
-          if [ "$RUNNER_OS" = Linux ]; then
-            # Xvfb 与 Mesa 软件 OpenGL, 以及 mpv 原生库依赖的系统库, 与 tools/datasource-test-mcp/README.md 一致
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 libegl-mesa0 \
-              libpulse0 libasound2t64 libgl1 libegl1 libvulkan1 libdrm2 libfontconfig1 libx11-6 libx11-xcb1 libxcb1
-            sudo apt-get install -y --no-install-recommends mesa-utils && xvfb-run -a glxinfo -B || true
-            xvfb-run -a python3 "$DIST/smoke-test.py"
-          else
-            python "$DIST/smoke-test.py"
-          fi
+        run: python "$DIST/smoke-test.py"
 
-      # tar 保留可执行权限 (启动脚本, jbr/bin, CEF helper); artifact 的 zip 会丢掉它们
-      - name: Archive (Linux)
-        if: runner.os == 'Linux'
-        run: tar -czf "datasource-test-mcp-${{ matrix.triple }}.tar.gz" -C "$(dirname "$DIST")" datasource-test-mcp
-
-      - name: Upload (Linux)
-        if: runner.os == 'Linux'
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: datasource-test-mcp-${{ matrix.triple }}
-          path: datasource-test-mcp-${{ matrix.triple }}.tar.gz
-          compression-level: 0
-          retention-days: 30
-          if-no-files-found: error
-
-      - name: Upload (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: datasource-test-mcp-${{ matrix.triple }}
+          name: datasource-test-mcp-windows-x64
           path: ${{ env.DIST }}
           retention-days: 30
           if-no-files-found: error

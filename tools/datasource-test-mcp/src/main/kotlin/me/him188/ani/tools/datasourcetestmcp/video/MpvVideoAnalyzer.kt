@@ -33,8 +33,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import me.him188.ani.utils.platform.currentPlatformDesktop
-import me.him188.ani.utils.platform.isLinux
 import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.features.Screenshots
 import org.openani.mediamp.mpv.MPVHandle
@@ -51,7 +49,7 @@ import kotlin.coroutines.coroutineContext
  * 验证可播放性并读取真实媒体信息 (分辨率/时长/编码/帧率/码率).
  *
  * 默认会弹出一个 Compose 测试窗口实时显示播放画面 (showWindow=false 可关, 此时使用无窗口渲染上下文;
- * Linux 不支持无窗口渲染, 总是打开窗口).
+ * Linux 上 mpv 没有无窗口渲染, 不开窗口时无法播放).
  *
  * 原生库来源 (dev): `-Dani.mpv.native.dir=<dir>` 或默认的 mediamp worktree dev-native 构建.
  */
@@ -97,9 +95,7 @@ class MpvVideoAnalyzer {
         // 测试只关心画面与播放时钟. 无头环境的音频设备可能接收数据却从不消费, 让播放卡在首帧, 所以不输出音频.
         val player = MpvMediampPlayer(Any(), coroutineContext, configureOptions = { it.option("ao", "null") })
         val handle = player.impl as MPVHandle
-        // Linux 上 mpv 的渲染上下文必须加入播放窗口 (Skiko) 的 GLX share group, 没有无窗口渲染, 总是打开窗口
-        val showWindow = input.showWindow || currentPlatformDesktop().isLinux()
-        val window = if (showWindow) createWindow(player, input.videoUrl) else null
+        val window = if (input.showWindow) createWindow(player, input.videoUrl) else null
         if (window == null && !createHeadlessRenderContext(player)) {
             errors += "无法创建无窗口渲染上下文, 打开媒体会一直等待"
         }

@@ -165,9 +165,12 @@ The `.agents/skills/datasource-test` skill looks for this MCP under the name `an
 
 ## Prebuilt Distribution
 
-`.github/workflows/datasource-test-mcp.yml` builds Linux x64 and Windows x64 distributions on every push to
-`main`, which run without a checkout or build environment of this repository. Each one bundles a JBR with JCEF
-under `jbr/`, so the machine needs no Java installation; `build-info.txt` records the commit.
+`.github/workflows/datasource-test-mcp.yml` builds a Windows x64 distribution on every push to `main`, which
+runs without a checkout or build environment of this repository. It bundles a JBR with JCEF under `jbr/`, so
+the machine needs no Java installation; `build-info.txt` records the commit.
+
+There is no Linux distribution: on Linux, mpv's render context has to join the GLX context of a playback
+window, so `probe_video` cannot play anything without a desktop.
 
 Artifacts are kept for 30 days. Downloading them requires a GitHub login (`gh auth login`), even though the
 repository is public:
@@ -175,26 +178,11 @@ repository is public:
 ```bash
 run=$(gh run list -R open-ani/animeko --workflow datasource-test-mcp.yml --branch main --status success \
   --limit 1 --json databaseId -q '.[0].databaseId')
-# Linux: the artifact holds a tarball, which keeps the executable bits
-gh run download "$run" -R open-ani/animeko -n datasource-test-mcp-linux-x64
-tar -xzf datasource-test-mcp-linux-x64.tar.gz
-# Windows: the artifact holds the distribution directory itself
 gh run download "$run" -R open-ani/animeko -n datasource-test-mcp-windows-x64 -D datasource-test-mcp
 ```
 
-Run `smoke-test.py` in the distribution directory to check the machine. It starts the server, plays a video
-with mpv and intercepts the video URL of a play page with CEF, all against a local HTTP server.
-
-On Linux, mpv has no windowless rendering: its render context has to join the OpenGL context of the playback
-window, so `probe_video` always opens the window there. Without a desktop, run under an X server with OpenGL,
-e.g. Xvfb with Mesa: `xvfb-run -a python3 smoke-test.py`. The bundled mpv also needs `libpulse.so.0`,
-`libasound.so.2`, `libGL.so.1`, `libEGL.so.1`, `libvulkan.so.1`, `libdrm.so.2`, `libfontconfig.so.1`,
-`libX11.so.6`, `libX11-xcb.so.1` and `libxcb.so.1`. On Ubuntu 24.04:
-
-```bash
-sudo apt-get install xvfb libgl1-mesa-dri libglx-mesa0 libegl-mesa0 \
-  libpulse0 libasound2t64 libgl1 libegl1 libvulkan1 libdrm2 libfontconfig1 libx11-6 libx11-xcb1 libxcb1
-```
+Run `python smoke-test.py` in the distribution directory to check the machine. It starts the server, plays a
+video with mpv and intercepts the video URL of a play page with CEF, all against a local HTTP server.
 
 ## Test
 

@@ -8,8 +8,7 @@
 
 """datasource-test-mcp 发行包的冒烟测试: 服务能启动, mpv 能真实播放, CEF 能从播放页拦截视频 URL.
 
-在发行包根目录运行: python3 smoke-test.py
-Linux 没有桌面环境时 CEF 与 mpv 播放窗口需要 X11: xvfb-run -a python3 smoke-test.py
+在发行包根目录运行: python smoke-test.py
 
 只访问本机: 测试视频和播放页由脚本自带的 HTTP 服务提供, 不依赖外网.
 """
@@ -233,8 +232,6 @@ def main():
         print(f"\n服务日志 ({log_path}) 最后 100 行, 异常栈只保留前 3 帧:")
         lines = log_path.read_bytes().decode("utf-8", errors="replace").splitlines()
         print("\n".join(collapse_stack_frames(lines)[-100:]))
-        if sys.platform.startswith("linux") and not os.environ.get("DISPLAY"):
-            print("\n提示: 没有 DISPLAY. Linux 上 CEF 和 mpv 播放窗口需要 X11, 用 xvfb-run -a python3 smoke-test.py 运行")
         sys.exit(1)
     log_path.unlink(missing_ok=True)
 
