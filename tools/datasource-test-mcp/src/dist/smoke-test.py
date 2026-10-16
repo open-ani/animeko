@@ -61,9 +61,30 @@ def serve_files(files):
         def log_message(self, format, *args):
             pass
 
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    class Server(http.server.ThreadingHTTPServer):
+        def handle_error(self, request, client_address):
+            if not isinstance(sys.exc_info()[1], ConnectionError):  # 播放器断开连接不算错误
+                super().handle_error(request, client_address)
+
+    server = Server(("127.0.0.1", 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server
+
+
+def collapse_stack_frames(lines, keep=3):
+    """异常栈只保留前几帧, 免得一个深栈占满日志尾部, 挤掉异常本身."""
+    result, frames = [], 0
+    for line in lines:
+        if line.lstrip().startswith("at ") and line[:1].isspace():
+            frames += 1
+            if frames <= keep:
+                result.append(line)
+            elif frames == keep + 1:
+                result.append("\t...")
+        else:
+            frames = 0
+            result.append(line)
+    return result
 
 
 def free_port():
@@ -209,9 +230,9 @@ def main():
             http_server.shutdown()
 
     if failed:
-        print(f"\n服务日志 ({log_path}) 最后 80 行:")
+        print(f"\n服务日志 ({log_path}) 最后 100 行, 异常栈只保留前 3 帧:")
         lines = log_path.read_bytes().decode("utf-8", errors="replace").splitlines()
-        print("\n".join(lines[-80:]))
+        print("\n".join(collapse_stack_frames(lines)[-100:]))
         if sys.platform.startswith("linux") and not os.environ.get("DISPLAY"):
             print("\n提示: 没有 DISPLAY. Linux 上 CEF 和 mpv 播放窗口需要 X11, 用 xvfb-run -a python3 smoke-test.py 运行")
         sys.exit(1)
