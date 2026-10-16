@@ -33,6 +33,10 @@ import kotlin.io.path.createTempDirectory
 import kotlin.system.exitProcess
 
 interface DesktopUpdateInstaller : UpdateInstaller {
+    override fun createPackageDownloader(client: ScopedHttpClient): FileDownloader =
+        createDeltaPackageAssembler(client)?.let { DeltaPackageDownloader(it, DefaultFileDownloader(client)) }
+            ?: DefaultFileDownloader(client)
+
     override suspend fun openForManualInstallation(file: SystemPath, context: ContextMP): Boolean {
         return DesktopFileRevealer.revealFile(file)
     }
@@ -62,13 +66,13 @@ object MacOSUpdateInstaller : DesktopUpdateInstaller {
     override fun getUpdatePreparationUrls(packageUrls: List<String>): List<String> =
         packageUrls.map { it.replace(DMG_SUFFIX, ".zip") }
 
-    override fun createPackageDownloader(client: ScopedHttpClient): FileDownloader {
+    override fun createDeltaPackageAssembler(client: ScopedHttpClient): DeltaPackageAssembler? {
         val appDir = ExecutableDirectoryDetector.INSTANCE.getExecutableDirectory().parentFile
         if (appDir == null || !appDir.name.endsWith(".app", ignoreCase = true)) {
             // 开发运行时不在 .app 里, 没有可复用的安装目录.
-            return DefaultFileDownloader(client)
+            return null
         }
-        return DeltaPackageDownloader(client, installRoot = appDir)
+        return DesktopDeltaPackageAssembler(client, installRoot = appDir)
     }
 
     override fun install(file: SystemPath, context: ContextMP): InstallationResult {
@@ -429,13 +433,13 @@ object WindowsUpdateInstaller : DesktopUpdateInstaller {
     /**
      * 增量下载直接拼出解压好的目录, 更新器把它整个换进安装目录, 省掉写 zip 再解压.
      */
-    override fun createPackageDownloader(client: ScopedHttpClient): FileDownloader {
+    override fun createDeltaPackageAssembler(client: ScopedHttpClient): DeltaPackageAssembler? {
         val appDir = ExecutableDirectoryDetector.INSTANCE.getExecutableDirectory()
         if (!appDir.resolve(APP_EXECUTABLE).exists()) {
             // 开发运行时不是安装目录, 没有可复用的文件.
-            return DefaultFileDownloader(client)
+            return null
         }
-        return DeltaPackageDownloader(client, installRoot = appDir, output = PackageOutput.Directory)
+        return DesktopDeltaPackageAssembler(client, installRoot = appDir, output = PackageOutput.Directory)
     }
 
     /**

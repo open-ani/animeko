@@ -25,6 +25,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TestTimeSource
 
 class GitHubDevBuildApiTest {
     @Test
@@ -70,10 +72,10 @@ class GitHubDevBuildApiTest {
     fun `lists artifacts by name`() = runTest {
         val client = gitHubMockClient { request ->
             assertEquals("/repos/open-ani/animeko/actions/artifacts", request.url.encodedPath)
-            assertEquals("ani-macos-dmg-aarch64", request.url.parameters["name"])
-            respondJson(artifactsJson("ani-macos-dmg-aarch64"))
+            assertEquals("ani-macos-aarch64.dmg", request.url.parameters["name"])
+            respondJson(artifactsJson("ani-macos-aarch64.dmg"))
         }
-        val artifacts = GitHubDevBuildApi(client).listArtifacts(token = null, name = "ani-macos-dmg-aarch64")
+        val artifacts = GitHubDevBuildApi(client).listArtifacts(token = null, name = "ani-macos-aarch64.dmg")
         assertEquals(listOf(11L, 10L, 9L), artifacts.map { it.id })
         assertTrue(artifacts[0].expired)
         assertEquals(SHA_A, artifacts[1].workflowRun?.headSha)
@@ -119,6 +121,25 @@ class GitHubDevBuildApiTest {
     }
 
     @Test
+    fun `artifact url provider reuses the url until it is about to expire`() = runTest {
+        var resolved = 0
+        val client = gitHubMockClient { _ ->
+            resolved++
+            respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, "https://blob.example.com/a.zip?sig=$resolved"))
+        }
+        val timeSource = TestTimeSource()
+        val api = GitHubDevBuildApi(client, timeSource = timeSource)
+        val url = api.artifactDownloadUrlProvider("token", "https://api.github.com/repos/open-ani/animeko/actions/artifacts/10/zip")
+
+        assertEquals("https://blob.example.com/a.zip?sig=1", url())
+        timeSource += GitHubDevBuildApi.ARTIFACT_URL_REUSE_DURATION - 1.seconds
+        assertEquals("https://blob.example.com/a.zip?sig=1", url())
+        timeSource += 1.seconds
+        assertEquals("https://blob.example.com/a.zip?sig=2", url())
+        assertEquals(2, resolved)
+    }
+
+    @Test
     fun `downloads a file and reports the final progress`() = runTest {
         val content = ByteArray(3000) { it.toByte() }
         val client = gitHubMockClient { request ->
@@ -141,7 +162,7 @@ class GitHubDevBuildApiTest {
 
     @Test
     fun `fetches single commit, pull request, run and artifact`() = runTest {
-        val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes())
+        val client = fullGitHubMockClient("ani-macos-aarch64.dmg", byteArrayOf())
         val api = GitHubDevBuildApi(client)
 
         assertEquals(SHA_A, api.getCommit(null, SHA_A.take(7)).sha)
@@ -151,7 +172,7 @@ class GitHubDevBuildApiTest {
         assertEquals(listOf(200L, 100L), api.listWorkflowRunsForCommit(null, SHA_A).map { it.id })
         assertEquals("success", api.getWorkflowRun(null, 200).conclusion)
         assertEquals(listOf(11L, 10L), api.listRunArtifacts(null, 200).map { it.id })
-        assertEquals("ani-macos-dmg-aarch64", api.getArtifact(null, 10).name)
+        assertEquals("ani-macos-aarch64.dmg", api.getArtifact(null, 10).name)
         assertTrue(assertFailsWith<GitHubApiException> { api.getArtifact(null, 999) }.isNotFound)
     }
 }

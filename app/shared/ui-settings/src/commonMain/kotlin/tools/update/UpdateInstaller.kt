@@ -57,6 +57,13 @@ interface UpdateInstaller {
     fun createPackageDownloader(client: ScopedHttpClient): FileDownloader = DefaultFileDownloader(client)
 
     /**
+     * 创建以当前安装目录为基础增量拼包的 [DeltaPackageAssembler], 拼出的包可交给 [install].
+     *
+     * 不支持时返回 `null`: Android 和 Linux 没有可整体替换的安装目录, 开发运行时也不在安装目录里.
+     */
+    fun createDeltaPackageAssembler(client: ScopedHttpClient): DeltaPackageAssembler? = null
+
+    /**
      * 如果 [install] 可能返回 [InstallationResult.Failed], 则需实现
      */
     suspend fun openForManualInstallation(file: SystemPath, context: ContextMP): Boolean = false

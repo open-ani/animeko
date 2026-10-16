@@ -74,6 +74,7 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_artifact
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_cancel
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_close
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_comparing_installed
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_confirm_download
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_confirm_install
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_confirm_message_android
@@ -86,9 +87,8 @@ import me.him188.ani.app.ui.lang.settings_debug_dev_builds_current_version
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_debug_package
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_download
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_downloading
+import me.him188.ani.app.ui.lang.settings_debug_dev_builds_downloading_incrementally
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_empty
-import me.him188.ani.app.ui.lang.settings_debug_dev_builds_extracting
-import me.him188.ani.app.ui.lang.settings_debug_dev_builds_failure_package_not_found
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_failure_token_required
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_from_fork
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_install
@@ -307,7 +307,7 @@ fun DevBuildsTabContent(
 
     when (val install = installState) {
         is DevBuildInstallState.Failed -> FailedToInstallDialog(
-            message = installFailureMessage(install.failure, state.spec.kind),
+            message = installFailureMessage(install.failure),
             onDismissRequest = state::dismissInstallResult,
             file = install.file,
         )
@@ -664,11 +664,8 @@ private fun loadErrorMessage(throwable: Throwable): String = when {
 }
 
 @Composable
-private fun installFailureMessage(failure: DevBuildInstallFailure, kind: DevBuildPackageKind): String = when (failure) {
+private fun installFailureMessage(failure: DevBuildInstallFailure): String = when (failure) {
     DevBuildInstallFailure.TokenRequired -> stringResource(Lang.settings_debug_dev_builds_failure_token_required)
-    DevBuildInstallFailure.PackageNotFound ->
-        stringResource(Lang.settings_debug_dev_builds_failure_package_not_found, kind.packageExtension)
-
     is DevBuildInstallFailure.Installer -> failure.result.message ?: failure.result.reason.toString()
     is DevBuildInstallFailure.Error -> loadErrorMessage(failure.throwable)
 }
@@ -871,7 +868,11 @@ private fun InstallOrCancelButton(
 @Composable
 private fun InstallProgress(busy: DevBuildInstallState.Busy) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        val progress = (busy as? DevBuildInstallState.Downloading)?.progress
+        val progress = when (busy) {
+            is DevBuildInstallState.Downloading -> busy.progress
+            is DevBuildInstallState.DownloadingIncrementally -> busy.progress
+            else -> null
+        }
         if (progress != null) {
             LinearProgressIndicator({ progress }, Modifier.fillMaxWidth())
         } else {
@@ -885,7 +886,16 @@ private fun InstallProgress(busy: DevBuildInstallState.Busy) {
                     busy.totalBytes?.bytes?.toString() ?: "?",
                 )
 
-                is DevBuildInstallState.Extracting -> stringResource(Lang.settings_debug_dev_builds_extracting)
+                is DevBuildInstallState.DownloadingIncrementally -> if (busy.totalBytes == null) {
+                    stringResource(Lang.settings_debug_dev_builds_comparing_installed)
+                } else {
+                    stringResource(
+                        Lang.settings_debug_dev_builds_downloading_incrementally,
+                        busy.downloadedBytes.bytes.toString(),
+                        busy.totalBytes.bytes.toString(),
+                    )
+                }
+
                 is DevBuildInstallState.Installing -> stringResource(Lang.settings_debug_dev_builds_installing)
             },
             style = MaterialTheme.typography.bodySmall,
@@ -990,7 +1000,7 @@ private fun ConfirmInstallDevBuildDialog(
         }
     }
     val message = when (kind) {
-        DevBuildPackageKind.WINDOWS_PORTABLE_ZIP, DevBuildPackageKind.MACOS_DMG ->
+        DevBuildPackageKind.DESKTOP_ZIP, DevBuildPackageKind.MACOS_DMG ->
             Lang.settings_debug_dev_builds_confirm_message_desktop
 
         DevBuildPackageKind.ANDROID_APK ->

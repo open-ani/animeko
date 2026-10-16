@@ -142,7 +142,8 @@
     <string name="settings_debug_dev_builds_download">Download</string>
     <string name="settings_debug_dev_builds_cancel">Cancel</string>
     <string name="settings_debug_dev_builds_downloading">Downloading %1$s / %2$s</string>
-    <string name="settings_debug_dev_builds_extracting">Extracting package…</string>
+    <string name="settings_debug_dev_builds_downloading_incrementally">Downloading changes %1$s / %2$s</string>
+    <string name="settings_debug_dev_builds_comparing_installed">Comparing with installed files…</string>
     <string name="settings_debug_dev_builds_installing">Installing…</string>
     <string name="settings_debug_dev_builds_confirm_title">Install this commit?</string>
     <string name="settings_debug_dev_builds_confirm_message_desktop">%1$s (%2$s) will be downloaded. Ani will then quit, replace the current version with it and restart automatically. Your settings and data are not affected.</string>
@@ -151,7 +152,6 @@
     <string name="settings_debug_dev_builds_confirm_install">Download and install</string>
     <string name="settings_debug_dev_builds_confirm_download">Download</string>
     <string name="settings_debug_dev_builds_failure_token_required">Set a GitHub token first. Downloading GitHub Actions artifacts requires signing in</string>
-    <string name="settings_debug_dev_builds_failure_package_not_found">The artifact does not contain a .%1$s package</string>
     <string name="settings_debug_dev_builds_manual_title">Package downloaded</string>
     <string name="settings_debug_dev_builds_manual_message">Saved to %1$s. Replace the current AppImage with it and relaunch.</string>
     <string name="settings_debug_dev_builds_manual_reveal">Show in folder</string>

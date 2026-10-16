@@ -155,6 +155,19 @@ val generateDesktopDistributionManifest = tasks.register("generateDesktopDistrib
     }
 }
 
+// CI 构建把 zip 发布包和清单作为两个不压缩的 artifact 上传, 供开发者设置的「安装 CI 构建」增量拼包.
+// 不压缩上传时 artifact 名就是文件名, 文件名由 workflow 通过 DEV_BUILD_PACKAGE_NAME 指定.
+tasks.register("prepareDevBuildDesktopPackage", Sync::class) {
+    val packageName = aniProperty("DEV_BUILD_PACKAGE_NAME")
+    from(zipDesktopDistribution) {
+        rename { packageName.get() }
+    }
+    from(generateDesktopDistributionManifest) {
+        rename { packageName.get() + DESKTOP_PACKAGE_MANIFEST_SUFFIX }
+    }
+    into(layout.buildDirectory.dir("dev-build-package"))
+}
+
 tasks.register("uploadDesktopInstallers", UploadDesktopInstallersTask::class) {
     configureReleaseUploadInputs()
     fun uploadZipDistributionWithManifest() {
