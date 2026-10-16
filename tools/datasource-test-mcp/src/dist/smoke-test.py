@@ -134,21 +134,25 @@ def check_tools(mcp, base):
 
 
 def check_playback(mcp, base):
-    result = mcp.tool("probe_video", {
-        "videoUrl": f"{base}/smoke-test.mp4",
-        "showWindow": False,
-        "playSeconds": 1,
-        "playTimeoutMillis": 30_000,
-        "detectAds": False,
-    }, timeout_s=120)
+    with tempfile.TemporaryDirectory() as frames_dir:
+        result = mcp.tool("probe_video", {
+            "videoUrl": f"{base}/smoke-test.mp4",
+            "showWindow": False,
+            "playSeconds": 1,
+            "playTimeoutMillis": 30_000,
+            "detectAds": False,
+            "captureFramesDir": frames_dir,
+            "captureAtSeconds": [0],
+        }, timeout_s=120)
+        frames = [frame for frame in result.get("capturedFrames", []) if pathlib.Path(frame["path"]).is_file()]
     analysis = result.get("mediaAnalysis") or {}
     playback = analysis.get("playback") or {}
     video = analysis.get("video") or {}
     ok = bool(analysis.get("available") and playback.get("ran") and playback.get("ok")) \
-        and (video.get("width"), video.get("height")) == (WIDTH, HEIGHT)
+        and (video.get("width"), video.get("height")) == (WIDTH, HEIGHT) and bool(frames)
     errors = analysis.get("errors", []) + playback.get("errors", [])
     detail = f"{analysis.get('tool', 'mpv 不可用')}, {video.get('width')}x{video.get('height')}, " \
-             f"起播 {playback.get('timeToPlayingMillis')}ms"
+             f"起播 {playback.get('timeToPlayingMillis')}ms, 截图 {len(frames)} 张"
     return ok, detail + (f", 错误: {'; '.join(errors)}" if errors else "")
 
 

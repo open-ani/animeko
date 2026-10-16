@@ -99,7 +99,8 @@ jobs:
       - name: Smoke test
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
-            command -v xvfb-run > /dev/null || { sudo apt-get update && sudo apt-get install -y xvfb; }
+            # runner 没有 mpv 原生库依赖的 libpulse; 其余依赖见 tools/datasource-test-mcp/README.md
+            sudo apt-get update && sudo apt-get install -y --no-install-recommends libpulse0 xvfb
             xvfb-run -a python3 "$DIST/smoke-test.py"
           else
             python "$DIST/smoke-test.py"
