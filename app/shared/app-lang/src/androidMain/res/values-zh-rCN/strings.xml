@@ -142,7 +142,8 @@
     <string name="settings_debug_dev_builds_download">下载</string>
     <string name="settings_debug_dev_builds_cancel">取消</string>
     <string name="settings_debug_dev_builds_downloading">下载中 %1$s / %2$s</string>
-    <string name="settings_debug_dev_builds_extracting">正在解压安装包…</string>
+    <string name="settings_debug_dev_builds_downloading_incrementally">增量下载中 %1$s / %2$s</string>
+    <string name="settings_debug_dev_builds_comparing_installed">正在比对已安装的文件…</string>
     <string name="settings_debug_dev_builds_installing">正在安装…</string>
     <string name="settings_debug_dev_builds_confirm_title">安装这个 commit？</string>
     <string name="settings_debug_dev_builds_confirm_message_desktop">将下载 %1$s（%2$s）。随后 Ani 会退出，用它覆盖当前版本后自动重启。设置和数据不受影响。</string>
@@ -151,7 +152,6 @@
     <string name="settings_debug_dev_builds_confirm_install">下载并安装</string>
     <string name="settings_debug_dev_builds_confirm_download">下载</string>
     <string name="settings_debug_dev_builds_failure_token_required">请先填写 GitHub Token。下载 GitHub Actions 产物需要登录</string>
-    <string name="settings_debug_dev_builds_failure_package_not_found">产物中没有 .%1$s 安装包</string>
     <string name="settings_debug_dev_builds_manual_title">安装包已下载</string>
     <string name="settings_debug_dev_builds_manual_message">已保存到 %1$s。请用它替换当前的 AppImage 并重新启动。</string>
     <string name="settings_debug_dev_builds_manual_reveal">打开所在位置</string>

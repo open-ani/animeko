@@ -13,12 +13,6 @@ import me.him188.ani.utils.io.SystemPath
 
 // iOS 没有可安装的 CI 安装包, DevBuildPackageSpec.forPlatform 返回 null, 这里不会被调用.
 
-internal actual suspend fun extractZipEntryByExtension(
-    archive: SystemPath,
-    extension: String,
-    target: SystemPath,
-): Boolean = throw UnsupportedOperationException("Installing CI builds is not supported on iOS")
-
 internal actual suspend fun markExecutable(file: SystemPath) {
     throw UnsupportedOperationException("Installing CI builds is not supported on iOS")
 }

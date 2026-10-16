@@ -13,7 +13,7 @@ import java.io.File
 import java.util.zip.ZipFile
 
 /**
- * [DeltaPackageDownloader] 拼出的包的形态, 由安装器按自己能安装什么来选.
+ * [DesktopDeltaPackageAssembler] 拼出的包的形态, 由安装器按自己能安装什么来选.
  */
 sealed interface PackageOutput {
     /**

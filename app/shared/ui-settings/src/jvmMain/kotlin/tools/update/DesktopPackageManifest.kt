@@ -16,7 +16,7 @@ import kotlinx.serialization.json.Json
  * 桌面发布包 (zip) 的清单: 每个 entry 的内容哈希和它的压缩数据在发布包中的位置.
  *
  * CI 把它作为发布包的伴随资产发布, 地址是发布包地址加 [MANIFEST_SUFFIX]; 字段与 build-logic 的
- * `desktopPackageManifest.kt` 一一对应. [DeltaPackageDownloader] 用它判断哪些文件已经在本地,
+ * `desktopPackageManifest.kt` 一一对应. [DesktopDeltaPackageAssembler] 用它判断哪些文件已经在本地,
  * 其余的按 [DesktopPackageEntry.dataOffset] 用 HTTP Range 从发布包取.
  */
 @Serializable
@@ -29,7 +29,7 @@ class DesktopPackageManifest(
 ) {
     companion object {
         const val SUPPORTED_FORMAT_VERSION = 1
-        const val MANIFEST_SUFFIX = ".manifest.json"
+        const val MANIFEST_SUFFIX = DeltaPackageAssembler.MANIFEST_SUFFIX
 
         fun manifestUrlOf(packageUrl: String): String = packageUrl + MANIFEST_SUFFIX
 

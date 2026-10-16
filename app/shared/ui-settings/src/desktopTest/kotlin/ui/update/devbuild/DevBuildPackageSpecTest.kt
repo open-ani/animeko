@@ -17,52 +17,75 @@ import kotlin.test.assertNull
 
 class DevBuildPackageSpecTest {
     @Test
-    fun `windows uses the portable zip artifact of its arch`() {
+    fun `windows installs and assembles from the zip package of its arch`() {
         assertEquals(
-            DevBuildPackageSpec(listOf("ani-windows-portable"), DevBuildPackageKind.WINDOWS_PORTABLE_ZIP),
+            DevBuildPackageSpec(
+                listOf("ani-windows-x64.zip"),
+                DevBuildPackageKind.DESKTOP_ZIP,
+                deltaPackageName = "ani-windows-x64.zip",
+            ),
             DevBuildPackageSpec.forPlatform(Platform.Windows(Arch.X86_64)),
         )
         assertEquals(
-            DevBuildPackageSpec(listOf("ani-windows-aarch64-portable"), DevBuildPackageKind.WINDOWS_PORTABLE_ZIP),
+            DevBuildPackageSpec(
+                listOf("ani-windows-aarch64.zip"),
+                DevBuildPackageKind.DESKTOP_ZIP,
+                deltaPackageName = "ani-windows-aarch64.zip",
+            ),
             DevBuildPackageSpec.forPlatform(Platform.Windows(Arch.AARCH64)),
         )
     }
 
     @Test
-    fun `macos aarch64 uses the dmg artifact and x64 is unsupported`() {
+    fun `macos aarch64 installs the dmg and assembles from the zip package`() {
+        val spec = DevBuildPackageSpec.forPlatform(Platform.MacOS(Arch.AARCH64))
         assertEquals(
-            DevBuildPackageSpec(listOf("ani-macos-dmg-aarch64"), DevBuildPackageKind.MACOS_DMG),
-            DevBuildPackageSpec.forPlatform(Platform.MacOS(Arch.AARCH64)),
+            DevBuildPackageSpec(
+                listOf("ani-macos-aarch64.dmg"),
+                DevBuildPackageKind.MACOS_DMG,
+                deltaPackageName = "ani-macos-aarch64.zip",
+            ),
+            spec,
         )
-        assertNull(DevBuildPackageSpec.forPlatform(Platform.MacOS(Arch.X86_64)))
+        assertEquals("ani-macos-aarch64.zip.manifest.json", spec!!.deltaManifestName)
+        assertEquals("ani-main-aaaaaaaa.zip", spec.deltaPackageFileName("aaaaaaaa"))
+    }
+
+    @Test
+    fun `macos x64 installs and assembles from the zip package`() {
+        assertEquals(
+            DevBuildPackageSpec(
+                listOf("ani-macos-x64.zip"),
+                DevBuildPackageKind.DESKTOP_ZIP,
+                deltaPackageName = "ani-macos-x64.zip",
+            ),
+            DevBuildPackageSpec.forPlatform(Platform.MacOS(Arch.X86_64)),
+        )
     }
 
     @Test
     fun `linux x64 downloads the appimage for manual install`() {
         val spec = DevBuildPackageSpec.forPlatform(Platform.Linux(Arch.X86_64))
-        assertEquals(DevBuildPackageSpec(listOf("ani-linux-appimage-x64"), DevBuildPackageKind.LINUX_APPIMAGE), spec)
+        assertEquals(DevBuildPackageSpec(listOf("ani-linux-x64.AppImage"), DevBuildPackageKind.LINUX_APPIMAGE), spec)
         assertEquals(false, spec!!.kind.supportsAutomaticInstall)
+        assertNull(spec.deltaManifestName)
         assertNull(DevBuildPackageSpec.forPlatform(Platform.Linux(Arch.AARCH64)))
     }
 
     @Test
     fun `android prefers the abi specific release apk and falls back to universal`() {
+        val spec = DevBuildPackageSpec.forPlatform(Platform.Android(Arch.ARMV8A))!!
+        assertEquals(listOf("ani-android-arm64-v8a-release.apk", "ani-android-universal-release.apk"), spec.artifactNames)
+        assertEquals(listOf("ani-android-arm64-v8a-debug.apk", "ani-android-universal-debug.apk"), spec.debugArtifactNames)
         assertEquals(
-            listOf("ani-android-arm64-v8a-release", "ani-android-universal-release"),
-            DevBuildPackageSpec.forPlatform(Platform.Android(Arch.ARMV8A))!!.artifactNames,
-        )
-        assertEquals(
-            listOf("ani-android-armeabi-v7a-release", "ani-android-universal-release"),
+            listOf("ani-android-armeabi-v7a-release.apk", "ani-android-universal-release.apk"),
             DevBuildPackageSpec.forPlatform(Platform.Android(Arch.ARMV7A))!!.artifactNames,
         )
         assertEquals(
-            listOf("ani-android-x86_64-release", "ani-android-universal-release"),
+            listOf("ani-android-x86_64-release.apk", "ani-android-universal-release.apk"),
             DevBuildPackageSpec.forPlatform(Platform.Android(Arch.X86_64))!!.artifactNames,
         )
-        assertEquals(
-            DevBuildPackageKind.ANDROID_APK,
-            DevBuildPackageSpec.forPlatform(Platform.Android(Arch.ARMV8A))!!.kind,
-        )
+        assertEquals(DevBuildPackageKind.ANDROID_APK, spec.kind)
     }
 
     @Test

@@ -728,16 +728,29 @@ fun WorkflowBuilder.addAndroidInstrumentedTestJobs(matrix: MatrixInstance) {
     }
 }
 
+/**
+ * 安装包都以 `archive: false` 上传 (见 [uploadFileArtifact]), 下载得到的就是文件本身, artifact 名就是文件名.
+ * 开发者设置的「安装 CI 构建」按这些名字找安装包, 与客户端 `DevBuildPackageSpec` 保持一致.
+ */
 object ArtifactNames {
-    fun windowsPortable(arch: Arch) = when (arch) {
-        Arch.X64 -> "ani-windows-portable"
-        Arch.AARCH64 -> "ani-windows-aarch64-portable"
-    }
+    /** @param buildType `release` 或 `debug` */
+    fun androidApk(arch: String, buildType: String) = "ani-android-$arch-$buildType.apk"
+    fun androidTvApk(arch: String, buildType: String) = "ani-android-tv-$arch-$buildType.apk"
 
-    fun macosDmg(arch: Arch) = "ani-macos-dmg-${arch}"
-    fun macosPortable(arch: Arch) = "ani-macos-portable-${arch}"
-    fun iosIpa() = "ani-ios-ipa"
-    fun linuxAppImage(arch: Arch) = "ani-linux-appimage-${arch}"
+    /** @param buildType `release` 或 `debug` */
+    fun iosIpa(buildType: String) = "ani-ios-$buildType.ipa"
+
+    fun macosDmg(arch: Arch) = "ani-macos-${arch}.dmg"
+    fun linuxAppImage(arch: Arch) = "ani-linux-${arch}.AppImage"
+
+    /**
+     * Windows 和 macOS 的 zip 发布包, 与 Release 的 zip 格式相同. Windows 和 macOS x64 直接安装它,
+     * 三者都用它和 [desktopPackageManifest] 增量拼包.
+     */
+    fun desktopPackage(os: OS, arch: Arch) = "ani-${os}-${arch}.zip"
+
+    /** [desktopPackage] 的增量更新清单. */
+    fun desktopPackageManifest(os: OS, arch: Arch) = desktopPackage(os, arch) + ".manifest.json"
 
     /** 自动更新端到端测试的驱动器 jar, Verify job 下载后直接运行. */
     fun updateE2eRunner(os: OS, arch: Arch) = "ani-update-e2e-${os}-${arch}"
@@ -877,11 +890,13 @@ fun getVerifyJobBody(
     when (runner.os to runner.arch) {
         OS.WINDOWS to Arch.X64,
         OS.WINDOWS to Arch.AARCH64 -> {
+            // download-artifact 按内容类型自动解压 zip, 得到 Ani 目录.
             usesWithAttempts(
                 name = "Download Windows ${if (runner.arch == Arch.X64) "x64" else "AArch64"} Portable",
                 action = DownloadArtifact(
-                    name = ArtifactNames.windowsPortable(runner.arch),
+                    name = ArtifactNames.desktopPackage(OS.WINDOWS, runner.arch),
                     path = "${expr { github.workspace }}/ci-helper/verify",
+                    _customVersion = "v8",
                 ),
             )
             tasksToExecute.forEach { task ->
@@ -902,7 +917,7 @@ fun getVerifyJobBody(
         OS.MACOS to Arch.AARCH64 -> {
             usesWithAttempts(
                 name = "Download DMG",
-                action = DownloadArtifact(name = ArtifactNames.macosDmg(Arch.AARCH64)),
+                action = DownloadArtifact(name = ArtifactNames.macosDmg(Arch.AARCH64), _customVersion = "v8"),
             )
             tasksToExecute.forEach { task ->
                 run(
@@ -920,11 +935,12 @@ fun getVerifyJobBody(
                 action = DownloadArtifact(
                     name = ArtifactNames.linuxAppImage(Arch.X64),
                     path = "${expr { github.workspace }}/ci-helper/verify",
+                    _customVersion = "v8",
                 ),
             )
             tasksToExecute.forEach { task ->
                 val appimagePath =
-                    """${expr { github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"""
+                    """${expr { github.workspace }}/ci-helper/verify/${ArtifactNames.linuxAppImage(Arch.X64)}"""
                 val commandPrefix = if (task.runWithXvfb) {
                     "XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=wayland-0 xvfb-run --auto-servernum env " + ""
                 } else {
@@ -1883,13 +1899,9 @@ class WithMatrix(
                 matrix.uploadApk
             }
             if (shouldUpload) {
-                usesWithAttempts(
-                    name = "Upload Android Debug APK $arch",
-                    action = UploadArtifact(
-                        name = "ani-android-${arch}-debug",
-                        path_Untyped = "app/android/build/outputs/apk/default/debug/android-default-${arch}-debug.apk",
-                        overwrite = true,
-                    ),
+                uploadFileArtifact(
+                    path = "app/android/build/outputs/apk/default/debug/android-default-${arch}-debug.apk",
+                    artifactName = ArtifactNames.androidApk(arch, "debug"),
                 )
             }
         }
@@ -1915,21 +1927,14 @@ class WithMatrix(
                 matrix.uploadApk
             }
             if (shouldUpload) {
-                usesWithAttempts(
-                    name = "Upload Android Release APK $arch",
-                    action = UploadArtifact(
-                        name = "ani-android-${arch}-release",
-                        path_Untyped = "app/android/build/outputs/apk/default/release/android-default-${arch}-release.apk",
-                        overwrite = true,
-                    ),
+                // 没有签名密钥时 (例如来自 fork 的 PR) 不产生 release APK, 跳过上传.
+                uploadFileArtifact(
+                    path = "app/android/build/outputs/apk/default/release/android-default-${arch}-release.apk",
+                    artifactName = ArtifactNames.androidApk(arch, "release"),
                 )
-                usesWithAttempts(
-                    name = "Upload Android TV Release APK $arch",
-                    action = UploadArtifact(
-                        name = "ani-android-tv-${arch}-release",
-                        path_Untyped = "app/android/build/outputs/apk/tv/release/android-tv-${arch}-release.apk",
-                        overwrite = true,
-                    ),
+                uploadFileArtifact(
+                    path = "app/android/build/outputs/apk/tv/release/android-tv-${arch}-release.apk",
+                    artifactName = ArtifactNames.androidTvApk(arch, "release"),
                 )
             }
         }
@@ -1964,13 +1969,9 @@ class WithMatrix(
                 name = "Build iOS Debug IPA",
                 tasks = arrayOf(":app:ios:buildDebugIpa"),
             )
-            usesWithAttempts(
-                name = "Upload iOS Debug IPA",
-                action = UploadArtifact(
-                    name = "ani-ios-debug",
-                    path_Untyped = "app/ios/build/archives/debug/Animeko.ipa",
-                    overwrite = true,
-                ),
+            uploadFileArtifact(
+                path = "app/ios/build/archives/debug/Animeko.ipa",
+                artifactName = ArtifactNames.iosIpa("debug"),
             )
         }
     }
@@ -2198,40 +2199,16 @@ class WithMatrix(
         uploadComposeLogs()
 
         return PackageDesktopAndUploadOutputs().also {
-            if (matrix.isMacOS && matrix.isAArch64) {
-                usesWithAttempts(
-                    name = "Upload macOS AArch64 dmg",
-                    action = UploadArtifact(
-                        name = ArtifactNames.macosDmg(matrix.arch),
-                        path_Untyped = "app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg",
-                        overwrite = true,
-                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
-                    ),
+            if (matrix.isMacOSAArch64) {
+                uploadFileArtifact(
+                    path = "app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg",
+                    artifactName = ArtifactNames.macosDmg(matrix.arch),
+                    ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
                 )
             }
 
-            if (matrix.isMacOS && matrix.isX64) {
-                usesWithAttempts(
-                    name = "Upload macOS x86_64 ZIP",
-                    action = UploadArtifact(
-                        name = ArtifactNames.macosPortable(matrix.arch),
-                        path_Untyped = "app/desktop/build/compose/binaries/main-release/app/Ani.app",
-                        overwrite = true,
-                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
-                    ),
-                )
-            }
-
-            if (matrix.isWindows) {
-                usesWithAttempts(
-                    name = "Upload Windows packages",
-                    action = UploadArtifact(
-                        name = ArtifactNames.windowsPortable(matrix.arch),
-                        path_Untyped = "app/desktop/build/compose/binaries/main-release/app",
-                        overwrite = true,
-                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
-                    ),
-                )
+            if (matrix.isWindows || matrix.isMacOS) {
+                uploadDesktopPackage()
             }
 
             if (matrix.isUbuntu && matrix.isX64) {
@@ -2291,19 +2268,32 @@ class WithMatrix(
                 // Expected output paths: Animeko-x86_64.AppImage and Animeko-x86_64.AppImage.zsync.
                 // If changed, change also uploadDesktopDistributions in :ci-helper
 
-                usesWithAttempts(
-                    name = "Upload Linux packages",
-                    action = UploadArtifact(
-                        name = ArtifactNames.linuxAppImage(matrix.arch),
-                        path_Untyped = $$"""
-                            Animeko-x86_64.AppImage
-                            Animeko-x86_64.AppImage.zsync
-                            """.trimIndent(),
-                        overwrite = true,
-                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
-                    ),
+                // zsync 元数据指向 Release 的资产, 对 CI 构建没有用, 只上传 AppImage.
+                uploadFileArtifact(
+                    path = "Animeko-x86_64.AppImage",
+                    artifactName = ArtifactNames.linuxAppImage(matrix.arch),
+                    ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
                 )
             }
+        }
+    }
+
+    /**
+     * 上传 zip 发布包和增量更新清单. 开发者设置的「安装 CI 构建」以已安装的版本为基础增量拼包, 只下载有变化的文件;
+     * 不压缩上传, 客户端才能按清单里的偏移用 Range 读取.
+     */
+    fun JobBuilder<*>.uploadDesktopPackage() {
+        val packageName = ArtifactNames.desktopPackage(matrix.os, matrix.arch)
+        runGradle(
+            name = "Prepare desktop package",
+            tasks = arrayOf(":ci-helper:prepareDevBuildDesktopPackage"),
+            env = mapOf("DEV_BUILD_PACKAGE_NAME" to packageName),
+        )
+        for (fileName in listOf(packageName, ArtifactNames.desktopPackageManifest(matrix.os, matrix.arch))) {
+            uploadFileArtifact(
+                path = "ci-helper/build/dev-build-package/$fileName",
+                ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
+            )
         }
     }
 
@@ -2450,13 +2440,9 @@ class WithMatrix(
 
         fun JobBuilder<*>.uploadIosIpa() {
             if (matrix.uploadIpa) {
-                usesWithAttempts(
-                    name = "Upload iOS Release IPA to GitHub Assets",
-                    action = UploadArtifact(
-                        name = "ani-ios-release",
-                        path_Untyped = "app/ios/build/archives/release/Animeko.ipa",
-                        overwrite = true,
-                    ),
+                uploadFileArtifact(
+                    path = "app/ios/build/archives/release/Animeko.ipa",
+                    artifactName = ArtifactNames.iosIpa("release"),
                 )
                 runGradle(
                     name = "Upload iOS Release IPA to Bucket",
@@ -2566,6 +2552,49 @@ fun String.neq(other: String) = "($this != '$other')"
 fun String.neq(other: Boolean) = "($this != $other)"
 
 operator fun String.not() = "!($this)"
+
+/**
+ * 以 `archive: false` 上传单个文件: 下载得到的就是文件本身, 不再包一层 zip. 这时 artifact 名就是文件名.
+ *
+ * [artifactName] 与 [path] 的文件名不同时, 先把文件复制成 [artifactName]. [path] 可以是 glob, 但只能匹配一个文件;
+ * 没有匹配时按 [ifNoFilesFound] 处理.
+ *
+ * `name` 只在 `overwrite` 删除上一次尝试留下的同名 artifact 时用到, 要设成文件名才能删对 (actions/upload-artifact#769).
+ */
+fun JobBuilder<*>.uploadFileArtifact(
+    path: String,
+    artifactName: String = path.substringAfterLast('/'),
+    ifNoFilesFound: UploadArtifact.BehaviorIfNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Warn,
+) {
+    val uploadPath = if (artifactName == path.substringAfterLast('/')) {
+        path
+    } else {
+        val stagedPath = "file-artifacts/$artifactName"
+        run(
+            name = "Prepare $artifactName",
+            shell = Shell.Bash,
+            command = shell(
+                $$"""
+                    mkdir -p file-artifacts
+                    rm -f "$$stagedPath"
+                    if ls $$path > /dev/null 2>&1; then cp $$path "$$stagedPath"; fi
+                """.trimIndent(),
+            ),
+        )
+        stagedPath
+    }
+    usesWithAttempts(
+        name = "Upload $artifactName",
+        action = UploadArtifact(
+            name = artifactName,
+            path_Untyped = uploadPath,
+            overwrite = true,
+            ifNoFilesFound = ifNoFilesFound,
+            _customInputs = mapOf("archive" to "false"),
+            _customVersion = "v7",
+        ),
+    )
+}
 
 /**
  * Unroll attempts at compile time.

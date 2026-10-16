@@ -82,6 +82,10 @@ data class DevBuildArtifact(
     val name: String,
     val sizeInBytes: Long,
     val archiveDownloadUrl: String,
+    /**
+     * 上传它的 workflow 运行. 同一次运行上传的增量更新包与它对应同一个构建.
+     */
+    val runId: Long,
 )
 
 /**
@@ -145,6 +149,7 @@ fun buildDevBuildCommits(
                     name = it.name,
                     sizeInBytes = it.sizeInBytes,
                     archiveDownloadUrl = it.archiveDownloadUrl,
+                    runId = it.workflowRun!!.id,
                 )
             },
         )

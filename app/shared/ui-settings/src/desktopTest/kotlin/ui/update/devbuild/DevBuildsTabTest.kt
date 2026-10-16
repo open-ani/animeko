@@ -41,7 +41,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class DevBuildsTabTest {
-    private val spec = DevBuildPackageSpec(listOf("ani-macos-dmg-aarch64"), DevBuildPackageKind.MACOS_DMG)
+    private val spec = DevBuildPackageSpec(listOf("ani-macos-aarch64.dmg"), DevBuildPackageKind.MACOS_DMG)
 
     private data class Fixture(val saveDir: SystemPath, val installer: FakeInstaller)
 
@@ -60,6 +60,7 @@ class DevBuildsTabTest {
                 api = GitHubDevBuildApi(client),
                 spec = spec,
                 installer = fixture.installer,
+                deltaAssembler = null,
                 saveDir = fixture.saveDir,
                 getToken = { "token" },
                 currentVersionName = "4.12.0-main-bbbbbbbb",
@@ -86,7 +87,7 @@ class DevBuildsTabTest {
 
     @Test
     fun `lists commits and installs the selected one after confirmation`() = withTab(
-        fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes("Ani-4.12.0.dmg" to byteArrayOf(1))),
+        fullGitHubMockClient("ani-macos-aarch64.dmg", byteArrayOf(1)),
     ) { (saveDir, installer) ->
         // 列表由后台线程更新, waitForIdle 不能保证已经重组, 直接等待节点出现
         waitUntil(timeoutMillis = 10_000) {
@@ -113,7 +114,7 @@ class DevBuildsTabTest {
 
     @Test
     fun `looks up a pasted commit link and installs it from the result card`() = withTab(
-        fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes("Ani-4.12.0.dmg" to byteArrayOf(1))),
+        fullGitHubMockClient("ani-macos-aarch64.dmg", byteArrayOf(1)),
     ) { (saveDir, installer) ->
         onNodeWithTag(DevBuildsTestTags.LOOKUP_BUTTON).assertIsNotEnabled()
         onNodeWithTag(DevBuildsTestTags.LOOKUP_FIELD).performTextInput("https://github.com/open-ani/animeko/commit/$SHA_A")
@@ -134,7 +135,7 @@ class DevBuildsTabTest {
 
     @Test
     fun `shows an error for unrecognized input and clears it`() = withTab(
-        fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes()),
+        fullGitHubMockClient("ani-macos-aarch64.dmg", byteArrayOf()),
     ) {
         onNodeWithTag(DevBuildsTestTags.LOOKUP_FIELD).performTextInput("what is this")
         onNodeWithTag(DevBuildsTestTags.LOOKUP_BUTTON).performClick()
@@ -151,7 +152,7 @@ class DevBuildsTabTest {
         gitHubMockClient { request ->
             when (request.url.host) {
                 "example.com" -> respond(byteArrayOf(9), HttpStatusCode.OK, headersOf(HttpHeaders.ContentLength, "1"))
-                else -> fullGitHubMockHandler("ani-macos-dmg-aarch64", zipBytes())(request)
+                else -> fullGitHubMockHandler("ani-macos-aarch64.dmg", byteArrayOf())(request)
             }
         },
     ) { (saveDir, installer) ->
