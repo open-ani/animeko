@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.usecase
 
 import kotlinx.coroutines.flow.first
+import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeSubjectRepository
 import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCase
@@ -18,6 +19,8 @@ import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDelet
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCaseImpl
 import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.comment.PostCommentUseCaseImpl
+import me.him188.ani.app.domain.comment.UploadCommentImageUseCase
+import me.him188.ani.app.domain.comment.UploadCommentImageUseCaseImpl
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCaseImpl
 import me.him188.ani.app.domain.episode.CreateMediaFetchSelectBundleFlowUseCase
@@ -100,6 +103,7 @@ fun KoinApplication.useCaseModules() = module {
     single<GetAnimeSeasonIdsFlowUseCase> { GetAnimeSeasonIdsFlowUseCaseImpl(get()) }
     // 上游(人物评论服务)将 PostCommentUseCase 改为双依赖,保留上游版本
     single<PostCommentUseCase> { PostCommentUseCaseImpl(get(), get()) }
+    single<UploadCommentImageUseCase> { UploadCommentImageUseCaseImpl(get<AniApiProvider>().commentsApi, get()) }
     single<GetPreferredMediaSourceSortingUseCase> { GetPreferredMediaSourceSortingUseCaseImpl(get()) }
     single<GetMediaSelectorSourceTiersUseCase> { GetMediaSelectorSourceTiersUseCaseImpl(get()) }
     single<GetEpisodeTypeFiltersUseCase> { GetEpisodeTypeFiltersUseCaseImpl(get()) }
