@@ -143,10 +143,7 @@ class MediaSelectorDualChannelContradictionTest {
 
         // Remembered-source selection respects the existing JSON preference. Once it fails,
         // exact fallback may relax that preference without a separate completion clause cancelling it.
-        assertNull(selector.selected.value)
-        assertFalse(job.isCompleted)
-        testScope().advanceTimeBy(5.seconds)
-        testScope().runCurrent()
+        // Every source has finished, so the fallback does not wait for the deadline.
         assertSelectedSource(sources.web2)
         job.assertCompleted()
     }

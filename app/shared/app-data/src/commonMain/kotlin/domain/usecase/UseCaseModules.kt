@@ -9,6 +9,9 @@
 
 package me.him188.ani.app.domain.usecase
 
+import kotlinx.coroutines.flow.first
+import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.episode.EpisodeSubjectRepository
 import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCase
 import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCaseImpl
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
@@ -31,6 +34,7 @@ import me.him188.ani.app.domain.episode.GetSubjectEpisodeInfoBundleFlowUseCase
 import me.him188.ani.app.domain.episode.GetSubjectEpisodeInfoBundleFlowUseCaseImpl
 import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
 import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCaseImpl
+import me.him188.ani.app.domain.episode.ResolveEpisodeLinkUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCaseImpl
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
@@ -72,6 +76,14 @@ import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
 
 fun KoinApplication.useCaseModules() = module {
+    single {
+        val episodes = get<EpisodeCollectionRepository>()
+        val subjects = get<EpisodeSubjectRepository>()
+        ResolveEpisodeLinkUseCase(
+            getEpisodes = { id -> episodes.subjectEpisodeCollectionInfosFlow(id).first().map { it.episodeInfo } },
+            getSubjectId = subjects::getSubjectId,
+        )
+    }
     single<GetEpisodeCollectionInfoFlowUseCase> { GetEpisodeCollectionInfoFlowUseCaseImpl() }
     single<GetDanmakuRegexFilterListFlowUseCase> { GetDanmakuRegexFilterListFlowUseCaseImpl() }
     single<MediaSelectorAutoSelectUseCase> { MediaSelectorAutoSelectUseCaseImpl() }

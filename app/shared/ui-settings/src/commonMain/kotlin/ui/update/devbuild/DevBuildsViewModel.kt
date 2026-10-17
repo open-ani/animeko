@@ -21,6 +21,7 @@ import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.update.PARALLEL_DOWNLOAD_CONNECTIONS
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.utils.ktor.asScopedHttpClient
 import me.him188.ani.utils.ktor.engineMaxRequestsPerHost
 import me.him188.ani.utils.ktor.getPlatformKtorEngine
 import me.him188.ani.utils.platform.currentPlatform
@@ -51,6 +52,7 @@ class DevBuildsViewModel : AbstractViewModel(), KoinComponent {
             api = GitHubDevBuildApi(client),
             spec = spec,
             installer = installer,
+            deltaAssembler = installer.createDeltaPackageAssembler(client.asScopedHttpClient()),
             saveDir = updateManager.devBuildsDir,
             getToken = { settingsRepository.debugSettings.flow.first().devBuildGitHubToken },
             currentVersionName = currentAniBuildConfig.versionName,

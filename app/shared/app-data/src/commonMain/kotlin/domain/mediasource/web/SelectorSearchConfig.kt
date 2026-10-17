@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.mediasource.web
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import io.ktor.http.URLBuilder
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -71,6 +72,16 @@ data class SelectorSearchConfig(
      * 播放 session 搜索缓存的有效期. 实际生效值为此值与用户设置中定义的值的较小者. 为 0 时禁用缓存.
      */
     val searchCacheTtl: @Serializable(DurationAsMillisSerializer::class) Duration = 2.hours,
+    /**
+     * 数据源全程使用的 User-Agent: 搜索页与详情页的 HTTP 请求、解验证码的浏览器、加载播放页匹配视频链接的 WebView,
+     * 以及播放器请求视频. 验证码的通过状态 (如 `cf_clearance`) 绑定 UA, 全程一致才能沿用解验证码时的会话.
+     *
+     * 为空时 HTTP 请求使用浏览器风格的默认 UA, 浏览器使用各平台 WebView 的默认值,
+     * 播放器使用 [VideoHeaders.userAgent] (旧配置里只用于播放器的 UA, 或它的默认值).
+     *
+     * @since 6.3
+     */
+    val userAgent: String = "",
     // Phase 2, for search result, select subjects
     val subjectFormatId: SelectorFormatId = SelectorSubjectFormatA.id,
     val selectorSubjectFormatA: SelectorSubjectFormatA.Config = SelectorSubjectFormatA.Config(),
@@ -128,6 +139,11 @@ data class SelectorSearchConfig(
         rawBaseUrl.ifBlank { guessBaseUrl(searchUrl) }
     }
 
+    /**
+     * 实际生效的 [userAgent]: 去掉首尾空白, 为空时为 `null`.
+     */
+    val userAgentOrNull: String? get() = userAgent.trim().ifEmpty { null }
+
     @Serializable
     @Suppress("RegExpRedundantEscape")
     data class MatchVideoConfig(
@@ -150,6 +166,13 @@ data class SelectorSearchConfig(
     @Serializable
     data class VideoHeaders(
         val referer: String = "",
+        /**
+         * 6.3 以前的配置只能设置播放器的 UA. 仅在 [SelectorSearchConfig.userAgent] 为空时使用, 保持旧配置的行为.
+         *
+         * 没改过时不写出: 旧客户端读不到这个键时使用同一个默认值.
+         */
+        @Deprecated("Use SelectorSearchConfig.userAgent")
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
         val userAgent: String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
     )
 
@@ -245,6 +268,9 @@ data class SelectorAutoMatchConfig(
      * - 主中文名
      * - 日文原名
      * - 其他别名, 无特定顺序
+     *
+     * 这些名字都没搜到名字能对上的条目时, 再依次尝试请求附带的回退关键词 (带季度标记的别名, 由系列关系推出的基础名),
+     * 见 [me.him188.ani.datasources.api.source.MediaFetchRequest.fallbackSearchKeywords].
      */
     val searchUseSubjectNamesCount: Int = 1,
     /**
@@ -335,6 +361,7 @@ private class SelectorSearchConfigSurrogate(
     val rawBaseUrl: String = "",
     val requestInterval: @Serializable(DurationAsMillisSerializer::class) Duration = 3.seconds,
     val searchCacheTtl: @Serializable(DurationAsMillisSerializer::class) Duration = 2.hours,
+    val userAgent: String = "",
     val subjectFormatId: SelectorFormatId = SelectorSubjectFormatA.id,
     val selectorSubjectFormatA: SelectorSubjectFormatA.Config = SelectorSubjectFormatA.Config(),
     val selectorSubjectFormatIndexed: SelectorSubjectFormatIndexed.Config = SelectorSubjectFormatIndexed.Config(),
@@ -362,6 +389,7 @@ private class SelectorSearchConfigSurrogate(
         rawBaseUrl = config.rawBaseUrl,
         requestInterval = config.requestInterval,
         searchCacheTtl = config.searchCacheTtl,
+        userAgent = config.userAgent,
         subjectFormatId = config.subjectFormatId,
         // 镜像给旧客户端
         selectorSubjectFormatA = config.selectorSubjectFormatA.copy(preferShorterName = config.autoMatch.preferShorterName),
@@ -398,6 +426,7 @@ private class SelectorSearchConfigSurrogate(
             rawBaseUrl = rawBaseUrl,
             requestInterval = requestInterval,
             searchCacheTtl = searchCacheTtl,
+            userAgent = userAgent,
             subjectFormatId = subjectFormatId,
             // 内存里的旧字段与 autoMatch 保持一致, 避免两处不同
             selectorSubjectFormatA = selectorSubjectFormatA.copy(preferShorterName = autoMatch.preferShorterName),
@@ -416,7 +445,10 @@ private class SelectorSearchConfigSurrogate(
     }
 }
 
-private object DurationAsMillisSerializer : KSerializer<Duration> {
+/**
+ * 以毫秒整数读写 [Duration]. 数据源配置里的时长都用它, 订阅文件里直接是数字.
+ */
+internal object DurationAsMillisSerializer : KSerializer<Duration> {
     override val descriptor = PrimitiveSerialDescriptor("Duration", PrimitiveKind.LONG)
     override fun serialize(encoder: Encoder, value: Duration) {
         Long.serializer().serialize(encoder, value.inWholeMilliseconds)

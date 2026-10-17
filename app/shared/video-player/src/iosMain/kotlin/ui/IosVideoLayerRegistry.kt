@@ -12,9 +12,11 @@
 package me.him188.ani.app.videoplayer.ui
 
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.openani.mediamp.MediampPlayer
+import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import platform.AVFoundation.AVPlayerLayer
 import kotlin.native.ref.WeakReference
 
@@ -28,6 +30,22 @@ import kotlin.native.ref.WeakReference
  * 所有调用都发生在主线程 (UIKitView factory/update/onRelease 与 Compose 均在主线程), 不做线程同步.
  */
 object IosVideoLayerRegistry {
+    private val enhancementFailures = HashMap<WeakReference<MediampPlayer>, MutableSharedFlow<Unit>>()
+
+    fun enhancementFailures(player: MediampPlayer): MutableSharedFlow<Unit> {
+        sweep()
+        enhancementFailures.entries.firstOrNull { it.key.get() === player }?.let { return it.value }
+        return MutableSharedFlow<Unit>(extraBufferCapacity = 1).also {
+            enhancementFailures[WeakReference(player)] = it
+        }
+    }
+    private val enhancementModes = HashMap<WeakReference<MediampPlayer>, MutableStateFlow<VideoEnhancementMode>>()
+
+    fun enhancementMode(player: MediampPlayer): MutableStateFlow<VideoEnhancementMode> {
+        sweep()
+        enhancementModes.entries.firstOrNull { it.key.get() === player }?.let { return it.value }
+        return MutableStateFlow(VideoEnhancementMode.OFF).also { enhancementModes[WeakReference(player)] = it }
+    }
     private val layers = HashMap<WeakReference<MediampPlayer>, WeakReference<AVPlayerLayer>>()
 
     /**
@@ -58,6 +76,8 @@ object IosVideoLayerRegistry {
     }
 
     private fun sweep() {
+        enhancementFailures.keys.removeAll { it.get() == null }
+        enhancementModes.keys.removeAll { it.get() == null }
         val iterator = layers.entries.iterator()
         while (iterator.hasNext()) {
             if (iterator.next().key.get() == null) iterator.remove()

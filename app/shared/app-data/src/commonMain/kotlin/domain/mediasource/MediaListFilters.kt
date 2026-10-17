@@ -33,8 +33,8 @@ object MediaListFilters {
      * 要求包含条目名称. 支持模糊匹配.
      */
     val ContainsSubjectName = BasicMediaListFilter { media ->
+        val originalTitle = removeSpecials(media.subjectName, removeWhitespace = true, replaceNumbers = true)
         subjectNamesWithoutSpecial.any { subjectName ->
-            val originalTitle = removeSpecials(media.subjectName, removeWhitespace = true, replaceNumbers = true)
             fun exactlyContains() = originalTitle
                 .contains(subjectName, ignoreCase = true)
 
@@ -201,14 +201,19 @@ object MediaListFilters {
         return result
     }
 
+    /**
+     * [specialEquals] 与 [specialContains] 在比较前对两边做的处理.
+     * 同一个字符串要与多个字符串比较时, 先各处理一次再用 `equals(ignoreCase = true)` 比较, 结果与 [specialEquals] 相同, 但不重复执行正则.
+     */
+    fun normalizeForCompare(string: String): String =
+        removeSpecials(string, removeWhitespace = true, replaceNumbers = true)
+
     fun specialEquals(first: String, second: String): Boolean {
-        return removeSpecials(first, removeWhitespace = true, replaceNumbers = true)
-            .equals(removeSpecials(second, removeWhitespace = true, replaceNumbers = true), ignoreCase = true)
+        return normalizeForCompare(first).equals(normalizeForCompare(second), ignoreCase = true)
     }
 
     fun specialContains(string: String, sub: String): Boolean {
-        return removeSpecials(string, removeWhitespace = true, replaceNumbers = true)
-            .contains(removeSpecials(sub, removeWhitespace = true, replaceNumbers = true), ignoreCase = true)
+        return normalizeForCompare(string).contains(normalizeForCompare(sub), ignoreCase = true)
     }
 
     /**

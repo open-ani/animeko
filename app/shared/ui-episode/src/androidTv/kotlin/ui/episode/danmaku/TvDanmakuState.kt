@@ -21,7 +21,21 @@ internal sealed interface TvDanmakuAdjustment {
     data class Timing(val serviceId: DanmakuServiceId) : TvDanmakuAdjustment
 }
 
-enum class TvDanmakuProperty { FontSize, Opacity, Speed, Density, Area, Stroke, Weight, Top, Bottom, Floating, Color }
+/** 面板里可调节的弹幕参数, 顺序即面板中的行顺序: 先连续参数, 后开关. */
+enum class TvDanmakuProperty {
+    FontSize,
+    Opacity,
+    Speed,
+    Density,
+    Area,
+    Stroke,
+    Weight,
+    TextConversion,
+    Top,
+    Bottom,
+    Floating,
+    Color
+}
 
 data class TvDanmakuOrigin(
     val serviceId: DanmakuServiceId,

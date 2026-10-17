@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.media.selector
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -157,6 +158,7 @@ class MediaSelectorProductionWiringTest {
                 override val danmakuEnabled get() = error("not used")
                 override val danmakuConfig get() = error("not used")
                 override val danmakuFilterConfig get() = error("not used")
+                override val danmakuTextConversionOverrides get() = error("not used")
                 override val profileSettings get() = error("not used")
                 override val proxySettings get() = error("not used")
                 override val mediaCacheSettings get() = error("not used")
@@ -174,6 +176,7 @@ class MediaSelectorProductionWiringTest {
                 override val analyticsSettings get() = error("not used")
                 override val debugSettings get() = error("not used")
                 override val watchTogetherSettings get() = error("not used")
+                override val notificationSettings get() = error("not used")
             }
 
             startKoin {

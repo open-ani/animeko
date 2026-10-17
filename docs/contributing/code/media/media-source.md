@@ -19,9 +19,10 @@ interface MediaSource {
 
 ## 数据源类型
 
-目前支持两种通用数据源和一些特别支持的数据源：
+目前支持三种通用数据源和一些特别支持的数据源：
 
 - `SelectorMediaSource`：通用 [CSS Selector][CSS Selector] 数据源；
+- `JsonApiMediaSource`：通用 JSON 接口数据源，用于站点内容只经 JSON 接口（通常是 POST）加载、HTML 页面里没有数据的情况；
 - `RssMediaSource`：通用 RSS 订阅数据源；
 - 特别支持的数据源：
     - `JellyfinMediaSource`、`EmbyMediaSource`：Jellyfin、Emby 媒体库；
@@ -29,7 +30,7 @@ interface MediaSource {
     - `IkarosMediaSource`：[Ikaros][Ikaros] 媒体库。
 
 特别支持的数据源只是实现 `MediaSource` 接口以接入对应平台，本文不赘述。
-下面我们将着重了解 `SelectorMediaSource` 和 `RssMediaSource`。
+下面我们将着重了解 `SelectorMediaSource`、`JsonApiMediaSource` 和 `RssMediaSource`。
 
 ### `SelectorMediaSource`
 
@@ -75,6 +76,16 @@ Selector 配置据此分两层：
 条目格式按页面顺序返回结果，`autoMatch.preferShorterName` 只在自动匹配阶段把名称短的条目排到前面。
 集号正则 `matchEpisodeSortFromName` 允许为空：列表规则不要求解析集号，空表示整个剧集名就是集号文本。
 
+自动匹配的搜索关键词是一条链：先用 `autoMatch.searchUseSubjectNamesCount` 个条目名各搜一次；它们都没搜到名字能对上的条目时，
+再依次尝试 `MediaFetchRequest.fallbackSearchKeywords`（带季度标记的别名、由系列关系推出的基础名），搜到为止。
+站点给各季起名以第一季为基础（「出包王女 第二季」），Bangumi 的中文名却沿用官方译名（「更多 出包王女」），
+只用后者搜索会一无所获，而取首词后它变成「更多」，更搜不到。回退只在前面都失败时发起，本来搜得到的条目不会多发请求。
+「搜到了」的判据与选择器过滤 WEB 资源的名称规则相同，所以这里认为搜到的，选择器不会再以名字不符为由排除。
+回退关键词只用于搜索，不加入名称匹配：基础名同时是第一季的名字，加入匹配会放过第一季的资源。
+搜索缓存同时充当这条链的记忆：缓存行按关键词写入，只有搜到过条目页的关键词才有行；下次查询把有行的关键词排到最前，
+它们搜到了就不再碰其余的，所以「更多」这类搜不到的关键词只在第一次和缓存过期后各花一次请求。
+有行只说明搜到过条目页，不说明名字对上了，因此记忆只决定顺序，不参与判定。
+
 #### 配置的兼容形式
 
 订阅 JSON 会被所有版本的客户端读取，而导出格式的版本号一旦升高，不认识该版本的客户端就会整个拒绝该源。
@@ -91,6 +102,51 @@ Selector 配置据此分两层：
 完成标记与结果按序通过 `flatMapLatest` 的缓冲区；重试时忽略旧查询的标记，
 因此观察到终态时可以读取该次查询的完整结果（失败时为已收到的部分结果）。
 
+### `JsonApiMediaSource`
+
+`JsonApiMediaSource` 面向把搜索、剧集列表与播放地址都放在 JSON 接口后面的站点。配置
+（`JsonApiSearchConfig`）按三个阶段描述接口：搜索条目、取条目的剧集列表、为一集签发播放地址。
+每个阶段是一个请求模板（地址、方法、请求头、请求体，变量用 `{name}` 代入）加几个
+JSONPath 表达式；公共请求头（如 `apikey`）与地址前缀在三个阶段间共用。
+
+#### 设计目标与取舍
+
+- **与 Selector 源共用自动匹配层。** `JsonApiSearchConfig.autoMatch` 就是 `SelectorAutoMatchConfig`，
+  搜索缓存也写进同一张 `WebSearchSessionCache` 表（剧集的站点 id 从播放页地址按模板反解，
+  不单独存列）。关键字链（主名、回退关键字、记忆关键字的顺序与节流）是两种源共用的 `keywordSearchChain`。
+- **请求节流是源级的。** 三个阶段的请求共用一个最小间隔（`requestInterval`），而不是像 Selector 源那样
+  只在搜索之间等待：接口站点对剧集与播放请求同样限流，而且自动匹配一次会连着发搜索、剧集与播放请求。
+- **线路是声明出来的。** 有的站点剧集列表里没有线路，线路只在播放响应的候选数组里以一个
+  标识字段出现。因此线路格式 `declared` 让用户按 `名称=匹配值` 列出线路，每条线路列出全部剧集；
+  播放时按资源所在线路的匹配值挑候选。资源 id 总是带线路（`源.条目id-线路-剧集id`）：
+  同一集的各线路只差线路这一个维度，合并它们会让自动选择与失败换线路无从区分。
+  声明的线路对每个条目都存在，但站点未必给每个条目的每条线路候选（例如新番与旧番走不同线路），
+  所以默认在线路没有候选时退用第一条候选，让自动选中的资源总能播放；代价是播的可能不是所选线路，
+  编辑器的播放详情页会标出这种退用。
+- **搜索结果先按条目名过滤再取剧集。** 名字对不上的条目选择器也会排除，不值得为它们各发一次剧集请求。
+  站点给出别名时（`selectAliases`）条目名或任一别名对上就算匹配，资源与搜索缓存里的条目名取对上的那个：
+  选择器下游用同一判据按资源的条目名再过滤一次，保留站点标题会让只有别名对上的条目在那里被排除。
+- **播放地址在播放时签发。** 签发的地址有效期短（通常几十分钟），不能写进 `Media`。
+  资源的 `download` 是 `ResourceLocation.WebVideo(页面地址, apiParameters = 播放请求的变量)`；
+  `apiParameters` 非空表示"由接口解析"，播放与缓存前 `ApiVideoMediaResolver` 从 `MediaSourceManager`
+  找到同 id 的源（它实现 `ApiVideoResolver`）当场签发，平台 WebView resolver 不打开页面。
+  同一集的播放响应在源内短暂记忆（60 秒），同一集换线路不重复请求。
+  用 `WebVideo` 的可选字段而不是新的 `ResourceLocation` 子类，是因为下载记录的反序列化遇到未知
+  子类时会丢弃整个列表，旧版本客户端打开新版本写入的下载列表就会丢掉全部记录。
+  已知限制：缓存下载中途地址过期后，下载器没有换地址重试的接口，与 Selector 源带签名的直链相同。
+- **接口的请求头不发给视频主机。** 视频请求只带 User-Agent、Referer 与播放阶段单独配置的 `videoHeaders`，
+  站点的 API key 不会流向 CDN；反过来视频主机要求的 Origin 一类请求头也不混进接口请求。
+- **剧集列表自带的地址也在播放时重取。** 有的站点剧集列表就给出可播放地址，不需要签发请求
+  （`JsonApiEpisodeFields.selectVideoUrl`，此时播放阶段的请求可留空）。这类地址同样不写进 `Media`：
+  列表里的直链也可能带签名有时效，而播放时按条目 id 重取一次剧集列表读这一集的地址，代价与签发请求相同。
+  资源仍走 `ApiVideoMediaResolver` 而不是 `HttpStreamingFile`，因为后者的 resolver 不带 Referer。
+  同时配置了签发请求时，只对列表里没有地址的剧集发它。
+- **编辑器的测试面板只在请求变化时重新请求。** 测试器缓存每个阶段的原始响应，只改 JSONPath 时
+  用缓存重新解析。请求体代入变量后必须是合法 JSON（字符串位置自动转义），编辑器在发送前就能发现模板错误。
+
+浏览方法与自动匹配产出相同的 `Media`（同一集两种途径得到相同的 `mediaId`），浏览时条目与剧集的站点 id
+从页面地址按模板反解，模板对不上的地址视为不属于本源。
+
 ## 数据源阶级
 
 > 自 Animeko v4.8。Channel 级阶级自 v4.9。
@@ -100,7 +156,7 @@ Selector 配置据此分两层：
 
 - **排序**：有效阶级低的资源排在前面，详见[排序阶段](media-selector.md#排序阶段)；
 - **快速选择**：阶级不超过阈值（目前为 `0`）的 WEB 数据源查询完成且有精确匹配结果后会被立即选择，
-  无需等待其他数据源。超过阈值的数据源只能在等待一段时间后通过兜底逻辑被选择。
+  无需等待其他数据源。超过阈值的数据源只能在等待一段时间、或 WEB 数据源全部查询结束后通过兜底逻辑被选择。
   入口为 `MediaAutoSelector.select` 的 WEB 阶段。
 
 阶级来源于数据源配置 `MediaSourceArguments.tier`，通常由订阅提供；用户未配置时使用回退值
@@ -151,12 +207,35 @@ Selector 配置据此分两层：
 `MediaSourceSubscriptionUpdater` 在订阅仓库事务之外下载订阅，在事务内检查当前启用状态并应用数据源差异。
 订阅开关与差异应用共用仓库的串行更新边界，确保下载期间禁用订阅后不会应用过期响应。
 
+## 数据源标签
+
+订阅可以在数据源条目上写 `tags`，告诉客户端这个数据源需要特殊处理。标签写在条目上而不是 `arguments` 里，
+因此对所有数据源类型通用。标签随订阅更新覆盖到本地配置 `MediaSourceConfig.tags`，用户不能修改；
+本地添加的数据源没有标签。
+
+```json
+{
+  "schemaVersion": 2,
+  "mediaSources": [
+    { "id": "example", "tags": ["hls-ads"], "factoryId": "web-selector", "version": 2, "arguments": { } }
+  ]
+}
+```
+
+已知的标签见 `MediaSourceTags`：
+
+- `hls-ads`：这个数据源的 HLS 播放列表可能插有广告。过滤插播广告要在起播前探测时间戳，会推迟开播，
+  所以默认的「智能」模式只对带这个标签的数据源过滤，见 `HlsAdFilteringMode`。
+
+客户端忽略不认识的标签，旧客户端忽略整个 `tags` 字段，所以新增标签不需要提升 `schemaVersion`。
+订阅文件由第三方维护，已发布的标签不能改名。
+
 ## 扩展数据源支持
 
 有以下多种方法扩展数据源支持：
 
-- （最简单）编写通用的数据源的配置。可以在 APP 内“设置-数据源管理”中添加 `Selector` 和 `RSS`
-  类型数据源。只需编写一些 CSS Selector 配置即可使用。
+- （最简单）编写通用的数据源的配置。可以在 APP 内“设置-数据源管理”中添加 `Selector`、`JSON API` 和 `RSS`
+  类型数据源。只需编写一些 CSS Selector 或 JSONPath 配置即可使用。
 - 实现新的 `MediaSelector`。参考 `IkarosMediaSource`（位于 `datasource/ikaros`）。通常需要为 Animeko
   仓库提交代码，增加一个新的模块。
 

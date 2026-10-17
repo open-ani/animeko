@@ -34,6 +34,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
+import me.him188.ani.app.data.models.danmaku.DanmakuTextConversionOverrides
 import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
@@ -41,6 +42,7 @@ import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
@@ -192,6 +194,7 @@ class UserCollectionsViewModelTest {
         override val danmakuEnabled: Settings<Boolean> by lazy { error("not implemented") }
         override val danmakuConfig: Settings<DanmakuConfig> by lazy { error("not implemented") }
         override val danmakuFilterConfig: Settings<DanmakuFilterConfig> by lazy { error("not implemented") }
+        override val danmakuTextConversionOverrides: Settings<DanmakuTextConversionOverrides> by lazy { error("not implemented") }
         override val mediaSelectorSettings: Settings<MediaSelectorSettings> by lazy { error("not implemented") }
         override val defaultMediaPreference: Settings<MediaPreference> by lazy { error("not implemented") }
         override val profileSettings: Settings<ProfileSettings> by lazy { error("not implemented") }
@@ -210,6 +213,7 @@ class UserCollectionsViewModelTest {
         override val analyticsSettings: Settings<AnalyticsSettings> by lazy { error("not implemented") }
         override val debugSettings: Settings<DebugSettings> by lazy { error("not implemented") }
         override val watchTogetherSettings: Settings<WatchTogetherSettings> by lazy { error("not implemented") }
+        override val notificationSettings: Settings<NotificationSettings> by lazy { error("not implemented") }
     }
 
     private object UnusedSubjectsApi : ApiInvoker<SubjectsAniApi> {

@@ -54,7 +54,13 @@ MCP 工具对应关系:
 |---|---|---|
 | `a` | 选择 `<a>` 元素,`title`/text 为名称,`href` 为链接 | `selectLists` |
 | `indexed` | 名称与链接分别用两个 selector 选出后按序配对 | `selectNames`, `selectLinks` |
-| `json-path-indexed` | 页面是 JSON API 响应,用 JsonPath 提取 | `selectLinks`, `selectNames` |
+| `json-path-indexed` | 页面是 JSON API 响应,用 JsonPath 提取 | `selectLinks`, `selectNames`, `linkTemplate` |
+
+**`linkTemplate`**(三种格式都支持,可选): 把 select 出的原始链接代入 `{value}` 得到详情页地址,留空则直接用原始链接。
+API 只返回裸 id 时(如 `{"list":[{"id":"5395"}]}`)用它把 id 拼成详情页地址——`selectLinks` 取 `$.list[*]['id']`、`linkTemplate` 填 `/GV{value}/`,即可得到 `https://站点/GV5395/`,无需为该站写专属 Kotlin 路由。
+模板可写相对路径(以 `searchUrl` 推出的 baseUrl 解析为绝对地址)或绝对地址。
+
+注: `linkTemplate` 是 web-selector 侧的**链接合成**(把 id 拼成详情页 URL), 角色上等价于通用 `json-api` 源的 `subjectUrlTemplate`。两者因**详情页格式不同**而分属两套源——web-selector 解析 HTML 详情(所以 girigiri 这类"JSON 搜索 + HTML 详情"的混合源用它), `json-api` 解析 JSON 详情(纯 JSON API 源用 `subjectUrlTemplate`)。命名随各自词汇(web-selector 的 `selectLinks`/`selectNames` vs `json-api` 的 `subjectUrlTemplate`/`episodeUrlTemplate`), 不强求同名。
 
 **输出**: `WebSearchSubjectInfo { name, fullUrl, partialUrl }` 列表,顺序与页面一致。返回 `null` 表示配置无效(selector 为空或语法错误)。
 `selector_resolve_episode` 在此之后按 `autoMatch.preferShorterName`(默认开)把名称短的条目排到前面,与 App 自动匹配一致;
@@ -121,8 +127,14 @@ MCP 工具对应关系:
 2. `matchVideoUrl` 匹配到的 URL → 即最终视频地址,`(?<v>...)` 命名分组可只取其中一段,没有分组则取整个 URL;
 3. 都不匹配 → 忽略该请求。
 
-匹配成功后,视频请求会附带 `addHeadersToVideo` 配置的 `User-Agent` / `Referer`;
+匹配成功后,视频请求会附带 `searchConfig.userAgent` 与 `addHeadersToVideo.referer`;
 WebView 加载播放页时会注入 `cookies`(每行一个 `name=value`)。
+
+`searchConfig.userAgent` 是数据源全程使用的 UA:搜索页、详情页请求,解验证码的浏览器,加载播放页的 WebView,
+播放器请求视频都用它(浏览器里请求头与主页面的 `navigator.userAgent` 都生效,桌面端跨站 iframe 里的 `navigator.userAgent` 除外)。
+为空则 HTTP 用浏览器风格的默认 UA、WebView 用平台默认 UA、播放器用 `addHeadersToVideo.userAgent`。
+站点按 UA 区分移动端/桌面端页面,或视频 CDN 校验 UA 时设置它。
+`addHeadersToVideo.userAgent` 是旧配置里只给播放器用的 UA,只为兼容旧配置保留,新配置不要写它。
 
 MCP 工具:
 

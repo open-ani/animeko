@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuConfigRanges
 import me.him188.ani.danmaku.ui.DanmakuStyle
+import me.him188.ani.danmaku.ui.DanmakuTextConversion
 
 internal fun DanmakuConfig.adjustForTv(property: TvDanmakuProperty, direction: Int): DanmakuConfig {
     val step = direction.coerceIn(-1, 1)
@@ -58,6 +59,12 @@ internal fun DanmakuConfig.adjustForTv(property: TvDanmakuProperty, direction: I
                 fontWeight = FontWeight((style.fontWeight.weight + step * 100).coerceIn(DanmakuConfigRanges.FontWeight)),
             ),
         )
+
+        // 离散的目标文字: 步进到两端就停住, 与上面几个连续参数一致, 不会绕回另一端
+        TvDanmakuProperty.TextConversion -> {
+            val targets = DanmakuTextConversion.entries
+            copy(textConversion = targets[(textConversion.ordinal + step).coerceIn(0, targets.lastIndex)])
+        }
 
         TvDanmakuProperty.Top -> copy(enableTop = !enableTop)
         TvDanmakuProperty.Bottom -> copy(enableBottom = !enableBottom)

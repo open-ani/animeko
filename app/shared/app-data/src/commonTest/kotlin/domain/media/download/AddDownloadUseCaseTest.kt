@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.media.download
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -20,6 +21,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import me.him188.ani.app.data.models.subject.SplitSeasonTestData.ReZero
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.fetch.create
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
@@ -83,6 +85,19 @@ class AddDownloadUseCaseTest {
         assertEquals(episode.ep, request.episodeEp)
         assertEquals(media.originalTitle, request.filename)
         assertEquals(1234L, request.fileSize)
+        assertNull(request.splitSeason)
+    }
+
+    @Test
+    fun `danmaku request carries split season`() = runTest {
+        val cache = requestTestCache(media, subjectId = subject.subjectId, episodeId = episode.episodeId)
+        val storage = DownloadTestStorage().apply { create = { _, _, _ -> cache } }
+        val requests = mutableListOf<DanmakuFetchRequest>()
+        val useCase = AddDownloadUseCaseImpl(MediaDownloadManager(listOf(storage), backgroundScope)) { requests += it }
+
+        useCase(subject, episode, media, metadata, ReZero.splitSeason(633836))
+        runCurrent()
+        assertEquals(listOf(547888), assertNotNull(requests.single().splitSeason).previousPartSubjectIds)
     }
 
     @Test

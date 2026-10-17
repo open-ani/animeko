@@ -118,7 +118,8 @@
     <string name="settings_debug_dev_builds_download">下載</string>
     <string name="settings_debug_dev_builds_cancel">取消</string>
     <string name="settings_debug_dev_builds_downloading">下載中 %1$s / %2$s</string>
-    <string name="settings_debug_dev_builds_extracting">正在解壓縮安裝包…</string>
+    <string name="settings_debug_dev_builds_downloading_incrementally">增量下載中 %1$s / %2$s</string>
+    <string name="settings_debug_dev_builds_comparing_installed">正在比對已安裝的檔案…</string>
     <string name="settings_debug_dev_builds_installing">正在安裝…</string>
     <string name="settings_debug_dev_builds_confirm_title">安裝這個 commit？</string>
     <string name="settings_debug_dev_builds_confirm_message_desktop">將下載 %1$s（%2$s）。隨後 Ani 會退出，用它覆蓋目前版本後自動重啟。設定和資料不受影響。</string>
@@ -127,7 +128,6 @@
     <string name="settings_debug_dev_builds_confirm_install">下載並安裝</string>
     <string name="settings_debug_dev_builds_confirm_download">下載</string>
     <string name="settings_debug_dev_builds_failure_token_required">請先填寫 GitHub Token。下載 GitHub Actions 產物需要登入</string>
-    <string name="settings_debug_dev_builds_failure_package_not_found">產物中沒有 .%1$s 安裝包</string>
     <string name="settings_debug_dev_builds_manual_title">安裝包已下載</string>
     <string name="settings_debug_dev_builds_manual_message">已儲存到 %1$s。請用它取代目前的 AppImage 並重新啟動。</string>
     <string name="settings_debug_dev_builds_manual_reveal">開啟所在位置</string>
@@ -154,7 +154,6 @@
     <string name="episode_drop_video_unknown_name">影片檔案</string>
     <string name="episode_drop_video_description">立即在目前劇集播放此檔案，僅本次播放有效</string>
     <string name="episode_drop_video_supported_hint">影片檔案</string>
-    <string name="settings_help_qq">QQ</string>
     <string name="settings_help_telegram">Telegram</string>
     <string name="settings_help_github">GitHub</string>
     <string name="settings_help_feedback">反饋問題</string>
@@ -165,7 +164,6 @@
     <string name="settings_about_feedback">反饋建議</string>
     <string name="settings_about_source_code">源代碼</string>
     <string name="settings_about_chat_groups">交流群</string>
-    <string name="settings_about_qq_group">QQ 群</string>
     <string name="settings_about_icon_description">Animeko Icon</string>
     <string name="settings_about_app_name">Animeko</string>
     <string name="settings_about_app_description">集找番、追番、看番的一站式彈幕追番平台</string>
@@ -227,6 +225,8 @@
     <string name="settings_mediasource_selector_config_search_subject_names_count_description">每次播放使用多少個條目名稱進行查詢。\n為 1 則只使用主名稱，為 2 額外使用日文原名，大於 2 將額外使用其他別名，別名的數量不固定。\n一般用 1 就夠了，使用多個名稱將會顯著增加播放時的等待時間。</string>
     <string name="settings_mediasource_selector_config_request_interval">搜索請求間隔時間 (毫秒)</string>
     <string name="settings_mediasource_selector_config_request_interval_description">控制每發送一個請求後等待多久後再發送下一個請求</string>
+    <string name="settings_mediasource_selector_config_source_user_agent">User-Agent (可選)</string>
+    <string name="settings_mediasource_selector_config_source_user_agent_description">數據源全程使用的 User-Agent：搜尋頁和詳情頁請求、驗證碼瀏覽器、載入播放頁匹配影片鏈接、播放器請求影片。留空則使用預設值</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl">搜尋快取有效期 (分鐘)</string>
     <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此時間內切換劇集時複用搜尋結果。實際生效值為此值與使用者設定中的較小者，0 表示不快取</string>
     <string name="settings_mediasource_selector_auto_match">自動匹配 (可選)</string>
@@ -250,7 +250,6 @@
     <string name="settings_mediasource_selector_config_distinguish_channel_name_description">關閉後，線路名稱不同，但只要標題相同的劇集就會被去重。\n開啟此項則不會這樣去重。\n此選項不影響測試結果，影響播放器內選擇數據源時的結果。</string>
     <string name="settings_mediasource_selector_config_video_playback">播放影片時</string>
     <string name="settings_mediasource_selector_config_referer_description">播放影片時執行的 HTTP 請求的 Referer，可留空</string>
-    <string name="settings_mediasource_selector_config_user_agent_description">播放影片時執行的 HTTP 請求的 User-Agent</string>
     <string name="settings_mediasource_selector_config_subject_format_single_tag">單標籤</string>
     <string name="settings_mediasource_selector_config_subject_format_multi_tag">多標籤</string>
     <string name="settings_mediasource_selector_config_channel_format_no_channel">不區分線路</string>
@@ -377,6 +376,8 @@
     <string name="settings_player_auto_mark_done">觀看 90% 後自動標記為看過</string>
     <string name="settings_player_hide_selector_on_select">選擇數據源後自動關閉彈窗</string>
     <string name="settings_player_auto_fullscreen_on_landscape">旋轉螢幕時自動全螢幕</string>
+    <string name="settings_player_foldable_hover_mode">摺疊螢幕懸停模式</string>
+    <string name="settings_player_foldable_hover_mode_description">裝置半摺疊時分開顯示影片和控制器</string>
     <string name="settings_player_auto_play_next">自動連播</string>
     <string name="settings_player_background_behavior">切換到其他應用程式時</string>
     <string name="settings_player_background_behavior_description">播放中離開應用程式時，自動以小窗繼續播放</string>
@@ -391,7 +392,12 @@
     <string name="settings_player_op_ed_skip_duration_seconds">%1$d 秒</string>
     <string name="settings_player_auto_switch_media_on_error">播放失敗時自動切換資源</string>
     <string name="settings_player_hls_ad_filter">過濾貼片廣告</string>
-    <string name="settings_player_hls_ad_filter_description">自動跳過線上來源影片中插入的廣告，個別廣告可能無法識別；如遇播放出錯可關閉</string>
+    <string name="settings_player_hls_ad_filter_all">全開</string>
+    <string name="settings_player_hls_ad_filter_smart">智能</string>
+    <string name="settings_player_hls_ad_filter_off">關閉</string>
+    <string name="settings_player_hls_ad_filter_all_description">過濾所有線上來源的廣告。識別廣告會讓影片晚 1-4 秒開播，最多 8 秒</string>
+    <string name="settings_player_hls_ad_filter_smart_description">只過濾訂閱標記為含有插播廣告的線上來源，個別廣告可能無法識別；如遇播放出錯可關閉</string>
+    <string name="settings_player_hls_ad_filter_off_description">不過濾線上來源影片中插入的廣告</string>
     <string name="settings_player_long_press_fast_forward_speed">長按播放速度</string>
     <string name="settings_player_long_press_fast_forward_speed_description">長按時使用的播放速度</string>
     <string name="settings_player_playback_speed_range">倍速範圍</string>
@@ -418,20 +424,16 @@
     <string name="settings_storage_directory_create_failed">無法建立目錄</string>
 
     <!-- MediaSourceGroup -->
-    <string name="settings_media_source_list">數據源列表 (%1$d)</string>
-    <string name="settings_media_source_list_description">在播放時，禁用的數據源不會自動查詢，但可手動點擊臨時啟用。注意，排序將優先採用雲端順序，同數據源訂閱之內的手動排序可能無效</string>
     <string name="settings_media_source_cancel_sort">取消排序</string>
     <string name="settings_media_source_add">添加數據源</string>
     <string name="settings_media_source_save_sort">保存排序</string>
     <string name="settings_media_source_sort">排序</string>
     <string name="settings_media_source_stop_test">終止測試</string>
-    <string name="settings_media_source_start_test">開始測試</string>
     <string name="settings_media_source_delete">刪除數據源</string>
     <string name="settings_media_source_delete_no_config">該數據源無特殊配置，刪除後可以重新從模板直接添加，確認刪除嗎？</string>
     <string name="settings_media_source_delete_with_config">該數據源有配置，刪除後將丟失配置，之後從模板添加時需要重新配置，確認刪除嗎？</string>
     <string name="settings_media_source_delete_confirm">刪除</string>
     <string name="settings_media_source_cancel">取消</string>
-    <string name="settings_media_source_from_subscription">來自訂閱，不可編輯</string>
     <string name="settings_media_source_edit">編輯</string>
     <string name="settings_media_source_start_sort">開始排序</string>
     <string name="settings_media_source_more">更多</string>
@@ -439,14 +441,10 @@
     <string name="settings_media_source_disabled">（已禁用）</string>
     <string name="settings_media_source_disable">禁用</string>
     <string name="settings_media_source_enable">啟用</string>
-    <string name="settings_media_source_delete_can_readd">刪除（可重新添加）</string>
     <string name="settings_media_source_enter_selection_mode">進入選擇模式</string>
-    <string name="settings_media_source_exit_selection">退出選擇模式</string>
     <string name="settings_media_source_selected_count">已選擇 %1$d 個數據源</string>
-    <string name="settings_media_source_select_all">選擇全部數據源</string>
-    <string name="settings_media_source_deselect_all">取消選擇全部數據源</string>
-    <string name="settings_media_source_enable_selected">啟用選中的數據源</string>
-    <string name="settings_media_source_disable_selected">禁用選中的數據源</string>
+    <string name="settings_media_source_select_all">全選</string>
+    <string name="settings_media_source_deselect_all">取消全選</string>
     <string name="settings_media_source_delete_selected">刪除選中的數據源</string>
     <string name="settings_media_source_delete_selected_title">刪除選中的數據源？</string>
     <string name="settings_media_source_delete_selected_confirmation">確定刪除選中的 %1$d 個數據源嗎？刪除後將丟失自訂配置，重新添加時需要再次配置。</string>
@@ -454,15 +452,13 @@
 
     <!-- MediaSourceSubscriptionGroup -->
     <string name="settings_media_source_subscription">數據源訂閱</string>
-    <string name="settings_media_source_subscription_description">可通過訂閱添加多個數據源，自動定時更新訂閱</string>
-    <string name="settings_media_source_subscription_add">添加</string>
     <string name="settings_media_source_subscription_refresh_all">刷新全部</string>
     <string name="settings_media_source_subscription_add_dialog">添加訂閱</string>
     <string name="settings_media_source_subscription_add_confirm">添加</string>
     <string name="settings_media_source_subscription_paste">貼上</string>
     <string name="settings_media_source_subscription_cancel">取消</string>
     <string name="settings_media_source_subscription_url">URL (HTTP)</string>
-    <string name="settings_media_source_subscription_auto_update">每 %1$s 自動更新，</string>
+    <string name="settings_media_source_subscription_auto_update">每 %1$s 自動更新</string>
     <string name="settings_media_source_subscription_copy_link">複製鏈接</string>
     <string name="settings_media_source_subscription_copied">已複製</string>
     <string name="settings_media_source_subscription_export_all">全部導出到剪貼板</string>
@@ -476,6 +472,26 @@
     <string name="settings_media_source_subscription_network_error">網絡錯誤，請檢查網絡連接</string>
     <string name="settings_media_source_subscription_service_unavailable">服務暫不可用，請稍後重試</string>
     <string name="settings_media_source_subscription_unauthorized">服務禁止訪問，請聯繫服務提供商</string>
+    <string name="settings_media_source_subscriptions">訂閱</string>
+    <string name="settings_media_source_custom">自定義</string>
+    <string name="settings_media_source_subscription_updated_at">%1$s更新</string>
+    <string name="settings_media_source_subscription_media_source_count">%1$d 個數據源</string>
+    <string name="settings_media_source_subscription_enable_all">全部啟用</string>
+    <string name="settings_media_source_subscription_disable_all">全部禁用</string>
+    <string name="settings_media_source_subscription_delete_subscription">刪除訂閱</string>
+    <string name="settings_media_source_subscription_website">主頁</string>
+    <string name="settings_media_source_subscription_link">訂閱鏈接</string>
+    <string name="settings_media_source_subscription_update_now">立即更新</string>
+    <string name="settings_media_source_subscription_unsupported_media_sources">%1$d 個數據源需要新版 Animeko</string>
+    <string name="settings_media_source_subscription_requires_newer_app">需要新版 Animeko</string>
+    <string name="settings_media_source_test_connection">測試連接</string>
+    <string name="settings_media_source_done">完成</string>
+    <string name="settings_media_source_disabled_label">已禁用</string>
+    <string name="settings_media_source_kind_web">線上</string>
+    <string name="settings_media_source_location_lan">局域網</string>
+    <string name="settings_media_source_location_local">本地</string>
+    <string name="settings_media_source_subscription_media_sources">數據源</string>
+    <string name="settings_media_source_view_config">查看配置</string>
     <string name="settings_storage_danmaku_cache_strategy_title">彈幕快取策略</string>
     <string name="settings_storage_danmaku_cache_strategy_description_do_not_cache">不快取彈幕，每次播放都從網路取得。</string>
     <string name="settings_storage_danmaku_cache_strategy_description_cache_on_collection_doing_media_play">在播放收藏狀態為「在看」的條目劇集時快取彈幕。若該條目的收藏狀態變更為其他狀態，則刪除對應的彈幕快取。</string>
@@ -704,8 +720,6 @@
     <string name="settings_network_proxy_password">密碼</string>
     <string name="settings_network_proxy_retest">重新測試</string>
     <string name="settings_network_proxy_service_danmaku">彈幕服務</string>
-    <string name="settings_network_proxy_service_collection">收藏數據服務</string>
-    <string name="settings_network_proxy_service_comment">評論服務</string>
     <string name="settings_network_proxy_test_success">連接成功</string>
     <string name="settings_network_proxy_test_failed">連接失敗</string>
     <string name="settings_network_proxy_current_disabled">未啟用代理</string>
@@ -1495,6 +1509,7 @@
     <string name="subject_episode_statistics_error_details">錯誤詳情</string>
     <string name="subject_episode_statistics_error">錯誤</string>
     <string name="subject_episode_statistics_no_matching_file">未匹配到檔案</string>
+    <string name="subject_episode_statistics_web_engine_unavailable">內置瀏覽器未啟動，無法解析網頁資料來源，請重新啟動應用程式</string>
     <string name="subject_episode_statistics_resolution_timed_out">解析超時</string>
     <string name="subject_episode_statistics_unsupported_media">不支援的影片類型</string>
     <string name="subject_episode_statistics_unknown_error_tap">未知錯誤，點擊查看</string>
@@ -1523,6 +1538,7 @@
     <string name="subject_episode_video_loading_cause_unknown_error">未知錯誤</string>
     <string name="subject_episode_video_loading_cause_unsupported_media">不支援該檔案類型</string>
     <string name="subject_episode_video_loading_cause_no_matching_file">未找到可播放的檔案</string>
+    <string name="subject_episode_video_loading_cause_web_engine_unavailable">內置瀏覽器未啟動, 請重新啟動應用程式</string>
     <string name="subject_episode_video_loading_cause_cancelled">已取消</string>
     <string name="subject_episode_video_loading_cause_network_error">網絡錯誤</string>
     <string name="subject_episode_wish_change_to">已想看，可更改為：</string>
@@ -1586,6 +1602,12 @@
     <string name="subject_episode_video_settings_enable_regex_filter">啟用正則彈幕過濾器</string>
     <string name="subject_episode_video_settings_manage_regex_filter">管理正則彈幕過濾器</string>
     <string name="subject_episode_video_settings_debug_mode">彈幕調試模式</string>
+    <string name="subject_episode_video_settings_text_conversion">彈幕文字</string>
+    <string name="subject_episode_video_settings_text_conversion_original">原樣</string>
+    <string name="subject_episode_video_settings_text_conversion_simplified">簡體</string>
+    <string name="subject_episode_video_settings_text_conversion_traditional">繁體</string>
+    <string name="subject_episode_video_settings_text_conversion_taiwan">台繁</string>
+    <string name="subject_episode_video_settings_text_conversion_hong_kong">港繁</string>
 
     <!-- 人物/角色詳情頁 -->
     <string name="person_details_basic_info">基本資訊</string>
@@ -1772,6 +1794,14 @@
     <string name="qr_login_done">完成</string>
     <string name="qr_login_close">關閉</string>
     <string name="subject_episode_danmaku_sources_title">來源與時間校準</string>
+    <string name="subject_episode_danmaku_text_conversion_item">簡繁轉換</string>
+    <string name="subject_episode_danmaku_text_conversion_desc">個別來源可以覆蓋全部來源的設定</string>
+    <string name="subject_episode_danmaku_text_conversion_preview_hint">範例：</string>
+    <string name="subject_episode_danmaku_text_conversion_override_count">%1$d 個來源已個別設定</string>
+    <string name="subject_episode_danmaku_text_conversion_follow_global">跟隨全局</string>
+    <string name="subject_episode_danmaku_text_conversion_section_all">全部來源</string>
+    <string name="subject_episode_danmaku_text_conversion_section_per_source">個別來源</string>
+    <string name="subject_episode_danmaku_text_conversion_reset_overrides">重設個別設定</string>
     <string name="subject_episode_danmaku_sources_empty">暫無可用彈幕來源</string>
     <string name="video_player_screenshot">截圖</string>
     <string name="video_player_screenshot_share">分享</string>
@@ -1784,6 +1814,84 @@
     <string name="video_player_screenshot_failed_no_frame">截圖失敗: 目前沒有可擷取的畫面</string>
     <string name="video_player_screenshot_failed_save">截圖儲存失敗</string>
     <string name="video_player_screenshot_failed_save_reason">截圖儲存失敗: %1$s</string>
+    <string name="settings_mediasource_jsonapi_section_api">接口</string>
+    <string name="settings_mediasource_jsonapi_base_url">接口地址前綴</string>
+    <string name="settings_mediasource_jsonapi_base_url_supporting">各步驟的相對請求地址以它為基準，例如 https://api.example.com</string>
+    <string name="settings_mediasource_jsonapi_headers">公共請求頭</string>
+    <string name="settings_mediasource_jsonapi_headers_supporting">每行一個，格式為 名稱: 值。每個請求都會帶上，例如 apikey 與 Authorization</string>
+    <string name="settings_mediasource_jsonapi_request_interval">請求間隔（毫秒）</string>
+    <string name="settings_mediasource_jsonapi_request_interval_supporting">任意兩個請求之間的最小間隔，搜索、劇集與播放步驟共用</string>
+    <string name="settings_mediasource_jsonapi_request_url">請求地址</string>
+    <string name="settings_mediasource_jsonapi_request_url_supporting">可以是相對於接口地址前綴的路徑。可用變量：%1$s</string>
+    <string name="settings_mediasource_jsonapi_request_method">請求方法</string>
+    <string name="settings_mediasource_jsonapi_request_headers">請求頭（可選）</string>
+    <string name="settings_mediasource_jsonapi_request_headers_supporting">每行一個，覆蓋同名的公共請求頭</string>
+    <string name="settings_mediasource_jsonapi_request_body">請求體</string>
+    <string name="settings_mediasource_jsonapi_request_body_supporting">按 JSON 發送，代入變量後必須是合法 JSON。字符串裡的變量會自動轉義。可用變量：%1$s</string>
+    <string name="settings_mediasource_jsonapi_page_size">每頁數量</string>
+    <string name="settings_mediasource_jsonapi_page_size_supporting">代入 {pageSize}</string>
+    <string name="settings_mediasource_jsonapi_select_items">提取條目列表</string>
+    <string name="settings_mediasource_jsonapi_select_items_supporting">JSONPath 表達式。期望返回一個數組，每個元素是一個條目；下面的表達式相對於單個條目</string>
+    <string name="settings_mediasource_jsonapi_select_name">提取條目名稱</string>
+    <string name="settings_mediasource_jsonapi_select_name_supporting">JSONPath 表達式，相對於單個條目</string>
+    <string name="settings_mediasource_jsonapi_select_id">提取條目 ID</string>
+    <string name="settings_mediasource_jsonapi_select_id_supporting">JSONPath 表達式，相對於單個條目。作為後續請求裡的 {id}</string>
+    <string name="settings_mediasource_jsonapi_select_aliases">提取別名（可選）</string>
+    <string name="settings_mediasource_jsonapi_select_aliases_supporting">JSONPath 表達式，相對於單個條目，可以是字符串數組。自動匹配時條目名或任一別名對上即可</string>
+    <string name="settings_mediasource_jsonapi_subject_url_template">條目頁面地址模板</string>
+    <string name="settings_mediasource_jsonapi_subject_url_template_supporting">必須包含 {id}。用於打開站點頁面與識別條目</string>
+    <string name="settings_mediasource_jsonapi_channel_format_declared">聲明線路</string>
+    <string name="settings_mediasource_jsonapi_channel_format_grouped">響應分組</string>
+    <string name="settings_mediasource_jsonapi_channel_format_no_channel">無線路</string>
+    <string name="settings_mediasource_jsonapi_declared_channels">線路列表</string>
+    <string name="settings_mediasource_jsonapi_declared_channels_supporting">每行一條線路，格式為 名稱=匹配值。匹配值用於在播放響應裡選擇候選，省略時與名稱相同。每條線路都列出全部劇集</string>
+    <string name="settings_mediasource_jsonapi_grouped_select_channels">提取線路列表</string>
+    <string name="settings_mediasource_jsonapi_grouped_select_channels_supporting">JSONPath 表達式。期望返回一個數組，每個元素是一條線路；劇集列表表達式相對於單條線路</string>
+    <string name="settings_mediasource_jsonapi_grouped_select_channel_name">提取線路名稱</string>
+    <string name="settings_mediasource_jsonapi_grouped_select_channel_name_supporting">JSONPath 表達式，相對於單條線路。同時作為播放響應裡的匹配值</string>
+    <string name="settings_mediasource_jsonapi_select_episodes">提取劇集列表</string>
+    <string name="settings_mediasource_jsonapi_select_episodes_supporting">JSONPath 表達式。期望返回一個數組，每個元素是一集；下面的表達式相對於單集</string>
+    <string name="settings_mediasource_jsonapi_episode_select_name">提取劇集名稱</string>
+    <string name="settings_mediasource_jsonapi_episode_select_id">提取劇集 ID</string>
+    <string name="settings_mediasource_jsonapi_episode_select_id_supporting">JSONPath 表達式，相對於單集。作為播放請求裡的 {id}</string>
+    <string name="settings_mediasource_jsonapi_episode_select_sort">提取集號（可選）</string>
+    <string name="settings_mediasource_jsonapi_episode_select_sort_supporting">JSONPath 表達式。為空時按下面的正則從名稱解析集號</string>
+    <string name="settings_mediasource_jsonapi_episode_select_type">提取劇集類型（可選）</string>
+    <string name="settings_mediasource_jsonapi_episode_select_type_supporting">JSONPath 表達式。配合類型映射區分正片與特別篇</string>
+    <string name="settings_mediasource_jsonapi_episode_type_mapping">劇集類型映射</string>
+    <string name="settings_mediasource_jsonapi_episode_type_mapping_supporting">每行一條，格式為 站點值=類型。類型可為 MainStory、SP、OP、ED、PV、MAD、OVA、OAD</string>
+    <string name="settings_mediasource_jsonapi_episode_name_template">劇集顯示名稱模板</string>
+    <string name="settings_mediasource_jsonapi_episode_name_template_supporting">可用變量：{sort}、{name}、{id}</string>
+    <string name="settings_mediasource_jsonapi_episode_url_template">劇集頁面地址模板</string>
+    <string name="settings_mediasource_jsonapi_episode_url_template_supporting">必須包含 {id}，也可用 {subjectId}。用於打開站點頁面與識別劇集</string>
+    <string name="settings_mediasource_jsonapi_episode_select_video_url">提取視頻地址（可選）</string>
+    <string name="settings_mediasource_jsonapi_episode_select_video_url_supporting">JSONPath 表達式，相對於單個劇集。填寫後直接播放列表裡的地址，播放步驟的請求可留空</string>
+    <string name="settings_mediasource_jsonapi_select_candidates">提取候選列表（可選）</string>
+    <string name="settings_mediasource_jsonapi_select_candidates_supporting">JSONPath 表達式。期望返回一個數組，每個元素是一個視頻候選。為空時直接從響應根提取視頻地址</string>
+    <string name="settings_mediasource_jsonapi_select_candidate_channel">提取候選的線路匹配值</string>
+    <string name="settings_mediasource_jsonapi_select_candidate_channel_supporting">JSONPath 表達式，相對於單個候選。與資源所在線路的匹配值比較</string>
+    <string name="settings_mediasource_jsonapi_select_video_url">提取視頻地址</string>
+    <string name="settings_mediasource_jsonapi_select_video_url_supporting">JSONPath 表達式，相對於單個候選（或響應根）</string>
+    <string name="settings_mediasource_jsonapi_fallback_to_first_candidate">線路不匹配時使用第一個候選</string>
+    <string name="settings_mediasource_jsonapi_fallback_to_first_candidate_supporting">關閉時，所在線路沒有候選的資源無法播放，播放器會嘗試其他線路</string>
+    <string name="settings_mediasource_jsonapi_step3">步驟 3：播放地址</string>
+    <string name="settings_mediasource_jsonapi_play_request">請求</string>
+    <string name="settings_mediasource_jsonapi_play_response">響應</string>
+    <string name="settings_mediasource_jsonapi_play_status">狀態 %1$d</string>
+    <string name="settings_mediasource_jsonapi_play_candidates">%1$d 個候選</string>
+    <string name="settings_mediasource_jsonapi_play_selected">已選</string>
+    <string name="settings_mediasource_jsonapi_play_fallback">該線路沒有候選，改用了第一個候選</string>
+    <string name="settings_mediasource_jsonapi_play_no_candidate">沒有與線路匹配的候選</string>
+    <string name="settings_mediasource_jsonapi_play_not_found">站點返回 404</string>
+    <string name="settings_mediasource_jsonapi_play_not_json">響應不是 JSON，或播放步驟配置無效</string>
+    <string name="settings_mediasource_jsonapi_play_request_optional_hint">劇集列表已提供視頻地址，此處請求可留空；填寫後只對列表裡沒有地址的劇集發送</string>
+    <string name="settings_mediasource_jsonapi_play_from_episode_list">地址來自劇集列表，未發播放請求</string>
+    <string name="settings_mediasource_jsonapi_play_episode_list_no_video">劇集列表裡沒有這一集的視頻地址，播放步驟也沒有配置請求</string>
+    <string name="settings_mediasource_jsonapi_video_headers">視頻請求頭</string>
+    <string name="settings_mediasource_jsonapi_video_headers_supporting">每行一個 名稱: 值，只隨視頻請求發送，不發給接口；與 Referer 字段同名時以這裡為準。可用變量：%1$s</string>
+    <string name="settings_mediasource_jsonapi_unknown_variables">未知變量：%1$s</string>
+    <string name="settings_mediasource_jsonapi_play_open_video">打開視頻地址</string>
+    <string name="settings_mediasource_jsonapi_play_copy">複製</string>
 </resources>
 
 <!--@formatter:on-->

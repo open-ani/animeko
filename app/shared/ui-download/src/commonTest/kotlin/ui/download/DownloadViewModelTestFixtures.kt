@@ -11,8 +11,6 @@ package me.him188.ani.app.ui.download
 
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +23,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
+import me.him188.ani.app.data.models.danmaku.DanmakuTextConversionOverrides
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.player.EpisodeHistory
@@ -35,6 +34,7 @@ import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
@@ -47,6 +47,7 @@ import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.preference.WatchTogetherSettings
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
@@ -101,6 +102,8 @@ import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 internal const val TEST_STORAGE_ID = "test-storage"
 
@@ -272,6 +275,8 @@ internal class FakeEpisodePlayHistoryRepository : EpisodePlayHistoryRepository {
 
     override suspend fun deletePendingOps(ids: Collection<Long>) = throw UnsupportedOperationException()
     override suspend fun getResumePositionMillisByEpisodeId(episodeId: Int): Long? = throw UnsupportedOperationException()
+    override suspend fun countAllRecords(): Int = throw UnsupportedOperationException()
+    override suspend fun getEarliestRecordTimeMillis(): Long? = throw UnsupportedOperationException()
 }
 
 /**
@@ -289,6 +294,7 @@ internal class FakeSettingsRepository : SettingsRepository {
     override val danmakuEnabled: Settings<Boolean> get() = error("Not used")
     override val danmakuConfig: Settings<DanmakuConfig> get() = error("Not used")
     override val danmakuFilterConfig: Settings<DanmakuFilterConfig> get() = error("Not used")
+    override val danmakuTextConversionOverrides: Settings<DanmakuTextConversionOverrides> get() = error("Not used")
     override val defaultMediaPreference: Settings<MediaPreference> get() = error("Not used")
     override val profileSettings: Settings<ProfileSettings> get() = error("Not used")
     override val proxySettings: Settings<ProxySettings> get() = error("Not used")
@@ -307,6 +313,7 @@ internal class FakeSettingsRepository : SettingsRepository {
     override val analyticsSettings: Settings<AnalyticsSettings> get() = error("Not used")
     override val debugSettings: Settings<DebugSettings> get() = error("Not used")
     override val watchTogetherSettings: Settings<WatchTogetherSettings> get() = error("Not used")
+    override val notificationSettings: Settings<NotificationSettings> get() = error("Not used")
 }
 
 /**
@@ -421,7 +428,13 @@ internal class FakeAddDownloadUseCase(private val storage: FakeDownloadStorage) 
     var gate: CompletableDeferred<Unit>? = null
     var failure: Throwable? = null
 
-    override suspend fun invoke(subject: SubjectInfo, episode: EpisodeInfo, media: Media, metadata: MediaCacheMetadata): MediaCache {
+    override suspend fun invoke(
+        subject: SubjectInfo,
+        episode: EpisodeInfo,
+        media: Media,
+        metadata: MediaCacheMetadata,
+        splitSeason: SplitSeason?,
+    ): MediaCache {
         gate?.await()
         failure?.let { throw it }
         val cache = testDownloadCache(episode.episodeId, subject.subjectId)

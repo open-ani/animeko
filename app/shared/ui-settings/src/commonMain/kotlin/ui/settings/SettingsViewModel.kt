@@ -24,15 +24,17 @@ import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.danmaku.DanmakuConfigSerializer
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
+import me.him188.ani.app.data.models.danmaku.DanmakuTextConversionOverrides
 import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
-import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
 import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
+import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.app.data.models.preference.ProfileSettings
 import me.him188.ani.app.data.models.preference.ProxyMode
@@ -61,6 +63,7 @@ import me.him188.ani.app.domain.settings.ProxySettingsFlowProxyProvider
 import me.him188.ani.app.domain.settings.ProxyTester
 import me.him188.ani.app.domain.settings.ServiceConnectionTester
 import me.him188.ani.app.domain.settings.ServiceConnectionTesters
+import me.him188.ani.app.domain.torrent.engines.PikPakEngine
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.launchInBackground
@@ -91,7 +94,6 @@ import me.him188.ani.app.ui.settings.tabs.network.toDataSettings
 import me.him188.ani.app.ui.settings.tabs.network.toUIConfig
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.danmaku.ui.DanmakuConfig
-import me.him188.ani.app.domain.torrent.engines.PikPakEngine
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import org.koin.core.component.KoinComponent
@@ -302,6 +304,7 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     val mediaSourceSubscriptionGroupState = MediaSourceSubscriptionGroupState(
         subscriptionsState = subscriptionsState,
         onUpdateAll = { mediaSourceSubscriptionUpdater.updateAllOutdated(force = true) },
+        onUpdate = { mediaSourceSubscriptionUpdater.update(it) },
         onAdd = { mediaSourceSubscriptionRepository.add(it) },
         onDelete = {
             launchInBackground {
@@ -311,9 +314,9 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
                 mediaSourceSubscriptionRepository.remove(it)
             }
         },
-        onExportLocalChangesToString = { subscription ->
+        onExportToString = { subscription ->
             val saves = mediaSourceManager.getListBySubscriptionId(subscription.subscriptionId)
-            mediaSourceCodecManager.serializeSubscriptionToString(saves)
+            mediaSourceCodecManager.serializeSubscriptionToString(saves, subscription.metadata)
         },
         backgroundScope,
     )
@@ -338,6 +341,7 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
             danmakuEnabled = settingsRepository.danmakuEnabled.flow.first(),
             danmakuConfig = settingsRepository.danmakuConfig.flow.first(),
             danmakuFilterConfig = settingsRepository.danmakuFilterConfig.flow.first(),
+            danmakuTextConversionOverrides = settingsRepository.danmakuTextConversionOverrides.flow.first(),
             danmakuRegexFilters = danmakuRegexFilterRepository.flow.first(),
             mediaSelectorSettings = settingsRepository.mediaSelectorSettings.flow.first(),
             defaultMediaPreference = settingsRepository.defaultMediaPreference.flow.first(),
@@ -356,6 +360,7 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
             oneshotActionConfig = settingsRepository.oneshotActionConfig.flow.first(),
             analyticsSettings = settingsRepository.analyticsSettings.flow.first(),
             debugSettings = settingsRepository.debugSettings.flow.first(),
+            notificationSettings = settingsRepository.notificationSettings.flow.first(),
             // Account credentials must not leak into exported settings; keep
             // the field present so the backup schema stays stable, but write
             // a credential-free Default. restoreSettingsBackup intentionally
@@ -374,6 +379,7 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
         backup.danmakuEnabled?.let { settingsRepository.danmakuEnabled.set(it) }
         backup.danmakuConfig?.let { settingsRepository.danmakuConfig.set(it) }
         backup.danmakuFilterConfig?.let { settingsRepository.danmakuFilterConfig.set(it) }
+        backup.danmakuTextConversionOverrides?.let { settingsRepository.danmakuTextConversionOverrides.set(it) }
         backup.danmakuRegexFilters?.let { danmakuRegexFilterRepository.replaceAll(it) }
         backup.mediaSelectorSettings?.let { settingsRepository.mediaSelectorSettings.set(it) }
         backup.defaultMediaPreference?.let { settingsRepository.defaultMediaPreference.set(it) }
@@ -392,6 +398,7 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
         backup.oneshotActionConfig?.let { settingsRepository.oneshotActionConfig.set(it) }
         backup.analyticsSettings?.let { settingsRepository.analyticsSettings.set(it) }
         backup.debugSettings?.let { settingsRepository.debugSettings.set(it) }
+        backup.notificationSettings?.let { settingsRepository.notificationSettings.set(it) }
         // pikpakConfig deliberately not restored: see serializeSettingsBackup.
         // Older backups produced before that change may still carry real
         // credentials, and we don't want a restore to silently re-introduce
@@ -407,8 +414,6 @@ private fun Map<String, ServiceConnectionTester.TestState>.toUIState(): List<Pro
         this@toUIState.forEach { (id, state) ->
             val case = when (id) {
                 ServiceConnectionTesters.ID_ANI -> ProxyTestCase.AniDanmakuApi
-                ServiceConnectionTesters.ID_BANGUMI -> ProxyTestCase.BangumiApi
-                ServiceConnectionTesters.ID_BANGUMI_NEXT -> ProxyTestCase.BangumiNextApi
                 else -> return@forEach
             }
             val result = when (state) {
@@ -428,6 +433,8 @@ private data class SettingsBackup(
     val danmakuEnabled: Boolean?,
     @Serializable(with = DanmakuConfigSerializer::class) val danmakuConfig: DanmakuConfig?,
     val danmakuFilterConfig: DanmakuFilterConfig?,
+    // 新增字段必须带默认值: 否则旧版本导出的备份 (没有这个键) 会因 MissingFieldException 而导入失败
+    val danmakuTextConversionOverrides: DanmakuTextConversionOverrides? = null,
     val danmakuRegexFilters: List<DanmakuRegexFilter>? = null,
     val mediaSelectorSettings: MediaSelectorSettings?,
     val defaultMediaPreference: MediaPreference?,
@@ -447,5 +454,6 @@ private data class SettingsBackup(
     val analyticsSettings: AnalyticsSettings?,
     val debugSettings: DebugSettings?,
     val pikpakConfig: PikPakConfig? = null,
+    val notificationSettings: NotificationSettings? = null,
     val tokenStore: TokenSave?
 )

@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 import UIKit // Import UIKit for UIViewController specifics
 import application // Import your KMP shared module (ensure this is the correct name)
 
@@ -73,6 +74,18 @@ struct ContentView: View {
 }
 
 class SwiftBridgeImpl : ISwiftBridge {
+    func createEnhancedPlayerView(player: AVPlayer, onUnavailable: @escaping () -> Void) -> UIView {
+        EnhancedPlayerView(player: player, onUnavailable: onUnavailable)
+    }
+
+    func updateEnhancedPlayerView(view: UIView, mode: Int32, aspect: Int32) {
+        (view as? EnhancedPlayerView)?.update(mode: Int(mode), aspect: Int(aspect))
+    }
+
+    func releaseEnhancedPlayerView(view: UIView) {
+        (view as? EnhancedPlayerView)?.close()
+    }
+
 	func navigationController(_ receiver: UIViewController) -> UINavigationController? {
 		return receiver.navigationController
 	}

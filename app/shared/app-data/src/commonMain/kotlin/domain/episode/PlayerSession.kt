@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.preference.HlsAdFilteringMode
 import me.him188.ani.app.domain.media.hls.HlsPlaybackOptions
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.HlsPlaybackProxySession
@@ -34,6 +35,8 @@ import me.him188.ani.app.domain.media.resolver.ResolutionFailures
 import me.him188.ani.app.domain.media.resolver.TorrentBackedMediaDataProvider
 import me.him188.ani.app.domain.media.resolver.UnsupportedMediaException
 import me.him188.ani.app.domain.media.selector.MediaSelector
+import me.him188.ani.app.domain.mediasource.MediaSourceTags
+import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.datasources.api.Media
@@ -69,6 +72,7 @@ class PlayerSession(
     val mediaResolver: MediaResolver by koin.inject()
     private val hlsPlaybackPreparer: HlsPlaybackPreparer by koin.inject()
     private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
+    private val getMediaSourceInstancesUseCase: GetMediaSourceInstancesUseCase by koin.inject()
 
     private val hlsPlaybackProxySessionFlow = MutableStateFlow<HlsPlaybackProxySession?>(null)
     private var hlsPlaybackProxySession: HlsPlaybackProxySession?
@@ -107,14 +111,17 @@ class PlayerSession(
     }
 
     /**
-     * 解析 media 并开始播放这个 media.
+     * 解析 media 并从 [startPositionMillis] 开始播放这个 media.
      *
-     * @param startPositionHintMillis 预计从哪里开始播放, 见 [HlsPlaybackPreparer.prepare]. 只影响预缓存, 不会跳转.
+     * @param startPositionMillis 起播位置, 续播时为记忆的进度. 播放器在打开媒体时就定位到这里
+     * ([MediampPlayer.setMediaData]), 而不是先从头起播、缓冲, 再跳转并重新缓冲.
+     * 经 HLS 代理播放时它同时是预缓存的起点 ([HlsPlaybackPreparer.prepare]);
+     * 播放器打开的是去除广告后的播放列表, 两者都在这条时间轴上.
      */
     suspend fun loadMedia(
         media: Media?,
         episodeInfo: EpisodeMetadata,
-        startPositionHintMillis: Long? = null,
+        startPositionMillis: Long = 0L,
     ) = coroutineScope {
         val backgroundScope = this
         _videoLoadingStateFlow.value = VideoLoadingState.Initial // 避免一直显示已取消 (.Cancelled)
@@ -138,13 +145,17 @@ class PlayerSession(
             )
 
             val data = source.open(scopeForCleanup = backgroundScope) // may throw MediaSourceOpenException
-            val preparedData = prepareHlsPlaybackIfEnabled(data, startPositionHintMillis).also {
+            val preparedData = prepareHlsPlaybackIfEnabled(
+                data,
+                media,
+                startPositionHintMillis = startPositionMillis.takeIf { it > 0L },
+            ).also {
                 preparedHlsPlaybackProxySession = it.session
             }.data
 
-            logger.info { "Set media data to player: $preparedData" }
-            // v2: setMediaData 挂起直到媒体真正打开, 并直接携带播放意图, 无需再单独 resume.
-            player.setMediaData(preparedData, playWhenReady = true)
+            logger.info { "Set media data to player at ${startPositionMillis}ms: $preparedData" }
+            // v2: setMediaData 挂起直到媒体真正打开, 播放意图和起播位置随打开一并生效.
+            player.setMediaData(preparedData, playWhenReady = true, startPositionMillis = startPositionMillis)
             hlsPlaybackProxySession = preparedHlsPlaybackProxySession
             preparedHlsPlaybackProxySession = null
 
@@ -183,6 +194,7 @@ class PlayerSession(
                 ResolutionFailures.ENGINE_ERROR -> VideoLoadingState.UnknownError(e)
                 ResolutionFailures.NETWORK_ERROR -> VideoLoadingState.NetworkError
                 ResolutionFailures.NO_MATCHING_RESOURCE -> VideoLoadingState.NoMatchingFile
+                ResolutionFailures.WEB_ENGINE_UNAVAILABLE -> VideoLoadingState.WebEngineUnavailable
             }
             stopPlayback()
         } catch (e: CancellationException) { // 切换数据源 (含 MediaLoadCancellationException)
@@ -217,13 +229,21 @@ class PlayerSession(
         }
     }
 
-    private suspend fun prepareHlsPlaybackIfEnabled(data: MediaData, startPositionHintMillis: Long?): PreparedMediaData {
+    private suspend fun prepareHlsPlaybackIfEnabled(
+        data: MediaData,
+        media: Media,
+        startPositionHintMillis: Long?,
+    ): PreparedMediaData {
         if (data !is UriMediaData) {
             return PreparedMediaData(data)
         }
         val config = getVideoScaffoldConfigUseCase.invoke().first()
         val options = HlsPlaybackOptions(
-            filterSegments = config.enableHlsAdFiltering,
+            filterSegments = when (config.effectiveHlsAdFilteringMode) {
+                HlsAdFilteringMode.ALL -> true
+                HlsAdFilteringMode.SMART -> MediaSourceTags.HLS_ADS in mediaSourceTags(media.mediaSourceId)
+                HlsAdFilteringMode.OFF -> false
+            },
             // 自动跳过 OP/ED 需要提前缓存跳转目标处的分片, 这要求分片经由本地代理
             proxySegments = config.autoSkipOpEd,
         )
@@ -232,6 +252,13 @@ class PlayerSession(
         }
         val result = hlsPlaybackPreparer.prepare(data, options, startPositionHintMillis)
         return PreparedMediaData(result.data, result.session)
+    }
+
+    private suspend fun mediaSourceTags(mediaSourceId: String): List<String> {
+        return getMediaSourceInstancesUseCase().first()
+            .find { it.mediaSourceId == mediaSourceId }
+            ?.config?.tags
+            .orEmpty()
     }
 
     private fun closeHlsPlaybackProxySession() {

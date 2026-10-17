@@ -51,12 +51,34 @@ interface MediaSelectorEvents {
  * @property media 当前被选中的媒体项，可能为 null。
  * @property subtitleLanguageId 当前选择的字幕语言 ID，可能为 null。
  * @property previousMedia 上一次被选中的媒体项。
+ * @property origin 这次选择由谁发起。
  */
 data class SelectEvent(
     val media: Media?,
     val subtitleLanguageId: String?,
     val previousMedia: Media?,
+    val origin: SelectOrigin = SelectOrigin.MANUAL,
 )
+
+/**
+ * 一次选择由谁发起.
+ */
+enum class SelectOrigin {
+    /**
+     * 用户在选择资源界面或手动查找中选择, 以及下载时选择的资源.
+     */
+    MANUAL,
+
+    /**
+     * 自动选择 ([MediaSelector.selectAutomatically]): 本地缓存, 记忆的 Web 源, 按阶级和匹配程度选择, 以及播放失败换源.
+     */
+    AUTOMATIC,
+
+    /**
+     * 切集时回放用户在手动查找中记住的线路.
+     */
+    BROWSE_MEMORY,
+}
 
 /**
  * 用户选择了某个 Web 源, 表示用户希望以后都使用这个源来播放此条目.

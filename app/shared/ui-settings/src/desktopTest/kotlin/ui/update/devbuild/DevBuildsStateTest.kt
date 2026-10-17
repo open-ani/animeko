@@ -18,6 +18,9 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.IOException
+import me.him188.ani.app.tools.update.DeltaPackageAssembler
+import me.him188.ani.app.tools.update.DeltaPackageProgress
 import me.him188.ani.app.tools.update.InstallationFailureReason
 import me.him188.ani.app.tools.update.InstallationResult
 import me.him188.ani.utils.io.SystemPath
@@ -41,13 +44,13 @@ import kotlin.test.assertTrue
 
 @OptIn(TestOnly::class)
 class DevBuildsStateTest {
-    private val macosSpec = DevBuildPackageSpec(listOf("ani-macos-dmg-aarch64"), DevBuildPackageKind.MACOS_DMG)
-    private val windowsSpec = DevBuildPackageSpec(listOf("ani-windows-portable"), DevBuildPackageKind.WINDOWS_PORTABLE_ZIP)
-    private val linuxSpec = DevBuildPackageSpec(listOf("ani-linux-appimage-x64"), DevBuildPackageKind.LINUX_APPIMAGE)
+    private val macosSpec = DevBuildPackageSpec(listOf("ani-macos-aarch64.dmg"), DevBuildPackageKind.MACOS_DMG)
+    private val windowsSpec = DevBuildPackageSpec(listOf("ani-windows-x64.zip"), DevBuildPackageKind.DESKTOP_ZIP)
+    private val linuxSpec = DevBuildPackageSpec(listOf("ani-linux-x64.AppImage"), DevBuildPackageKind.LINUX_APPIMAGE)
     private val androidSpec = DevBuildPackageSpec(
-        listOf("ani-android-arm64-v8a-release", "ani-android-universal-release"),
+        listOf("ani-android-arm64-v8a-release.apk", "ani-android-universal-release.apk"),
         DevBuildPackageKind.ANDROID_APK,
-        debugArtifactNames = listOf("ani-android-arm64-v8a-debug", "ani-android-universal-debug"),
+        debugArtifactNames = listOf("ani-android-arm64-v8a-debug.apk", "ani-android-universal-debug.apk"),
     )
 
     private fun TestScope.createState(
@@ -57,16 +60,75 @@ class DevBuildsStateTest {
         saveDir: SystemPath,
         token: String = "token",
         currentVersionName: String = "4.12.0-main-aaaaaaaa",
+        deltaAssembler: DeltaPackageAssembler? = null,
     ) = DevBuildsState(
         api = GitHubDevBuildApi(client),
         spec = spec,
         installer = installer,
+        deltaAssembler = deltaAssembler,
         saveDir = saveDir,
         getToken = { token },
         currentVersionName = currentVersionName,
         backgroundScope = backgroundScope,
         installDispatcher = Dispatchers.Unconfined,
     )
+
+    private val macosDeltaSpec = macosSpec.copy(deltaPackageName = "ani-macos-aarch64.zip")
+
+    private fun deltaAssembler(
+        block: suspend (
+            packageName: String,
+            manifestUrl: String,
+            packageUrl: suspend () -> String,
+            saveDir: SystemPath,
+            onProgress: (DeltaPackageProgress) -> Unit,
+        ) -> SystemPath,
+    ) = object : DeltaPackageAssembler {
+        override suspend fun assemble(
+            packageName: String,
+            manifestUrl: String,
+            packageUrl: suspend () -> String,
+            saveDir: SystemPath,
+            onProgress: (DeltaPackageProgress) -> Unit,
+        ): SystemPath = block(packageName, manifestUrl, packageUrl, saveDir, onProgress)
+    }
+
+    /**
+     * 在 [fullGitHubMockHandler] 的基础上, 运行 200 还上传了 [macosDeltaSpec] 的 zip 发布包 (artifact 20) 和清单 (artifact 21).
+     * 两者的下载接口重定向到各自的直链, 发布包的直链每次取得时签名不同. 运行里还有一个已过期的同名发布包.
+     */
+    private fun deltaGitHubMockClient(dmg: ByteArray, requests: MutableList<HttpRequestData>): HttpClient {
+        val full = fullGitHubMockHandler("ani-macos-aarch64.dmg", dmg)
+        var resolved = 0
+        return gitHubMockClient { request ->
+            requests += request
+            val path = request.url.encodedPath
+            fun redirect(location: String) = if (request.headers[HttpHeaders.Authorization] == "Bearer token") {
+                respond("", HttpStatusCode.Found, headersOf(HttpHeaders.Location, location))
+            } else {
+                respondJson("""{"message": "Bad credentials"}""", HttpStatusCode.Unauthorized)
+            }
+            when {
+                path.endsWith("/actions/runs/200/artifacts") -> respondJson(
+                    """{"artifacts": [
+                      {"id": 10, "name": "ani-macos-aarch64.dmg", "size_in_bytes": 1234, "archive_download_url": "https://api.github.com/repos/open-ani/animeko/actions/artifacts/10/zip", "expired": false,
+                       "workflow_run": {"id": 200, "head_sha": "$SHA_A"}},
+                      {"id": 22, "name": "ani-macos-aarch64.zip", "size_in_bytes": 300, "archive_download_url": "https://api.github.com/repos/open-ani/animeko/actions/artifacts/22/zip", "expired": true,
+                       "workflow_run": {"id": 200, "head_sha": "$SHA_A"}},
+                      {"id": 20, "name": "ani-macos-aarch64.zip", "size_in_bytes": 300, "archive_download_url": "https://api.github.com/repos/open-ani/animeko/actions/artifacts/20/zip", "expired": false,
+                       "workflow_run": {"id": 200, "head_sha": "$SHA_A"}},
+                      {"id": 21, "name": "ani-macos-aarch64.zip.manifest.json", "size_in_bytes": 30, "archive_download_url": "https://api.github.com/repos/open-ani/animeko/actions/artifacts/21/zip", "expired": false,
+                       "workflow_run": {"id": 200, "head_sha": "$SHA_A"}}
+                    ]}""",
+                )
+
+                path.endsWith("/artifacts/20/zip") -> redirect("https://blob.example.com/package.zip?sig=${++resolved}")
+                path.endsWith("/artifacts/21/zip") -> redirect("https://blob.example.com/package.zip.manifest.json?sig=1")
+                path.endsWith("/artifacts/22/zip") -> error("expired artifact must not be used")
+                else -> full(request)
+            }
+        }
+    }
 
     private inline fun withTempDir(block: (SystemPath) -> Unit) {
         val dir = SystemPaths.createTempDirectory("dev-builds-state-test")
@@ -98,7 +160,7 @@ class DevBuildsStateTest {
     @Test
     fun `refresh merges commits, build status and the platform artifact`() = runTest {
         withTempDir { saveDir ->
-            val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes())
+            val client = fullGitHubMockClient("ani-macos-aarch64.dmg", byteArrayOf())
             val state = createState(client, macosSpec, FakeInstaller(), saveDir)
             assertEquals(DevBuildListState.Idle, state.listState.value)
 
@@ -120,7 +182,7 @@ class DevBuildsStateTest {
     fun `refresh failure is exposed and a later refresh recovers`() = runTest {
         withTempDir { saveDir ->
             var fail = true
-            val healthy = fullGitHubMockHandler("ani-macos-dmg-aarch64", zipBytes())
+            val healthy = fullGitHubMockHandler("ani-macos-aarch64.dmg", byteArrayOf())
             val client = gitHubMockClient { request ->
                 if (fail) {
                     respond(
@@ -148,7 +210,7 @@ class DevBuildsStateTest {
     fun `install requires a github token`() = runTest {
         withTempDir { saveDir ->
             val installer = FakeInstaller()
-            val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes())
+            val client = fullGitHubMockClient("ani-macos-aarch64.dmg", byteArrayOf())
             val state = createState(client, macosSpec, installer, saveDir, token = " ")
             val commit = state.loadCommits()[0]
 
@@ -169,7 +231,7 @@ class DevBuildsStateTest {
     fun `install ignores commits without a package`() = runTest {
         withTempDir { saveDir ->
             val installer = FakeInstaller()
-            val state = createState(fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes()), macosSpec, installer, saveDir)
+            val state = createState(fullGitHubMockClient("ani-macos-aarch64.dmg", byteArrayOf()), macosSpec, installer, saveDir)
             val commit = state.loadCommits()[1]
             state.install(commit, testContext)
             state.joinTasks()
@@ -179,11 +241,11 @@ class DevBuildsStateTest {
     }
 
     @Test
-    fun `install downloads the artifact, extracts the dmg and calls the installer`() = runTest {
+    fun `install downloads the package artifact and calls the installer`() = runTest {
         withTempDir { saveDir ->
             val dmg = ByteArray(2048) { (it % 7).toByte() }
             val installer = FakeInstaller()
-            val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes("Ani-4.12.0.dmg" to dmg))
+            val client = fullGitHubMockClient("ani-macos-aarch64.dmg", dmg)
             val state = createState(client, macosSpec, installer, saveDir)
             val commit = state.loadCommits()[0]
 
@@ -194,17 +256,99 @@ class DevBuildsStateTest {
             val installed = installer.installed.single()
             assertEquals(saveDir.resolve("ani-main-aaaaaaaa.dmg"), installed)
             assertContentEquals(dmg, installed.readBytes())
-            // artifact zip 已删除, 目录里只剩安装包
             assertEquals(listOf("ani-main-aaaaaaaa.dmg"), saveDir.list().map { it.name })
         }
     }
 
     @Test
-    fun `windows artifact zip is handed to the installer as the package`() = runTest {
+    fun `install assembles the package incrementally from the delta artifacts of the build run`() = runTest {
+        withTempDir { saveDir ->
+            val installer = FakeInstaller()
+            val requests = mutableListOf<HttpRequestData>()
+            val client = deltaGitHubMockClient(byteArrayOf(1), requests)
+            val observed = mutableListOf<DevBuildInstallState>()
+            lateinit var state: DevBuildsState
+            val assembler = deltaAssembler { packageName, manifestUrl, packageUrl, dir, onProgress ->
+                observed += state.installState.value
+                assertEquals("https://blob.example.com/package.zip.manifest.json?sig=1", manifestUrl)
+                assertEquals("https://blob.example.com/package.zip?sig=1", packageUrl())
+                onProgress(DeltaPackageProgress(downloadedBytes = 5, totalDownloadBytes = 10, fraction = 0.75f))
+                observed += state.installState.value
+                dir.resolve(packageName).also { it.toFile().writeBytes(byteArrayOf(9)) }
+            }
+            state = createState(client, macosDeltaSpec, installer, saveDir, deltaAssembler = assembler)
+            val commit = state.loadCommits()[0]
+
+            state.install(commit, testContext)
+            state.joinTasks()
+
+            assertEquals(DevBuildInstallState.Idle, state.installState.value)
+            val installed = installer.installed.single()
+            assertEquals(saveDir.resolve("ani-main-aaaaaaaa.zip"), installed)
+            assertContentEquals(byteArrayOf(9), installed.readBytes())
+            val target = DevBuildInstallTarget.of(commit)
+            assertEquals(
+                listOf<DevBuildInstallState>(
+                    DevBuildInstallState.DownloadingIncrementally(target, 0, null, null),
+                    DevBuildInstallState.DownloadingIncrementally(target, 5, 10, 0.75f),
+                ),
+                observed,
+            )
+            assertTrue(requests.none { it.url.encodedPath.endsWith("/artifacts/10/zip") }, "full artifact must not be downloaded")
+        }
+    }
+
+    @Test
+    fun `failed incremental assembly falls back to the full artifact`() = runTest {
+        withTempDir { saveDir ->
+            val dmg = ByteArray(1024) { (it % 3).toByte() }
+            val installer = FakeInstaller()
+            val requests = mutableListOf<HttpRequestData>()
+            val assembler = deltaAssembler { _, _, packageUrl, _, _ ->
+                packageUrl()
+                throw IOException("Range not supported")
+            }
+            val state = createState(
+                deltaGitHubMockClient(dmg, requests), macosDeltaSpec, installer, saveDir,
+                deltaAssembler = assembler,
+            )
+            val commit = state.loadCommits()[0]
+
+            state.install(commit, testContext)
+            state.joinTasks()
+
+            assertEquals(DevBuildInstallState.Idle, state.installState.value)
+            val installed = installer.installed.single()
+            assertEquals(saveDir.resolve("ani-main-aaaaaaaa.dmg"), installed)
+            assertContentEquals(dmg, installed.readBytes())
+            assertTrue(requests.any { it.url.encodedPath.endsWith("/artifacts/10/zip") })
+        }
+    }
+
+    @Test
+    fun `install downloads the full artifact when the run has no delta package`() = runTest {
+        withTempDir { saveDir ->
+            val dmg = ByteArray(16) { it.toByte() }
+            val installer = FakeInstaller()
+            val assembler = deltaAssembler { _, _, _, _, _ -> error("no delta package to assemble from") }
+            val client = fullGitHubMockClient("ani-macos-aarch64.dmg", dmg)
+            val state = createState(client, macosDeltaSpec, installer, saveDir, deltaAssembler = assembler)
+            val commit = state.loadCommits()[0]
+
+            state.install(commit, testContext)
+            state.joinTasks()
+
+            assertEquals(DevBuildInstallState.Idle, state.installState.value)
+            assertContentEquals(dmg, installer.installed.single().readBytes())
+        }
+    }
+
+    @Test
+    fun `windows zip package is handed to the installer`() = runTest {
         withTempDir { saveDir ->
             val archive = zipBytes("Ani/Ani.exe" to byteArrayOf(1, 2), "Ani/app/x.jar" to byteArrayOf(3))
             val installer = FakeInstaller()
-            val client = fullGitHubMockClient("ani-windows-portable", archive)
+            val client = fullGitHubMockClient("ani-windows-x64.zip", archive)
             val state = createState(client, windowsSpec, installer, saveDir)
             val commit = state.loadCommits()[0]
 
@@ -221,10 +365,7 @@ class DevBuildsStateTest {
     fun `linux appimage waits for manual installation`() = runTest {
         withTempDir { saveDir ->
             val installer = FakeInstaller()
-            val client = fullGitHubMockClient(
-                "ani-linux-appimage-x64",
-                zipBytes("Animeko-x86_64.AppImage.zsync" to byteArrayOf(0), "Animeko-x86_64.AppImage" to byteArrayOf(7)),
-            )
+            val client = fullGitHubMockClient("ani-linux-x64.AppImage", byteArrayOf(7))
             val state = createState(client, linuxSpec, installer, saveDir)
             val commit = state.loadCommits()[0]
 
@@ -245,28 +386,11 @@ class DevBuildsStateTest {
     }
 
     @Test
-    fun `missing package in the artifact is reported`() = runTest {
-        withTempDir { saveDir ->
-            val installer = FakeInstaller()
-            val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes("readme.txt" to byteArrayOf(1)))
-            val state = createState(client, macosSpec, installer, saveDir)
-            val commit = state.loadCommits()[0]
-
-            state.install(commit, testContext)
-            state.joinTasks()
-
-            val failed = assertIs<DevBuildInstallState.Failed>(state.installState.value)
-            assertEquals(DevBuildInstallFailure.PackageNotFound, failed.failure)
-            assertTrue(installer.installed.isEmpty())
-        }
-    }
-
-    @Test
     fun `installer failure keeps the package for manual installation`() = runTest {
         withTempDir { saveDir ->
             val result = InstallationResult.Failed(InstallationFailureReason.FAILED_TO_MOUNT_DMG, "boom")
             val installer = FakeInstaller(result)
-            val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes("Ani.dmg" to byteArrayOf(1)))
+            val client = fullGitHubMockClient("ani-macos-aarch64.dmg", byteArrayOf(1))
             val state = createState(client, macosSpec, installer, saveDir)
             val commit = state.loadCommits()[0]
 
@@ -283,7 +407,7 @@ class DevBuildsStateTest {
     fun `network failure during download is reported without a file`() = runTest {
         withTempDir { saveDir ->
             val installer = FakeInstaller()
-            val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes(), expectedToken = "other")
+            val client = fullGitHubMockClient("ani-macos-aarch64.dmg", byteArrayOf(), expectedToken = "other")
             val state = createState(client, macosSpec, installer, saveDir)
             val commit = state.loadCommits()[0]
 
@@ -300,7 +424,7 @@ class DevBuildsStateTest {
     @Test
     fun `lookup resolves a commit link to its latest build and artifact`() = runTest {
         withTempDir { saveDir ->
-            val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes())
+            val client = fullGitHubMockClient("ani-macos-aarch64.dmg", byteArrayOf())
             val state = createState(client, macosSpec, FakeInstaller(), saveDir)
             assertEquals(DevBuildLookupState.Idle, state.lookupState.value)
 
@@ -326,7 +450,7 @@ class DevBuildsStateTest {
     @Test
     fun `lookup resolves a pull request to its head commit`() = runTest {
         withTempDir { saveDir ->
-            val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes())
+            val client = fullGitHubMockClient("ani-macos-aarch64.dmg", byteArrayOf())
             val state = createState(client, macosSpec, FakeInstaller(), saveDir)
 
             val result = state.lookupCommit("https://github.com/open-ani/animeko/pull/42/files")
@@ -366,11 +490,11 @@ class DevBuildsStateTest {
 
                     path.endsWith("/actions/runs/500/artifacts") -> respondJson(
                         """{"artifacts": [
-                          {"id": 51, "name": "ani-android-universal-debug", "size_in_bytes": 2, "archive_download_url": "u51", "expired": false,
+                          {"id": 51, "name": "ani-android-universal-debug.apk", "size_in_bytes": 2, "archive_download_url": "u51", "expired": false,
                            "workflow_run": {"id": 500, "head_sha": "$forkSha"}},
-                          {"id": 52, "name": "ani-android-arm64-v8a-debug", "size_in_bytes": 3, "archive_download_url": "u52", "expired": false,
+                          {"id": 52, "name": "ani-android-arm64-v8a-debug.apk", "size_in_bytes": 3, "archive_download_url": "u52", "expired": false,
                            "workflow_run": {"id": 500, "head_sha": "$forkSha"}},
-                          {"id": 53, "name": "ani-macos-dmg-aarch64", "size_in_bytes": 4, "archive_download_url": "u53", "expired": false,
+                          {"id": 53, "name": "ani-macos-aarch64.dmg", "size_in_bytes": 4, "archive_download_url": "u53", "expired": false,
                            "workflow_run": {"id": 500, "head_sha": "$forkSha"}}
                         ]}""",
                     )
@@ -383,7 +507,7 @@ class DevBuildsStateTest {
             val result = state.lookupCommit("https://github.com/open-ani/animeko/pull/7")
             assertTrue(assertNotNull(result.pullRequest).isFromFork)
             val artifact = assertNotNull(result.commit.artifact)
-            assertEquals("ani-android-arm64-v8a-debug", artifact.name)
+            assertEquals("ani-android-arm64-v8a-debug.apk", artifact.name)
             assertTrue(state.spec.isDebugArtifact(artifact.name))
         }
     }
@@ -391,7 +515,7 @@ class DevBuildsStateTest {
     @Test
     fun `lookup resolves workflow run and artifact links`() = runTest {
         withTempDir { saveDir ->
-            val client = fullGitHubMockClient("ani-macos-dmg-aarch64", zipBytes())
+            val client = fullGitHubMockClient("ani-macos-aarch64.dmg", byteArrayOf())
             val state = createState(client, macosSpec, FakeInstaller(), saveDir)
 
             val run = state.lookupCommit("https://github.com/open-ani/animeko/actions/runs/100/job/1")
@@ -410,7 +534,7 @@ class DevBuildsStateTest {
             val mismatch = assertIs<DevBuildLookupFailure.ArtifactNotForPlatform>(
                 windows.lookupFailure("https://api.github.com/repos/open-ani/animeko/actions/artifacts/10/zip"),
             )
-            assertEquals("ani-macos-dmg-aarch64", mismatch.artifactName)
+            assertEquals("ani-macos-aarch64.dmg", mismatch.artifactName)
         }
     }
 

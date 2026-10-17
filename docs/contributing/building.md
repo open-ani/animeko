@@ -51,6 +51,21 @@ Release 分别使用 `assembleDefaultRelease` 与 `assembleTvRelease`，也可�
 
 在 IDE 的 Build Variants 中选择 `defaultDebug` 或 `tvDebug` 即可切换手机和 TV 应用。
 
+共享模块只编译一次，无法按 flavor 生成不同的常量。
+随 flavor 变化的构建期常量放在 `:utils:build-config`：
+它与 `:app:android` 声明同一组 flavor，名称定义在 build-logic 的 `AniAndroidFlavors`，
+打包 APK 时 AGP 选中与应用同名的变体。
+共享代码通过 `AndroidBuildConfig` 的 getter 读取这些常量，
+Android 的 `AniBuildConfig` 也由此取值，例如 TV 的 `distroChannel` 为 `tv`。
+`currentPlatform()` 按分发渠道判断 TV，TV 应用中 `isAndroidTv()` 为 true。
+其他 Android 库模块编译和测试时选 `default` 变体，由 `ani.kmp-library` 与 `ani.android-library` 统一配置。
+
+TV 与手机使用相同的 Sentry 和 Firebase Analytics 初始化。
+`app/android/google-services.json` 包含某个 TV 变体的包名（如 `me.him188.ani.tv`）时，该变体才处理 Google Services 并启用 Analytics；
+否则 TV 照常构建，只是不上报 Analytics。
+Analytics 事件参数和 Sentry tag 都带有 `distro_channel`，TV 为 `tv`。
+TV 检查更新时使用 `clientPlatform=androidtv`，服务端据此返回 `ani-tv-*` 安装包。
+
 TV 单元测试由四个子模块的 `testAndroidHostTest` 运行：
 
 ```shell

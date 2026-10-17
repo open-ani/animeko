@@ -48,7 +48,6 @@ import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.datasources.bangumi.models.BangumiSubjectCollectionType
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.test.Test
@@ -77,7 +76,7 @@ class SubjectCollectionRepositoryStatsTest {
             throw UnsupportedOperationException()
 
         override suspend fun getSubjectCollections(
-            type: BangumiSubjectCollectionType?,
+            type: AniCollectionType?,
             offset: Int,
             limit: Int,
         ): List<AniSubjectCollection> = throw UnsupportedOperationException()

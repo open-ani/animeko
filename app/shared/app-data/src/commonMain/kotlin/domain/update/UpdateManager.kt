@@ -16,7 +16,6 @@ import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.isDirectory
-import me.him188.ani.utils.io.isRegularFile
 import me.him188.ani.utils.io.list
 import me.him188.ani.utils.io.name
 import me.him188.ani.utils.io.resolve
@@ -30,7 +29,8 @@ import org.koin.core.component.KoinComponent
  * 管理更新相关文件的目录.
  *
  * [rootDir] 下每个功能使用各自独立的子目录, 互不嵌套:
- * - [saveDir]: 自动更新下载的安装包. 由自动更新独占, 其中的普通文件都视为安装包.
+ * - [saveDir]: 自动更新下载的安装包. 由自动更新独占, 其中的文件和目录都视为安装包:
+ *   桌面增量下载会把新版本拼成一个目录, 名字里带发布包名.
  * - [devBuildsDir]: 开发者设置「安装指定 commit」下载的产物.
  *
  * 两种安装包在安装成功后进程都会退出, 所以已安装的包统一在下次启动时由 [deleteInstalledFiles] 清理.
@@ -76,24 +76,24 @@ class UpdateManager(
     }
 
     fun deleteInstaller(file: SystemPath) {
-        file.delete()
+        if (file.isDirectory()) {
+            file.deleteRecursively()
+        } else {
+            file.delete()
+        }
         file.resolveSibling(file.name + ".sha256").delete()
     }
 
     /**
-     * 删除 [saveDir] 中文件名不包含任何 [keepFilenames] 的旧安装包, 为下载新安装包腾出空间.
+     * 删除 [saveDir] 中名字不包含任何 [keepFilenames] 的旧安装包 (文件或目录), 为下载新安装包腾出空间.
      *
-     * 只处理普通文件, 不会碰目录. 单个文件删除失败只记录日志, 不影响随后的下载.
+     * 单个安装包删除失败只记录日志, 不影响随后的下载.
      */
     fun deleteStaleInstallers(keepFilenames: Collection<String>) {
         if (!saveDir.exists()) return
         for (entry in saveDir.list()) {
             val file = entry.inSystem
             if (file.name == ".DS_Store") continue
-            if (!file.isRegularFile()) {
-                logger.warn { "Unexpected non-file entry in update save dir, ignoring: $file" }
-                continue
-            }
             if (keepFilenames.any { file.name.contains(it) }) continue
 
             logger.info { "Deleting old installer: $file" }

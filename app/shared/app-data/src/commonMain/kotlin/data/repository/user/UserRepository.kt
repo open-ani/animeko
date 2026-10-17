@@ -174,6 +174,7 @@ class UserRepository(
                         ),
                     ),
                     refreshToken = data.tokens.refreshToken,
+                    userId = data.userId,
                 )
 
                 SendOtpResult.Success(
@@ -374,6 +375,7 @@ class UserRepository(
                 ),
             ),
             refreshToken = resp.tokens.refreshToken,
+            userId = resp.userId,
         )
 
         // update local self info cache
