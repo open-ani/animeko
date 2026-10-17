@@ -2289,6 +2289,21 @@ class WithMatrix(
             tasks = arrayOf(":ci-helper:prepareDevBuildDesktopPackage"),
             env = mapOf("DEV_BUILD_PACKAGE_NAME" to packageName),
         )
+        if (matrix.isMacOS) {
+            // macOS 的更新脚本解压后要先通过签名校验才替换 .app. 打包后改动过 .app 而没有重签时这里会失败.
+            run(
+                name = "Verify code signature in $packageName",
+                shell = Shell.Bash,
+                command = shell(
+                    $$"""
+                        VERIFY_DIR="$(mktemp -d)"
+                        unzip -q "ci-helper/build/dev-build-package/$$packageName" -d "$VERIFY_DIR"
+                        codesign --verify --deep --strict "$VERIFY_DIR"/*.app
+                        rm -rf "$VERIFY_DIR"
+                    """.trimIndent(),
+                ),
+            )
+        }
         for (fileName in listOf(packageName, ArtifactNames.desktopPackageManifest(matrix.os, matrix.arch))) {
             uploadFileArtifact(
                 path = "ci-helper/build/dev-build-package/$fileName",

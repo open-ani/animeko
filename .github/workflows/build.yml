@@ -1635,6 +1635,14 @@ jobs:
       run: './gradlew :ci-helper:prepareDevBuildDesktopPackage "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
       if: '${{ steps.step-22.outcome == ''failure'' }}'
     - id: 'step-24'
+      name: 'Verify code signature in ani-macos-x64.zip'
+      shell: 'bash'
+      run: |-
+        VERIFY_DIR="$(mktemp -d)"
+        unzip -q "ci-helper/build/dev-build-package/ani-macos-x64.zip" -d "$VERIFY_DIR"
+        codesign --verify --deep --strict "$VERIFY_DIR"/*.app
+        rm -rf "$VERIFY_DIR"
+    - id: 'step-25'
       name: 'Upload ani-macos-x64.zip (Attempt #1)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v7'
@@ -1644,7 +1652,7 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
         archive: 'false'
-    - id: 'step-25'
+    - id: 'step-26'
       name: 'Upload ani-macos-x64.zip (Attempt #2)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v7'
@@ -1654,8 +1662,8 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
         archive: 'false'
-      if: '${{ steps.step-24.outcome == ''failure'' }}'
-    - id: 'step-26'
+      if: '${{ steps.step-25.outcome == ''failure'' }}'
+    - id: 'step-27'
       name: 'Upload ani-macos-x64.zip (Attempt #3)'
       continue-on-error: false
       uses: 'actions/upload-artifact@v7'
@@ -1665,8 +1673,8 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
         archive: 'false'
-      if: '${{ steps.step-25.outcome == ''failure'' }}'
-    - id: 'step-27'
+      if: '${{ steps.step-26.outcome == ''failure'' }}'
+    - id: 'step-28'
       name: 'Upload ani-macos-x64.zip.manifest.json (Attempt #1)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v7'
@@ -1676,7 +1684,7 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
         archive: 'false'
-    - id: 'step-28'
+    - id: 'step-29'
       name: 'Upload ani-macos-x64.zip.manifest.json (Attempt #2)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v7'
@@ -1686,8 +1694,8 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
         archive: 'false'
-      if: '${{ steps.step-27.outcome == ''failure'' }}'
-    - id: 'step-29'
+      if: '${{ steps.step-28.outcome == ''failure'' }}'
+    - id: 'step-30'
       name: 'Upload ani-macos-x64.zip.manifest.json (Attempt #3)'
       continue-on-error: false
       uses: 'actions/upload-artifact@v7'
@@ -1697,19 +1705,19 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
         archive: 'false'
-      if: '${{ steps.step-28.outcome == ''failure'' }}'
-    - id: 'step-30'
+      if: '${{ steps.step-29.outcome == ''failure'' }}'
+    - id: 'step-31'
       name: 'Build update E2E runner (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew :tools:desktop-update-e2e:standaloneJar "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
-    - id: 'step-31'
+    - id: 'step-32'
       name: 'Build update E2E runner (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew :tools:desktop-update-e2e:standaloneJar "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
-      if: '${{ steps.step-30.outcome == ''failure'' }}'
-    - id: 'step-32'
+      if: '${{ steps.step-31.outcome == ''failure'' }}'
+    - id: 'step-33'
       name: 'Upload update E2E runner (Attempt #1)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -1718,7 +1726,7 @@ jobs:
         path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
         if-no-files-found: 'error'
         overwrite: 'true'
-    - id: 'step-33'
+    - id: 'step-34'
       name: 'Upload update E2E runner (Attempt #2)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -1727,8 +1735,8 @@ jobs:
         path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
         if-no-files-found: 'error'
         overwrite: 'true'
-      if: '${{ steps.step-32.outcome == ''failure'' }}'
-    - id: 'step-34'
+      if: '${{ steps.step-33.outcome == ''failure'' }}'
+    - id: 'step-35'
       name: 'Upload update E2E runner (Attempt #3)'
       continue-on-error: false
       uses: 'actions/upload-artifact@v4'
@@ -1737,7 +1745,7 @@ jobs:
         path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
         if-no-files-found: 'error'
         overwrite: 'true'
-      if: '${{ steps.step-33.outcome == ''failure'' }}'
+      if: '${{ steps.step-34.outcome == ''failure'' }}'
   build_self-hosted-macos-15:
     name: 'Build (macOS 15 AArch64 (Self-Hosted))'
     runs-on:
@@ -2087,6 +2095,14 @@ jobs:
       run: './gradlew :ci-helper:prepareDevBuildDesktopPackage "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
       if: '${{ steps.step-39.outcome == ''failure'' }}'
     - id: 'step-41'
+      name: 'Verify code signature in ani-macos-aarch64.zip'
+      shell: 'bash'
+      run: |-
+        VERIFY_DIR="$(mktemp -d)"
+        unzip -q "ci-helper/build/dev-build-package/ani-macos-aarch64.zip" -d "$VERIFY_DIR"
+        codesign --verify --deep --strict "$VERIFY_DIR"/*.app
+        rm -rf "$VERIFY_DIR"
+    - id: 'step-42'
       name: 'Upload ani-macos-aarch64.zip (Attempt #1)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v7'
@@ -2096,7 +2112,7 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
         archive: 'false'
-    - id: 'step-42'
+    - id: 'step-43'
       name: 'Upload ani-macos-aarch64.zip (Attempt #2)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v7'
@@ -2106,8 +2122,8 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
         archive: 'false'
-      if: '${{ steps.step-41.outcome == ''failure'' }}'
-    - id: 'step-43'
+      if: '${{ steps.step-42.outcome == ''failure'' }}'
+    - id: 'step-44'
       name: 'Upload ani-macos-aarch64.zip (Attempt #3)'
       continue-on-error: false
       uses: 'actions/upload-artifact@v7'
@@ -2117,8 +2133,8 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
         archive: 'false'
-      if: '${{ steps.step-42.outcome == ''failure'' }}'
-    - id: 'step-44'
+      if: '${{ steps.step-43.outcome == ''failure'' }}'
+    - id: 'step-45'
       name: 'Upload ani-macos-aarch64.zip.manifest.json (Attempt #1)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v7'
@@ -2128,7 +2144,7 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
         archive: 'false'
-    - id: 'step-45'
+    - id: 'step-46'
       name: 'Upload ani-macos-aarch64.zip.manifest.json (Attempt #2)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v7'
@@ -2138,8 +2154,8 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
         archive: 'false'
-      if: '${{ steps.step-44.outcome == ''failure'' }}'
-    - id: 'step-46'
+      if: '${{ steps.step-45.outcome == ''failure'' }}'
+    - id: 'step-47'
       name: 'Upload ani-macos-aarch64.zip.manifest.json (Attempt #3)'
       continue-on-error: false
       uses: 'actions/upload-artifact@v7'
@@ -2149,19 +2165,19 @@ jobs:
         if-no-files-found: 'error'
         overwrite: 'true'
         archive: 'false'
-      if: '${{ steps.step-45.outcome == ''failure'' }}'
-    - id: 'step-47'
+      if: '${{ steps.step-46.outcome == ''failure'' }}'
+    - id: 'step-48'
       name: 'Build update E2E runner (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew :tools:desktop-update-e2e:standaloneJar "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-    - id: 'step-48'
+    - id: 'step-49'
       name: 'Build update E2E runner (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew :tools:desktop-update-e2e:standaloneJar "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-      if: '${{ steps.step-47.outcome == ''failure'' }}'
-    - id: 'step-49'
+      if: '${{ steps.step-48.outcome == ''failure'' }}'
+    - id: 'step-50'
       name: 'Upload update E2E runner (Attempt #1)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -2170,7 +2186,7 @@ jobs:
         path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
         if-no-files-found: 'error'
         overwrite: 'true'
-    - id: 'step-50'
+    - id: 'step-51'
       name: 'Upload update E2E runner (Attempt #2)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -2179,8 +2195,8 @@ jobs:
         path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
         if-no-files-found: 'error'
         overwrite: 'true'
-      if: '${{ steps.step-49.outcome == ''failure'' }}'
-    - id: 'step-51'
+      if: '${{ steps.step-50.outcome == ''failure'' }}'
+    - id: 'step-52'
       name: 'Upload update E2E runner (Attempt #3)'
       continue-on-error: false
       uses: 'actions/upload-artifact@v4'
@@ -2189,53 +2205,53 @@ jobs:
         path: 'tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar'
         if-no-files-found: 'error'
         overwrite: 'true'
-      if: '${{ steps.step-50.outcome == ''failure'' }}'
-    - id: 'step-52'
+      if: '${{ steps.step-51.outcome == ''failure'' }}'
+    - id: 'step-53'
       name: 'Check (Desktop) (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-    - id: 'step-53'
+    - id: 'step-54'
       name: 'Check (Desktop) (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-      if: '${{ steps.step-52.outcome == ''failure'' }}'
-    - id: 'step-54'
+      if: '${{ steps.step-53.outcome == ''failure'' }}'
+    - id: 'step-55'
       name: 'Check (Desktop) (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-      if: '${{ steps.step-53.outcome == ''failure'' }}'
-    - id: 'step-55'
+      if: '${{ steps.step-54.outcome == ''failure'' }}'
+    - id: 'step-56'
       name: 'Check (Android Host) (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-    - id: 'step-56'
+    - id: 'step-57'
       name: 'Check (Android Host) (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-      if: '${{ steps.step-55.outcome == ''failure'' }}'
-    - id: 'step-57'
+      if: '${{ steps.step-56.outcome == ''failure'' }}'
+    - id: 'step-58'
       name: 'Check (Android Host) (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-      if: '${{ steps.step-56.outcome == ''failure'' }}'
-    - id: 'step-58'
+      if: '${{ steps.step-57.outcome == ''failure'' }}'
+    - id: 'step-59'
       name: 'Check (iOS) (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 120
       run: './gradlew :app:ios:testSentryTerminatePatch :app:shared:application:iosSimulatorArm64Test "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-    - id: 'step-59'
+    - id: 'step-60'
       name: 'Check (iOS) (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 120
       run: './gradlew :app:ios:testSentryTerminatePatch :app:shared:application:iosSimulatorArm64Test "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel"'
-      if: '${{ steps.step-58.outcome == ''failure'' }}'
-    - id: 'step-60'
+      if: '${{ steps.step-59.outcome == ''failure'' }}'
+    - id: 'step-61'
       name: 'Cleanup temp files'
       continue-on-error: true
       run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
