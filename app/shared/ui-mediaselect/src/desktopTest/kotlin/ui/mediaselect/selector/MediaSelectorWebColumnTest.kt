@@ -9,16 +9,20 @@
 
 package me.him188.ani.app.ui.mediaselect.selector
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.mediaselect.auto.AutoMatchPageTestTags
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class MediaSelectorWebColumnTest {
@@ -60,5 +64,53 @@ class MediaSelectorWebColumnTest {
         val button = onNodeWithTag(AutoMatchPageTestTags.RESCUE_BUTTON).getUnclippedBoundsInRoot().top
         val b = topOf("source b")
         assertTrue(a < c && c < button && button < b, "a=$a c=$c button=$button b=$b")
+    }
+
+    @Test
+    fun `local file button sits before the rescue button and click reaches the host`() = runAniComposeUiTest {
+        var localFileClicks = 0
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                MediaSelectorWebSourcesColumn(
+                    listOf(source("a", isError = false)),
+                    selectedSource = { null },
+                    selectedChannel = { null },
+                    onSelect = { _, _ -> },
+                    onRefresh = {},
+                    onResolveCaptcha = {},
+                    onRequestManualSearch = {},
+                    onRequestLocalFile = { localFileClicks++ },
+                )
+            }
+        }
+
+        val localFile = onNodeWithTag(AutoMatchPageTestTags.LOCAL_FILE_BUTTON, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+        val rescue = onNodeWithTag(AutoMatchPageTestTags.RESCUE_BUTTON, useUnmergedTree = true)
+            .getUnclippedBoundsInRoot()
+        assertTrue(localFile.left < rescue.left, "localFile=$localFile rescue=$rescue")
+
+        onNodeWithTag(AutoMatchPageTestTags.LOCAL_FILE_BUTTON, useUnmergedTree = true).performClick()
+        assertEquals(1, localFileClicks)
+    }
+
+    @Test
+    fun `local file button is hidden without a host picker`() = runAniComposeUiTest {
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                MediaSelectorWebSourcesColumn(
+                    listOf(source("a", isError = false)),
+                    selectedSource = { null },
+                    selectedChannel = { null },
+                    onSelect = { _, _ -> },
+                    onRefresh = {},
+                    onResolveCaptcha = {},
+                    onRequestManualSearch = {},
+                )
+            }
+        }
+
+        onNodeWithTag(AutoMatchPageTestTags.RESCUE_BUTTON, useUnmergedTree = true).assertExists()
+        onAllNodesWithTag(AutoMatchPageTestTags.LOCAL_FILE_BUTTON, useUnmergedTree = true).assertCountEquals(0)
     }
 }

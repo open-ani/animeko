@@ -29,7 +29,7 @@ import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
-import me.him188.ani.app.domain.media.DroppedFileMedia
+import me.him188.ani.app.domain.media.LocalFileMedia
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.hls.HlsPlaybackOptions
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
@@ -262,17 +262,17 @@ class LoadMediaOnSelectExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
-    fun `plays a dropped file while media sources are still fetching`() = runTest {
+    fun `plays a local file while media sources are still fetching`() = runTest {
         val (testScope, suite, state) =
             createCase(LocalFileMediaResolver())
 
         suite.mediaSelectorTestBuilder.delayedMediaSource("1") // 一直未完成查询
 
         // 播放器会打开文件, 因此需要一个真实存在的文件
-        val file = Path(SystemTemporaryDirectory, "ani-dropped-${Random.nextLong()}.mkv").inSystem
+        val file = Path(SystemTemporaryDirectory, "ani-local-${Random.nextLong()}.mkv").inSystem
         file.writeBytes(byteArrayOf(0))
         try {
-            state.mediaSelectorFlow.filterNotNull().first().selectTemporarily(DroppedFileMedia.create(file))
+            state.mediaSelectorFlow.filterNotNull().first().selectTemporarily(LocalFileMedia.create(file))
             advanceUntilIdle()
 
             assertIs<VideoLoadingState.Succeed>(state.playerSession.videoLoadingState.value)

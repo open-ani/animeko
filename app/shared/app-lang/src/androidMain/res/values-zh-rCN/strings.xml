@@ -1343,6 +1343,10 @@
     <string name="media_selector_retry">重试</string>
     <string name="media_selector_load_failed">加载失败</string>
     <string name="media_selector_auto_rescue">找不到想看的？手动查找</string>
+    <string name="media_selector_use_local_file">使用本地视频文件</string>
+    <string name="media_selector_select_local_file">选择本地视频文件</string>
+    <string name="media_selector_local_file_importing">正在导入本地视频文件…</string>
+    <string name="media_selector_local_file_import_failed">无法读取所选视频文件</string>
     <string name="media_selector_manual_no_sources">没有支持浏览的数据源</string>
     <string name="media_selector_manual_captcha_unsupported">需要网页验证，当前平台不支持</string>
     <string name="media_selector_manual_result_count">共 %1$d 条结果</string>

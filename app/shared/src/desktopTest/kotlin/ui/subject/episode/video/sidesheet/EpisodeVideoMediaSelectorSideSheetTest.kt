@@ -31,6 +31,7 @@ import me.him188.ani.app.ui.mediafetch.rememberTestManualBrowseState
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
 import me.him188.ani.app.ui.mediaselect.WatchingEpisode
+import me.him188.ani.app.ui.mediaselect.auto.AutoMatchPageTestTags
 import me.him188.ani.app.ui.mediaselect.bt.BtResourcesPageTestTags
 import me.him188.ani.app.ui.mediaselect.common.MediaSelectorChromeTestTags
 import me.him188.ani.app.ui.mediaselect.manual.ManualBrowsePageTestTags
@@ -38,6 +39,7 @@ import me.him188.ani.app.ui.subject.episode.TAG_MEDIA_SELECTOR_SHEET
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.test.Test
+import kotlin.test.assertEquals
 
 /**
  * 播放器侧边栏里切模式只换内容: 三种模式都画在同一个侧边栏里.
@@ -45,7 +47,10 @@ import kotlin.test.Test
  */
 @OptIn(TestOnly::class, ExperimentalTestApi::class)
 class EpisodeVideoMediaSelectorSideSheetTest {
-    private fun AniComposeUiTest.render(mode: MediaSelectorMode) {
+    private fun AniComposeUiTest.render(
+        mode: MediaSelectorMode,
+        onRequestLocalFile: (() -> Unit)? = null,
+    ) {
         setContent {
             ProvideCompositionLocalsForPreview {
                 Box(Modifier.size(1280.dp, 800.dp)) {
@@ -56,6 +61,7 @@ class EpisodeVideoMediaSelectorSideSheetTest {
                         onModeChange = {},
                         onDismissRequest = {},
                         onRestartSource = {},
+                        onRequestLocalFile = onRequestLocalFile,
                         watching = WatchingEpisode("25", "OVA"),
                         fetchRequest = TestMediaFetchRequest,
                         manualBrowseState = rememberTestManualBrowseState(),
@@ -79,6 +85,22 @@ class EpisodeVideoMediaSelectorSideSheetTest {
         onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET, useUnmergedTree = true).assertExists()
         onNodeWithTag(BtResourcesPageTestTags.ROOT, useUnmergedTree = true).assertIsDisplayed()
         onAllNodesWithTag(MediaSelectorChromeTestTags.MODE_CHIP, useUnmergedTree = true).assertCountEquals(1)
+    }
+
+    @Test
+    fun `auto mode hides the local file button without a host picker`() = runAniComposeUiTest {
+        render(MediaSelectorMode.AUTO)
+        awaitTag(AutoMatchPageTestTags.ROOT)
+        onAllNodesWithTag(AutoMatchPageTestTags.LOCAL_FILE_BUTTON, useUnmergedTree = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `auto mode shows the local file button and click reaches the host`() = runAniComposeUiTest {
+        var localFileClicks = 0
+        render(MediaSelectorMode.AUTO, onRequestLocalFile = { localFileClicks++ })
+        awaitTag(AutoMatchPageTestTags.LOCAL_FILE_BUTTON)
+        onNodeWithTag(AutoMatchPageTestTags.LOCAL_FILE_BUTTON, useUnmergedTree = true).performClick()
+        assertEquals(1, localFileClicks)
     }
 
     @Test

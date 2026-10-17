@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
-import me.him188.ani.app.domain.media.DroppedFileMedia
+import me.him188.ani.app.domain.media.LocalFileMedia
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.MediaSourceInfoWithId
@@ -44,9 +44,9 @@ class MediaSelectorSummaryStateProducer(
     mediaSelectorSettingsFlow: Flow<MediaSelectorSettings>,
     mediaSources: Flow<List<MediaSourceInfoWithId>>,
     /**
-     * 选中的是用户拖入的本地文件 ([DroppedFileMedia]) 时展示的来源名称.
+     * 选中的是用户在播放页指定的本地文件 ([LocalFileMedia]) 时展示的来源名称.
      */
-    droppedFileSourceName: suspend () -> String = { getString(Lang.media_selector_summary_dropped_file) },
+    localFileSourceName: suspend () -> String = { getString(Lang.media_selector_summary_dropped_file) },
 ) {
     private val sourceSummariesFlow = combine(mediaSourceResultsFlow, mediaSources) { results, sources ->
         tupleOf(results, sources)
@@ -90,8 +90,8 @@ class MediaSelectorSummaryStateProducer(
                                 ?.info
                                 ?.toSummary()
                                 ?: MediaSelectorSourceSummary(
-                                    sourceName = if (DroppedFileMedia.isDroppedFile(selected.original)) {
-                                        droppedFileSourceName()
+                                    sourceName = if (LocalFileMedia.isLocalFile(selected.original)) {
+                                        localFileSourceName()
                                     } else {
                                         selected.original.mediaSourceId
                                     },
