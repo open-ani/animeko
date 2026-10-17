@@ -61,6 +61,7 @@ import me.him188.ani.app.ui.lang.subject_episode_danmaku_list_empty_filtered
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_list_title
 import me.him188.ani.app.ui.lang.subject_episode_expand
 import me.him188.ani.danmaku.api.DanmakuServiceId
+import me.him188.ani.danmaku.ui.DanmakuTextConversion
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -76,6 +77,9 @@ fun DanmakuListSection(
     onManualMatch: (DanmakuServiceId) -> Unit,
     onAdjustShift: (DanmakuServiceId) -> Unit,
     modifier: Modifier = Modifier,
+    onSetTextConversion: (DanmakuServiceId, DanmakuTextConversion?) -> Unit = { _, _ -> },
+    onSetTextConversionGlobal: (DanmakuTextConversion) -> Unit = {},
+    onResetTextConversionOverrides: () -> Unit = {},
 ) {
     val listTitleText = stringResource(Lang.subject_episode_danmaku_list_title)
     val collapseText = stringResource(Lang.subject_episode_collapse)
@@ -101,6 +105,9 @@ fun DanmakuListSection(
                         onManualMatch = onManualMatch,
                         onAdjustShift = onAdjustShift,
                         modifier = Modifier.padding(top = 64.dp),
+                        onSetTextConversion = onSetTextConversion,
+                        onSetTextConversionGlobal = onSetTextConversionGlobal,
+                        onResetTextConversionOverrides = onResetTextConversionOverrides,
                     )
                 }
             }
@@ -145,6 +152,9 @@ fun DanmakuListContent(
     onManualMatch: (DanmakuServiceId) -> Unit,
     onAdjustShift: (DanmakuServiceId) -> Unit,
     modifier: Modifier = Modifier,
+    onSetTextConversion: (DanmakuServiceId, DanmakuTextConversion?) -> Unit = { _, _ -> },
+    onSetTextConversionGlobal: (DanmakuTextConversion) -> Unit = {},
+    onResetTextConversionOverrides: () -> Unit = {},
 ) {
     val emptyText = if (state.isEmpty) {
         stringResource(Lang.subject_episode_danmaku_list_empty)
@@ -161,6 +171,11 @@ fun DanmakuListContent(
                 onManualMatch = onManualMatch,
                 onAdjustShift = onAdjustShift,
                 modifier = Modifier.padding(horizontal = 8.dp),
+                globalTextConversion = state.globalTextConversion,
+                textConversionOverrides = state.textConversionOverrides,
+                onSetTextConversionGlobal = onSetTextConversionGlobal,
+                onSetTextConversion = onSetTextConversion,
+                onResetTextConversionOverrides = onResetTextConversionOverrides,
             )
         }
 
