@@ -14,16 +14,22 @@ package me.him188.ani.app.ui.exploration.search
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -59,11 +65,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -126,6 +134,11 @@ fun SearchPage(
     var isSearchBarExpanded by rememberSaveable { mutableStateOf(false) }
     var layoutKind by rememberSaveable { mutableStateOf(SearchResultLayoutKind.COVER) }
     var editingQuery by rememberSaveable(state.query.keywords) { mutableStateOf(state.query.keywords) }
+    var collapsedFilterGroups by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    val useWideDesktopFilterPanel = shouldUseWideDesktopFilterPanel(
+        isDesktop = LocalPlatform.current.isDesktop(),
+        maxHorizontalPartitions = navigator.scaffoldDirective.maxHorizontalPartitions,
+    )
 
     LaunchedEffect(state.hasSelectedItem) {
         if (state.hasSelectedItem) {
@@ -157,8 +170,8 @@ fun SearchPage(
                 windowInsets = contentWindowInsets.only(WindowInsetsSides.Horizontal),
             )
         },
-        searchResultColumn = {
-            BoxWithConstraints {
+        searchResultColumn = { _, resultModifier ->
+            BoxWithConstraints(resultModifier) {
                 SearchResultColumn(
                     items = items,
                     layoutKind = layoutKind,
@@ -221,17 +234,23 @@ fun SearchPage(
                     headers = {
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             SearchFilterChipsRow(
-                                state = state.searchFilterState,
+                                state = if (useWideDesktopFilterPanel) {
+                                    SearchFilterState(chips = emptyList())
+                                } else {
+                                    state.searchFilterState
+                                },
                                 leadingContent = {
                                     YearFilterChip(
                                         years = state.seasons.map { it.year }.distinct(),
                                         selectedYear = state.query.year,
+                                        modifier = Modifier.testTag(SearchPageTestTags.YearFilter),
                                         onSelect = { year ->
                                             onIntent(SearchPageIntent.ChangeYear(year))
                                         },
                                     )
                                     SeasonFilterChip(
                                         selectedSeason = state.query.season,
+                                        modifier = Modifier.testTag(SearchPageTestTags.SeasonFilter),
                                         onSelect = { season ->
                                             onIntent(SearchPageIntent.ChangeSeason(season))
                                         },
@@ -263,7 +282,15 @@ fun SearchPage(
                                         ),
                                     )
                                 },
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag(
+                                        if (useWideDesktopFilterPanel) {
+                                            SearchPageTestTags.DateFilterRow
+                                        } else {
+                                            SearchPageTestTags.LegacyFilterRow
+                                        },
+                                    ),
                             )
                         }
                     },
@@ -283,6 +310,35 @@ fun SearchPage(
                     ),
                 )
             }
+        },
+        searchFilterPanel = if (useWideDesktopFilterPanel && !state.hasSelectedItem) {
+            {
+                SearchFilterSidePanel(
+                    state = state.searchFilterState,
+                    collapsedGroupKeys = collapsedFilterGroups,
+                    onToggleGroup = { groupKey ->
+                        collapsedFilterGroups = if (groupKey in collapsedFilterGroups) {
+                            collapsedFilterGroups - groupKey
+                        } else {
+                            collapsedFilterGroups + groupKey
+                        }
+                    },
+                    onCheckedChange = { chip, value ->
+                        val updatedQuery = state.toggleTagSelection(
+                            tag = chip,
+                            value = value,
+                            unselectOthersOfSameKind = false,
+                        ).query
+                        onIntent(SearchPageIntent.UpdateQuery(updatedQuery))
+                    },
+                    onClearGroup = { chip ->
+                        onIntent(SearchPageIntent.UpdateQuery(state.clearTagSelection(chip).query))
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        } else {
+            null
         },
         detailContent = {
             items.itemSnapshotList.getOrNull(state.selectedItemIndex)?.let {
@@ -320,6 +376,18 @@ fun SearchPage(
         contentWindowInsets = contentWindowInsets,
     )
 }
+
+internal object SearchPageTestTags {
+    const val LegacyFilterRow = "search-filter-legacy-row"
+    const val DateFilterRow = "search-filter-date-row"
+    const val YearFilter = "search-filter-year"
+    const val SeasonFilter = "search-filter-season"
+}
+
+internal fun shouldUseWideDesktopFilterPanel(
+    isDesktop: Boolean,
+    maxHorizontalPartitions: Int,
+): Boolean = isDesktop && maxHorizontalPartitions > 1
 
 @Composable
 private fun SearchPageSearchBar(
@@ -474,7 +542,8 @@ internal fun SearchPageListDetailScaffold(
     navigator: ThreePaneScaffoldNavigator<*>,
     hasSelectedItem: Boolean,
     searchBar: @Composable (PaneScope.() -> Unit),
-    searchResultColumn: @Composable (PaneScope.(NestedScrollConnection?) -> Unit),
+    searchResultColumn: @Composable (PaneScope.(NestedScrollConnection?, Modifier) -> Unit),
+    searchFilterPanel: @Composable (PaneScope.() -> Unit)? = null,
     detailContent: @Composable (PaneScope.() -> Unit),
     navigateToTopButton: @Composable PaneScope.() -> Unit,
     modifier: Modifier = Modifier,
@@ -519,7 +588,11 @@ internal fun SearchPageListDetailScaffold(
         },
         listPaneContent = {
             Scaffold(
-                floatingActionButton = { navigateToTopButton() },
+                floatingActionButton = {
+                    if (searchFilterPanel == null) {
+                        navigateToTopButton()
+                    }
+                },
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             ) { _ ->
                 Column(
@@ -535,7 +608,44 @@ internal fun SearchPageListDetailScaffold(
                         },
                 ) {
                     searchBar()
-                    searchResultColumn(topAppBarScrollBehavior?.nestedScrollConnection)
+                    if (searchFilterPanel == null) {
+                        searchResultColumn(
+                            topAppBarScrollBehavior?.nestedScrollConnection,
+                            Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(24.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                            ) {
+                                searchResultColumn(
+                                    topAppBarScrollBehavior?.nestedScrollConnection,
+                                    Modifier.fillMaxSize(),
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(16.dp),
+                                ) {
+                                    navigateToTopButton()
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .width(SearchFilterSidePanelWidth)
+                                    .fillMaxHeight(),
+                            ) {
+                                searchFilterPanel()
+                            }
+                        }
+                    }
                 }
             }
         },

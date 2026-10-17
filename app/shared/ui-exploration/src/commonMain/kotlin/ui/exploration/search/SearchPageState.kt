@@ -132,6 +132,17 @@ fun SearchPageState.toggleTagSelection(
     )
 }
 
+fun SearchPageState.clearTagSelection(
+    tag: SearchFilterChipState,
+    tagKinds: List<CanonicalTagKind> = searchFilterState.tagKinds,
+): SearchPageState {
+    val updatedTags = query.tags.orEmpty().filterNot { it in tag.values }
+    return withQuery(
+        query.copy(tags = updatedTags),
+        tagKinds = tagKinds,
+    )
+}
+
 /**
  * 切换筛选栏展示的标签分类. 不在 [tagKinds] 中的已选标签作为自定义标签展示.
  */
