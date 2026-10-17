@@ -103,7 +103,7 @@ import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.featureflag.FeatureFlag
 import me.him188.ani.app.domain.featureflag.FeatureFlagManager
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.domain.media.DroppedFileMedia
+import me.him188.ani.app.domain.media.LocalFileMedia
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
@@ -1290,8 +1290,8 @@ open class EpisodeViewModel(
                 ?.mediaSelector
                 ?.selected
                 ?.firstOrNull()
-            // 拖入的本地文件不对应任何数据源, 其时间轴不应计入该剧集的跳过统计
-            if (selected == null || DroppedFileMedia.isDroppedFile(selected)) return@launchInBackground
+            // 本地文件不对应任何数据源, 其时间轴不应计入该剧集的跳过统计
+            if (selected == null || LocalFileMedia.isLocalFile(selected)) return@launchInBackground
             val mediaSourceId = selected.mediaSourceId
             val timeSeconds = (currentPositionMillis / 1000).toInt()
             if (timeSeconds < 0 || timeSeconds > 200 * 60) {
@@ -1320,12 +1320,12 @@ open class EpisodeViewModel(
     }
 
     /**
-     * 在当前剧集播放用户拖入的本地视频文件 [file], 不经过数据源选择.
+     * 在当前剧集播放用户指定的本地视频文件 [file] (拖入窗口, 或经选择器的「使用本地视频文件」选择), 不经过数据源选择.
      *
      * 只对当前剧集的本次播放有效: 不更新数据源偏好, 之后仍可在数据源选择器中换回其他资源;
      * 切换剧集或重新进入播放页后照常自动选择数据源. 若剧集信息加载完成前切换了剧集, 则放弃播放.
      */
-    fun playDroppedFile(file: SystemPath) {
+    fun playLocalFile(file: SystemPath) {
         launchInBackground {
             val session = fetchPlayState.episodeSessionFlow.value
             val mediaSelector = fetchPlayState.episodeSessionFlow
@@ -1335,8 +1335,8 @@ open class EpisodeViewModel(
                 }
                 .first()
                 ?: return@launchInBackground
-            logger.info { "Playing dropped file: $file" }
-            mediaSelector.selectTemporarily(DroppedFileMedia.create(file), SelectTrigger.DROPPED_FILE)
+            logger.info { "Playing local file: $file" }
+            mediaSelector.selectTemporarily(LocalFileMedia.create(file), SelectTrigger.DROPPED_FILE)
         }
     }
 

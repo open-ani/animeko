@@ -1306,6 +1306,10 @@
     <string name="media_selector_retry">重試</string>
     <string name="media_selector_load_failed">載入失敗</string>
     <string name="media_selector_auto_rescue">找不到想看的？手動查找</string>
+    <string name="media_selector_use_local_file">使用本機影片檔案</string>
+    <string name="media_selector_select_local_file">選擇本機影片檔案</string>
+    <string name="media_selector_local_file_importing">正在匯入本機影片檔案…</string>
+    <string name="media_selector_local_file_import_failed">無法讀取所選影片檔案</string>
     <string name="media_selector_manual_no_sources">沒有支援瀏覽的數據源</string>
     <string name="media_selector_manual_captcha_unsupported">需要網頁驗證，當前平台不支援</string>
     <string name="media_selector_manual_result_count">共 %1$d 條結果</string>

@@ -154,6 +154,7 @@ import me.him188.ani.app.ui.subject.episode.details.components.DanmakuMatchInfoG
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceCard
 import me.him188.ani.app.ui.subject.episode.details.components.FavoriteIconButton
 import me.him188.ani.app.ui.subject.episode.details.components.SubjectRecommendationCard
+import me.him188.ani.app.ui.subject.episode.rememberLocalVideoFilePicker
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuMatchInfoSummaryBanner
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
@@ -169,6 +170,7 @@ import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectRecommendationClick
 import me.him188.ani.utils.analytics.recordEvent
+import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.stringResource
 
@@ -223,6 +225,10 @@ fun EpisodeDetails(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
     danmakuListState: DanmakuListState? = null,
+    /**
+     * 选中本地视频文件后的回调. 为 null 时不显示「使用本地视频文件」按钮.
+     */
+    onLocalFilePicked: ((SystemPath) -> Unit)? = null,
     /**
      * 入口按钮 (onClickManualSelect / onClickSwitchSource) 打开容器前调用一次; 宿主在这里锁存模式.
      */
@@ -544,6 +550,14 @@ fun EpisodeDetails(
         val showBt = sourceResults.btSources.isNotEmpty()
         val closeSelector = { showMediaSelector = false }
         val closeSelectorText = stringResource(Lang.subject_episode_close_selector)
+        val localFilePicker = if (onLocalFilePicked != null) {
+            rememberLocalVideoFilePicker { file ->
+                onLocalFilePicked(file)
+                closeSelector()
+            }
+        } else {
+            null
+        }
         // 侧边栏占满窗口高度. 窗口太矮 (手机横屏) 时手动查找与 BT 改开窗口级对话框, 规则与播放器侧边栏相同.
         // 关掉对话框回到侧边栏并把模式置回自动匹配, 否则侧边栏立刻又变回对话框; 选中播放后全部关闭.
         val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
@@ -614,6 +628,7 @@ fun EpisodeDetails(
                                 },
                                 onRestartSource = onRestartSource,
                                 onRequestManualSearch = { onMediaSelectorModeChange(MediaSelectorMode.MANUAL) },
+                                onRequestLocalFile = localFilePicker,
                                 modifier = Modifier
                                     .padding(vertical = 12.dp, horizontal = 16.dp)
                                     .fillMaxWidth(),
@@ -684,6 +699,7 @@ fun EpisodeDetails(
                             },
                             onRestartSource = onRestartSource,
                             onRequestManualSearch = { onMediaSelectorModeChange(MediaSelectorMode.MANUAL) },
+                            onRequestLocalFile = localFilePicker,
                             modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
                             scrollable = true,
                         )

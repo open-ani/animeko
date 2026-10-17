@@ -27,16 +27,16 @@ import me.him188.ani.utils.io.length
 import me.him188.ani.utils.io.name
 
 /**
- * 用户拖入播放页的本地视频文件所对应的 [Media].
+ * 在播放页指定的本地视频文件 (拖入窗口, 或经选择器的「使用本地视频文件」选择) 所对应的 [Media].
  *
  * 它不来自任何数据源, 不会出现在 [MediaSelector] 的候选列表中, 只通过 [MediaSelector.selectTemporarily] 选中,
  * 随当前剧集的播放会话结束而失效. 播放由 `LocalFileMediaResolver` 负责.
  */
-object DroppedFileMedia {
+object LocalFileMedia {
     /**
      * [Media.mediaSourceId]. 没有数据源实例使用这个 ID, 按 ID 查询数据源信息会得到 `null`.
      */
-    const val MEDIA_SOURCE_ID = "dropped-file"
+    const val MEDIA_SOURCE_ID = "local-file"
 
     /**
      * 可以直接交给播放器的视频文件扩展名 (小写).
@@ -55,7 +55,7 @@ object DroppedFileMedia {
      */
     fun findVideoFile(files: List<Path>): SystemPath? = files.firstOrNull { isVideoFile(it) }?.inSystem
 
-    fun isDroppedFile(media: Media): Boolean = media.mediaSourceId == MEDIA_SOURCE_ID
+    fun isLocalFile(media: Media): Boolean = media.mediaSourceId == MEDIA_SOURCE_ID
 
     fun create(file: SystemPath): Media {
         val absolutePath = file.absolutePath
