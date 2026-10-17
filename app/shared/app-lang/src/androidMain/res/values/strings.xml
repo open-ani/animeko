@@ -445,6 +445,12 @@
     <string name="settings_storage_title">Storage settings</string>
     <string name="settings_storage_bt_cache_location">BT video cache location</string>
     <string name="settings_storage_bt_cache_location_description">Changing this won’t automatically migrate data nor delete old data.\nIf you want to remove old data, please click &quot;Open BT cache directory&quot; before making changes and remove all files in that directory.\n\nRestart required to take effect.</string>
+    <string name="settings_storage_local_video_library_title">Local video library</string>
+    <string name="settings_storage_local_video_library_description">Choose the folder where your local videos are stored. It is currently only used as the default location when picking a local video file, and will be used to scan local videos later.</string>
+    <string name="settings_storage_local_video_library_path">Directory</string>
+    <string name="settings_storage_local_video_library_not_set">Not set</string>
+    <string name="settings_storage_local_video_library_choose">Choose folder</string>
+    <string name="settings_storage_local_video_library_clear">Clear path</string>
     <string name="settings_storage_choose_directory">Choose video save directory</string>
     <string name="settings_storage_open_directory_chooser">Open directory chooser</string>
     <string name="settings_storage_open_bt_cache_directory">Open BT cache directory</string>

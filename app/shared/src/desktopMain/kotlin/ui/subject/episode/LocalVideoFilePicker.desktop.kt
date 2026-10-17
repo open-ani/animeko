@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.subject.episode
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
+import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.FileKitType
@@ -24,13 +25,21 @@ import me.him188.ani.app.ui.lang.media_selector_select_local_file
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.inSystem
 import org.jetbrains.compose.resources.stringResource
+import java.io.File
 
 @Composable
-actual fun rememberLocalVideoFilePicker(onPicked: (SystemPath) -> Unit): (() -> Unit)? {
+actual fun rememberLocalVideoFilePicker(
+    onPicked: (SystemPath) -> Unit,
+    initialDirectory: String?,
+): (() -> Unit)? {
     val onPickedUpdated by rememberUpdatedState(onPicked)
     val title = stringResource(Lang.media_selector_select_local_file)
+    val directory = initialDirectory
+        ?.takeIf { it.isNotBlank() && File(it).isDirectory }
+        ?.let(::PlatformFile)
     val launcher = rememberFilePickerLauncher(
         type = FileKitType.File(LocalFileMedia.VIDEO_EXTENSIONS),
+        directory = directory,
         dialogSettings = FileKitDialogSettings(
             title = title,
             parentWindow = LocalPlatformWindow.current.windowScope?.window,

@@ -16,4 +16,7 @@ import me.him188.ani.utils.io.SystemPath
  * iOS 暂未提供本地视频文件选择器.
  */
 @Composable
-actual fun rememberLocalVideoFilePicker(onPicked: (SystemPath) -> Unit): (() -> Unit)? = null
+actual fun rememberLocalVideoFilePicker(
+    onPicked: (SystemPath) -> Unit,
+    initialDirectory: String?,
+): (() -> Unit)? = null

@@ -16,6 +16,12 @@ import me.him188.ani.utils.io.SystemPath
  * 「使用本地视频文件」的文件选择器. 返回的函数用于打开系统文件选择器; 当前平台没有可用的选择器时返回 `null`.
  *
  * 用户选择的视频文件通过 [onPicked] 回调.
+ *
+ * @param initialDirectory 本地视频库目录. 仅作为选择器的默认起始位置, 用户仍可切换到其他目录.
+ * Android 上为 SAF tree URI, 桌面端为绝对路径.
  */
 @Composable
-expect fun rememberLocalVideoFilePicker(onPicked: (SystemPath) -> Unit): (() -> Unit)?
+expect fun rememberLocalVideoFilePicker(
+    onPicked: (SystemPath) -> Unit,
+    initialDirectory: String? = null,
+): (() -> Unit)?
