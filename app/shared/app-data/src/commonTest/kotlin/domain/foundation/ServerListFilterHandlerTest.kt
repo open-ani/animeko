@@ -168,6 +168,63 @@ class ServerListFeatureHandlerTest {
     }
 
     @Test
+    fun `application errors are returned without trying other servers`() = runTest {
+        for (status in listOf(
+            HttpStatusCode.Conflict,
+            HttpStatusCode.UnprocessableEntity,
+            HttpStatusCode.TooManyRequests,
+        )) {
+            val aniServerUrls = MutableStateFlow(
+                listOf(
+                    Url("https://server1.com"),
+                    Url("https://server2.com"),
+                ),
+            )
+            val attempts = mutableListOf<String>()
+            val client = buildTestClient(aniServerUrls, defaultConfig()) { url ->
+                attempts += url.host
+                when (url.host) {
+                    "server1.com" -> status to "COMMENT_IMAGE_PENDING_LIMIT"
+                    else -> HttpStatusCode.OK to "should not be reached"
+                }
+            }
+
+            val response = client.post("https://${ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST}/v2/comments/images")
+            assertEquals(status, response.status)
+            assertEquals("COMMENT_IMAGE_PENDING_LIMIT", response.bodyAsText())
+            assertEquals(listOf("server1.com"), attempts, "$status must not be sent to another server")
+        }
+    }
+
+    @Test
+    fun `server that answered with an application error is tried first next time`() = runTest {
+        val aniServerUrls = MutableStateFlow(
+            listOf(
+                Url("https://server1.com"),
+                Url("https://server2.com"),
+            ),
+        )
+        val attempts = mutableListOf<String>()
+        val client = buildTestClient(aniServerUrls, defaultConfig()) { url ->
+            attempts += url.host
+            when (url.host) {
+                "server1.com" -> HttpStatusCode.ServiceUnavailable to "unavailable"
+                else -> HttpStatusCode.UnprocessableEntity to "rejected"
+            }
+        }
+
+        assertEquals(
+            HttpStatusCode.UnprocessableEntity,
+            client.post("https://${ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST}/a").status,
+        )
+        assertEquals(
+            HttpStatusCode.UnprocessableEntity,
+            client.post("https://${ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST}/b").status,
+        )
+        assertEquals(listOf("server1.com", "server2.com", "server2.com"), attempts)
+    }
+
+    @Test
     fun `all servers fail - return last call if available`() = runTest {
         val aniServerUrls = MutableStateFlow(
             listOf(

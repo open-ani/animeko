@@ -25,6 +25,8 @@ kotlin {
         implementation(libs.compose.components.resources)
         implementation(projects.app.shared.placeholder)
         implementation(projects.utils.bbcode)
+        implementation(libs.filekit.dialogs)
+        implementation(libs.filekit.dialogs.compose)
     }
     sourceSets.commonTest.dependencies {
         implementation(libs.kotlinx.coroutines.test)
