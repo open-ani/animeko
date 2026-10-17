@@ -643,11 +643,11 @@ class NotificationDetailTest {
             createTestGenericNotification(
                 rawType = NotificationType.REPORT_RESULT.wireValue,
                 rawCategory = NotificationGroup.NOTICE.wireValue,
-                title = "你举报的评论已处理",
+                title = "你举报的评论已被处理",
             ),
             NotificationActions.Noop,
         )
-        onNodeWithText("你举报的评论已处理").assertIsDisplayed()
+        onNodeWithText("你举报的评论已被处理").assertIsDisplayed()
         onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertIsDisplayed()
         assertTrue(onAllNodesWithTag(NotificationTestTags.DETAIL_UPDATE_HINT).fetchSemanticsNodes().isEmpty())
     }

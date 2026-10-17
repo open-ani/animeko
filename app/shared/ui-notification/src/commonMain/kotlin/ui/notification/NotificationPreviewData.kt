@@ -75,7 +75,7 @@ fun createTestReportResult(
     createdAtMillis = createdAtMillis,
     read = read,
     display = NotificationDisplay(
-        title = "你举报的评论已处理",
+        title = "你举报的评论已被处理",
         body = listOfNotNull(subjectNameCn ?: subjectName, episodeSort?.let { "第 $it 话" }).joinToString(" "),
         icon = NotificationIcon.REPORT,
         target = NotificationTarget(subjectId = subjectId, episodeId = episodeId),

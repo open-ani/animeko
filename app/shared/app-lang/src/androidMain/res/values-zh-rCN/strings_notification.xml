@@ -41,7 +41,7 @@
     <string name="notification_announcement_tag_release">版本更新</string>
     <string name="notification_announcement_tag_community">社区</string>
 
-    <string name="notification_report_result_row_title">你举报的评论已处理</string>
+    <string name="notification_report_result_row_title">你举报的评论已被处理</string>
     <string name="notification_report_result_detail_title">举报结果</string>
     <string name="notification_report_result_upheld">举报成立</string>
     <string name="notification_report_result_description_removed">经审核，该评论违反社区规则，已被删除。感谢你的举报。</string>

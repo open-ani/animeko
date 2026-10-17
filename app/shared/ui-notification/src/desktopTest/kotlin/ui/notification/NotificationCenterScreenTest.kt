@@ -220,13 +220,13 @@ class NotificationCenterScreenTest {
             onNodeWithTag(NotificationTestTags.ANNOUNCEMENT_ENTRY).assertIsDisplayed()
                 .assertTextContains(TestAnnouncements.first().title)
 
-            assertEquals(listOf("你举报的评论已处理", "2 小时前", "葬送的芙莉莲 第 12 话"), rowTexts("report-1"))
+            assertEquals(listOf("你举报的评论已被处理", "2 小时前", "葬送的芙莉莲 第 12 话"), rowTexts("report-1"))
             assertEquals(listOf("GitHub 账号已解绑", "昨天", "该账号已登录另一个 Animeko 账号"), rowTexts("security-1"))
             assertEquals(
                 listOf("Bangumi 授权已过期", "10 月 11 日", "追番进度已停止同步，重新授权后自动恢复。"),
                 rowTexts("bangumi-expired"),
             )
-            assertEquals(listOf("你举报的评论已处理", "9 月 23 日", "孤独摇滚！ 第 5 话"), rowTexts("report-2"))
+            assertEquals(listOf("你举报的评论已被处理", "9 月 23 日", "孤独摇滚！ 第 5 话"), rowTexts("report-2"))
             assertEquals(listOf("账号安全提醒", "9 月 18 日"), rowTexts("security-2"))
             assertEquals(
                 listOf("欢迎加入 Animeko", "9 月 3 日", "绑定 Bangumi 账号后可同步追番进度与收藏。"),
@@ -269,7 +269,7 @@ class NotificationCenterScreenTest {
 
             val unreadRow = NotificationTestTags.item("report-1")
             assertEquals(FontWeight.Normal, textIn(unreadRow, "2 小时前").textFontWeight())
-            assertEquals(FontWeight.Medium, textIn(unreadRow, "你举报的评论已处理").textFontWeight())
+            assertEquals(FontWeight.Medium, textIn(unreadRow, "你举报的评论已被处理").textFontWeight())
             assertEquals(FontWeight.Normal, textIn(NotificationTestTags.ANNOUNCEMENT_ENTRY, "公告").textFontWeight())
         }
     }
