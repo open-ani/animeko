@@ -39,7 +39,7 @@ import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
-import me.him188.ani.app.domain.media.selector.MediaAutoSelectListener
+import me.him188.ani.app.domain.media.selector.MediaAutoSelectOutcome
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
@@ -102,13 +102,9 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
         suite.registerComponent<MediaSelectorAutoSelectUseCase> {
             val impl = MediaSelectorAutoSelectUseCaseImpl(koin)
             object : MediaSelectorAutoSelectUseCase {
-                override suspend fun invoke(
-                    session: MediaFetchSession,
-                    mediaSelector: MediaSelector,
-                    listener: MediaAutoSelectListener,
-                ) {
+                override suspend fun invoke(session: MediaFetchSession, mediaSelector: MediaSelector): MediaAutoSelectOutcome {
                     autoSelectCalls++
-                    impl(session, mediaSelector, listener)
+                    return impl(session, mediaSelector)
                 }
             }
         }
@@ -352,7 +348,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
             suite.registerComponent<ReplayBrowseMemoryUseCase> {
                 ReplayBrowseMemoryUseCase { _, _, mediaSelector ->
                     mediaSelector.select(memoryMedia)
-                    ReplayResult.Selected("test")
+                    ReplayResult.Selected
                 }
             }
         }

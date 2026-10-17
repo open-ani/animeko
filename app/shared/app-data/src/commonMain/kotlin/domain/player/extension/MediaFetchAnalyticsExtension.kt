@@ -32,6 +32,8 @@ import me.him188.ani.app.domain.media.selector.SelectEvent
 import me.him188.ani.app.domain.media.selector.SelectOrigin
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.player.analytics.PlayFlowEpisode
+import me.him188.ani.app.domain.player.analytics.tierOf
+import me.him188.ani.app.domain.player.analytics.toPlayFlowMatch
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.isLocalCache
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -180,12 +182,12 @@ class MediaFetchAnalyticsExtension(
                 put("selected_by", stats.selectOrigin.value?.toAnalyticsValue())
                 put("selected_source_id", selected?.mediaSourceId?.take(100))
                 if (selected != null && !selected.isLocalCache()) {
-                    put("selected_tier", tiers?.effectiveTierOf(selected)?.value?.toLong())
+                    put("selected_tier", tiers?.tierOf(selected))
                 }
                 put(
                     "selected_match",
                     availableMedia.firstOrNull { it.result.mediaId == selected?.mediaId }
-                        ?.metadata?.subjectMatchKind?.toAnalyticsValue(),
+                        ?.metadata?.subjectMatchKind?.toPlayFlowMatch(),
                 )
                 put("is_cached", selected?.isLocalCache()?.toAnalyticsFlag())
             }
@@ -209,11 +211,6 @@ class MediaFetchAnalyticsExtension(
         SelectOrigin.MANUAL -> "manual"
         SelectOrigin.AUTOMATIC -> "auto"
         SelectOrigin.BROWSE_MEMORY -> "browse_memory"
-    }
-
-    private fun SubjectMatchKind.toAnalyticsValue(): String = when (this) {
-        SubjectMatchKind.EXACT -> "exact"
-        SubjectMatchKind.FUZZY -> "fuzzy"
     }
 
     companion object : EpisodePlayerExtensionFactory<MediaFetchAnalyticsExtension> {

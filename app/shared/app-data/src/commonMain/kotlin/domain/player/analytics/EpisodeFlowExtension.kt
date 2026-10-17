@@ -24,7 +24,6 @@ import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.media.selector.SelectEvent
 import me.him188.ani.app.domain.media.selector.SelectOrigin
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
-import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
 import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
 import me.him188.ani.app.domain.player.extension.PlayerExtension
@@ -40,30 +39,34 @@ import kotlin.time.Duration.Companion.milliseconds
  */
 class EpisodeFlowExtension(
     private val context: PlayerExtensionContext,
-    private val getSourceTiers: GetMediaSelectorSourceTiersUseCase?,
     private val describeSearchStart: (MediaFetchSession, PlayFlowEpisode) -> PlayFlowFetchObserver.SearchStart?,
+    private val sourceTiers: () -> MediaSelectorSourceTiers?,
 ) : PlayerExtension("PlayFlowEpisode") {
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
         val recorder = context.playFlow
         val episode = episodeSession.playFlowEpisode
 
         backgroundTaskScope.launch("InfoLoaded") {
-            var failed = false
-            launch {
-                episodeSession.infoLoadErrorStateFlow.filterNotNull().collect { error ->
-                    failed = true
-                    recorder.record(PlayFlowStep.INFO_LOADED, episode) {
-                        put("outcome", "failed")
-                        put("reason", error.toPlayFlowReason())
-                        put("duration_ms", episode.startedAt.elapsedNow())
+            // 记到首次加载成功为止; 之后的失败不再属于本次尝试的加载流程
+            coroutineScope {
+                var failed = false
+                val failures = launch {
+                    episodeSession.infoLoadErrorStateFlow.filterNotNull().collect { error ->
+                        failed = true
+                        recorder.record(PlayFlowStep.INFO_LOADED, episode) {
+                            put("outcome", "failed")
+                            put("reason", error.toPlayFlowReason())
+                            put("duration_ms", episode.startedAt.elapsedNow())
+                        }
                     }
                 }
-            }
-            episodeSession.infoBundleFlow.filterNotNull().first()
-            recorder.record(PlayFlowStep.INFO_LOADED, episode) {
-                put("outcome", "ok")
-                put("trigger", if (failed) "retry" else "initial")
-                put("duration_ms", episode.startedAt.elapsedNow())
+                episodeSession.infoBundleFlow.filterNotNull().first()
+                failures.cancel()
+                recorder.record(PlayFlowStep.INFO_LOADED, episode) {
+                    put("outcome", "ok")
+                    put("trigger", if (failed) "retry" else "initial")
+                    put("duration_ms", episode.startedAt.elapsedNow())
+                }
             }
         }
 
@@ -93,7 +96,7 @@ class EpisodeFlowExtension(
         val match = withTimeoutOrNull(MATCH_LOOKUP_TIMEOUT) {
             selector.selectedMaybeExcludedMedia.first { it?.original?.mediaId == media.mediaId }
         }
-        val tiers: MediaSelectorSourceTiers? = getSourceTiers?.let { withTimeoutOrNull(MATCH_LOOKUP_TIMEOUT) { it().first() } }
+        val tiers = sourceTiers()
         context.playFlow.record(PlayFlowStep.USER_SELECT, episode) {
             put("sel_no", episode.selectionNoOf(media.mediaId))
             put("entry", event.trigger.toPlayFlowEntry())
@@ -115,11 +118,16 @@ class EpisodeFlowExtension(
         is LoadError.UnknownError -> "unknown"
     }
 
+    /**
+     * @param describeSearchStart 见 [PlayFlowFetchObserver.describeSearchStart].
+     * @param sourceTiers 最新的数据源阶级, 没有时为 `null`.
+     */
     class Factory(
         private val describeSearchStart: (MediaFetchSession, PlayFlowEpisode) -> PlayFlowFetchObserver.SearchStart?,
+        private val sourceTiers: () -> MediaSelectorSourceTiers?,
     ) : EpisodePlayerExtensionFactory<EpisodeFlowExtension> {
         override fun create(context: PlayerExtensionContext, koin: Koin): EpisodeFlowExtension {
-            return EpisodeFlowExtension(context, koin.getOrNull(), describeSearchStart)
+            return EpisodeFlowExtension(context, describeSearchStart, sourceTiers)
         }
     }
 

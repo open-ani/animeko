@@ -9,12 +9,13 @@
 
 package me.him188.ani.app.domain.player.analytics
 
-import me.him188.ani.app.domain.episode.HlsPrepareResult
 import me.him188.ani.app.domain.episode.MediaLoadListener
 import me.him188.ani.app.domain.episode.MediaLoadPhase
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
+import me.him188.ani.app.domain.media.resolver.MediaResolutionException
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.datasources.api.Media
+import org.openani.mediamp.PlaybackException
 import kotlin.time.Duration
 
 /**
@@ -43,14 +44,12 @@ internal class PlayFlowMediaLoadListener(
         this.engineKey = engineKey
     }
 
-    override fun onHlsPrepared(result: HlsPrepareResult, elapsed: Duration) {}
-
     override fun onReady(elapsed: Duration) {
         record("ok", stage = null, reason = null, elapsed)
     }
 
-    override fun onFailed(phase: MediaLoadPhase, state: VideoLoadingState.Failed, reason: String, elapsed: Duration) {
-        record("failed", phase.toStage(), state.toReason(reason), elapsed)
+    override fun onFailed(phase: MediaLoadPhase, state: VideoLoadingState.Failed, elapsed: Duration) {
+        record("failed", phase.toStage(), state.toReason(), elapsed)
     }
 
     override fun onCancelled(phase: MediaLoadPhase, elapsed: Duration) {
@@ -73,20 +72,23 @@ internal class PlayFlowMediaLoadListener(
     private fun MediaLoadPhase.toStage(): String = when (this) {
         MediaLoadPhase.RESOLVE -> "resolve"
         MediaLoadPhase.OPEN -> "open"
-        MediaLoadPhase.HLS_PREPARE -> "open"
         MediaLoadPhase.SET_MEDIA_DATA -> "player"
     }
 
     /**
-     * 失败原因按用户能理解的分类归并; 播放器错误码与未知异常保留 [detail] 的类名.
+     * 失败原因按用户能理解的分类归并; 未知错误取播放器错误码、解析失败原因或异常的简单类名, 不含异常消息.
      */
-    private fun VideoLoadingState.Failed.toReason(detail: String): String = when (this) {
+    private fun VideoLoadingState.Failed.toReason(): String = when (this) {
         VideoLoadingState.NoMatchingFile -> "no_playable_link"
         VideoLoadingState.ResolutionTimedOut -> "resolve_timeout"
         VideoLoadingState.NetworkError -> "network"
         VideoLoadingState.WebEngineUnavailable -> "web_engine_unavailable"
         VideoLoadingState.UnsupportedMedia -> "unsupported_media"
         VideoLoadingState.Cancelled -> "cancelled"
-        is VideoLoadingState.UnknownError -> detail.lowercase()
+        is VideoLoadingState.UnknownError -> when (val cause = cause) {
+            is PlaybackException -> cause.toPlayFlowReason()
+            is MediaResolutionException -> cause.reason.name.lowercase()
+            else -> cause::class.simpleName?.lowercase() ?: "unknown"
+        }
     }
 }

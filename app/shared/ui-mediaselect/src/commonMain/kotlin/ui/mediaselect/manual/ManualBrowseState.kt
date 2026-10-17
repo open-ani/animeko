@@ -269,6 +269,10 @@ class ManualBrowseState(
         val searches: Map<String, SourceSearch> = emptyMap(),
         val openedSubject: BrowseSubject? = null,
         val channels: ManualLoadState<List<BrowseChannel>> = ManualLoadState.Idle,
+        /**
+         * 加载 [channels] 的数据源, 供埋点; 还没加载过时为 null.
+         */
+        val channelsMediaSourceId: String? = null,
         val channelIndex: Int = 0,
         val userEpisodeIndex: Int? = null,
         /**
@@ -456,7 +460,12 @@ class ManualBrowseState(
             }
             session.update { s ->
                 if (s.browseGeneration == generation) {
-                    s.copy(channels = result, channelIndex = 0, userEpisodeIndex = null)
+                    s.copy(
+                        channels = result,
+                        channelsMediaSourceId = instance?.mediaSourceId,
+                        channelIndex = 0,
+                        userEpisodeIndex = null,
+                    )
                 } else {
                     s
                 }
@@ -499,12 +508,8 @@ class ManualBrowseState(
     fun selectChannel(index: Int) {
         val updated = session.updateAndGet { it.copy(channelIndex = index, userEpisodeIndex = null) }
         val channel = (updated.channels as? ManualLoadState.Success)?.value?.getOrNull(index) ?: return
-        val sourceId = updated.explicitSourceId
-        backgroundScope.launch {
-            val mediaSourceId = (sourceId ?: presentationSource.first().selectedSourceId)
-                ?.let { findInstance(it) }?.mediaSourceId ?: return@launch
-            listener.onChannelSelected(mediaSourceId, channel.episodes.size)
-        }
+        val mediaSourceId = updated.channelsMediaSourceId ?: return
+        listener.onChannelSelected(mediaSourceId, channel.episodes.size)
     }
 
     /**

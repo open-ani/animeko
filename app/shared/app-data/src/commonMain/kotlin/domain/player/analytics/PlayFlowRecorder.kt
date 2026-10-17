@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.player.analytics
 import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import me.him188.ani.app.domain.player.extension.toAnalyticsFlag
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent
 import me.him188.ani.utils.analytics.IAnalytics
@@ -86,11 +87,19 @@ class PlayFlowRecorder(
     }
 
     /**
-     * 供既有事件 (`episode_switch`, `media_fetch_result`, `episode_playing`, `episode_exit`) 附加的关联属性.
+     * 供既有事件 (`episode_enter`, `episode_switch`, `media_fetch_result`, `episode_playing`, `episode_exit`) 附加的关联属性.
      */
     fun legacyProperties(episode: PlayFlowEpisode?): Map<String, Any?> = buildMap {
         put("play_session_id", playSessionId)
         put("episode_attempt", episode?.attempt)
+    }
+
+    /**
+     * 同 [legacyProperties], 按尝试编号 [attempt]; 给还没有 [PlayFlowEpisode] 的调用方 (页面创建时的 `episode_enter`).
+     */
+    fun legacyProperties(attempt: Long): Map<String, Any?> = buildMap {
+        put("play_session_id", playSessionId)
+        put("episode_attempt", attempt)
     }
 
     private fun commonProperties(step: PlayFlowStep, episode: PlayFlowEpisode?, seq: Long): MutableMap<String, Any?> =
@@ -209,7 +218,7 @@ class PlayFlowProps internal constructor(
     }
 
     fun put(key: String, value: Boolean?) {
-        map[key] = value?.let { if (it) 1L else 0L }
+        map[key] = value?.toAnalyticsFlag()
     }
 
     fun put(key: String, value: Duration?) {

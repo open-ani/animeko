@@ -63,7 +63,7 @@ class PlaybackFlowExtension(
         val error = context.player.state.first { it.mediaStatus is MediaStatus.Error }.mediaStatus as MediaStatus.Error
         context.playFlow.record(PlayFlowStep.PLAY_ERROR, episode) {
             put("sel_no", episode.selectionNoOf(media.mediaId))
-            put("reason", "player_" + error.error.code.name.lowercase())
+            put("reason", error.error.toPlayFlowReason())
             put("position_ms", context.player.currentPositionMillis.value)
         }
     }

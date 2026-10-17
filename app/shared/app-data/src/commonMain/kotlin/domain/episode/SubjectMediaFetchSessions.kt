@@ -30,12 +30,12 @@ import me.him188.ani.datasources.api.source.MediaFetchRequest
  * 复用会话时, 对已失败或被中途取消的数据源自动重试一次; 需要验证码或被限流的源不重试.
  *
  * @param onSessionCreated 创建了新会话. 在 [get] 返回前调用.
- * @param onSessionReused 复用了当前会话, 带本次重试的数据源实例 ID. 在 [get] 返回前调用.
+ * @param onSessionReused 复用了当前会话, 带本次重试的数据源数. 在 [get] 返回前调用.
  */
 class SubjectMediaFetchSessions(
     private val scope: CoroutineScope,
     private val onSessionCreated: (MediaFetchSession) -> Unit = {},
-    private val onSessionReused: (MediaFetchSession, retriedInstanceIds: List<String>) -> Unit = { _, _ -> },
+    private val onSessionReused: (MediaFetchSession, retriedCount: Int) -> Unit = { _, _ -> },
     private val createSession: suspend (MediaFetchRequest) -> MediaFetchSession,
 ) : AutoCloseable {
     private val lock = Mutex()
@@ -62,15 +62,17 @@ class SubjectMediaFetchSessions(
     }
 
     /**
-     * @return 被重试的数据源实例 ID.
+     * @return 被重试的数据源数.
      */
-    private fun retryFailedSources(session: MediaFetchSession): List<String> = buildList {
+    private fun retryFailedSources(session: MediaFetchSession): Int {
+        var retried = 0
         for (result in session.mediaSourceResults) {
             if (result.state.value.isFailedOrAbandoned) {
                 result.restart()
-                add(result.instanceId)
+                retried++
             }
         }
+        return retried
     }
 
     override fun close() {

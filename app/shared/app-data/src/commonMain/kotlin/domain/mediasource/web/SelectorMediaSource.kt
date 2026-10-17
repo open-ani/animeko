@@ -12,7 +12,6 @@ package me.him188.ani.app.domain.mediasource.web
 
 import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -20,7 +19,6 @@ import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.models.fold
 import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
-import me.him188.ani.app.domain.media.fetch.MediaSourceFetchTelemetry
 import me.him188.ani.app.domain.mediasource.MediaListFilter
 import me.him188.ani.app.domain.mediasource.MediaListFilterContext
 import me.him188.ani.app.domain.mediasource.MediaListFilters
@@ -439,12 +437,11 @@ class SelectorMediaSource(
             // 搜索缓存: 上一次真实搜索已把条目页面的全部剧集写入缓存 (addCache).
             // 若缓存的剧集列表包含当前请求的剧集 (典型场景: 切集), 直接从缓存构建结果, 不发起任何网络请求.
             // 缓存按 TTL 过期, 也会在该条目手动重新查询时被清除.
-            val cached = engine.searchFromCacheOrNull(searchConfig, searchQuery, mediaSourceId, subjectId)
-            currentCoroutineContext()[MediaSourceFetchTelemetry]?.onSearch(name, cached != null)
-            cached ?: run {
-                beforeOnlineSearch()
-                engine.searchOnline(searchConfig, searchQuery, mediaSourceId, subjectId)
-            }
+            engine.searchFromCacheOrNull(searchConfig, searchQuery, mediaSourceId, subjectId)
+                ?: run {
+                    beforeOnlineSearch()
+                    engine.searchOnline(searchConfig, searchQuery, mediaSourceId, subjectId)
+                }
         }.map { MediaMatch(it, MatchKind.FUZZY) }
     }
 

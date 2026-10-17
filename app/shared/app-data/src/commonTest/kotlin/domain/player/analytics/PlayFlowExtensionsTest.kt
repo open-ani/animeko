@@ -38,6 +38,7 @@ import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.app.domain.player.extension.AbstractPlayerExtensionTest
 import me.him188.ani.app.domain.player.extension.RecordingAnalytics
+import me.him188.ani.utils.analytics.AnalyticsEvent
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.coroutines.childScope
@@ -150,7 +151,7 @@ class PlayFlowExtensionsTest : AbstractPlayerExtensionTest() {
         assertEquals(1L, done["media_count"])
 
         // seq 严格递增
-        val seqs = analytics.propertiesOf(me.him188.ani.utils.analytics.AnalyticsEvent.PlayFlow).map { it["seq"] as Long }
+        val seqs = analytics.propertiesOf(AnalyticsEvent.PlayFlow).map { it["seq"] as Long }
         assertEquals(seqs.sorted(), seqs)
         assertEquals(seqs.toSet().size, seqs.size)
         case.scope.cancel()

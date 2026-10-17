@@ -33,7 +33,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 @DisabledOnNative
@@ -56,46 +55,28 @@ class MediaAutoSelectorTest {
         testScope().runCurrent()
         assertEquals(sources.bt1.instance.mediaSourceId, selection.await()?.mediaSourceId)
         assertEquals(1, sources.web1.fetchCount)
-        val outcomes = mutableListOf<MediaAutoSelectOutcome>()
-        val listener = object : MediaAutoSelectListener {
-            override fun onFinished(outcome: MediaAutoSelectOutcome, elapsed: Duration) {
-                outcomes += outcome
-            }
-        }
-        assertNull(MediaAutoSelector(selector, listener).select(session))
-        assertEquals<List<MediaAutoSelectOutcome>>(
-            listOf(MediaAutoSelectOutcome.Exhausted(MediaAutoSelectExhaustCause.PRECONDITION_SELECTED)), outcomes,
+        assertEquals(
+            MediaAutoSelectOutcome.Exhausted(MediaAutoSelectExhaustCause.PRECONDITION_SELECTED),
+            MediaAutoSelector(selector).select(session),
         )
     }
 
     @Test
-    fun `listener receives the structured reason of a completed BT selection`() = runFetchMediaSelectorTestSuite {
+    fun `outcome carries the structured reason of a completed BT selection`() = runFetchMediaSelectorTestSuite {
         initSelection()
         val (_, session, sources) = configureFetchSession(startInBackground = false) {
             object {
                 val bt1 by bt()
             }
         }
-        val outcomes = mutableListOf<MediaAutoSelectOutcome>()
-        val stages = mutableListOf<MediaAutoSelectStage>()
-        val listener = object : MediaAutoSelectListener {
-            override fun onStageChanged(stage: MediaAutoSelectStage) {
-                stages += stage
-            }
-
-            override fun onFinished(outcome: MediaAutoSelectOutcome, elapsed: Duration) {
-                outcomes += outcome
-            }
-        }
-        val selection = testScope().async { MediaAutoSelector(selector, listener).select(session) }
+        val selection = testScope().async { MediaAutoSelector(selector).select(session) }
         sources.bt1.complete(media(kind = BitTorrent, subjectName = "Example Series"))
         testScope().advanceUntilIdle()
 
-        val selected = assertIs<MediaAutoSelectOutcome.Selected>(outcomes.single())
-        assertEquals(selection.await()?.mediaId, selected.media.mediaId)
+        val selected = assertIs<MediaAutoSelectOutcome.Selected>(selection.await())
+        assertEquals(selector.selected.value?.mediaId, selected.media.mediaId)
         assertEquals(MediaAutoSelectReason.PREFERRED_KIND_COMPLETED, selected.reason)
         assertEquals(MediaAutoSelectStage.PREFERRED_SOURCE, selected.stage)
-        assertTrue(stages.isEmpty())
     }
 
     @Test
@@ -248,7 +229,7 @@ class MediaAutoSelectorTest {
         sources.cached.complete(media(kind = LocalCache, subjectName = "Example Series"))
         testScope().runCurrent()
         assertEquals(sources.cached.instance.mediaSourceId, selection.await()?.mediaSourceId)
-        assertNull(MediaAutoSelector(selector).select(session))
+        assertNull(MediaAutoSelector(selector).select(session).selectedMedia)
     }
 
     @Test
@@ -373,7 +354,7 @@ class MediaAutoSelectorTest {
         session: MediaFetchSession,
         preferredSourceId: String? = null,
     ): Deferred<Media?> = scope.async(start = CoroutineStart.UNDISPATCHED) {
-        MediaAutoSelector(selector).select(session, MediaAutoSelector.Config(preferredSourceId = preferredSourceId))
+        MediaAutoSelector(selector).select(session, MediaAutoSelector.Config(preferredSourceId = preferredSourceId)).selectedMedia
     }
 
     context(scope: TestScope)

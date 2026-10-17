@@ -51,16 +51,19 @@ interface MediaSelectorEvents {
  * @property media 当前被选中的媒体项，可能为 null。
  * @property subtitleLanguageId 当前选择的字幕语言 ID，可能为 null。
  * @property previousMedia 上一次被选中的媒体项。
- * @property origin 这次选择由谁发起。
- * @property trigger 这次选择的具体入口, 比 [origin] 更细; [origin] 总等于 [SelectTrigger.origin].
+ * @property trigger 这次选择的具体入口.
  */
 data class SelectEvent(
     val media: Media?,
     val subtitleLanguageId: String?,
     val previousMedia: Media?,
-    val origin: SelectOrigin = SelectOrigin.MANUAL,
     val trigger: SelectTrigger = SelectTrigger.MANUAL_OTHER,
-)
+) {
+    /**
+     * 这次选择由谁发起, 即 [SelectTrigger.origin].
+     */
+    val origin: SelectOrigin get() = trigger.origin
+}
 
 /**
  * 一次选择由谁发起.
@@ -79,17 +82,7 @@ enum class SelectOrigin {
     /**
      * 切集时回放用户在手动查找中记住的线路.
      */
-    BROWSE_MEMORY;
-
-    /**
-     * 只知道来源、不知道具体入口时使用的 [SelectTrigger].
-     */
-    val defaultTrigger: SelectTrigger
-        get() = when (this) {
-            MANUAL -> SelectTrigger.MANUAL_OTHER
-            AUTOMATIC -> SelectTrigger.AUTO_OTHER
-            BROWSE_MEMORY -> SelectTrigger.BROWSE_MEMORY_REPLAY
-        }
+    BROWSE_MEMORY,
 }
 
 /**

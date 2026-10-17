@@ -103,8 +103,8 @@
    里该条目的记忆 `browseSubject` 记住的条目、在记住的线路里按位置找目标集，`createMedia` 后 `select`，
    并更新记忆。命中则不进入第 7 步。回放结果 `ReplayResult` 是 `Selected` 或带原因的 `NotFound`。
 7. `MediaSelectorAutoSelectUseCaseImpl` 准备配置并启用上次使用的源，调用
-   `MediaAutoSelector.select`；后者统一处理缓存、记忆源、WEB 两段超时或 BT 完成条件，并通过
-   `MediaAutoSelectListener` 报告阶段变化与结构化结果 `MediaAutoSelectOutcome`。
+   `MediaAutoSelector.select`；后者统一处理缓存、记忆源、WEB 两段超时或 BT 完成条件，并返回结构化结果
+   `MediaAutoSelectOutcome`。
 8. `EpisodeFetchSelectPlayState.LoadMediaOnSelectExtension` 监听 `mediaSelector.selected`，先调用各扩展的
    `onBeforeLoadMedia`（换源时 `RememberPlayProgressExtension` 在这里保存旧资源的进度），再读出本集记忆的播放进度
    作为起播位置（一起看时从头），调用 `PlayerSession.loadMedia(...)`。

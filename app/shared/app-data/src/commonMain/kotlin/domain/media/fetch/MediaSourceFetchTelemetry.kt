@@ -16,7 +16,7 @@ import kotlin.coroutines.CoroutineContext
 
 /**
  * 数据源在一次查询中向调用方报告的搜索明细. [MediaFetcher] 把它放进收集 `MediaSource.fetch` 结果的协程上下文,
- * 数据源实现 (目前是 Selector 数据源) 在每个关键词搜索完成后调用 [onSearch].
+ * 关键词链 (`keywordSearchChain`, 在线站点类数据源共用) 在每个关键词搜索完成后调用 [onSearch].
  *
  * 数据源不依赖它: 上下文中没有本元素时什么都不发生.
  */

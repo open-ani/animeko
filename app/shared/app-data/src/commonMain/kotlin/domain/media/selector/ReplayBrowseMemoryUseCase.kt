@@ -34,10 +34,10 @@ import kotlin.time.Instant
 
 sealed interface ReplayResult {
     /** 在记住的线路里按位置找到目标集, 已 [MediaSelector.select] (正式选择, 写偏好). */
-    data class Selected(val mediaSourceId: String) : ReplayResult
+    data object Selected : ReplayResult
 
-    /** 什么都没做, 交给自动匹配; [reason] 说明为什么. [mediaSourceId] 为记忆的源, 没有记忆时为 `null`. */
-    data class NotFound(val reason: ReplayMissReason, val mediaSourceId: String? = null) : ReplayResult
+    /** 什么都没做, 交给自动匹配; [reason] 说明为什么. */
+    data class NotFound(val reason: ReplayMissReason) : ReplayResult
 
     val isHit: Boolean get() = this is Selected
 }
@@ -132,20 +132,17 @@ class ReplayBrowseMemoryUseCaseImpl(
         try {
             if (mediaSelector.selected.value != null) return ReplayResult.NotFound(ReplayMissReason.ALREADY_SELECTED)
             val memory = repository.get(subjectId) ?: return ReplayResult.NotFound(ReplayMissReason.NO_MEMORY)
-            val sourceId = memory.mediaSourceId
-            if (isRecentStructuralMiss(subjectId, memory)) {
-                return ReplayResult.NotFound(ReplayMissReason.RECENT_STRUCTURAL_MISS, sourceId)
-            }
+            if (isRecentStructuralMiss(subjectId, memory)) return ReplayResult.NotFound(ReplayMissReason.RECENT_STRUCTURAL_MISS)
 
             val source = allInstances.first().firstOrNull { instance ->
                 instance.isEnabled && instance.mediaSourceId == memory.mediaSourceId && instance.source.supportsBrowsing
-            }?.source ?: return ReplayResult.NotFound(ReplayMissReason.SOURCE_UNAVAILABLE, sourceId)
+            }?.source ?: return ReplayResult.NotFound(ReplayMissReason.SOURCE_UNAVAILABLE)
 
             val channels = withTimeoutOrNull(REPLAY_TIMEOUT) { source.browseSubject(memory.subject) }
-                ?: return ReplayResult.NotFound(ReplayMissReason.BROWSE_TIMEOUT, sourceId)
+                ?: return ReplayResult.NotFound(ReplayMissReason.BROWSE_TIMEOUT)
             if (channels.isEmpty()) {
                 recordStructuralMiss(subjectId, memory)
-                return ReplayResult.NotFound(ReplayMissReason.EMPTY_CHANNELS, sourceId)
+                return ReplayResult.NotFound(ReplayMissReason.EMPTY_CHANNELS)
             }
 
             val channelIndex = channels.getOrNull(memory.channelIndex)
@@ -155,25 +152,25 @@ class ReplayBrowseMemoryUseCaseImpl(
             if (channelIndex == null) {
                 // 线路列表非空但按下标和名称都找不到: 记忆已结构性失效, 删除它, 免得这个条目每集都付一次条目页请求.
                 // 只删本次读到的那条 (CAS), 且用户已手动选择时不删: 等待条目页期间用户可能已重新「播放并记住」.
-                if (mediaSelector.selected.value != null) return ReplayResult.NotFound(ReplayMissReason.PREEMPTED, sourceId)
+                if (mediaSelector.selected.value != null) return ReplayResult.NotFound(ReplayMissReason.PREEMPTED)
                 if (!repository.removeIf(subjectId, memory)) {
                     logger.info { "Browse memory for subject $subjectId changed while browsing, keeping the newer memory" }
                 }
-                return ReplayResult.NotFound(ReplayMissReason.CHANNEL_NOT_FOUND, sourceId)
+                return ReplayResult.NotFound(ReplayMissReason.CHANNEL_NOT_FOUND)
             }
             val channel = channels[channelIndex]
             val episodes = channel.episodes
 
             val index = browseEpisodeIndex(memory.episodeIndex, memory.playedAsSort, episodeInfo.sort)
-                ?: return ReplayResult.NotFound(ReplayMissReason.NUMBERING_MISMATCH, sourceId)
+                ?: return ReplayResult.NotFound(ReplayMissReason.NUMBERING_MISMATCH)
             val episode = episodes.getOrNull(index)
-                ?: return ReplayResult.NotFound(ReplayMissReason.INDEX_OUT_OF_RANGE, sourceId)
+                ?: return ReplayResult.NotFound(ReplayMissReason.INDEX_OUT_OF_RANGE)
             val media = source.createMedia(memory.subject, channel.name, episode, episodeInfo.sort)
-            if (mediaSelector.selected.value != null) return ReplayResult.NotFound(ReplayMissReason.PREEMPTED, sourceId)
+            if (mediaSelector.selected.value != null) return ReplayResult.NotFound(ReplayMissReason.PREEMPTED)
             mediaSelector.select(media, SelectTrigger.BROWSE_MEMORY_REPLAY)
             logger.info { "Replayed browse memory for subject $subjectId at index $index as ${episodeInfo.sort}: ${media.mediaId}" }
             updateMemory(subjectId, memory, channelIndex, channel, index, episodeInfo.sort)
-            return ReplayResult.Selected(sourceId)
+            return ReplayResult.Selected
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

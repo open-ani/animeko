@@ -223,15 +223,10 @@ interface MediaSelector {
      *
      * 重复 [select] 同一个 [Media] 时, 本函数立即返回 `false`, 不会做重复广播事件等.
      *
-     * @param trigger 广播的 [SelectEvent.trigger], 其 [SelectTrigger.origin] 即事件的 [SelectEvent.origin]. 选择会照常更新偏好, 与来源无关.
+     * @param trigger 广播的 [SelectEvent.trigger]. 选择会照常更新偏好, 与来源无关.
      * @return 当成功将 [selected] 更新为 [candidate] 时返回 `true`. 当 [selected] 已经是 [candidate] 时返回 `false`.
      */
     suspend fun select(candidate: Media, trigger: SelectTrigger = SelectTrigger.MANUAL_OTHER): Boolean
-
-    /**
-     * 以 [origin] 对应的默认入口 ([SelectOrigin.defaultTrigger]) 选择, 见 [select].
-     */
-    suspend fun select(candidate: Media, origin: SelectOrigin): Boolean = select(candidate, origin.defaultTrigger)
 
     /**
      * 选择一个 [Media], 只对本次会话有效: 与 [select] 一样更新 [selected] 并广播 [MediaSelectorEvents.onSelect],
@@ -534,10 +529,7 @@ class DefaultMediaSelector(
     ): Media? {
         require(trigger.origin == SelectOrigin.AUTOMATIC) { "selectAutomatically requires an AUTOMATIC trigger, got $trigger" }
         if (selected.value != expectedSelection || candidate == expectedSelection) return null
-        val event = SelectEvent(
-            candidate, subtitleLanguageId = null, previousMedia = expectedSelection,
-            origin = SelectOrigin.AUTOMATIC, trigger = trigger,
-        )
+        val event = SelectEvent(candidate, subtitleLanguageId = null, previousMedia = expectedSelection, trigger = trigger)
         events.onBeforeSelect.emit(event)
         if (!selected.compareAndSet(expectedSelection, candidate)) return null
         events.onSelect.emit(event)
@@ -562,7 +554,7 @@ class DefaultMediaSelector(
      *
      * @param candidate 待选中的媒体项。
      * @param updatePreference 是否根据此媒体更新用户偏好（如分辨率、联盟、字幕语言等）。
-     * @param trigger 事件的 [SelectEvent.trigger], 其 origin 即 [SelectEvent.origin]。
+     * @param trigger 事件的 [SelectEvent.trigger]。
      * @param force 是否强制切换媒体。若为 true，则即使媒体未变也会触发切换。
      * @return 若成功完成切换则返回 true，否则为 false。
      */
@@ -581,7 +573,6 @@ class DefaultMediaSelector(
             media = candidate,
             subtitleLanguageId = null,
             previousMedia = previous,
-            origin = trigger.origin,
             trigger = trigger,
         )
         // 发出切换前事件

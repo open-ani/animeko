@@ -135,9 +135,9 @@ class PlayerSession(
 
         val start = TimeSource.Monotonic.markNow()
         var phase = MediaLoadPhase.RESOLVE
-        fun fail(state: VideoLoadingState.Failed, reason: String) {
+        fun fail(state: VideoLoadingState.Failed) {
             _videoLoadingStateFlow.value = state
-            listener.onFailed(phase, state, reason, start.elapsedNow())
+            listener.onFailed(phase, state, start.elapsedNow())
         }
 
         var preparedHlsPlaybackProxySession: HlsPlaybackProxySession? = null
@@ -162,16 +162,13 @@ class PlayerSession(
             val openedEngineKey = (data as? TorrentMediaData)?.engineKey ?: resolvedEngineKey
             listener.onOpened(openedEngineKey, start.elapsedNow())
 
-            phase = MediaLoadPhase.HLS_PREPARE
-            val prepared = prepareHlsPlaybackIfEnabled(
+            val preparedData = prepareHlsPlaybackIfEnabled(
                 data,
                 media,
                 startPositionHintMillis = startPositionMillis.takeIf { it > 0L },
             ).also {
                 preparedHlsPlaybackProxySession = it.session
-            }
-            listener.onHlsPrepared(prepared.result, start.elapsedNow())
-            val preparedData = prepared.data
+            }.data
 
             phase = MediaLoadPhase.SET_MEDIA_DATA
             logger.info { "Set media data to player at ${startPositionMillis}ms: $preparedData" }
@@ -184,7 +181,7 @@ class PlayerSession(
             listener.onReady(start.elapsedNow())
         } catch (e: UnsupportedMediaException) {
             logger.warn { IllegalStateException("Failed to resolve video source, unsupported media", e) }
-            fail(VideoLoadingState.UnsupportedMedia, "unsupported_media")
+            fail(VideoLoadingState.UnsupportedMedia)
             stopPlayback()
         } catch (e: MediaSourceOpenException) { // during playerState.setVideoSource
             logger.warn {
@@ -199,7 +196,6 @@ class PlayerSession(
                     OpenFailures.UNSUPPORTED_VIDEO_SOURCE -> VideoLoadingState.UnsupportedMedia
                     OpenFailures.ENGINE_DISABLED -> VideoLoadingState.UnsupportedMedia
                 },
-                e.reason.name,
             )
             stopPlayback()
         } catch (e: MediaResolutionException) { // during MediaResolver.resolve
@@ -217,7 +213,6 @@ class PlayerSession(
                     ResolutionFailures.NO_MATCHING_RESOURCE -> VideoLoadingState.NoMatchingFile
                     ResolutionFailures.WEB_ENGINE_UNAVAILABLE -> VideoLoadingState.WebEngineUnavailable
                 },
-                e.reason.name,
             )
             stopPlayback()
         } catch (e: CancellationException) { // 切换数据源 (含 MediaLoadCancellationException)
@@ -226,11 +221,11 @@ class PlayerSession(
             throw e
         } catch (e: PlaybackException) { // during player.setMediaData, 播放器拒绝了这个媒体
             logger.warn { IllegalStateException("Player rejected the media data", e) }
-            fail(VideoLoadingState.UnknownError(e), "player_" + e.code.name)
+            fail(VideoLoadingState.UnknownError(e))
             stopPlayback()
         } catch (e: Throwable) {
             logger.error { IllegalStateException("Failed to resolve video source with unknown error", e) }
-            fail(VideoLoadingState.UnknownError(e), e::class.simpleName ?: "unknown")
+            fail(VideoLoadingState.UnknownError(e))
             stopPlayback()
         } finally {
             preparedHlsPlaybackProxySession?.close()
@@ -259,7 +254,7 @@ class PlayerSession(
         startPositionHintMillis: Long?,
     ): PreparedMediaData {
         if (data !is UriMediaData) {
-            return PreparedMediaData(data, result = HlsPrepareResult.NOT_APPLICABLE)
+            return PreparedMediaData(data)
         }
         val config = getVideoScaffoldConfigUseCase.invoke().first()
         val options = HlsPlaybackOptions(
@@ -272,13 +267,10 @@ class PlayerSession(
             proxySegments = config.autoSkipOpEd,
         )
         if (!options.isEnabled) {
-            return PreparedMediaData(data, result = HlsPrepareResult.DISABLED)
+            return PreparedMediaData(data)
         }
         val result = hlsPlaybackPreparer.prepare(data, options, startPositionHintMillis)
-        return PreparedMediaData(
-            result.data, result.session,
-            if (result.session != null) HlsPrepareResult.PROXIED else HlsPrepareResult.DIRECT,
-        )
+        return PreparedMediaData(result.data, result.session)
     }
 
     private suspend fun mediaSourceTags(mediaSourceId: String): List<String> {
@@ -300,7 +292,6 @@ class PlayerSession(
     private data class PreparedMediaData(
         val data: MediaData,
         val session: HlsPlaybackProxySession? = null,
-        val result: HlsPrepareResult,
     )
 }
 

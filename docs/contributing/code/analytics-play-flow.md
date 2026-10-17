@@ -51,7 +51,7 @@
 
 | step | 时机 | 属性 |
 |---|---|---|
-| `auto_select_done` | 每次自动选源有了结果 (每个查询 bundle 一条) | `outcome`: `selected` / `no_media` / `timeout` / `preempted_by_user` / `skipped`; `method` (selected): `local_cache` / `browse_memory` / `preferred_source` / `instant` / `exact` / `fuzzy` / `bt`; `reason`: 未选中的具体原因, 以及浏览记忆未命中的原因 (`no_memory`, `browse_timeout`, `channel_not_found` 等); `media_source_id`; `kind`; `match`: `exact` / `fuzzy`; `tier`; `sel_no`; `duration_ms` 自开始 |
+| `auto_select_done` | 每次自动选源有了结果 (每个查询 bundle 一条) | `outcome`: `selected` / `no_media` / `timeout` / `preempted_by_user` / `skipped`; `method` (selected): `local_cache` / `browse_memory` / `preferred_source` / `instant` / `exact` / `fuzzy` / `bt`; `reason`: 未选中时是具体原因 (`fuzzy_deadline`, `no_web_candidates`, `info_missing`, `cancelled` 等), 选中时是浏览记忆未命中、退回自动选择的原因 (`no_memory`, `browse_timeout`, `channel_not_found` 等); `media_source_id`; `kind`; `match`: `exact` / `fuzzy`; `tier`; `sel_no`; `duration_ms` 自开始 |
 
 `method` 对应 `MediaAutoSelector` 的决策依据: 本地缓存、浏览记忆回放、记忆的 Web 源、Web 三阶段 (精确且高阶级 → 精确 → 模糊)、BT.
 `outcome=timeout` 表示到了模糊匹配阶段仍没有候选; `preempted_by_user` 表示等待期间用户自己选了; `skipped` 带 `reason=info_missing` (剧集信息未加载) 或 `cancelled`.
@@ -119,8 +119,8 @@ ORDER BY seq;
 - `domain/player/analytics/PlaybackFlowExtension.kt`: `playback_started`, `play_error`.
 - `domain/player/analytics/PlayFlowMediaLoadListener.kt` + `domain/episode/MediaLoadListener.kt`: `video_load_done`, 由 `PlayerSession.loadMedia` 回调.
 - `domain/player/analytics/PlayFlowFetchObserver.kt`: `search_source_done`, `search_done`; 搜索缓存命中来自 `MediaSourceFetchResult.searchStats`
-  (`domain/media/fetch/MediaSourceFetchTelemetry.kt`).
-- `domain/player/extension/AutoSelectExtension.kt`: `auto_select_done`, 结果来自 `MediaAutoSelectListener` / `ReplayResult`.
+  (`domain/media/fetch/MediaSourceFetchTelemetry.kt`, 由 `keywordSearchChain` 报告).
+- `domain/player/extension/AutoSelectExtension.kt`: `auto_select_done`, 结果来自 `MediaAutoSelectOutcome` / `ReplayResult`.
 - `domain/player/extension/SwitchMediaOnPlayerErrorExtension.kt`: `auto_switch`, 结果来自 `PlayerLoadErrorHandling`.
 - `domain/episode/EpisodeFetchSelectPlayState.kt`: `enter` (每次 `newEpisodeSession`), `EpisodeSwitchTrigger`.
 - `app/shared/.../ui/subject/episode/analytics/PlayFlowUiListeners.kt`: `user_action`, `manual_search` 的 UI 适配器;

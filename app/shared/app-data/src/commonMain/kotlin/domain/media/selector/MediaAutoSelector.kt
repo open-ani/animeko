@@ -30,17 +30,13 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeSource
 
 /**
  * Owns one automatic selection: source subscriptions, deadlines, decisions and the final write.
  * Startup and player-error replacement share this entry point. Each call has its own lifecycle.
- *
- * [listener] observes stage changes and the final [MediaAutoSelectOutcome] of each [select] call.
  */
 internal class MediaAutoSelector(
     private val mediaSelector: MediaSelector,
-    private val listener: MediaAutoSelectListener = MediaAutoSelectListener.Noop,
 ) {
     data class Config(
         val preferredSourceId: String? = null,
@@ -82,24 +78,18 @@ internal class MediaAutoSelector(
     /**
      * A selection made while suspended ends this call; only [expectedSelection] may be replaced.
      *
-     * Returns the selected media, or `null` when nothing was selected; the precise reason is reported to the listener
-     * as a [MediaAutoSelectOutcome].
+     * Returns what happened: the written selection with its reason, or why nothing was selected.
      */
     suspend fun select(
         session: MediaFetchSession,
         config: Config = Config(),
         expectedSelection: Media? = null,
-    ): Media? = coroutineScope {
-        val start = TimeSource.Monotonic.markNow()
-        var outcome: MediaAutoSelectOutcome? = null
+    ): MediaAutoSelectOutcome = coroutineScope {
         if (mediaSelector.selected.value != expectedSelection) {
-            listener.onFinished(
-                MediaAutoSelectOutcome.Exhausted(MediaAutoSelectExhaustCause.PRECONDITION_SELECTED), start.elapsedNow(),
-            )
-            return@coroutineScope null
+            return@coroutineScope MediaAutoSelectOutcome.Exhausted(MediaAutoSelectExhaustCause.PRECONDITION_SELECTED)
         }
         val stage = MutableStateFlow(MediaAutoSelectStage.PREFERRED_SOURCE)
-        var result: Media? = null
+        var outcome: MediaAutoSelectOutcome = MediaAutoSelectOutcome.Cancelled
         var deadlines: Job? = null
         try {
             combine(
@@ -112,12 +102,12 @@ internal class MediaAutoSelector(
                     Decision.StartFallback -> {
                         if (stage.value == MediaAutoSelectStage.PREFERRED_SOURCE) {
                             val web = checkNotNull(config.web)
-                            advanceStage(stage, if (web.fastSelect) MediaAutoSelectStage.INSTANT else MediaAutoSelectStage.EXACT)
+                            stage.value = if (web.fastSelect) MediaAutoSelectStage.INSTANT else MediaAutoSelectStage.EXACT
                             deadlines = launch {
                                 delay(web.exactStageAfter)
-                                advanceStage(stage, MediaAutoSelectStage.EXACT)
+                                stage.value = MediaAutoSelectStage.EXACT
                                 delay((web.fuzzyMatchAfter - web.exactStageAfter).coerceAtLeast(Duration.ZERO))
-                                advanceStage(stage, MediaAutoSelectStage.FUZZY)
+                                stage.value = MediaAutoSelectStage.FUZZY
                             }
                         }
                         false
@@ -131,8 +121,8 @@ internal class MediaAutoSelector(
                         logger.info {
                             "Auto select: reason=${decision.reason}, stage=${stage.value}, source=${decision.media.mediaSourceId}, media=${decision.media.mediaId}"
                         }
-                        result = mediaSelector.selectAutomatically(decision.media, expectedSelection, config.trigger)
-                        outcome = if (result != null) {
+                        val written = mediaSelector.selectAutomatically(decision.media, expectedSelection, config.trigger)
+                        outcome = if (written != null) {
                             MediaAutoSelectOutcome.Selected(
                                 decision.media, decision.reason, stage.value, decision.matchKind, decision.tier,
                             )
@@ -145,15 +135,8 @@ internal class MediaAutoSelector(
             }
         } finally {
             deadlines?.cancel()
-            listener.onFinished(outcome ?: MediaAutoSelectOutcome.Cancelled, start.elapsedNow())
         }
-        result
-    }
-
-    private fun advanceStage(stage: MutableStateFlow<MediaAutoSelectStage>, next: MediaAutoSelectStage) {
-        if (stage.value == next) return
-        stage.value = next
-        listener.onStageChanged(next)
+        outcome
     }
 
     private fun sourceSnapshots(session: MediaFetchSession): Flow<List<MediaSourceSelectionSnapshot>> {
@@ -429,21 +412,7 @@ sealed interface MediaAutoSelectOutcome {
 
     /** 调用被取消 (切集, 查询条件变化等). */
     data object Cancelled : MediaAutoSelectOutcome
-}
 
-/**
- * 观察一次自动选择的过程.
- */
-interface MediaAutoSelectListener {
-    /**
-     * 进入了新的阶段. [MediaAutoSelectStage.PREFERRED_SOURCE] 是起始阶段, 不通知.
-     */
-    fun onStageChanged(stage: MediaAutoSelectStage) {}
-
-    /**
-     * 本次自动选择结束. [elapsed] 为自调用 [MediaAutoSelector.select] 起的时长.
-     */
-    fun onFinished(outcome: MediaAutoSelectOutcome, elapsed: Duration) {}
-
-    companion object Noop : MediaAutoSelectListener
+    /** 选中并写入的资源, 其他结果为 `null`. */
+    val selectedMedia: Media? get() = (this as? Selected)?.media
 }

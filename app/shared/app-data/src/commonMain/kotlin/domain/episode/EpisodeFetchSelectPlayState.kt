@@ -117,10 +117,14 @@ class EpisodeFetchSelectPlayState(
     private val getSourceTiers: GetMediaSelectorSourceTiersUseCase? by lazy { koin.getOrNull<GetMediaSelectorSourceTiersUseCase>() }
 
     /**
+     * 最新的数据源阶级, 供埋点读取. 从 [onUIReady] 起收集.
+     */
+    private val latestSourceTiers = MutableStateFlow<MediaSelectorSourceTiers?>(null)
+
+    /**
      * 观察条目级查询会话, 记录每轮查询的逐源结果.
      */
     private val fetchObserver = PlayFlowFetchObserver(playFlow, backgroundScope) { latestSourceTiers.value }
-    private val latestSourceTiers = MutableStateFlow<MediaSelectorSourceTiers?>(null)
 
     /**
      * 条目级查询会话, 各集共用: 切集只重建选择器, 不重新查询.
@@ -156,7 +160,7 @@ class EpisodeFetchSelectPlayState(
                     backgroundScope.launch { context.broadcast(MediaLoadedEvent(episodeId)) }
                 }
             },
-            EpisodeFlowExtension.Factory(fetchObserver::describeSearchStart),
+            EpisodeFlowExtension.Factory(fetchObserver::describeSearchStart) { latestSourceTiers.value },
             PlaybackFlowExtension,
         )
 
@@ -274,11 +278,11 @@ class EpisodeFetchSelectPlayState(
     private val uiReady = CompletableDeferred<Unit>()
 
     fun onUIReady() {
-        uiReady.complete(Unit)
-
-        getSourceTiers?.let { useCase ->
-            backgroundScope.launch {
-                useCase().collect { latestSourceTiers.value = it }
+        if (uiReady.complete(Unit)) {
+            getSourceTiers?.let { useCase ->
+                backgroundScope.launch {
+                    useCase().collect { latestSourceTiers.value = it }
+                }
             }
         }
 

@@ -20,31 +20,11 @@ enum class MediaLoadPhase {
     /** 解析资源: 网页取流链接, 下载种子元数据. */
     RESOLVE,
 
-    /** 打开资源: 选择种子内文件, 等待云盘就绪. */
+    /** 打开资源: 选择种子内文件, 等待云盘就绪, 准备 HLS 代理. */
     OPEN,
-
-    /** HLS 代理准备. */
-    HLS_PREPARE,
 
     /** 交给播放器打开. */
     SET_MEDIA_DATA,
-}
-
-/**
- * HLS 代理准备的结果.
- */
-enum class HlsPrepareResult {
-    /** 不是 URI 类型的媒体, 不经过 HLS 代理. */
-    NOT_APPLICABLE,
-
-    /** 广告过滤与分片代理都未启用. */
-    DISABLED,
-
-    /** 经本地代理播放. */
-    PROXIED,
-
-    /** 启用了代理选项但未能建立代理, 直接播放原链接. */
-    DIRECT,
 }
 
 /**
@@ -68,17 +48,15 @@ interface MediaLoadListener {
      */
     fun onOpened(engineKey: MediaCacheEngineKey?, elapsed: Duration) {}
 
-    fun onHlsPrepared(result: HlsPrepareResult, elapsed: Duration) {}
-
     /**
      * 播放器已打开媒体 ([VideoLoadingState.Succeed]).
      */
     fun onReady(elapsed: Duration) {}
 
     /**
-     * 加载失败. [reason] 是失败的分类名 (解析失败原因、打开失败原因或播放器错误码), 不含异常消息.
+     * 加载失败. 具体原因在 [state] 里, [VideoLoadingState.UnknownError.cause] 带原始异常.
      */
-    fun onFailed(phase: MediaLoadPhase, state: VideoLoadingState.Failed, reason: String, elapsed: Duration) {}
+    fun onFailed(phase: MediaLoadPhase, state: VideoLoadingState.Failed, elapsed: Duration) {}
 
     /**
      * 加载被取消: 切换资源, 切集或离开播放页.

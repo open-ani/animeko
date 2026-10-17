@@ -10,7 +10,6 @@
 package me.him188.ani.app.domain.mediasource.jsonapi
 
 import io.ktor.client.request.get
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -21,7 +20,6 @@ import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
-import me.him188.ani.app.domain.media.fetch.MediaSourceFetchTelemetry
 import me.him188.ani.app.domain.mediasource.MediaListFilter
 import me.him188.ani.app.domain.mediasource.MediaListFilterContext
 import me.him188.ani.app.domain.mediasource.MediaListFilters
@@ -437,12 +435,11 @@ class JsonApiMediaSource(
             requestInterval = searchConfig.requestInterval,
             matches = { media -> media.any { it.subjectNameMatches(filterContext) } },
         ) { name ->
-            val cached = searchFromCacheOrNull(subjectId, name, freshnessProbe, filterContext)
-            currentCoroutineContext()[MediaSourceFetchTelemetry]?.onSearch(name, cached != null)
-            cached ?: run {
-                beforeOnlineSearch()
-                searchOnline(subjectId, name, filterContext)
-            }
+            searchFromCacheOrNull(subjectId, name, freshnessProbe, filterContext)
+                ?: run {
+                    beforeOnlineSearch()
+                    searchOnline(subjectId, name, filterContext)
+                }
         }.map { MediaMatch(it, MatchKind.FUZZY) }
     }
 

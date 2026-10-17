@@ -51,7 +51,7 @@ class PlayFlowFetchObserverTest {
         assertNull(observer.describeSearchStart(session, first))
 
         val second = recorder.nextEpisodeAttempt(2)
-        observer.onSessionReused(session, listOf("a"))
+        observer.onSessionReused(session, retriedCount = 1)
         val reused = assertNotNull(observer.describeSearchStart(session, second))
         assertEquals(true, reused.reused)
         assertEquals(1, reused.retried)

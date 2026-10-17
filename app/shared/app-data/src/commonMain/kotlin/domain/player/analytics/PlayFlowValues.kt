@@ -17,6 +17,7 @@ import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.isLocalCache
 import me.him188.ani.datasources.api.source.MediaSourceKind
+import org.openani.mediamp.PlaybackException
 
 /**
  * `play_flow` 事件里资源与数据源的 `kind` 取值.
@@ -59,6 +60,11 @@ internal fun MediaSelectorSourceTiers.tierOf(media: Media): Long? {
     if (media.isLocalCache() || DroppedFileMedia.isDroppedFile(media)) return null
     return get(media.mediaSourceId, media.properties.alliance).value.toLong()
 }
+
+/**
+ * 播放器错误在 `video_load_done.reason` 与 `play_error.reason` 里的取值, 如 `player_io`.
+ */
+internal fun PlaybackException.toPlayFlowReason(): String = "player_" + code.name.lowercase()
 
 /**
  * `video_load_done.engine` 取值: 由解析器类名与种子引擎推断.

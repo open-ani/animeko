@@ -31,7 +31,7 @@ import me.him188.ani.app.domain.media.createTestMediaProperties
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
-import me.him188.ani.app.domain.media.selector.SelectOrigin
+import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -327,7 +327,7 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
         start(case)
 
         // 回放的资源由数据源现场创建, 不在候选列表中
-        case.state.mediaSelectorFlow.filterNotNull().first().select(case.createMedia("a"), SelectOrigin.BROWSE_MEMORY)
+        case.state.mediaSelectorFlow.filterNotNull().first().select(case.createMedia("a"), SelectTrigger.BROWSE_MEMORY_REPLAY)
         advanceTimeBy(2_001)
         runCurrent()
 

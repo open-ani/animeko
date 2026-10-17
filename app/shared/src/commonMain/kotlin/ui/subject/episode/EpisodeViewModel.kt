@@ -382,8 +382,7 @@ open class EpisodeViewModel(
                 put("subject_id", subjectId)
                 put("episode_id", initialEpisodeId)
                 put("is_fullscreen", initialIsFullscreen)
-                put("play_session_id", it.playSessionId)
-                put("episode_attempt", 1L)
+                putAll(it.legacyProperties(attempt = 1L))
             },
         )
     }

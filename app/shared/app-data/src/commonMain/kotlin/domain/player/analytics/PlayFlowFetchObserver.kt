@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
+import me.him188.ani.app.domain.media.fetch.isDisabled
+import me.him188.ani.app.domain.media.fetch.isFinal
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.mediasource.web.BlockedException
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -42,20 +44,26 @@ class PlayFlowFetchObserver(
     private val sessions = HashMap<MediaFetchSession, SessionTrack>()
 
     /**
-     * 新会话创建. 开始观察它.
+     * 新会话创建. 开始观察它; 它替换掉的会话停止观察, 还没结束的查询记为 `search_done outcome=incomplete`.
      */
     fun onSessionCreated(session: MediaFetchSession) {
         val track = SessionTrack(session, recorder.markNow())
-        synchronized(lock) { sessions[session] = track }
+        val replaced = synchronized(lock) {
+            sessions.values.toList().also {
+                sessions.clear()
+                sessions[session] = track
+            }
+        }
+        for (old in replaced) finish(old)
         track.job = scope.launch(CoroutineName("PlayFlowFetchObserver")) { observe(track) }
     }
 
     /**
-     * 复用了当前会话, 并重试了 [retriedInstanceIds] 这些源.
+     * 复用了当前会话, 并重试了 [retriedCount] 个源.
      */
-    fun onSessionReused(session: MediaFetchSession, retriedInstanceIds: List<String>) {
+    fun onSessionReused(session: MediaFetchSession, retriedCount: Int) {
         synchronized(lock) {
-            sessions[session]?.pendingRetried = retriedInstanceIds.size
+            sessions[session]?.pendingRetried = retriedCount
         }
     }
 
@@ -85,21 +93,27 @@ class PlayFlowFetchObserver(
      */
     fun close() {
         val tracks = synchronized(lock) { sessions.values.toList().also { sessions.clear() } }
-        for (track in tracks) {
-            track.job?.cancel()
-            if (!track.allCompleted) {
-                recorder.record(PlayFlowStep.SEARCH_DONE, recorder.currentEpisode) {
-                    put("outcome", "incomplete")
-                    put("round", track.round)
-                    put("count", track.sources.size)
-                    put("duration_ms", track.roundStart.elapsedNow())
-                }
+        for (track in tracks) finish(track)
+    }
+
+    /**
+     * 停止观察 [track]; 它的查询还没全部结束时记一条 `search_done outcome=incomplete`.
+     */
+    private fun finish(track: SessionTrack) {
+        track.job?.cancel()
+        val incomplete = synchronized(lock) { track.sources.any { !it.state.isFinal } }
+        if (incomplete) {
+            recorder.record(PlayFlowStep.SEARCH_DONE, recorder.currentEpisode) {
+                put("outcome", "incomplete")
+                put("round", track.round)
+                put("count", track.sources.size)
+                put("duration_ms", track.roundStart.elapsedNow())
             }
         }
     }
 
     /**
-     * 观察会话里每个源的状态与结果, 直到被取消 ([close]).
+     * 观察会话里每个源的状态与结果, 直到被取消 ([finish]). 会话被替换或页面关闭时取消, 不让被替换的会话因本观察者而一直活着.
      */
     private suspend fun observe(track: SessionTrack) = coroutineScope {
         synchronized(lock) {
@@ -131,9 +145,8 @@ class PlayFlowFetchObserver(
      * 在锁内调用; 返回的记录动作在锁外执行.
      */
     private fun evaluate(track: SessionTrack): (() -> Unit)? {
-        val allFinal = track.sources.all { it.state is MediaSourceFetchState.Completed || it.state is MediaSourceFetchState.Disabled }
-        val pending = track.sources.filter { it.state !is MediaSourceFetchState.Disabled && it.generation != it.reportedGeneration }
-        track.allCompleted = allFinal
+        val allFinal = track.sources.all { it.state.isFinal }
+        val pending = track.sources.filter { !it.state.isDisabled && it.generation != it.reportedGeneration }
         if (track.roundClosed && pending.isNotEmpty()) {
             // 上一轮结束后又有源在跑: 开新一轮, 从最早重启的源算起
             track.round++
@@ -182,7 +195,7 @@ class PlayFlowFetchObserver(
     }
 
     private fun MediaSourceFetchResult.participates(): Boolean =
-        kind != MediaSourceKind.LocalCache && state.value !is MediaSourceFetchState.Disabled
+        kind != MediaSourceKind.LocalCache && !state.value.isDisabled
 
     class SearchStart(
         val reused: Boolean,
@@ -200,7 +213,6 @@ class PlayFlowFetchObserver(
         var pendingRetried = 0
         var round = 1
         var roundClosed = false
-        var allCompleted = false
     }
 
     private class SourceTrack(
@@ -210,7 +222,9 @@ class PlayFlowFetchObserver(
         var generation = 0
         var reportedGeneration = -1
         var startedAt: TimeMark? = null
-        var completedAt: TimeMark? = null
+
+        /** 本代从开始到终态的时长; 还没到终态, 或开始时就已是终态时为 `null`. */
+        var duration: Duration? = null
         var resultCount = 0
 
         fun onState(new: MediaSourceFetchState, now: TimeMark) {
@@ -218,10 +232,10 @@ class PlayFlowFetchObserver(
             state = new
             when (new) {
                 MediaSourceFetchState.Idle, MediaSourceFetchState.Working -> {
-                    if (old is MediaSourceFetchState.Completed || old is MediaSourceFetchState.Disabled) {
+                    if (old.isFinal) {
                         generation++
                         startedAt = now
-                        completedAt = null
+                        duration = null
                     } else if (startedAt == null) {
                         startedAt = now
                     }
@@ -232,8 +246,9 @@ class PlayFlowFetchObserver(
                     if (old is MediaSourceFetchState.Completed && old.id != new.id) {
                         generation++
                         startedAt = now
+                        duration = null
                     }
-                    if (completedAt == null) completedAt = now
+                    if (duration == null) duration = startedAt?.elapsedNow()
                 }
 
                 MediaSourceFetchState.Disabled -> {}
@@ -252,8 +267,6 @@ class PlayFlowFetchObserver(
                 MediaSourceFetchState.Working -> "working" to null
                 MediaSourceFetchState.Disabled -> "disabled" to null
             }
-            val started = startedAt
-            val completed = completedAt
             return SourceSnapshot(
                 mediaSourceId = result.mediaSourceId,
                 kind = result.kind,
@@ -261,7 +274,7 @@ class PlayFlowFetchObserver(
                 reason = reason,
                 resultCount = resultCount,
                 restarts = generation,
-                duration = if (started != null && completed != null) started.elapsedNow() - completed.elapsedNow() else null,
+                duration = duration,
                 cacheHit = result.searchStats.value?.isCacheOnly,
             )
         }

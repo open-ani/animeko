@@ -10,7 +10,6 @@
 package me.him188.ani.app.domain.player.extension
 
 import androidx.annotation.VisibleForTesting
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.collections.immutable.persistentHashSetOf
 import kotlinx.coroutines.coroutineScope
@@ -29,7 +28,6 @@ import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
 import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.selector.MediaAutoSelectExhaustCause
-import me.him188.ani.app.domain.media.selector.MediaAutoSelectListener
 import me.him188.ani.app.domain.media.selector.MediaAutoSelectOutcome
 import me.him188.ani.app.domain.media.selector.MediaAutoSelector
 import me.him188.ani.app.domain.media.selector.MediaSelector
@@ -163,8 +161,12 @@ class SwitchMediaOnPlayerErrorExtension(
         blacklistSize: Int,
     ) {
         context.playFlow.record(PlayFlowStep.AUTO_SWITCH, episode) {
+            fun skipped(reason: String) {
+                put("outcome", "skipped")
+                put("reason", reason)
+            }
             put("sel_no", failedMedia?.let { episode.selectionNoOf(it.mediaId) })
-            put("trigger", trigger.name.lowercase())
+            put("trigger", trigger)
             when (handling) {
                 is PlayerLoadErrorHandling.Attempted -> when (val outcome = handling.outcome) {
                     is MediaAutoSelectOutcome.Selected -> {
@@ -172,43 +174,21 @@ class SwitchMediaOnPlayerErrorExtension(
                         put("media_source_id", outcome.media.mediaSourceId)
                     }
 
-                    is MediaAutoSelectOutcome.Rejected -> {
-                        put("outcome", "skipped")
-                        put("reason", "user_switched")
-                    }
-
+                    is MediaAutoSelectOutcome.Rejected -> skipped("user_switched")
                     is MediaAutoSelectOutcome.Exhausted -> when (outcome.cause) {
-                        MediaAutoSelectExhaustCause.PRECONDITION_SELECTED, MediaAutoSelectExhaustCause.PREEMPTED -> {
-                            put("outcome", "skipped")
-                            put("reason", "user_switched")
-                        }
-
+                        MediaAutoSelectExhaustCause.PRECONDITION_SELECTED, MediaAutoSelectExhaustCause.PREEMPTED -> skipped("user_switched")
                         else -> {
                             put("outcome", "no_more_sources")
-                            put("reason", outcome.cause.name.lowercase())
+                            put("reason", outcome.cause)
                         }
                     }
 
-                    MediaAutoSelectOutcome.Cancelled -> {
-                        put("outcome", "skipped")
-                        put("reason", "cancelled")
-                    }
+                    MediaAutoSelectOutcome.Cancelled -> skipped("cancelled")
                 }
 
-                PlayerLoadErrorHandling.SkippedDroppedFile -> {
-                    put("outcome", "skipped")
-                    put("reason", "dropped_file")
-                }
-
-                PlayerLoadErrorHandling.SkippedSelectionChanged -> {
-                    put("outcome", "skipped")
-                    put("reason", "user_switched")
-                }
-
-                is PlayerLoadErrorHandling.SkippedPreferKind -> {
-                    put("outcome", "skipped")
-                    put("reason", "prefer_bt")
-                }
+                PlayerLoadErrorHandling.SkippedDroppedFile -> skipped("dropped_file")
+                PlayerLoadErrorHandling.SkippedSelectionChanged -> skipped("user_switched")
+                is PlayerLoadErrorHandling.SkippedPreferKind -> skipped("prefer_bt")
             }
             put("count", blacklistSize)
         }
@@ -277,13 +257,7 @@ internal class PlayerLoadErrorHandler(
             return PlayerLoadErrorHandling.SkippedPreferKind(preferKind)
         }
 
-        var finalOutcome: MediaAutoSelectOutcome = MediaAutoSelectOutcome.Cancelled
-        val listener = object : MediaAutoSelectListener {
-            override fun onFinished(outcome: MediaAutoSelectOutcome, elapsed: Duration) {
-                finalOutcome = outcome
-            }
-        }
-        val result = MediaAutoSelector(mediaSelector, listener).select(
+        val outcome = MediaAutoSelector(mediaSelector).select(
             session,
             MediaAutoSelector.Config(
                 trigger = SelectTrigger.AUTO_ERROR_SWITCH,
@@ -299,8 +273,8 @@ internal class PlayerLoadErrorHandler(
             ),
             expectedSelection = failedMedia,
         )
-        logger.info { "Player errored, automatically switched to next media: $result" }
-        return PlayerLoadErrorHandling.Attempted(finalOutcome)
+        logger.info { "Player errored, automatically switched to next media: $outcome" }
+        return PlayerLoadErrorHandling.Attempted(outcome)
     }
 
     companion object {
