@@ -107,6 +107,9 @@ import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.player.CacheProgressProvider
+import me.him188.ani.app.domain.media.selector.SelectTrigger
+import me.him188.ani.app.domain.player.analytics.PlayFlowEpisode
+import me.him188.ani.app.domain.player.analytics.PlayFlowRecorder
 import me.him188.ani.app.domain.player.extension.AnalyticsExtension
 import me.him188.ani.app.domain.player.extension.AutoSelectExtension
 import me.him188.ani.app.domain.player.extension.CacheOnBtPlayExtension
@@ -120,6 +123,12 @@ import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
 import me.him188.ani.app.domain.player.extension.WatchTogetherPlayerExtension
+import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowManualBrowseListener
+import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowMediaSelectorListener
+import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowUserAction
+import me.him188.ani.app.ui.subject.episode.analytics.recordUserAction
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeEnter
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCase
 import me.him188.ani.app.domain.usecase.GlobalKoin
@@ -363,6 +372,21 @@ open class EpisodeViewModel(
         override ?: config.playbackSpeed
     }.distinctUntilChanged()
 
+    /**
+     * 本播放页的加载流程埋点记录器. 与本 ViewModel 同生命周期, 持有本次播放会话的 `play_session_id`.
+     */
+    val playFlow: PlayFlowRecorder = PlayFlowRecorder(subjectId).also {
+        Analytics.recordEvent(
+            EpisodeEnter,
+            buildMap {
+                put("subject_id", subjectId)
+                put("episode_id", initialEpisodeId)
+                put("is_fullscreen", initialIsFullscreen)
+                putAll(it.legacyProperties(attempt = 1L))
+            },
+        )
+    }
+
     @OptIn(UnsafeEpisodeSessionApi::class)
     protected val fetchPlayState = EpisodeFetchSelectPlayState(
         subjectId, initialEpisodeId, player, backgroundScope,
@@ -396,7 +420,13 @@ open class EpisodeViewModel(
                 return withContext(Dispatchers.Main) { this@EpisodeViewModel.isFullscreen }
             }
         },
+        playFlow = playFlow,
     )
+
+    /**
+     * 当前剧集尝试, 供页面层用户操作的埋点归属.
+     */
+    protected val currentPlayFlowEpisode: PlayFlowEpisode? get() = fetchPlayState.episodeSessionFlow.value.playFlowEpisode
 
     val mediaResolver: MediaResolver get() = fetchPlayState.playerSession.mediaResolver
 
@@ -452,6 +482,7 @@ open class EpisodeViewModel(
         },
         onPlay = { pick, memory -> playBrowsedMedia(pick.media, memory) },
         backgroundScope = backgroundScope,
+        listener = PlayFlowManualBrowseListener(playFlow) { currentPlayFlowEpisode },
     )
 
     // region Subject and episode data info flows
@@ -1034,7 +1065,11 @@ open class EpisodeViewModel(
                         backgroundScope,
                         webSessionManager,
                         btFilterState,
-                        onUserSelect = { forgetBrowseMemory() },
+                        listener = PlayFlowMediaSelectorListener(
+                            playFlow,
+                            currentEpisode = { currentPlayFlowEpisode },
+                            onUserSelect = { _, _ -> forgetBrowseMemory() },
+                        ),
                     )
                 } else {
                     // TODO: 2025/1/22 We should not use createTestMediaSelectorState
@@ -1164,6 +1199,7 @@ open class EpisodeViewModel(
 
     fun refreshFetch() {
         launchInBackground {
+            playFlow.recordUserAction(currentPlayFlowEpisode, PlayFlowUserAction.REFRESH_ALL)
             // 手动重新查询: 清除本条目的 web 源搜索缓存, 让所有数据源真正重新搜索
             selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
             // Although it's flow, it should be ready.
@@ -1217,6 +1253,7 @@ open class EpisodeViewModel(
                 ?.mediaSourceResults
                 ?.find { it.instanceId == instanceId }
                 ?: return@launchInBackground
+            playFlow.recordUserAction(currentPlayFlowEpisode, PlayFlowUserAction.REFRESH_SOURCE, result.mediaSourceId)
             // 手动刷新单个源: 只清除该源的搜索缓存, 让它真正重新搜索, 不影响其他源的缓存
             selectorEpisodeCacheRepository.clearByRequestedSubjectAndSource(subjectId, result.mediaSourceId)
             result.restart()
@@ -1240,7 +1277,7 @@ open class EpisodeViewModel(
                 .first()
                 ?: return@launchInBackground
             logger.info { "Playing dropped file: $file" }
-            mediaSelector.selectTemporarily(DroppedFileMedia.create(file))
+            mediaSelector.selectTemporarily(DroppedFileMedia.create(file), SelectTrigger.DROPPED_FILE)
         }
     }
 
@@ -1259,7 +1296,7 @@ open class EpisodeViewModel(
             .first()
             ?: return
         if (memory != null) {
-            mediaSelector.select(media)
+            mediaSelector.select(media, SelectTrigger.MANUAL_BROWSE)
             try {
                 manualBrowseMemoryRepository.set(subjectId, memory)
             } catch (e: CancellationException) {
@@ -1268,7 +1305,7 @@ open class EpisodeViewModel(
                 logger.warn(e) { "Failed to save manual browse memory for subject $subjectId" }
             }
         } else {
-            mediaSelector.selectTemporarily(media)
+            mediaSelector.selectTemporarily(media, SelectTrigger.MANUAL_BROWSE)
         }
     }
 
@@ -1399,6 +1436,7 @@ open class EpisodeViewModel(
 
     fun updateFetchRequest(request: MediaFetchRequest) {
         launchInBackground {
+            playFlow.recordUserAction(currentPlayFlowEpisode, PlayFlowUserAction.EDIT_QUERY)
             // 编辑查询条件后会重启所有源的搜索, 同样清除本条目的 web 源搜索缓存
             selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
             fetchPlayState.episodeSessionFlow
@@ -1413,6 +1451,7 @@ open class EpisodeViewModel(
     @OptIn(UnsafeEpisodeSessionApi::class)
     fun retryLoad(error: EpisodePageLoadError) {
         launchInBackground {
+            playFlow.recordUserAction(currentPlayFlowEpisode, PlayFlowUserAction.RETRY_INFO)
             when (error) {
                 is EpisodePageLoadError.SeriesError -> {
                     fetchPlayState.restartLoad()

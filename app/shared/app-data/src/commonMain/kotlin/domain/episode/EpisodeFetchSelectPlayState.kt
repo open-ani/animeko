@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -43,8 +44,16 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.createFetchFetchSession
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.media.selector.MediaSelector
+import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
+import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.player.ExtensionException
 import me.him188.ani.app.domain.player.PlayerExtensionManager
+import me.him188.ani.app.domain.player.analytics.EpisodeFlowExtension
+import me.him188.ani.app.domain.player.analytics.PlayFlowFetchObserver
+import me.him188.ani.app.domain.player.analytics.PlayFlowMediaLoadListener
+import me.him188.ani.app.domain.player.analytics.PlayFlowRecorder
+import me.him188.ani.app.domain.player.analytics.PlayFlowStep
+import me.him188.ani.app.domain.player.analytics.PlaybackFlowExtension
 import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
 import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
 import me.him188.ani.app.domain.player.extension.PlayerExtension
@@ -92,6 +101,10 @@ class EpisodeFetchSelectPlayState(
     private val sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
     private val mainDispatcher: CoroutineContext = Dispatchers.Main.immediate,
     private val analyticsContext: AnalyticsContext = object : AnalyticsContext {},
+    /**
+     * 本播放页的加载流程埋点记录器. 页面 (ViewModel) 创建它并在进入页面时记录 `enter`; 这里为每个 [EpisodeSession] 分配剧集尝试.
+     */
+    val playFlow: PlayFlowRecorder = PlayFlowRecorder(subjectId),
 ) {
     interface AnalyticsContext {
         suspend fun isFullscreen(): Boolean? = false
@@ -101,16 +114,30 @@ class EpisodeFetchSelectPlayState(
     private val mediaSourceManager by koin.inject<MediaSourceManager>()
     private val playHistoryRepository by koin.inject<EpisodePlayHistoryRepository>()
     private val automationGate by koin.inject<PlaybackAutomationGate>()
+    private val getSourceTiers: GetMediaSelectorSourceTiersUseCase? by lazy { koin.getOrNull<GetMediaSelectorSourceTiersUseCase>() }
+
+    /**
+     * 最新的数据源阶级, 供埋点读取. 从 [onUIReady] 起收集.
+     */
+    private val latestSourceTiers = MutableStateFlow<MediaSelectorSourceTiers?>(null)
+
+    /**
+     * 观察条目级查询会话, 记录每轮查询的逐源结果.
+     */
+    private val fetchObserver = PlayFlowFetchObserver(playFlow, backgroundScope) { latestSourceTiers.value }
 
     /**
      * 条目级查询会话, 各集共用: 切集只重建选择器, 不重新查询.
      */
-    private val fetchSessions = SubjectMediaFetchSessions(backgroundScope) { request ->
-        mediaSourceManager.createFetchFetchSession(flowOf(request))
-    }
+    private val fetchSessions = SubjectMediaFetchSessions(
+        backgroundScope,
+        createSession = { request -> mediaSourceManager.createFetchFetchSession(flowOf(request)) },
+        onSessionCreated = fetchObserver::onSessionCreated,
+        onSessionReused = fetchObserver::onSessionReused,
+    )
 
     private val _episodeSessionFlow = MutableStateFlow(
-        newEpisodeSession(initialEpisodeId),
+        newEpisodeSession(initialEpisodeId, EpisodeSwitchTrigger.ENTER),
     )
 
     /**
@@ -133,6 +160,8 @@ class EpisodeFetchSelectPlayState(
                     backgroundScope.launch { context.broadcast(MediaLoadedEvent(episodeId)) }
                 }
             },
+            EpisodeFlowExtension.Factory(fetchObserver::describeSearchStart) { latestSourceTiers.value },
+            PlaybackFlowExtension,
         )
 
         PlayerExtensionManager(
@@ -147,15 +176,20 @@ class EpisodeFetchSelectPlayState(
      * Switch to a new episode.
      *
      * This function flushes all background tasks and starts new ones.
+     *
+     * @param trigger 切集的发起方, 记入埋点. 目标与当前集相同时视为重试 ([EpisodeSwitchTrigger.RETRY]).
      */
-    suspend fun switchEpisode(episodeId: Int) {
+    suspend fun switchEpisode(episodeId: Int, trigger: EpisodeSwitchTrigger = EpisodeSwitchTrigger.MANUAL) {
+        val leaving = _episodeSessionFlow.value
+        val isFullscreen = analyticsContext.isFullscreen()
         Analytics.recordEvent(
             EpisodeSwitch,
-            mapOf(
-                "subject_id" to subjectId,
-                "episode_id" to episodeId,
-                "is_fullscreen" to analyticsContext.isFullscreen(),
-            ),
+            buildMap {
+                put("subject_id", subjectId)
+                put("episode_id", episodeId)
+                put("is_fullscreen", isFullscreen)
+                putAll(playFlow.legacyProperties(leaving.playFlowEpisode))
+            },
         )
 
         currentCoroutineContext()[InSwitchEpisode]?.let { element ->
@@ -200,7 +234,11 @@ class EpisodeFetchSelectPlayState(
 
                     // 5. 创建新的 fetchSelectSession
                     logger.info { "SwitchEpisode($episodeId): Propagate newEpisodeSession" }
-                    val newSession = newEpisodeSession(episodeId)
+                    val newSession = newEpisodeSession(
+                        episodeId,
+                        if (episodeId == leaving.episodeId) EpisodeSwitchTrigger.RETRY else trigger,
+                        isFullscreen,
+                    )
                     _episodeSessionFlow.value = newSession
 
                     // 6. Suspend until background tasks are started.
@@ -213,19 +251,40 @@ class EpisodeFetchSelectPlayState(
         }.join()
     }
 
-    private fun newEpisodeSession(episodeId: Int) = EpisodeSession(
-        subjectId,
-        episodeId,
-        koin,
-        backgroundScope.coroutineContext,
-        sharingStarted,
-        fetchSessions,
-    )
+    /**
+     * 创建新的 [EpisodeSession], 同时开始一次新的剧集尝试并记录 `enter`.
+     */
+    private fun newEpisodeSession(
+        episodeId: Int,
+        trigger: EpisodeSwitchTrigger,
+        isFullscreen: Boolean? = null,
+    ): EpisodeSession {
+        val episode = playFlow.nextEpisodeAttempt(episodeId)
+        playFlow.record(PlayFlowStep.ENTER, episode) {
+            put("trigger", trigger.analyticsValue)
+            put("is_fullscreen", isFullscreen)
+        }
+        return EpisodeSession(
+            subjectId,
+            episodeId,
+            koin,
+            backgroundScope.coroutineContext,
+            sharingStarted,
+            fetchSessions,
+            playFlowEpisode = episode,
+        )
+    }
 
     private val uiReady = CompletableDeferred<Unit>()
 
     fun onUIReady() {
-        uiReady.complete(Unit)
+        if (uiReady.complete(Unit)) {
+            getSourceTiers?.let { useCase ->
+                backgroundScope.launch {
+                    useCase().collect { latestSourceTiers.value = it }
+                }
+            }
+        }
 
         /**
          * Check if we need to startBackgroundTasks. This is needed, because initial value of [_episodeSessionFlow] does not call startBackgroundTasks.
@@ -250,6 +309,7 @@ class EpisodeFetchSelectPlayState(
     suspend fun onClose() {
         extensionManager.call { it.onClose() }
         playerSession.stopPlayback()
+        fetchObserver.close()
         fetchSessions.close()
         // 未过期的缓存会保留, 短暂退出后重进播放页仍可复用; 这里只是顺手回收已过期的行.
         selectorCacheRepo.purgeExpired()
@@ -333,6 +393,13 @@ class EpisodeFetchSelectPlayState(
                                 media,
                                 episodeInfo.toEpisodeMetadata(),
                                 startPositionMillis(episodeInfo.episodeId),
+                                listener = PlayFlowMediaLoadListener(playFlow, episodeSession.playFlowEpisode, media) {
+                                    when {
+                                        !backgroundScope.isActive -> "left_page"
+                                        _episodeSessionFlow.value !== episodeSession -> "episode_switched"
+                                        else -> "user_switched"
+                                    }
+                                },
                             )
                             onMediaLoaded(episodeInfo.episodeId)
                         }
@@ -384,6 +451,23 @@ class EpisodeFetchSelectPlayState(
      * Event of intrinsic [LoadMediaOnSelectExtension] to indicate that the current media is loaded into player.
      */
     class MediaLoadedEvent(val episodeId: Int) : PlayerExtensionEvent
+}
+
+/**
+ * 一次剧集切换 (或进入播放页) 的发起方, 作为 `play_flow enter` 事件的 `trigger`.
+ */
+enum class EpisodeSwitchTrigger(val analyticsValue: String) {
+    /** 进入播放页. */
+    ENTER("open"),
+
+    /** 用户在页内切集. */
+    MANUAL("switch_episode"),
+
+    /** 自动连播. */
+    AUTO_NEXT("auto_next"),
+
+    /** 重新加载当前集 (TV 的重试). */
+    RETRY("retry"),
 }
 
 /**

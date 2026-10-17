@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.transform
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.io.IOException
 import me.him188.ani.app.data.models.episode.EpisodeInfo
@@ -193,6 +194,19 @@ class MediaSourceMediaFetcher(
             MutableStateFlow(if (disabled) MediaSourceFetchState.Disabled else MediaSourceFetchState.Idle)
         private val restartCount = MutableStateFlow(0) // 只能在 [restart] 内修改
 
+        override val searchStats: MutableStateFlow<MediaSourceSearchStats?> = MutableStateFlow(null)
+
+        /**
+         * 数据源在 [results] 的收集上下文里报告每个关键词是否命中搜索缓存.
+         */
+        private val telemetry = MediaSourceFetchTelemetry { _, cacheHit ->
+            searchStats.update { stats ->
+                val current = stats ?: MediaSourceSearchStats()
+                if (cacheHit) current.copy(cacheHits = current.cacheHits + 1)
+                else current.copy(onlineSearches = current.onlineSearches + 1)
+            }
+        }
+
         override val results by lazy {
             restartCount.flatMapLatest { restartCount ->
 
@@ -221,6 +235,7 @@ class MediaSourceMediaFetcher(
                 var terminalState: MediaSourceFetchState.Completed? = null
                 pagedSources
                     .onStart {
+                        searchStats.value = null
                         state.value = MediaSourceFetchState.Working
                     }
                     .flatMapMerge { sources ->
@@ -298,7 +313,8 @@ class MediaSourceMediaFetcher(
                     }
                 }
             }.shareIn(
-                CoroutineScope(flowContext), replay = 1, started = SharingStarted.WhileSubscribed(),
+                // 数据源的搜索在这个作用域里执行; telemetry 随上下文传给它, 用于报告搜索缓存命中.
+                CoroutineScope(flowContext + telemetry), replay = 1, started = SharingStarted.WhileSubscribed(),
             ).onCompletion {
                 if (it == null)
                     logger.error { "results is completed normally, however it shouldn't" }
