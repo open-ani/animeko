@@ -24,7 +24,7 @@ import me.him188.ani.utils.ktor.ScopedHttpClient
 class JellyfinMediaSource(
     config: MediaSourceConfig,
     client: ScopedHttpClient,
-    instanceId: String = ID,
+    private val instanceId: String = ID,
 ) : BaseJellyfinMediaSource(client) {
     companion object {
         const val ID = "jellyfin"
@@ -94,7 +94,7 @@ class JellyfinMediaSource(
 
     override val kind: MediaSourceKind get() = MediaSourceKind.WEB
     override val info: MediaSourceInfo = INFO
-    override val mediaSourceId: String get() = ID
+    override val mediaSourceId: String get() = instanceId
     override val baseUrl = config[Parameters.baseUrl].removeSuffix("/")
     private val authMode = config[Parameters.authMode]
     private val userId = config[Parameters.userId]
