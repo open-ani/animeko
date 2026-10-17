@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SmartDisplay
@@ -169,6 +170,7 @@ fun TvSettingsScreen(
             }
             TvSettingsSection.Sources -> content.sources { openExtra(TvSettingsExtra.Subscriptions) }
             TvSettingsSection.Watching -> content.watching { openExtra(TvSettingsExtra.WatchingAdvanced) }
+            TvSettingsSection.Network -> content.network()
             TvSettingsSection.About -> content.about(aboutPage, ::openPage, onCheckUpdate)
         }
     }
@@ -234,6 +236,7 @@ fun TvSettingsScreen(
                                 TvSettingsSection.Player -> Icons.Outlined.SmartDisplay
                                 TvSettingsSection.Sources -> Icons.Outlined.Storage
                                 TvSettingsSection.Watching -> Icons.Outlined.Subscriptions
+                                TvSettingsSection.Network -> Icons.Outlined.Language
                                 TvSettingsSection.About -> Icons.Outlined.Info
                             },
                             selected = section == entry,
