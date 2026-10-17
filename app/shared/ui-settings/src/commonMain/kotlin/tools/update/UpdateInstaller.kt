@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.utils.io.SystemPath
+import me.him188.ani.utils.io.extension
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -26,12 +28,40 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 interface UpdateInstaller {
     /**
+     * 当前平台可由 [install] 直接安装的本地安装包扩展名 (小写, 不含点).
+     *
+     * 为空表示不支持安装本地安装包, 例如 Linux 只能通过 AppImage 差分更新安装.
+     */
+    val installablePackageExtensions: Set<String> get() = emptySet()
+
+    /**
+     * [file] 是否为当前平台可由 [install] 直接安装的本地安装包. 仅根据扩展名判断, 不校验文件内容.
+     */
+    fun isInstallablePackage(file: SystemPath): Boolean =
+        file.extension.lowercase() in installablePackageExtensions
+
+    /**
      * 返回安装前需要下载的文件地址.
      *
      * 默认直接使用版本 API 返回的安装包地址. Linux AppImage 将其转换为较小的 zsync 元数据地址,
      * 实际差分数据由外部更新器在安装阶段下载.
      */
     fun getUpdatePreparationUrls(packageUrls: List<String>): List<String> = packageUrls
+
+    /**
+     * 创建下载安装包用的 [FileDownloader].
+     *
+     * 默认整包下载. Windows 和 macOS 用 `DeltaPackageDownloader` 增量下载: 复用已安装目录里内容相同的文件,
+     * 只从发布包取有变化的部分, 在本地拼出与发布包等价的 zip 后仍走 [install].
+     */
+    fun createPackageDownloader(client: ScopedHttpClient): FileDownloader = DefaultFileDownloader(client)
+
+    /**
+     * 创建以当前安装目录为基础增量拼包的 [DeltaPackageAssembler], 拼出的包可交给 [install].
+     *
+     * 不支持时返回 `null`: Android 和 Linux 没有可整体替换的安装目录, 开发运行时也不在安装目录里.
+     */
+    fun createDeltaPackageAssembler(client: ScopedHttpClient): DeltaPackageAssembler? = null
 
     /**
      * 如果 [install] 可能返回 [InstallationResult.Failed], 则需实现

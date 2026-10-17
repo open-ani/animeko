@@ -61,6 +61,12 @@ private class Test(
     fun finishPieceRange(range: IntRange) {
         finishPiece(*range.toList().toIntArray())
     }
+
+    fun setPrefetchPieces(pieceIndices: List<Int>) {
+        controller.setPrefetchPieces(pieceIndices)
+    }
+
+    fun isDownloading(pieceIndex: Int): Boolean = controller.isDownloading(pieceIndex)
 }
 
 @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
@@ -481,5 +487,93 @@ internal class TorrentDownloadControllerTest {
 
         assertEquals(listOf(0, 2, 1), currentDownloadingHighPriorityPieces)
         assertEquals(emptyList(), currentDownloadingNormalPriorityPieces)
+    }
+
+    @Test
+    fun `prefetch pieces are appended after the download window`() {
+        var normal: List<Int> = emptyList()
+        val test = Test(
+            totalPieceSize = 1000L,
+            tdcWindowSize = 10,
+            tdcHeaderSize = 5,
+            tdcFooterSize = 3,
+            tdcPossibleFooterSize = 12,
+        ) { _, normalList -> normal = normalList }
+        test.resume()
+        test.setPrefetchPieces(listOf(500, 501, 502))
+        assertEquals(listOf(5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 500, 501, 502), normal)
+        // 预缓存的 piece 不算作当前播放位置正在下载, seek 过去时仍需移动窗口
+        assertEquals(false, test.isDownloading(500))
+        assertEquals(true, test.isDownloading(5))
+    }
+
+    @Test
+    fun `prefetch ignores finished and metadata pieces and dedupes with window`() {
+        var normal: List<Int> = emptyList()
+        val test = Test(
+            totalPieceSize = 1000L,
+            tdcWindowSize = 10,
+            tdcHeaderSize = 5,
+            tdcFooterSize = 3,
+            tdcPossibleFooterSize = 12,
+        ) { _, normalList -> normal = normalList }
+        test.resume()
+        test.finishPiece(501)
+        // 0 是 header (high priority), 501 已完成, 6 已在窗口内
+        test.setPrefetchPieces(listOf(0, 6, 500, 501, 502, 502))
+        assertEquals(listOf(5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 500, 502), normal)
+    }
+
+    @Test
+    fun `finished prefetch piece is removed and window keeps moving`() {
+        var normal: List<Int> = emptyList()
+        val test = Test(
+            totalPieceSize = 1000L,
+            tdcWindowSize = 10,
+            tdcHeaderSize = 5,
+            tdcFooterSize = 3,
+            tdcPossibleFooterSize = 12,
+        ) { _, normalList -> normal = normalList }
+        test.resume()
+        test.setPrefetchPieces(listOf(500, 501))
+        test.finishPiece(500)
+        assertEquals(listOf(5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 501), normal)
+        // 窗口正常前进, 预缓存 piece 仍然跟在后面
+        test.finishPiece(5)
+        assertEquals(listOf(6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 501), normal)
+    }
+
+    @Test
+    fun `seeking into prefetch range rebuilds window there and keeps remaining prefetch`() {
+        var normal: List<Int> = emptyList()
+        val test = Test(
+            totalPieceSize = 1000L,
+            tdcWindowSize = 10,
+            tdcHeaderSize = 5,
+            tdcFooterSize = 3,
+            tdcPossibleFooterSize = 12,
+        ) { _, normalList -> normal = normalList }
+        test.resume()
+        test.setPrefetchPieces((500..512).toList())
+        test.finishPieceRange(500..504)
+        test.seek(500)
+        // 500..504 已完成, 窗口从 505 开始; 预缓存中不在窗口内的 piece 没有了 (505..512 都在窗口内)
+        assertEquals(listOf(505, 506, 507, 508, 509, 510, 511, 512, 513, 514), normal)
+    }
+
+    @Test
+    fun `clearing prefetch removes pieces from priorities`() {
+        var normal: List<Int> = emptyList()
+        val test = Test(
+            totalPieceSize = 1000L,
+            tdcWindowSize = 10,
+            tdcHeaderSize = 5,
+            tdcFooterSize = 3,
+            tdcPossibleFooterSize = 12,
+        ) { _, normalList -> normal = normalList }
+        test.resume()
+        test.setPrefetchPieces(listOf(500))
+        test.setPrefetchPieces(emptyList())
+        assertEquals(listOf(5, 6, 7, 8, 9, 10, 11, 12, 13, 14), normal)
     }
 }

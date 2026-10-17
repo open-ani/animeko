@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools">
+    <!-- The UI fixture does not exercise the bundled native media libraries. -->
+
+    <!-- TV 界面的 UI 测试按电视的显示规格 (960×540dp) 运行, 见 TvDisplayRunListener. -->
+    <instrumentation
+            android:name="androidx.test.runner.AndroidJUnitRunner"
+            tools:node="merge">
+        <meta-data
+                android:name="listener"
+                android:value="me.him188.ani.app.ui.framework.TvDisplayRunListener" />
+    </instrumentation>
+
+    <application android:pageSizeCompat="enabled">
+        <activity
+            android:name="androidx.activity.ComponentActivity"
+            android:screenOrientation="landscape"
+            android:theme="@style/AniTvDeviceTest" />
+    </application>
+</manifest>

@@ -16,13 +16,11 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
-import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ServerListFeature
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
 import me.him188.ani.app.domain.foundation.withValue
 import me.him188.ani.app.trace.ErrorReport
-import me.him188.ani.datasources.bangumi.BangumiClientImpl
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
@@ -40,7 +38,6 @@ private val isFirstTestResult = AtomicBoolean(true)
 class ProxyTester(
     clientProvider: HttpClientProvider,
     flowScope: CoroutineScope,
-    serviceIds: Set<String> = ServiceConnectionTesters.DefaultServiceIds,
 ) {
     private val proxyTestRunning = FlowRunning()
     private val proxyTestRestarter = FlowRestarter()
@@ -50,11 +47,7 @@ class ProxyTester(
             setOf(ServerListFeature.withValue(ServerListFeatureConfig.Default)),
         )
 
-        ServiceConnectionTesters.createDefault(
-            bangumiClient = BangumiClientImpl(client),
-            aniClient = AniApiProvider(client).trendsApi,
-            serviceIds = serviceIds,
-        )
+        ServiceConnectionTesters.createDefault(aniClient = client)
     }
         .shareIn(
             flowScope,

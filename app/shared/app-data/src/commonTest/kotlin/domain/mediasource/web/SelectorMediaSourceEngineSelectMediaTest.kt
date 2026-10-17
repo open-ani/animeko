@@ -9,195 +9,96 @@
 
 package me.him188.ani.app.domain.mediasource.web
 
-import io.ktor.http.Url
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.EpisodeRange
-import me.him188.ani.datasources.api.topic.ResourceLocation
-import me.him188.ani.datasources.api.topic.contains
-import me.him188.ani.utils.xml.Document
+import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 /**
- * 测试 [SelectorMediaSourceEngine.selectMedia] 将线路上的所有剧集聚合为单个 media 的行为.
+ * 测试 [SelectorMediaSourceEngine.selectMedia] 把剧集转成 media 时使用的集号, 以及
+ * [SelectorSearchConfig.filterByEpisodeSort] 的过滤结果.
+ *
+ * 用例取自实测: https://www.yinghua2.com 上的剧场版条目页把同一部作品的不同配音列成多条,
+ * 名称只有画质与语言 (如「铃芽之旅」的 9 条线路里有 5 条名为 HD高清国语版 / HD高清原声版 / HD中字),
+ * 集号只能解析成 EpisodeSort.Unknown, 开着 filterByEpisodeSort 时这些线路全被过滤掉.
  */
 class SelectorMediaSourceEngineSelectMediaTest {
-    private object TestEngine : SelectorMediaSourceEngine() {
-        override suspend fun searchImpl(finalUrl: Url): SearchSubjectResult =
-            throw UnsupportedOperationException()
+    // selectMedia 不发请求, client 只是构造 engine 用
+    private val engine = DefaultSelectorMediaSourceEngine(
+        HttpClient(MockEngine { respond("") }).asScopedHttpClient(),
+    )
 
-        override suspend fun doHttpGet(uri: String): Document =
-            throw UnsupportedOperationException()
-    }
+    /** 站点只标画质与语言的条目 */
+    private fun labeled(label: String) = WebSearchEpisodeInfo(
+        channel = "线路1",
+        name = label,
+        episodeSortOrEp = EpisodeSort(label),
+        playUrl = "https://example.com/$label",
+    )
 
-    private val config = SelectorSearchConfig()
-
-    private fun episode(channel: String?, sort: Int, name: String = "第0${sort}集") = WebSearchEpisodeInfo(
-        channel = channel,
-        name = name,
+    private fun numbered(sort: Int) = WebSearchEpisodeInfo(
+        channel = "线路1",
+        name = "第0${sort}集",
         episodeSortOrEp = EpisodeSort(sort),
-        playUrl = "https://example.com/${channel ?: "nochannel"}/$sort",
+        playUrl = "https://example.com/$sort",
     )
 
-    private fun query(sort: EpisodeSort, ep: EpisodeSort? = sort, episodeName: String? = null) = SelectorSearchQuery(
-        subjectName = "孤独摇滚",
-        allSubjectNames = setOf("孤独摇滚"),
-        episodeSort = sort,
-        episodeEp = ep,
-        episodeName = episodeName,
+    private fun selectMedia(
+        episodes: List<WebSearchEpisodeInfo>,
+        episodeSort: EpisodeSort = EpisodeSort(1),
+    ) = engine.selectMedia(
+        episodes.asSequence(),
+        SelectorSearchConfig.Empty,
+        SelectorSearchQuery(
+            subjectName = SUBJECT_NAME,
+            allSubjectNames = setOf(SUBJECT_NAME),
+            episodeSort = episodeSort,
+            episodeEp = episodeSort,
+            episodeName = null,
+        ),
+        mediaSourceId = "test",
+        subjectName = SUBJECT_NAME,
     )
 
     @Test
-    fun `aggregates episodes of each channel into one media`() {
-        val episodes = sequenceOf(
-            episode("线路1", 1), episode("线路1", 2), episode("线路1", 3),
-            episode("线路2", 1), episode("线路2", 2),
-        )
-        val result = TestEngine.selectMedia(episodes, config, query(EpisodeSort(2)), "test-source", "孤独摇滚")
-
+    fun `whole work labels are matched as episode 01`() {
+        val result = selectMedia(listOf(labeled("HD高清国语版"), labeled("HD高清原声版")))
         assertEquals(2, result.filteredList.size)
-        val channel1 = result.filteredList[0]
-        assertEquals("线路1", channel1.properties.alliance)
-        assertEquals("孤独摇滚", channel1.originalTitle)
-        assertEquals("test-source.孤独摇滚-线路1", channel1.mediaId)
-        assertEquals(EpisodeRange.range(EpisodeSort(1), EpisodeSort(3)), channel1.episodeRange)
-
-        val channel2 = result.filteredList[1]
-        assertEquals(EpisodeRange.range(EpisodeSort(1), EpisodeSort(2)), channel2.episodeRange)
-    }
-
-    @Test
-    fun `download url points to current episode`() {
-        val episodes = sequenceOf(episode("线路1", 1), episode("线路1", 2), episode("线路1", 3))
-        val result = TestEngine.selectMedia(episodes, config, query(EpisodeSort(2)), "test-source", "孤独摇滚")
-
-        val media = result.filteredList.single()
-        assertEquals("https://example.com/线路1/2", media.originalUrl)
-        assertEquals(ResourceLocation.WebVideo("https://example.com/线路1/2"), media.download)
-        assertEquals("第02集", media.properties.episodeName)
-    }
-
-    @Test
-    fun `channel without current episode is kept with fallback url`() {
-        val episodes = sequenceOf(episode("线路1", 1), episode("线路1", 2))
-        val result = TestEngine.selectMedia(episodes, config, query(EpisodeSort(99), ep = null), "test-source", "孤独摇滚")
-
-        // 缺当前集的线路也会保留, 由 MediaSelector 层标记并禁止自动选择
-        val media = result.filteredList.single()
-        assertEquals("https://example.com/线路1/2", media.originalUrl) // 回退到最后一集
-        assertEquals(EpisodeRange.range(EpisodeSort(1), EpisodeSort(2)), media.episodeRange)
-        // 不能把当前集补进 range, 否则下游会误判为"含当前集", 缺本集标记与自动选择保护都会失效
-        assertFalse(EpisodeSort(99) in assertNotNull(media.episodeRange))
-    }
-
-    @Test
-    fun `special episode matched by name is contained in episode range`() {
-        // 页面把 "OVA上" 解析成了第 13 集, 与条目的 sort ("OVA上") 不一致, 只能靠名称匹配
-        val episodes = sequenceOf(
-            episode("线路1", 1),
-            WebSearchEpisodeInfo("线路1", "OVA上", EpisodeSort(13), "https://example.com/线路1/ova"),
-        )
-        val result = TestEngine.selectMedia(
-            episodes, config,
-            query(EpisodeSort("OVA上"), ep = null, episodeName = "OVA上"),
-            "test-source", "孤独摇滚",
-        )
-
-        val media = result.filteredList.single()
-        assertEquals("https://example.com/线路1/ova", media.originalUrl)
-        val range = assertNotNull(media.episodeRange)
-        // MediaSelector 只按 sort/ep 是否落在 episodeRange 内计算 MatchMetadata,
-        // 名称匹配到的当前集必须补进 range, 否则会与 download 指向当前集的事实矛盾
-        assertTrue(EpisodeSort("OVA上") in range)
-        // 页面上原有的集数不受影响
-        assertTrue(EpisodeSort(1) in range)
-        assertTrue(EpisodeSort(13) in range)
-    }
-
-    @Test
-    fun `episode range is untouched when current episode matches by sort`() {
-        val episodes = sequenceOf(episode("线路1", 1), episode("线路1", 2))
-        val result = TestEngine.selectMedia(
-            episodes, config,
-            query(EpisodeSort(2), ep = EpisodeSort(2), episodeName = "第02集"),
-            "test-source", "孤独摇滚",
-        )
-
         assertEquals(
-            EpisodeRange.range(EpisodeSort(1), EpisodeSort(2)),
-            result.filteredList.single().episodeRange,
+            listOf(EpisodeRange.single(EpisodeSort(1)), EpisodeRange.single(EpisodeSort(1))),
+            result.filteredList.map { it.episodeRange },
         )
     }
 
     @Test
-    fun `non-contiguous sorts are represented exactly`() {
-        val episodes = sequenceOf(episode("线路1", 1), episode("线路1", 2), episode("线路1", 5))
-        val result = TestEngine.selectMedia(episodes, config, query(EpisodeSort(1)), "test-source", "孤独摇滚")
-
-        val range = assertNotNull(result.filteredList.single().episodeRange)
-        assertEquals(listOf(EpisodeSort(1), EpisodeSort(2), EpisodeSort(5)), range.knownSorts.toList())
-        assertEquals(true, EpisodeSort(5) in range.knownSorts)
-        assertEquals(false, range.knownSorts.any { it == EpisodeSort(3) })
+    fun `whole work labels are not matched for other episodes`() {
+        val result = selectMedia(listOf(labeled("HD中字")), episodeSort = EpisodeSort(5))
+        assertEquals(1, result.originalList.size)
+        assertEquals(emptyList(), result.filteredList)
     }
 
     @Test
-    fun `episodes without parsed sort are dropped`() {
-        val episodes = sequenceOf(
-            episode("线路1", 1),
-            WebSearchEpisodeInfo("线路1", "花絮", episodeSortOrEp = null, playUrl = "https://example.com/extra"),
-            WebSearchEpisodeInfo("线路2", "预告", episodeSortOrEp = null, playUrl = "https://example.com/pv"),
-        )
-        val result = TestEngine.selectMedia(episodes, config, query(EpisodeSort(1)), "test-source", "孤独摇滚")
-
-        // 线路2 只有无法解析的剧集, 整个线路不产生 media
-        val media = result.filteredList.single()
-        assertEquals("线路1", media.properties.alliance)
-        assertEquals(EpisodeRange.single(EpisodeSort(1)), media.episodeRange)
+    fun `a label carrying more than quality and language is not a whole work`() {
+        // 「剧场版01」的集号在字符串里, 要靠站点自己的集号正则; 「全集」是整季合集;
+        // 「铃芽之旅（普通话版）」带作品名 —— 都不能当成第 1 集
+        val page = listOf(labeled("剧场版01"), labeled("全集"), labeled("铃芽之旅（普通话版）"))
+        val result = selectMedia(page)
+        assertEquals(3, result.originalList.size)
+        assertEquals(emptyList(), result.filteredList)
     }
 
     @Test
-    fun `null channel uses subject name only`() {
-        val episodes = sequenceOf(episode(null, 1), episode(null, 2))
-        val result = TestEngine.selectMedia(episodes, config, query(EpisodeSort(1)), "test-source", "孤独摇滚")
-
-        val media = result.filteredList.single()
-        assertEquals("", media.properties.alliance)
-        assertEquals("test-source.孤独摇滚", media.mediaId)
+    fun `parsed sorts are not affected`() {
+        val result = selectMedia(listOf(numbered(1), numbered(2), numbered(3)), episodeSort = EpisodeSort(2))
+        assertEquals(1, result.filteredList.size)
+        assertEquals("第02集", result.filteredList.single().properties.episodeName)
     }
 
-    @Test
-    fun `findMatchingEpisodeOrNull prefers sort match`() {
-        val episodes = listOf(episode("线路1", 1), episode("线路1", 2))
-        assertEquals(episodes[1], episodes.findMatchingEpisodeOrNull(EpisodeSort(2), EpisodeSort(1), null))
-    }
-
-    @Test
-    fun `findMatchingEpisodeOrNull falls back to ep match`() {
-        // 第二季: 系列内 sort 为 14, 季度内 ep 为 2, 页面上解析到的是 2
-        val episodes = listOf(episode("线路1", 1), episode("线路1", 2))
-        assertEquals(episodes[1], episodes.findMatchingEpisodeOrNull(EpisodeSort(14), EpisodeSort(2), null))
-    }
-
-    @Test
-    fun `findMatchingEpisodeOrNull matches special episode by name`() {
-        val episodes = listOf(
-            episode("线路1", 1),
-            // 特殊剧集: 页面解析出的 sort (13) 与其系列内 sort ("OVA上") 不一致, 需要按名称匹配
-            WebSearchEpisodeInfo("线路1", "OVA上", EpisodeSort(13), "https://example.com/ova"),
-        )
-        assertEquals(
-            episodes[1],
-            episodes.findMatchingEpisodeOrNull(EpisodeSort("OVA上"), null, "OVA上"),
-        )
-    }
-
-    @Test
-    fun `findMatchingEpisodeOrNull returns null when nothing matches`() {
-        val episodes = listOf(episode("线路1", 1), episode("线路1", 2))
-        assertNull(episodes.findMatchingEpisodeOrNull(EpisodeSort(99), null, null))
+    private companion object {
+        private const val SUBJECT_NAME = "铃芽之旅"
     }
 }

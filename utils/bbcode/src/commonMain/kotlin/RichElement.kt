@@ -39,10 +39,29 @@ sealed interface RichElement {
         val mask: Boolean = false,
         val code: Boolean = false,
 
+        /**
+         * 该文本所在段落的水平对齐方式, 由 `[center]` `[left]` `[right]` 决定.
+         */
+        val align: Align = DEFAULT_ALIGN,
+
         override val jumpUrl: String? = null
     ) : RichElement {
+        /**
+         * 文本的水平对齐方式.
+         */
+        enum class Align {
+            /**
+             * 未指定对齐方式, 跟随下游 UI 的默认行为 (通常是靠起始边对齐).
+             */
+            DEFAULT,
+            LEFT,
+            CENTER,
+            RIGHT,
+        }
+
         companion object {
             const val DEFAULT_SIZE = 16
+            val DEFAULT_ALIGN = Align.DEFAULT
         }
     }
 

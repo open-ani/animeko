@@ -37,6 +37,7 @@ import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent
 import me.him188.ani.utils.analytics.recordEvent
 import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.coroutines.runCatchingCancellable
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.cancellation.CancellationException
@@ -134,13 +135,9 @@ class ServerSelector(
             coroutineScope {
                 val deferreds = AniServers.allServers.map { server ->
                     async {
-                        try {
+                        runCatchingCancellable {
                             httpClient.connect(server.url.toString())
-                            Result.success(server)
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Throwable) {
-                            Result.failure(e)
+                            server
                         }
                     }
                 }.toMutableList()

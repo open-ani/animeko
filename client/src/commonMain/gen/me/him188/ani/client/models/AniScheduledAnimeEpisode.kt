@@ -29,6 +29,7 @@ import kotlinx.serialization.encoding.*
  * @param subject
  * @param episode
  * @param airingTime
+ * @param timeKnown
  */
 @Serializable
 
@@ -38,7 +39,9 @@ data class AniScheduledAnimeEpisode (
 
     @SerialName(value = "episode") @Required val episode: AniScheduledAnimeEpisodeInfo,
 
-    @SerialName(value = "airingTime") @Required val airingTime: kotlin.String
+    @SerialName(value = "airingTime") @Required val airingTime: kotlin.String,
+
+    @SerialName(value = "timeKnown") val timeKnown: kotlin.Boolean? = null
 
 ) {
 

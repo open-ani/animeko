@@ -30,8 +30,10 @@ import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
 import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
 import me.him188.ani.app.data.models.recommend.TestRecommendedItemInfos
 import me.him188.ani.app.data.models.recommend.id
+import me.him188.ani.app.data.models.recommend.preferredDisplayName
 import me.him188.ani.app.data.models.recommend.type
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
@@ -98,8 +100,9 @@ private fun RecommendedSubjectCard(
     shape: Shape = CarouselItemDefaults.shape,
     modifier: Modifier = Modifier,
 ) {
+    val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
     SubjectCoverCard(
-        name = item?.nameCn,
+        name = item?.preferredDisplayName(useOriginalTitle),
         image = item?.imageLarge,
         isPlaceholder = item == null,
         onClick = onClick,

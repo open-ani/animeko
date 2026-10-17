@@ -43,6 +43,54 @@ enum class VideoEnhancementDefaultMode {
     QUALITY,
 }
 
+/**
+ * 播放中用户离开应用（上滑回桌面/锁屏等）时的行为.
+ *
+ * @see VideoScaffoldConfig.backgroundBehavior
+ */
+@Serializable
+enum class BackgroundBehavior {
+    /**
+     * 上滑回桌面时自动进入系统画中画小窗继续播放 (仅移动端).
+     */
+    AUTO_PICTURE_IN_PICTURE,
+
+    /**
+     * 退到后台时暂停播放 (原有行为).
+     */
+    PAUSE,
+
+    /**
+     * 退到后台时继续播放 (只听声音).
+     *
+     * 注意: 尚未实现, 仅为设置 schema 预留. Android 需要前台服务与媒体通知 (单独立项), iOS 依赖音频后台模式.
+     */
+    BACKGROUND_PLAYBACK,
+}
+
+/**
+ * 对哪些数据源过滤 HLS 插播广告 (`HlsManifestFilter`).
+ *
+ * 过滤要在起播前探测播放列表各段的时间戳, 可能含广告的播放列表因此晚 1-4 秒开播, 最多 8 秒.
+ * 多数数据源没有插播广告, 不值得每次都等, 所以默认只对订阅标记过的数据源过滤.
+ *
+ * @see VideoScaffoldConfig.hlsAdFilteringMode
+ */
+@Serializable
+enum class HlsAdFilteringMode {
+    /**
+     * 所有数据源都过滤.
+     */
+    ALL,
+
+    /**
+     * 只过滤订阅标记为可能含插播广告的数据源 (`MediaSourceTags.HLS_ADS`).
+     */
+    SMART,
+
+    OFF,
+}
+
 @Serializable
 @Immutable
 data class VideoScaffoldConfig @SerializationOnly constructor(
@@ -75,6 +123,10 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val autoFullscreenOnLandscapeMode: Boolean = false,
     /**
+     * 设备半折叠时使用悬停布局.
+     */
+    val enableFoldableHoverMode: Boolean = true,
+    /**
      * 自动连播
      */
     val autoPlayNext: Boolean = true,
@@ -95,11 +147,19 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val enableHighQualityAudioTimeStretch: Boolean = true,
     /**
-     * 过滤 HLS 播放列表中的插播片段.
+     * 6.2 的 HLS 插播广告过滤开关, 由 [hlsAdFilteringMode] 取代, 只在迁移时读取 (见 [effectiveHlsAdFilteringMode]).
      *
-     * @since 5.7
+     * 5.7 至 6.1 的同类开关是默认关闭的 `enableExperimentalHlsSegmentFiltering`, 不读取.
+     *
+     * @since 6.2
      */
-    val enableExperimentalHlsSegmentFiltering: Boolean = false,
+    val enableHlsAdFiltering: Boolean = true,
+    /**
+     * 对哪些数据源过滤 HLS 插播广告. `null` 表示用户没有选过, 实际生效的值见 [effectiveHlsAdFilteringMode].
+     *
+     * @since 6.3
+     */
+    val hlsAdFilteringMode: HlsAdFilteringMode? = null,
     /**
      * 用于在安卓上设置屏幕刷新率, 解决某些设备会自动限制刷新率的问题 (三星).
      *
@@ -153,9 +213,23 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      * @since 4.11
      */
     val playerVolume: PlayerVolume = PlayerVolume(1f, false),
+    /**
+     * 播放中用户离开应用时的行为. 见 [BackgroundBehavior].
+     *
+     * @since 5.0
+     */
+    val backgroundBehavior: BackgroundBehavior = BackgroundBehavior.AUTO_PICTURE_IN_PICTURE,
     // WARNING: if you add new property here, review Companion properties.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
+    /**
+     * 实际生效的 [hlsAdFilteringMode]. 用户没有选过时, 在 6.2 关闭了过滤 ([enableHlsAdFiltering]) 的保持关闭,
+     * 其余使用 [HlsAdFilteringMode.SMART].
+     */
+    val effectiveHlsAdFilteringMode: HlsAdFilteringMode
+        get() = hlsAdFilteringMode
+            ?: if (enableHlsAdFiltering) HlsAdFilteringMode.SMART else HlsAdFilteringMode.OFF
+
     /**
      * 应用新的可调倍速范围，并将依赖该范围的值限制在其中。
      */
@@ -230,11 +304,13 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             autoMarkDone = false,
             hideSelectorOnSelect = false,
             autoFullscreenOnLandscapeMode = false,
+            enableFoldableHoverMode = false,
             autoPlayNext = false,
             autoSkipOpEd = false,
             autoSwitchMediaOnPlayerError = false,
             enableHighQualityAudioTimeStretch = false,
-            enableExperimentalHlsSegmentFiltering = false,
+            hlsAdFilteringMode = HlsAdFilteringMode.OFF,
+            backgroundBehavior = BackgroundBehavior.PAUSE,
         )
     }
 

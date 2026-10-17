@@ -1,0 +1,29 @@
+[package]
+name = "ani-update"
+version = "0.2.0"
+edition = "2021"
+publish = false
+license = "AGPL-3.0-only"
+description = "Windows updater for Animeko: swaps the installed app with a staged new version after the app exits"
+
+[[bin]]
+name = "ani_update"
+path = "src/main.rs"
+
+[dependencies]
+zip = { version = "2.4", default-features = false, features = ["deflate"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_Globalization",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_RestartManager",
+    "Win32_System_Threading",
+] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true

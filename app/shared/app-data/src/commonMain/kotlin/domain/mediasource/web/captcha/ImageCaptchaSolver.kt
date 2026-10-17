@@ -31,6 +31,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import me.him188.ani.app.domain.foundation.webSourceUserAgent
 import me.him188.ani.app.domain.mediasource.web.BlockReason
 import me.him188.ani.app.domain.mediasource.web.LoadedPage
 import me.him188.ani.app.domain.mediasource.web.PageExpectation
@@ -248,6 +249,7 @@ private class MacCmsSession(
             ctx.http.use {
                 val statement = if (post) {
                     preparePost(url) {
+                        webSourceUserAgent(ctx.userAgent)
                         accept(ContentType.Any)
                         header(HttpHeaders.Referrer, effectivePageUrl)
                         header("X-Requested-With", "XMLHttpRequest")
@@ -256,6 +258,7 @@ private class MacCmsSession(
                     }
                 } else {
                     prepareGet(url) {
+                        webSourceUserAgent(ctx.userAgent)
                         accept(ContentType.Any)
                         header(HttpHeaders.Referrer, effectivePageUrl)
                     }

@@ -19,12 +19,14 @@ import kotlinx.serialization.builtins.nullable
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.user.SelfInfo
 import me.him188.ani.app.data.repository.SavedWindowState
+import me.him188.ani.app.data.repository.media.ManualBrowseMemories
 import me.him188.ani.app.data.repository.media.MediaSourceSaves
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionsSaveData
 import me.him188.ani.app.data.repository.media.MikanIndexes
 import me.him188.ani.app.data.repository.player.EpisodeHistories
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionsSaveData
 import me.him188.ani.app.data.repository.user.TokenSave
+import me.him188.ani.app.domain.install.InstallInfo
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.utils.httpdownloader.DownloadState
 import me.him188.ani.utils.io.SystemPath
@@ -84,6 +86,7 @@ abstract class PlatformDataStoreManager {
             },
         )
     }
+
     val savedWindowStateStore by lazy {
         DataStoreFactory.create(
             serializer = SavedWindowState.serializer().nullable
@@ -133,6 +136,29 @@ abstract class PlatformDataStoreManager {
             serializer = SelfInfo.serializer().nullable.asDataStoreSerializer({ null }),
             produceFile = { resolveDataStoreFile("selfInfo") },
             corruptionHandler = ReplaceFileCorruptionHandler { null },
+        )
+    }
+
+    /**
+     * 手动查找记忆, 按条目隔离. 供 [me.him188.ani.app.data.repository.media.ManualBrowseMemoryRepository].
+     * @since 6.2
+     */
+    val manualBrowseMemoryStore by lazy {
+        DataStoreFactory.create(
+            serializer = ManualBrowseMemories.serializer().asDataStoreSerializer({ ManualBrowseMemories.Empty }),
+            produceFile = { resolveDataStoreFile("manualBrowseMemories") },
+            corruptionHandler = ReplaceFileCorruptionHandler { ManualBrowseMemories.Empty },
+        )
+    }
+
+    /**
+     * For [me.him188.ani.app.domain.install.InstallReporter]. 不参与设置备份.
+     */
+    val installInfoStore by lazy {
+        DataStoreFactory.create(
+            serializer = InstallInfo.serializer().asDataStoreSerializer({ InstallInfo.Initial }),
+            produceFile = { resolveDataStoreFile("installInfo") },
+            corruptionHandler = ReplaceFileCorruptionHandler { InstallInfo.Initial },
         )
     }
 

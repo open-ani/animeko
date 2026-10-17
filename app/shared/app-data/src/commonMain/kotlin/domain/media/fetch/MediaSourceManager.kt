@@ -32,12 +32,14 @@ import me.him188.ani.app.data.repository.media.updateConfig
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
-import me.him188.ani.app.domain.media.cache.MediaCacheManager.Companion.LOCAL_FS_MEDIA_SOURCE_ID
+import me.him188.ani.app.domain.media.download.MediaDownloadManager.Companion.LOCAL_FS_MEDIA_SOURCE_ID
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
+import me.him188.ani.app.domain.mediasource.codec.MediaSourceDecodeException
 import me.him188.ani.app.domain.mediasource.codec.getArgumentOrNull
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
+import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiMediaSource
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
@@ -46,6 +48,7 @@ import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistr
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.app.tools.ServiceLoader
+import me.him188.ani.datasources.api.matcher.MediaSourceApiVideoResolverLoader
 import me.him188.ani.datasources.api.matcher.MediaSourceWebVideoMatcherLoader
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.MediaFetchRequest
@@ -64,6 +67,7 @@ import me.him188.ani.utils.ktor.ClientProxyConfig
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 import org.koin.core.component.KoinComponent
@@ -100,6 +104,12 @@ interface MediaSourceManager { // available by inject
     val mediaFetcher: Flow<MediaFetcher>
 
     val webVideoMatcherLoader: MediaSourceWebVideoMatcherLoader
+
+    /**
+     * 查找实现了 [me.him188.ani.datasources.api.matcher.ApiVideoResolver] 的数据源实例, 供播放与下载前通过站点 API 重新解析视频地址.
+     */
+    val apiVideoResolverLoader: MediaSourceApiVideoResolverLoader
+        get() = MediaSourceApiVideoResolverLoader(allInstances.map { list -> list.map { it.source } })
 
     fun isLocal(factoryId: FactoryId): Boolean = isLocal(factoryId.value)
     fun isLocal(mediaSourceId: String): Boolean {
@@ -245,6 +255,7 @@ class MediaSourceManagerImpl(
         add(EmbyMediaSource.Factory())
         add(IkarosMediaSource.Factory())
         add(SelectorMediaSource.Factory(selectorMediaSourceEpisodeCacheRepository, webSessionManager))
+        add(JsonApiMediaSource.Factory(selectorMediaSourceEpisodeCacheRepository))
     }.toList()
 
     private val additionalSources by lazy {
@@ -367,7 +378,14 @@ class MediaSourceManagerImpl(
 
     override fun mediaSourceTiersFlow(): Flow<MediaSelectorSourceTiers> = instances.flow.map { list ->
         val arguments = list.mapNotNull { save ->
-            save.getArgumentOrNull(codecManager)?.let { save.mediaSourceId to it }
+            val argument = try {
+                save.getArgumentOrNull(codecManager)
+            } catch (e: MediaSourceDecodeException) {
+                // 本地保存了这个版本不认识的数据源 (例如降级后), 它不参与阶级, 不能让整个流失败
+                logger.warn(e) { "Cannot decode arguments of media source ${save.mediaSourceId} (${save.factoryId}), ignoring its tier" }
+                null
+            }
+            argument?.let { save.mediaSourceId to it }
         }
         MediaSelectorSourceTiers(
             tiers = arguments.associate { (id, argument) -> id to argument.tier },

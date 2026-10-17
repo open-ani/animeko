@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-// Generated from /Users/general_k1ng/Documents/project/animeko/utils/bbcode/BBCode.g4 by ANTLR 4.13.1
+// Generated from /Users/stageguard/Projects/animeko/utils/bbcode/BBCode.g4 by ANTLR 4.13.1
 package me.him188.ani.utils.bbcode
 
 import org.antlr.v4.kotlinruntime.tree.ParseTreeListener
@@ -197,6 +197,48 @@ public interface BBCodeListener : ParseTreeListener {
      * @param ctx The parse tree
      */
     public fun exitColor(ctx: BBCodeParser.ColorContext)
+
+    /**
+     * Enter a parse tree produced by [BBCodeParser.center].
+     *
+     * @param ctx The parse tree
+     */
+    public fun enterCenter(ctx: BBCodeParser.CenterContext)
+
+    /**
+     * Exit a parse tree produced by [BBCodeParser.center].
+     *
+     * @param ctx The parse tree
+     */
+    public fun exitCenter(ctx: BBCodeParser.CenterContext)
+
+    /**
+     * Enter a parse tree produced by [BBCodeParser.left].
+     *
+     * @param ctx The parse tree
+     */
+    public fun enterLeft(ctx: BBCodeParser.LeftContext)
+
+    /**
+     * Exit a parse tree produced by [BBCodeParser.left].
+     *
+     * @param ctx The parse tree
+     */
+    public fun exitLeft(ctx: BBCodeParser.LeftContext)
+
+    /**
+     * Enter a parse tree produced by [BBCodeParser.right].
+     *
+     * @param ctx The parse tree
+     */
+    public fun enterRight(ctx: BBCodeParser.RightContext)
+
+    /**
+     * Exit a parse tree produced by [BBCodeParser.right].
+     *
+     * @param ctx The parse tree
+     */
+    public fun exitRight(ctx: BBCodeParser.RightContext)
 
     /**
      * Enter a parse tree produced by [BBCodeParser.bgm_sticker].

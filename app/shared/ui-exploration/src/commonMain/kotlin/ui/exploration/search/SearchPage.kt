@@ -232,39 +232,66 @@ fun SearchPage(
                         onIntent(SearchPageIntent.Play(it))
                     },
                     headers = {
-                        if (!useWideDesktopFilterPanel) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                SearchFilterChipsRow(
-                                    state = state.searchFilterState,
-                                    onClickItemText = { chip, value ->
-                                        val updatedQuery = state.toggleTagSelection(
-                                            tag = chip,
-                                            value = value,
-                                            unselectOthersOfSameKind = true,
-                                        ).query
-                                        onIntent(
-                                            SearchPageIntent.UpdateQuery(
-                                                updatedQuery,
-                                            ),
-                                        )
-                                    },
-                                    onCheckedChange = { chip, value ->
-                                        val updatedQuery = state.toggleTagSelection(
-                                            tag = chip,
-                                            value = value,
-                                            unselectOthersOfSameKind = false,
-                                        ).query
-                                        onIntent(
-                                            SearchPageIntent.UpdateQuery(
-                                                updatedQuery,
-                                            ),
-                                        )
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .testTag(SearchPageTestTags.LegacyFilterRow),
-                                )
-                            }
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            SearchFilterChipsRow(
+                                state = if (useWideDesktopFilterPanel) {
+                                    SearchFilterState(chips = emptyList())
+                                } else {
+                                    state.searchFilterState
+                                },
+                                leadingContent = {
+                                    YearFilterChip(
+                                        years = state.seasons.map { it.year }.distinct(),
+                                        selectedYear = state.query.year,
+                                        modifier = Modifier.testTag(SearchPageTestTags.YearFilter),
+                                        onSelect = { year ->
+                                            onIntent(SearchPageIntent.ChangeYear(year))
+                                        },
+                                    )
+                                    SeasonFilterChip(
+                                        selectedSeason = state.query.season,
+                                        modifier = Modifier.testTag(SearchPageTestTags.SeasonFilter),
+                                        onSelect = { season ->
+                                            onIntent(SearchPageIntent.ChangeSeason(season))
+                                        },
+                                        // 季度从属于年份: 未选年份时禁用.
+                                        enabled = state.query.year != null,
+                                    )
+                                },
+                                onClickItemText = { chip, value ->
+                                    val updatedQuery = state.toggleTagSelection(
+                                        tag = chip,
+                                        value = value,
+                                        unselectOthersOfSameKind = true,
+                                    ).query
+                                    onIntent(
+                                        SearchPageIntent.UpdateQuery(
+                                            updatedQuery,
+                                        ),
+                                    )
+                                },
+                                onCheckedChange = { chip, value ->
+                                    val updatedQuery = state.toggleTagSelection(
+                                        tag = chip,
+                                        value = value,
+                                        unselectOthersOfSameKind = false,
+                                    ).query
+                                    onIntent(
+                                        SearchPageIntent.UpdateQuery(
+                                            updatedQuery,
+                                        ),
+                                    )
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag(
+                                        if (useWideDesktopFilterPanel) {
+                                            SearchPageTestTags.DateFilterRow
+                                        } else {
+                                            SearchPageTestTags.LegacyFilterRow
+                                        },
+                                    ),
+                            )
                         }
                     },
                     highlightSelected = !isSinglePane,
@@ -352,6 +379,9 @@ fun SearchPage(
 
 internal object SearchPageTestTags {
     const val LegacyFilterRow = "search-filter-legacy-row"
+    const val DateFilterRow = "search-filter-date-row"
+    const val YearFilter = "search-filter-year"
+    const val SeasonFilter = "search-filter-season"
 }
 
 internal fun shouldUseWideDesktopFilterPanel(

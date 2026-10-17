@@ -96,6 +96,62 @@ public class GenBBNestedContextTest : BBCodeParserTestHelper() {
             assertText(elements.at(2), value="!", size=1, color="red", bold=true)
         }
     }
+
+    @Test
+    public fun parse14804774() {
+        BBCode.parse("[center]Hello [b][i]World![/i][/b][/center]")
+        .run {
+            assertText(elements.at(0), value="Hello ", align=RichElement.Text.Align.CENTER)
+            assertText(elements.at(1), value="World!", italic=true, bold=true,
+                    align=RichElement.Text.Align.CENTER)
+        }
+    }
+
+    @Test
+    public fun parse227476899() {
+        BBCode.parse("[center]Hello[left]World[/left]![/center]")
+        .run {
+            assertText(elements.at(0), value="Hello", align=RichElement.Text.Align.CENTER)
+            assertText(elements.at(1), value="World", align=RichElement.Text.Align.LEFT)
+            assertText(elements.at(2), value="!", align=RichElement.Text.Align.CENTER)
+        }
+    }
+
+    @Test
+    public fun parse1546688906() {
+        BBCode.parse("[center][url=https://example.com]Hello World![/url][/center]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", jumpUrl="https://example.com",
+                    align=RichElement.Text.Align.CENTER)
+        }
+    }
+
+    @Test
+    public fun parse1982811943() {
+        BBCode.parse("[center][img]https://example.com/image.png[/img][/center]")
+        .run {
+            assertImage(elements.at(0), imageUrl="https://example.com/image.png")
+        }
+    }
+
+    @Test
+    public fun parse971327987() {
+        BBCode.parse("[center][quote]Hello World![/quote][/center]")
+        .run {
+            assertQuote(elements.at(0)) {
+                assertText(elements.at(0), value="Hello World!")
+            }
+        }
+    }
+
+    @Test
+    public fun parse679287293() {
+        BBCode.parse("[b][center]Hello World![/center][/b]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", bold=true,
+                    align=RichElement.Text.Align.CENTER)
+        }
+    }
 }
 
 

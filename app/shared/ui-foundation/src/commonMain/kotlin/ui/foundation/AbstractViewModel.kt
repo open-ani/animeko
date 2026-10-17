@@ -19,17 +19,28 @@ import kotlinx.coroutines.cancel
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.thisLogger
 import me.him188.ani.utils.logging.trace
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  * 带有 [backgroundScope], 当 [AbstractViewModel] 被 forget 时自动 close scope 以防资源泄露.
  *
  * 因此 [AbstractViewModel] 需要与 compose remember 一起使用, 否则需手动管理生命周期.
  * 在构造 [AbstractViewModel] 时需要考虑其声明周期问题.
+ *
+ * 注意: 通过 androidx `viewModel {}` 取得的实例不会被 remember, [onRemembered] / [init] 永远不会执行 (作用域由 [onCleared] 关闭);
+ * 这类 ViewModel 需要在构造时启动的后台收集应放在 Kotlin `init {}` 块里.
+ *
+ * @param backgroundCoroutineContext [backgroundScope] 的额外 context, 默认为空 (使用 `Dispatchers.Default`).
+ * 测试时可传入 `StandardTestDispatcher(testScheduler)`, 让 ViewModel 的全部后台协程 (状态流合并、加载、轮询) 与测试体跑在同一个
+ * 单线程的虚拟时间调度器上, 状态帧的顺序完全确定. 不应传入 [kotlinx.coroutines.Job] (作用域自带 [SupervisorJob]).
  */ // We can't use Android's Viewmodel because it's not available in Desktop platforms. 
-abstract class AbstractViewModel : RememberObserver, ViewModel(), HasBackgroundScope {
+abstract class AbstractViewModel(
+    backgroundCoroutineContext: CoroutineContext = EmptyCoroutineContext,
+) : RememberObserver, ViewModel(), HasBackgroundScope {
     val logger by lazy { thisLogger() }
 
-    private var _backgroundScope = createBackgroundScope()
+    private var _backgroundScope = createBackgroundScope(backgroundCoroutineContext)
     override val backgroundScope: CoroutineScope
         get() {
             return _backgroundScope
@@ -49,6 +60,7 @@ abstract class AbstractViewModel : RememberObserver, ViewModel(), HasBackgroundS
     }
 
     @CallSuper
+    @Suppress("DEPRECATION")
     override fun onRemembered() {
         referenceCount++
         logger.trace { "${this::class.simpleName} onRemembered, refCount=$referenceCount" }
@@ -57,9 +69,9 @@ abstract class AbstractViewModel : RememberObserver, ViewModel(), HasBackgroundS
         }
     }
 
-    private fun createBackgroundScope(): CoroutineScope {
+    private fun createBackgroundScope(additionalContext: CoroutineContext): CoroutineScope {
         return CoroutineScope(
-            CoroutineExceptionHandler { coroutineContext, throwable ->
+            additionalContext + CoroutineExceptionHandler { coroutineContext, throwable ->
                 logger.error(throwable) { "Unhandled exception in background scope for viewmodel ${this::class.qualifiedName}, coroutineContext: $coroutineContext" }
             } + SupervisorJob(),
         )
@@ -67,7 +79,14 @@ abstract class AbstractViewModel : RememberObserver, ViewModel(), HasBackgroundS
 
     /**
      * Called when the view model is remembered the first time.
+     *
+     * 只有把实例交给 compose `remember {}` 时才会 (经 [onRemembered]) 调用. 通过 androidx `viewModel {}` 取得的 ViewModel
+     * 不会被 remember, 此方法永远不会执行, 覆盖它是无声的空操作; 这类 ViewModel 请改用 Kotlin `init {}` 块.
      */
+    @Deprecated(
+        "只对 remember {} 创建的 ViewModel 生效; viewModel {} 取得的实例永远不会调用它, 请改用 Kotlin init {} 块",
+        level = DeprecationLevel.WARNING,
+    )
     protected open fun init() {
     }
 

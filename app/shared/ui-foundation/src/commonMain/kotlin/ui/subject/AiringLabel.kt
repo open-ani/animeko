@@ -41,6 +41,14 @@ class AiringLabelState(
     airingInfoState: State<SubjectAiringInfo?>, // null means loading
     progressInfoState: State<SubjectProgressInfo?>, // null means loading
 ) {
+    /**
+     * 从不可变的值构造. 值变化时由调用方重新构造 (例如 `remember(airingInfo, progressInfo) { ... }`).
+     */
+    constructor(
+        airingInfo: SubjectAiringInfo?,
+        progressInfo: SubjectProgressInfo?,
+    ) : this(stateOf(airingInfo), stateOf(progressInfo))
+
     private val airingInfo by airingInfoState
     private val progressInfo by progressInfoState
 

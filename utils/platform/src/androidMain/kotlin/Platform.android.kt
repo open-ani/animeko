@@ -10,18 +10,20 @@
 package me.him188.ani.utils.platform
 
 import android.os.Build
+import me.him188.ani.buildconfig.AndroidBuildConfig
 
 internal actual fun currentPlatformImpl(): Platform {
+    val isTv = AndroidBuildConfig.DISTRO_CHANNEL == "tv"
     if (Build.SUPPORTED_ABIS == null) {
         // unit testing
-        return Platform.Android(Arch.ARMV8A)
+        return Platform.Android(Arch.ARMV8A, isTv)
     }
     return Build.SUPPORTED_ABIS.getOrNull(0)?.let { abi ->
         when (abi.lowercase()) {
-            "armeabi-v7a" -> Platform.Android(Arch.ARMV7A)
-            "arm64-v8a" -> Platform.Android(Arch.ARMV8A)
-            "x86_64" -> Platform.Android(Arch.X86_64)
-            else -> Platform.Android(Arch.ARMV8A)
+            "armeabi-v7a" -> Platform.Android(Arch.ARMV7A, isTv)
+            "arm64-v8a" -> Platform.Android(Arch.ARMV8A, isTv)
+            "x86_64" -> Platform.Android(Arch.X86_64, isTv)
+            else -> Platform.Android(Arch.ARMV8A, isTv)
         }
-    } ?: Platform.Android(Arch.ARMV8A)
+    } ?: Platform.Android(Arch.ARMV8A, isTv)
 }

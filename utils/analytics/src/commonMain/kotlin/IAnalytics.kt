@@ -44,16 +44,12 @@ value class AnalyticsEvent(val event: String) {
     companion object {
         val Screen = AnalyticsEvent("screen")
         val AppStart = Screen // compatibility
+        val ScreenView = AnalyticsEvent("screen_view")
         val SessionStart = AnalyticsEvent("session_start")
 
         val AppServerTestSuccess = AnalyticsEvent("app_server_test_success")
         val AppServerTestError = AnalyticsEvent("app_server_test_error")
         val AppServerSelectError = AnalyticsEvent("app_server_select_error")
-
-        val OnboardingStart = AnalyticsEvent("onboarding_start")
-        val OnboardingNetworkEnter = AnalyticsEvent("onboarding_network_enter")
-        val OnboardingLoginEnter = AnalyticsEvent("onboarding_login_enter")
-        val OnboardingDone = AnalyticsEvent("onboarding_done")
 
         val NetworkCheckFailed = AnalyticsEvent("network_check_failed")
         val LoginClick = AnalyticsEvent("login_click")
@@ -63,6 +59,8 @@ value class AnalyticsEvent(val event: String) {
         val EpisodeEnter = AnalyticsEvent("episode_enter")
         val EpisodeSwitch = AnalyticsEvent("episode_switch")
         val EpisodePlaying = AnalyticsEvent("episode_playing")
+        val EpisodeExit = AnalyticsEvent("episode_exit")
+        val MediaFetchResult = AnalyticsEvent("media_fetch_result")
 
         val CacheCreate = AnalyticsEvent("cache_create")
 
@@ -83,6 +81,7 @@ value class AnalyticsEvent(val event: String) {
 data class AnalyticsConfig(
     val appVersion: String,
     val debugLogging: Boolean,
+    val distroChannel: String,
 ) {
     companion object
 }
@@ -98,6 +97,7 @@ abstract class CommonAnalyticsImpl(
         put("os", platform.name)
         put("arch", platform.arch.name)
         put("\$app_version", config.appVersion)
+        put("distro_channel", config.distroChannel)
     }
 
     final override fun recordEvent(event: AnalyticsEvent, properties: Map<String, Any?>) {

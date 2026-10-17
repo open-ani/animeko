@@ -16,7 +16,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -27,6 +26,7 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_report_submitted
+import me.him188.ani.utils.coroutines.runCatchingCancellable
 import me.him188.ani.app.data.models.comment.CommentReportReason as DataCommentReportReason
 import org.jetbrains.compose.resources.stringResource
 
@@ -63,16 +63,13 @@ class CommentReportState(
 
     fun submit(comment: UIComment, reason: CommentReportReason, detail: String) {
         backgroundScope.launch {
-            try {
-                onSubmitReport(comment, reason, detail)
-                submitResultChannel.trySend(Result.success(Unit))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                submitResultChannel.trySend(Result.failure(e))
-            }
+            submitResultChannel.trySend(submitAwait(comment, reason, detail))
         }
     }
+
+    /** Allows a client to associate completion with its own operation identity. */
+    suspend fun submitAwait(comment: UIComment, reason: CommentReportReason, detail: String): Result<Unit> =
+        runCatchingCancellable { onSubmitReport(comment, reason, detail) }
 }
 
 /**

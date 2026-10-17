@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * 判决顺序的硬规则测试. 对应 docs/dev/media/web-captcha.md "判决顺序".
+ * 判决顺序的硬规则测试. 规则编号对应 [PageEvaluator] 的 KDoc; 设计理由见 docs/contributing/code/media/web-captcha.md "判决顺序".
  */
 class PageEvaluatorTest {
     private val evaluator = PageEvaluator()

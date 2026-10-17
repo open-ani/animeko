@@ -20,10 +20,8 @@ import androidx.compose.ui.test.SkikoComposeUiTest
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onAllNodesWithTag
-import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runSkikoComposeUiTest
 import androidx.compose.ui.unit.Density
@@ -38,18 +36,17 @@ import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.ui.comment.createTestCommentState
 import me.him188.ani.app.ui.foundation.IMAGE_VIEWER_TEST_TAG
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.rating.createTestEditableRatingState
+import me.him188.ani.app.ui.framework.runOnSwingEdt
 import me.him188.ani.app.ui.search.createTestPager
-import me.him188.ani.app.ui.subject.collection.components.createTestEditableSubjectCollectionTypeState
-import me.him188.ani.app.ui.subject.collection.progress.createTestSubjectProgressState
-import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.details.components.SUBJECT_COVER_IMAGE_TEST_TAG
-import me.him188.ani.app.ui.subject.details.sections.CHARACTER_AVATAR_TEST_TAG
-import me.him188.ani.app.ui.subject.details.state.SubjectDetailsPresentation
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsUiState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.episode.list.TestEpisodeListUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
+import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
+import me.him188.ani.app.ui.subject.TestSubjectAiringInfo
+import me.him188.ani.app.ui.rating.TestEditableRatingUiState
+import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.skia.EncodedImageFormat
@@ -58,7 +55,7 @@ import java.io.File
 import kotlin.test.Test
 
 /**
- * 交互测试: 条目详情页点击封面/角色头像打开页面级图片查看器, 再点击查看器关闭.
+ * 交互测试: 条目详情页点击封面打开页面级图片查看器, 再点击查看器关闭.
  *
  * 断点由 Skiko 场景像素尺寸控制 (density=1 => px==dp):
  * 360 => Compact(手机单栏) / 1400 => Medium(双栏).
@@ -77,46 +74,36 @@ class SubjectDetailsImageViewerTest {
         File(outDir, "$name.png").writeBytes(png)
     }
 
-    /** 与截图测试的数据类似, 但封面与角色图为非空 URL (空 URL 不启用点击放大). */
+    /** 与截图测试的数据类似, 但封面为非空 URL (空 URL 不启用点击放大). */
     private fun testStateWithImages(scope: CoroutineScope): SubjectDetailsState {
         val subjectInfo = TestSubjectCollections.first().subjectInfo
-        val characters = TestSubjectCharacterList.map { related ->
-            related.copy(
-                character = related.character.copy(
-                    imageMedium = TestCoverImage,
-                    imageLarge = TestCoverImage,
-                ),
-            )
-        }
+        val characters = TestSubjectCharacterList
         val info = TestSubjectInfo.copy(imageLarge = TestCoverImage)
         return SubjectDetailsState(
             subjectId = info.subjectId,
             info = info,
-            selfCollectionTypeState = stateOf(UnifiedCollectionType.DOING),
-            airingLabelState = createTestAiringLabelState(),
             charactersPager = createTestPager(characters),
             exposedCharactersPager = createTestPager(characters),
-            totalCharactersCountState = stateOf(characters.size),
             staffPager = createTestPager(TestSubjectStaffInfo),
             exposedStaffPager = createTestPager(TestSubjectStaffInfo),
-            totalStaffCountState = stateOf(TestSubjectStaffInfo.size),
             relatedSubjectsPager = createTestPager(TestRelatedSubjects),
-            editableSubjectCollectionTypeState = createTestEditableSubjectCollectionTypeState(
-                MutableStateFlow(UnifiedCollectionType.DOING),
-                scope,
-            ),
-            editableRatingState = createTestEditableRatingState(
-                subjectInfo,
-                selfRatingInfo = TestSelfRatingInfo,
-                backgroundScope = scope,
-            ),
-            subjectProgressState = createTestSubjectProgressState(),
             subjectCommentState = createTestCommentState(scope),
-            presentation = MutableStateFlow(
-                SubjectDetailsPresentation(
+            uiState = MutableStateFlow(
+                SubjectDetailsUiState(
                     subjectId = info.subjectId,
                     displayName = info.displayName,
+                    selfCollectionType = UnifiedCollectionType.DOING,
+                    collectionStats = info.collectionStats,
+                    airingInfo = TestSubjectAiringInfo,
+                    progressInfo = TestSubjectProgressInfos.ContinueWatching2,
                     episodeListUiState = TestEpisodeListUiState,
+                    totalStaffCount = TestSubjectStaffInfo.size,
+                    totalCharactersCount = characters.size,
+                    collectionTypeEdit = EditableSubjectCollectionTypeState.Presentation.Placeholder.copy(
+                        selfCollectionType = UnifiedCollectionType.DOING,
+                        isPlaceholder = false,
+                    ),
+                    rating = TestEditableRatingUiState,
                     isPlaceholder = false,
                 ),
             ),
@@ -124,16 +111,17 @@ class SubjectDetailsImageViewerTest {
     }
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    private fun runPageTest(widthDp: Int, heightDp: Int, block: SkikoComposeUiTest.() -> Unit) {
+    private fun runPageTest(widthDp: Int, heightDp: Int, block: SkikoComposeUiTest.() -> Unit) = runOnSwingEdt {
         // 查看器的单击关闭经 Dispatchers.Main 真实 delay 触发; 确保 Main 未被其他测试替换为虚拟时钟.
         Dispatchers.resetMain()
+        // 查看器 (zoomimage) 要求手势在 Swing EDT 上处理, 因此整个测试在 EDT 上跑.
         runSkikoComposeUiTest(Size(widthDp.toFloat(), heightDp.toFloat()), density = Density(1f)) {
             setContent {
                 ProvideCompositionLocalsForPreview {
                     CompositionLocalProvider(LocalDensity provides Density(1f)) {
                         val scope = rememberCoroutineScope()
                         val state = remember {
-                            testStateWithImages(scope).let { SubjectDetailsUIState.Ok(it.subjectId, it) }
+                            testStateWithImages(scope).let { SubjectDetailsLoadState.Ok(it.subjectId, it) }
                         }
                         SubjectDetailsScreen(
                             state,
@@ -180,14 +168,5 @@ class SubjectDetailsImageViewerTest {
         waitUntil(timeoutMillis = 5000) {
             onAllNodesWithTag(IMAGE_VIEWER_TEST_TAG).fetchSemanticsNodes().isEmpty()
         }
-    }
-
-    @Test
-    fun `multi column - click character avatar opens image viewer`() = runPageTest(1400, 1400) {
-        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).assertDoesNotExist()
-        onAllNodesWithTag(CHARACTER_AVATAR_TEST_TAG).onFirst().performScrollTo().performClick()
-        waitForIdle()
-        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).assertIsDisplayed()
-        capture("image-viewer-multicolumn-avatar-open")
     }
 }

@@ -13,12 +13,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.transformLatest
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.MediaSourceInfoWithId
@@ -26,21 +25,28 @@ import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.app.domain.media.selector.isPerfectMatch
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.media_selector_summary_dropped_file
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.platform.collections.tupleOf
+import org.jetbrains.compose.resources.getString
 import kotlin.time.Duration.Companion.seconds
 
 
 /**
  * @see MediaSelectorSummary
- * @see me.him188.ani.app.domain.media.selector.MediaSelector.selectedMaybeExcludedMediaFlow
+ * @see MediaSelector.selectedMaybeExcludedMedia
  */
 class MediaSelectorSummaryStateProducer(
     selectedMaybeExcludedMediaFlow: Flow<MaybeExcludedMedia?>,
     mediaSourceResultsFlow: Flow<List<MediaSourceFetchResult>>,
     mediaSelectorSettingsFlow: Flow<MediaSelectorSettings>,
     mediaSources: Flow<List<MediaSourceInfoWithId>>,
+    /**
+     * 选中的是用户拖入的本地文件 ([DroppedFileMedia]) 时展示的来源名称.
+     */
+    droppedFileSourceName: suspend () -> String = { getString(Lang.media_selector_summary_dropped_file) },
 ) {
     private val sourceSummariesFlow = combine(mediaSourceResultsFlow, mediaSources) { results, sources ->
         tupleOf(results, sources)
@@ -84,7 +90,11 @@ class MediaSelectorSummaryStateProducer(
                                 ?.info
                                 ?.toSummary()
                                 ?: MediaSelectorSourceSummary(
-                                    sourceName = selected.original.mediaSourceId,
+                                    sourceName = if (DroppedFileMedia.isDroppedFile(selected.original)) {
+                                        droppedFileSourceName()
+                                    } else {
+                                        selected.original.mediaSourceId
+                                    },
                                     sourceIconUrl = "",
                                 ),
                             selected.original.originalTitle,
@@ -110,17 +120,6 @@ class MediaSelectorSummaryStateProducer(
         )
     }.distinctUntilChanged()
 }
-
-@OptIn(UnsafeOriginalMediaAccess::class)
-val MediaSelector.selectedMaybeExcludedMediaFlow: Flow<MaybeExcludedMedia?>
-    get() = this.selected.mapLatest { selected ->
-        if (selected == null) {
-            null
-        } else {
-            filteredCandidates.first() // No need to subscribe to flow change. When selected is updated, filteredCandidates should have already been updated.
-                .firstOrNull { it.original === selected } // identity check is enough and fast
-        }
-    }
 
 private fun MediaSourceInfo.toSummary() =
     MediaSelectorSourceSummary(

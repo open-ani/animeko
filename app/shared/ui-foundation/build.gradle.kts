@@ -30,9 +30,12 @@ kotlin {
         implementation(libs.kotlinx.serialization.protobuf)
         implementation(projects.app.shared.placeholder)
 
-        api(libs.coil.compose.core)
-        api(libs.coil.svg)
-        api(libs.coil.network.ktor3)
+        api(libs.sketch.compose.core)
+        implementation(libs.sketch.http.core)
+        implementation(libs.sketch.svg)
+        api(libs.zoomimage.compose.sketch4.core)
+        implementation(libs.filekit.dialogs)
+        implementation(libs.filekit.dialogs.compose)
 
         implementation(libs.compose.components.resources)
         api(libs.compose.lifecycle.viewmodel.compose)
@@ -60,6 +63,7 @@ kotlin {
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
         implementation(projects.utils.androidxLifecycleRuntimeTesting)
+        implementation(libs.ktor.client.mock)
     }
     sourceSets.androidMain.dependencies {
         api(libs.compose.material3.adaptive.core)

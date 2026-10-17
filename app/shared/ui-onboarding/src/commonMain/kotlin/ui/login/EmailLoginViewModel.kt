@@ -11,16 +11,22 @@ package me.him188.ani.app.ui.login
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.session.InvalidSessionReason
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionState
+import me.him188.ani.app.domain.session.auth.OAuthPlatform
+import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.utils.logging.warn
+import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.time.Clock
@@ -28,7 +34,9 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 @Stable
-class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
+open class EmailLoginViewModel(private val koin: Koin = GlobalKoin) : AbstractViewModel(), KoinComponent {
+    override fun getKoin(): Koin = koin
+
     private val userRepository: UserRepository by inject()
     private val sessionManager: SessionManager by inject()
 
@@ -49,6 +57,22 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
     }.stateInBackground(EmailLoginUiState.Initial)
 
     private var otpId = ""
+
+    init {
+        // 服务端可能新增或关闭平台; 获取失败则只显示 Bangumi
+        backgroundScope.launch {
+            val providers = try {
+                userRepository.getOAuthProviders()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.warn(e) { "Failed to get OAuth providers, falling back to Bangumi only" }
+                return@launch
+            }
+            val platforms = providers.mapNotNull(OAuthPlatform::fromId)
+            updateState { copy(thirdPartyPlatforms = platforms) }
+        }
+    }
 
     private inline fun updateState(block: EmailLoginUiState.() -> EmailLoginUiState) {
         stateFields.value = stateFields.value.block()
@@ -91,6 +115,10 @@ data class EmailLoginUiState(
     val mode: Mode,
     // null means unknown; true -> existing user; false -> new registration
     val isExistingAccount: Boolean? = null,
+    /**
+     * 服务端已启用且客户端支持的第三方登录平台
+     */
+    val thirdPartyPlatforms: List<OAuthPlatform> = listOf(OAuthPlatform.BANGUMI),
 ) {
     companion object {
         val Initial = EmailLoginUiState(

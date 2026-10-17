@@ -11,6 +11,8 @@ package me.him188.ani.app.desktop.storage
 
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatformDesktop
+import java.nio.file.Path
+import kotlin.io.path.Path
 
 data class AppInfo(
     val qualifier: String,
@@ -22,7 +24,15 @@ interface AppFolderResolver {
     fun resolve(appInfo: AppInfo): AppDataDirectories
 
     companion object {
+        /**
+         * 测试任务用: 设置了此环境变量时, 数据和缓存都放在它指向的目录下, 与机器上正常安装的应用隔离.
+         */
+        const val TEST_DATA_DIR_ENV = "ANIMEKO_DESKTOP_TEST_DATA_DIR"
+
         val INSTANCE: AppFolderResolver by lazy {
+            System.getenv(TEST_DATA_DIR_ENV)?.takeIf { it.isNotBlank() }?.let { dir ->
+                return@lazy FixedAppFolderResolver(Path(dir))
+            }
             when (currentPlatformDesktop()) {
                 is Platform.Linux -> UnixAppFolderResolver
                 is Platform.MacOS -> UnixAppFolderResolver
@@ -30,6 +40,14 @@ interface AppFolderResolver {
             }
         }
     }
+}
+
+/**
+ * 数据放在 [root]`/data`, 缓存放在 [root]`/cache`.
+ */
+class FixedAppFolderResolver(private val root: Path) : AppFolderResolver {
+    override fun resolve(appInfo: AppInfo): AppDataDirectories =
+        AppDataDirectories(root.resolve("data"), root.resolve("cache"))
 }
 
 object WindowsAppFolderResolver : AppFolderResolver {

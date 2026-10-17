@@ -85,6 +85,7 @@ import io.github.typesafegithub.workflows.domain.actions.Action
 import io.github.typesafegithub.workflows.domain.actions.CustomAction
 import io.github.typesafegithub.workflows.domain.triggers.PullRequest
 import io.github.typesafegithub.workflows.domain.triggers.Push
+import io.github.typesafegithub.workflows.domain.triggers.WorkflowDispatch
 import io.github.typesafegithub.workflows.dsl.JobBuilder
 import io.github.typesafegithub.workflows.dsl.WorkflowBuilder
 import io.github.typesafegithub.workflows.dsl.expressions.contexts.GitHubContext
@@ -216,7 +217,12 @@ data class MatrixInstance(
     }
 
     @Suppress("unused")
-    val gradleArgs = buildList {
+    val gradleArgs: String = gradleArgsWith(gradleHeap, kotlinCompilerHeap)
+
+    /**
+     * 与 [gradleArgs] 相同, 但可以指定堆大小. 例如在模拟器旁边跑测试时给 Gradle 更小的堆.
+     */
+    fun gradleArgsWith(gradleHeap: String, kotlinCompilerHeap: String): String = buildList {
 
         /**
          * Windows 上必须 quote, Unix 上 quote 或不 quote 都行. 所以我们统一 quote.
@@ -278,6 +284,21 @@ val ANI_ANDROID_ABIS = "ani.android.abis"
 
 @Suppress("PropertyName")
 val ANI_ENABLE_IOS = "ani.enable.ios"
+
+/**
+ * 含 Android TV 界面的模块, 与 settings.gradle.kts 中的 `-tv` 模块一致.
+ * 它们的 instrumented test 只在 Android TV 系统镜像上运行.
+ */
+val androidTvModules = listOf(
+    ":app:shared:tv",
+    ":app:shared:ui-foundation-tv",
+    ":app:shared:ui-settings-tv",
+    ":app:shared:ui-subject-tv",
+    ":app:shared:ui-exploration-tv",
+    ":app:shared:ui-onboarding-tv",
+    ":app:shared:ui-episode-tv",
+    ":app:shared:ui-watchtogether-tv",
+)
 
 @Suppress("PropertyName")
 val ANI_BUILD_FRAMEWORK = "ani.build.framework"
@@ -445,7 +466,7 @@ run {
     val ghUbuntu2404 = MatrixInstance(
         runner = Runner.GithubUbuntu2404,
         uploadApk = true,
-        runAndroidInstrumentedTests = false,
+        runAndroidInstrumentedTests = true,
         composeResourceTriple = "linux-x64",
         runTests = true,
         uploadDesktopInstallers = true,
@@ -491,7 +512,7 @@ run {
     val selfMac15 = MatrixInstance(
         runner = Runner.SelfHostedMacOS15,
         uploadApk = false, // upload arm64-v8a once finished
-        runAndroidInstrumentedTests = true,
+        runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-arm64",
         uploadDesktopInstallers = false,
         enableIos = true,
@@ -517,6 +538,7 @@ run {
             // 即使自己机器上传的 dmg 安装时会有问题 (#1479), 也在 build 时使用它, 避免使用太多 GitHub 机器占用并行.
             // 发版时还是使用 GitHub
             uploadDesktopInstallers = true,
+            runAndroidInstrumentedTests = true,
         ),
     )
 
@@ -570,26 +592,168 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
             // buildIosIpaRelease()
         }
         packageDesktopAndUpload()
+        uploadUpdateE2eRunner()
 
         if (!matrix.isUbuntu) {
             gradleCheck() // save time
         }
-        androidConnectedTests()
+        // Instrumented test 在单独的 job 中运行, 见 addAndroidInstrumentedTestJobs.
 
         cleanupTempFiles()
     }
 }
 
-object ArtifactNames {
-    fun windowsPortable(arch: Arch) = when (arch) {
-        Arch.X64 -> "ani-windows-portable"
-        Arch.AARCH64 -> "ani-windows-aarch64-portable"
-    }
+/**
+ * 运行 instrumented test 的一种模拟器.
+ *
+ * @param label 区分本次运行的后缀, 例如 `api=30, arch=x86_64`.
+ * @param artifactSuffix 测试报告 artifact 名与 logcat 文件名中区分本次运行的后缀, 只能含 artifact 名允许的字符.
+ * @param modules 在这种模拟器上测试的模块, `null` 即除 [excludedModules] 外的全部模块.
+ */
+class AndroidEmulator(
+    val label: String,
+    val artifactSuffix: String,
+    val apiLevel: Int,
+    val arch: AndroidEmulatorRunner.Arch,
+    val target: AndroidEmulatorRunner.Target,
+    val profile: String,
+    val modules: List<String>? = null,
+    val excludedModules: List<String> = emptyList(),
+) {
+    fun gradleTasks(task: String): List<String> =
+        modules?.map { "$it:$task" } ?: (listOf(task) + excludedModules.map { "-x $it:$task" })
+}
 
-    fun macosDmg(arch: Arch) = "ani-macos-dmg-${arch}"
-    fun macosPortable(arch: Arch) = "ani-macos-portable-${arch}"
-    fun iosIpa() = "ani-ios-ipa"
-    fun linuxAppImage(arch: Arch) = "ani-linux-appimage-${arch}"
+/**
+ * 一个 job 编译一次测试 APK, 然后依次在 [emulators] 上运行.
+ */
+class AndroidInstrumentedTestJob(
+    val id: String,
+    val label: String,
+    val emulators: List<AndroidEmulator>,
+) {
+    /**
+     * 各模拟器测试的模块相同时只编译这些模块, 否则编译全部模块.
+     */
+    fun buildTasks(task: String): List<String> =
+        emulators.map { it.gradleTasks(task) }.distinct().singleOrNull() ?: listOf(task)
+}
+
+/**
+ * 每个 job 都要下载依赖、编译测试 APK, 在 GitHub 托管的机器上约 20 分钟, 所以同一类机器上的模拟器共用 job.
+ *
+ * - GitHub 托管的 Ubuntu x86_64 机器: 手机镜像与 TV 镜像各一个 job, 与构建 job 并行.
+ * - 自托管的 Apple Silicon Mac: arm64-v8a 镜像. GitHub 托管的 arm64 机器 (Linux 与 macOS) 不提供嵌套虚拟化,
+ *   不能运行有硬件加速的 arm64 模拟器. 只有一台 Mac, 还承担所有 run 的 iOS 与 macOS 构建,
+ *   因此只在 main 与 release 分支的 push 上运行, 只测 targetSdk.
+ */
+fun MatrixInstance.androidInstrumentedTestJobs(): List<AndroidInstrumentedTestJob> {
+    if (!runAndroidInstrumentedTests) return emptyList()
+    // 模拟器 ABI 与机器一致才有硬件加速, 顺带测试 anitorrent 等原生库在该 ABI 上的加载.
+    val arch = when {
+        isUbuntu && isX64 && !selfHosted -> AndroidEmulatorRunner.Arch.X8664
+        isMacOSAArch64 && selfHosted -> AndroidEmulatorRunner.Arch.Arm64V8a
+        else -> error("Android instrumented tests are not supported on ${runner.name}")
+    }
+    // 手机镜像跑 TV 以外的模块.
+    fun phone(apiLevel: Int) = AndroidEmulator(
+        label = "api=$apiLevel, arch=${arch.stringValue}",
+        artifactSuffix = "api$apiLevel-${arch.stringValue}",
+        apiLevel = apiLevel,
+        arch = arch,
+        target = AndroidEmulatorRunner.Target.Default,
+        // 默认 AVD 只有 320x640, 以常见手机的 1080x1920 屏幕运行.
+        profile = "pixel_2",
+        excludedModules = androidTvModules,
+    )
+    // TV 模块只在 Android TV 系统镜像上跑: 无系统栏、无触摸, 只有遥控器按键.
+    // TV 镜像只有 x86_64 与 arm64-v8a 的 API 36, 因此只跑 targetSdk 一个版本.
+    val tv = AndroidEmulator(
+        label = "api=36, arch=${arch.stringValue}, target=android-tv",
+        artifactSuffix = "api36-${arch.stringValue}-android-tv",
+        apiLevel = 36,
+        arch = arch,
+        target = AndroidEmulatorRunner.Target.AndroidTv,
+        profile = "tv_1080p",
+        modules = androidTvModules,
+    )
+    return if (selfHosted) {
+        listOf(
+            AndroidInstrumentedTestJob(
+                id = "api36",
+                label = "api=36, arch=${arch.stringValue}",
+                emulators = listOf(phone(36), tv),
+            ),
+        )
+    } else {
+        listOf(
+            // 手机镜像在 minSdk 30 和 targetSdk 两个版本上各跑一遍.
+            AndroidInstrumentedTestJob(
+                id = "phone",
+                label = "api=30 & 36, arch=${arch.stringValue}",
+                emulators = listOf(phone(30), phone(36)),
+            ),
+            AndroidInstrumentedTestJob(
+                id = "android-tv",
+                label = tv.label,
+                emulators = listOf(tv),
+            ),
+        )
+    }
+}
+
+fun WorkflowBuilder.addAndroidInstrumentedTestJobs(matrix: MatrixInstance) {
+    for (testJob in matrix.androidInstrumentedTestJobs()) {
+        job(
+            id = "android-test_${matrix.runner.id}_${testJob.id}",
+            name = "Android Instrumented Test (${testJob.label})",
+            runsOn = RunnerType.Labelled(matrix.runsOn),
+            permissions = mapOf(
+                Permission.Actions to Mode.Write, // Upload artifacts
+            ),
+            `if` = if (matrix.selfHosted) expr { github.isAnimekoRepository and github.isPush } else null,
+        ) {
+            uses(action = Checkout(submodules_Untyped = "recursive"))
+            with(WithMatrix(matrix)) {
+                freeSpace()
+                enableSwap()
+                deleteLocalProperties()
+                writeLocalProperties()
+                installJbr21()
+                chmod777()
+                setupGradle()
+                androidInstrumentedTest(testJob)
+            }
+        }
+    }
+}
+
+/**
+ * 安装包都以 `archive: false` 上传 (见 [uploadFileArtifact]), 下载得到的就是文件本身, artifact 名就是文件名.
+ * 开发者设置的「安装 CI 构建」按这些名字找安装包, 与客户端 `DevBuildPackageSpec` 保持一致.
+ */
+object ArtifactNames {
+    /** @param buildType `release` 或 `debug` */
+    fun androidApk(arch: String, buildType: String) = "ani-android-$arch-$buildType.apk"
+    fun androidTvApk(arch: String, buildType: String) = "ani-android-tv-$arch-$buildType.apk"
+
+    /** @param buildType `release` 或 `debug` */
+    fun iosIpa(buildType: String) = "ani-ios-$buildType.ipa"
+
+    fun macosDmg(arch: Arch) = "ani-macos-${arch}.dmg"
+    fun linuxAppImage(arch: Arch) = "ani-linux-${arch}.AppImage"
+
+    /**
+     * Windows 和 macOS 的 zip 发布包, 与 Release 的 zip 格式相同. Windows 和 macOS x64 直接安装它,
+     * 三者都用它和 [desktopPackageManifest] 增量拼包.
+     */
+    fun desktopPackage(os: OS, arch: Arch) = "ani-${os}-${arch}.zip"
+
+    /** [desktopPackage] 的增量更新清单. */
+    fun desktopPackageManifest(os: OS, arch: Arch) = desktopPackage(os, arch) + ".manifest.json"
+
+    /** 自动更新端到端测试的驱动器 jar, Verify job 下载后直接运行. */
+    fun updateE2eRunner(os: OS, arch: Arch) = "ani-update-e2e-${os}-${arch}"
 }
 
 fun getVerifyJobBody(
@@ -650,6 +814,10 @@ fun getVerifyJobBody(
          * 指定此项, 则在所有的 Runner 上执行, 但在指定的 Runner 上不执行.
          */
         val disabledOn: List<Runner>? = null,
+        /**
+         * 在虚拟 X11 显示器中运行此任务.
+         */
+        val runWithXvfb: Boolean = false,
     )
 
     val tasksToExecute = listOf(
@@ -668,13 +836,13 @@ fun getVerifyJobBody(
         VerifyTask(
             name = "dandanplay-app-id",
             step = "Check that Dandanplay APP ID is valid",
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+            `if` = expr { github.hasRepositorySecrets },
             disabledOn = listOf(Runner.GithubWindows11Arm64),
         ),
         VerifyTask(
             name = "sentry-dsn",
             step = "Check that sentryDsn is valid",
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+            `if` = expr { github.hasRepositorySecrets },
             disabledOn = listOf(Runner.GithubWindows11Arm64),
         ),
         // Windows ARM64 relies on the SQLite natives built by :ci-helper:sqlite-woa64 (AndroidX does
@@ -685,6 +853,24 @@ fun getVerifyJobBody(
             name = "sqlite-bundled-load-test",
             step = "Check that bundled SQLite can be loaded",
             enabledOnlyOn = listOf(Runner.GithubWindows11Arm64, Runner.GithubUbuntu2404),
+        ),
+        // The Windows pointer bridge is the only input path the packaged app has that unit tests
+        // cannot reach: WM_POINTER only arrives at a real window on a real desktop session. Runs
+        // the same scenarios as WindowsNativeInputTest, against the packaged app.
+        VerifyTask(
+            name = "windows-native-input-test",
+            step = "Check that OS touch and mouse input reach Compose",
+            enabledOnlyOn = listOf(
+                Runner.GithubWindowsServer2025,
+                Runner.GithubWindowsServer2022,
+                Runner.GithubWindows11Arm64,
+            ),
+        ),
+        VerifyTask(
+            name = "jcef-init-test",
+            step = "Check that JCEF can be initialized",
+            enabledOnlyOn = listOf(Runner.GithubUbuntu2404),
+            runWithXvfb = true,
         ),
     ).filter { task ->
         // Filter task that should execute on this runner.
@@ -704,11 +890,13 @@ fun getVerifyJobBody(
     when (runner.os to runner.arch) {
         OS.WINDOWS to Arch.X64,
         OS.WINDOWS to Arch.AARCH64 -> {
+            // download-artifact 按内容类型自动解压 zip, 得到 Ani 目录.
             usesWithAttempts(
                 name = "Download Windows ${if (runner.arch == Arch.X64) "x64" else "AArch64"} Portable",
                 action = DownloadArtifact(
-                    name = ArtifactNames.windowsPortable(runner.arch),
+                    name = ArtifactNames.desktopPackage(OS.WINDOWS, runner.arch),
                     path = "${expr { github.workspace }}/ci-helper/verify",
+                    _customVersion = "v8",
                 ),
             )
             tasksToExecute.forEach { task ->
@@ -729,7 +917,7 @@ fun getVerifyJobBody(
         OS.MACOS to Arch.AARCH64 -> {
             usesWithAttempts(
                 name = "Download DMG",
-                action = DownloadArtifact(name = ArtifactNames.macosDmg(Arch.AARCH64)),
+                action = DownloadArtifact(name = ArtifactNames.macosDmg(Arch.AARCH64), _customVersion = "v8"),
             )
             tasksToExecute.forEach { task ->
                 run(
@@ -747,11 +935,17 @@ fun getVerifyJobBody(
                 action = DownloadArtifact(
                     name = ArtifactNames.linuxAppImage(Arch.X64),
                     path = "${expr { github.workspace }}/ci-helper/verify",
+                    _customVersion = "v8",
                 ),
             )
             tasksToExecute.forEach { task ->
                 val appimagePath =
-                    """${expr { github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"""
+                    """${expr { github.workspace }}/ci-helper/verify/${ArtifactNames.linuxAppImage(Arch.X64)}"""
+                val commandPrefix = if (task.runWithXvfb) {
+                    "XDG_SESSION_TYPE=wayland WAYLAND_DISPLAY=wayland-0 xvfb-run --auto-servernum env " + ""
+                } else {
+                    ""
+                }
                 run(
                     name = task.step,
                     shell = Shell.Bash,
@@ -759,7 +953,7 @@ fun getVerifyJobBody(
                         $$"""
                             ANI_APPIMAGE="$$appimagePath"
                             chmod +x "$ANI_APPIMAGE"
-                            ANIMEKO_DESKTOP_TEST_TASK="$${task.name}" "$ANI_APPIMAGE"
+                            $${commandPrefix}ANIMEKO_DESKTOP_TEST_TASK="$${task.name}" "$ANI_APPIMAGE"
                         """.trimIndent(),
                     ),
                     `if` = task.`if`,
@@ -770,6 +964,75 @@ fun getVerifyJobBody(
 
         else -> error("Unsupported OS and arch combination: ${runner.os} ${runner.arch}")
     }
+
+    addDesktopUpdateE2e(runner)
+}
+
+/**
+ * 自动更新端到端测试 (tools/desktop-update-e2e): 用这个 job 下载下来的打包产物, 对着本机 mock 的更新服务器走一遍检查、下载、
+ * 安装、重启. 驱动器是 Build job 上传的独立 jar, 用 setup-java 装的 JDK 直接运行, 不需要 Gradle. Linux 的 AppImage 走 zsync, 不在其中.
+ */
+fun JobBuilder<*>.addDesktopUpdateE2e(runner: Runner) {
+    val appDir = when (runner.os) {
+        OS.WINDOWS -> """${expr { github.workspace }}/ci-helper/verify"""
+        OS.MACOS -> """${expr { github.workspace }}/extracted_dmg"""
+        OS.UBUNTU -> return
+    }
+    val runnerDir = """${expr { github.workspace }}/update-e2e-runner"""
+    val workDir = """${expr { github.workspace }}/update-e2e"""
+    usesWithAttempts(
+        name = "Download update E2E runner",
+        action = DownloadArtifact(
+            name = ArtifactNames.updateE2eRunner(runner.os, runner.arch),
+            path = runnerDir,
+        ),
+    )
+    if (runner.os == OS.MACOS) {
+        // 验证脚本用 7z 解 dmg, 解出来的文件没有可执行位, 它只给启动器补了 chmod. 这里要的是和用户装的一样的 bundle
+        // (权限、签名都在), 所以挂载 dmg 后用 ditto 复制. 目录名沿用验证脚本的 extracted_dmg, 先清掉它留下的.
+        // dmg 带许可协议, hdiutil 会把全文打出来并等输入, 从 stdin 给它一个 y, 全文不进日志.
+        run(
+            name = "Extract DMG for the update E2E test",
+            command = shell(
+                $$"""
+                    rm -rf extracted_dmg && mkdir extracted_dmg
+                    MOUNT_POINT="$(mktemp -d)"
+                    echo y | hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT_POINT" "$GITHUB_WORKSPACE"/*.dmg > /dev/null
+                    for app in "$MOUNT_POINT"/*.app; do ditto "$app" "extracted_dmg/$(basename "$app")"; done
+                    hdiutil detach "$MOUNT_POINT"
+                    ls -l extracted_dmg extracted_dmg/*/Contents/MacOS
+                """.trimIndent(),
+            ),
+            shell = Shell.Bash,
+        )
+    }
+    uses(
+        name = "Setup JDK 21 for the update E2E test",
+        action = SetupJava_Untyped(
+            distribution_Untyped = "temurin",
+            javaVersion_Untyped = "21",
+        ),
+    )
+    run(
+        name = "Desktop update E2E test",
+        command = shell("""java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "$runnerDir/desktop-update-e2e.jar" --app "$appDir" --work-dir "$workDir""""),
+        shell = Shell.Bash,
+        timeoutMinutes = 40,
+    )
+    uses(
+        name = "Upload desktop update E2E logs",
+        `if` = "failure()",
+        action = UploadArtifact(
+            name = "update-e2e-${runner.id}",
+            path_Untyped = $$"""
+                update-e2e/**/*.log
+                update-e2e/**/*.json
+                update-e2e/**/*.jsonl
+                update-e2e/**/*.txt
+            """.trimIndent(),
+            ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
+        ),
+    )
 }
 
 fun WorkflowBuilder.addVerifyJob(build: Job<BuildJobOutputs>, runner: Runner, ifExpr: String) {
@@ -806,8 +1069,17 @@ fun WorkflowBuilder.addConsistencyCheckJob(filename: String) {
         run(
             command = """cp "$originalPath" "$backupPath" """,
         )
+        // 脚本依赖偶尔在 Maven Central 解析失败; 失败会在本地仓库留下 "absent" 标记, 重试前需要清掉.
         run(
-            command = ".github/workflows/${__FILE__.name}",
+            command = """
+                for attempt in 1 2 3; do
+                  if .github/workflows/${__FILE__.name}; then exit 0; fi
+                  echo "::warning::Workflow generation failed on attempt ${'$'}attempt, retrying"
+                  rm -rf ~/.m2/repository/io/github/typesafegithub
+                  sleep 30
+                done
+                exit 1
+            """.trimIndent(),
         )
         run(command = "python .github/workflows/check_yaml_equivalence.py $originalPath $backupPath")
     }
@@ -825,11 +1097,11 @@ val commonIgnoredPaths = listOf(
 workflow(
     name = "Build",
     on = listOf(
-        // Including: 
-        // - pushing directly to main
-        // - pushing to a branch that has an associated PR
-        Push(pathsIgnore = commonIgnoredPaths),
+        // 其他分支的提交由 PR 构建. 同一个提交同时触发 push 与 pull_request 会重复运行整个 workflow.
+        Push(branches = listOf("main", "release/**"), pathsIgnore = commonIgnoredPaths),
         PullRequest(pathsIgnore = commonIgnoredPaths),
+        // 没有 PR 的分支需要构建时手动运行.
+        WorkflowDispatch(),
     ),
     sourceFile = __FILE__,
     targetFileName = "build.yml",
@@ -868,6 +1140,10 @@ workflow(
         )
     }
 
+    buildMatrixInstances.forEach { matrix ->
+        addAndroidInstrumentedTestJobs(matrix)
+    }
+
     builds.filter { (matrix, _) ->
         matrix.runner.os == OS.WINDOWS && matrix.uploadDesktopInstallers
     }.forEach { (matrix, build) ->
@@ -890,8 +1166,9 @@ workflow(
                 && matrix.uploadDesktopInstallers
     }.let { it.singleOrNull() ?: error("List contain multiple elements: $it") }
         .let { (_, build) ->
+            // 不在自托管 Mac 上验证: 它与 GithubMacOS15AppleSilicon 系统和架构相同, 验证的是同一个 DMG,
+            // 而这台 Mac 是所有 run 共用的瓶颈.
             listOf(
-                Runner.SelfHostedMacOS15,
                 Runner.GithubMacOS14,
                 Runner.GithubMacOS15AppleSilicon,
             ).forEach { runner ->
@@ -988,7 +1265,6 @@ workflow(
                 "GH_TOKEN" to expr { secrets.GITHUB_TOKEN },
                 "OPENAI_API_KEY" to expr { secrets.OPENAI_API_KEY },
                 "GITHUB_REPOSITORY" to expr { github.repository },
-                "CODEX_MODEL" to "gpt-5.5",
                 "GIT_TAG" to expr { gitTag.tagExpr },
                 "TAG_VERSION" to expr { gitTag.tagVersionExpr },
             ),
@@ -1235,7 +1511,7 @@ class WithMatrix(
                 },
             ),
             continueOnError = true,
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+            `if` = expr { github.hasRepositorySecrets },
         )
     }
 
@@ -1497,7 +1773,7 @@ class WithMatrix(
         return if (matrix.uploadApk) {
             prepareBase64File(
                 name = "Prepare signing key",
-                `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+                `if` = expr { github.hasRepositorySecrets },
                 fileName = "android_signing_key",
                 fileDir = ".",
                 encodedString = expr { secrets.SIGNING_RELEASE_STOREFILE },
@@ -1513,7 +1789,7 @@ class WithMatrix(
     fun JobBuilder<*>.prepareGoogleServicesJson(): CommandStep {
         return prepareBase64File(
             name = "Prepare google-services.json",
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+            `if` = expr { github.hasRepositorySecrets },
             fileName = "google-services.json",
             fileDir = "./app/android",
             encodedString = expr { secrets.GOOGLE_SERVICES_JSON },
@@ -1603,7 +1879,16 @@ class WithMatrix(
         if (matrix.uploadApk) {
             runGradle(
                 name = "Build Android Debug APKs",
-                tasks = arrayOf("assembleDefaultDebug"),
+                tasks = arrayOf("assembleDefaultDebug", "assembleTvDebug"),
+            )
+            runGradle(
+                name = "Test Android TV",
+                tasks = buildList {
+                    for (module in listOf(":app:shared:tv", ":app:shared:ui-foundation-tv", ":app:shared:ui-episode-tv", ":app:shared:ui-subject-tv")) {
+                        add("$module:testAndroidHostTest")
+                        add("--tests 'me.him188.ani.tv.*'")
+                    }
+                }.toTypedArray(),
             )
         }
 
@@ -1614,13 +1899,9 @@ class WithMatrix(
                 matrix.uploadApk
             }
             if (shouldUpload) {
-                usesWithAttempts(
-                    name = "Upload Android Debug APK $arch",
-                    action = UploadArtifact(
-                        name = "ani-android-${arch}-debug",
-                        path_Untyped = "app/android/build/outputs/apk/default/debug/android-default-${arch}-debug.apk",
-                        overwrite = true,
-                    ),
+                uploadFileArtifact(
+                    path = "app/android/build/outputs/apk/default/debug/android-default-${arch}-debug.apk",
+                    artifactName = ArtifactNames.androidApk(arch, "debug"),
                 )
             }
         }
@@ -1628,8 +1909,8 @@ class WithMatrix(
         if (matrix.uploadApk) {
             runGradle(
                 name = "Build Android Release APKs",
-                `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
-                tasks = arrayOf("assembleDefaultRelease"),
+                `if` = expr { github.hasRepositorySecrets },
+                tasks = arrayOf("assembleDefaultRelease", "assembleTvRelease"),
                 env = mapOf(
                     "signing_release_storeFileFromRoot" to expr { prepareSigningKey.outputs["filePath"] },
                     "signing_release_storePassword" to expr { secrets.SIGNING_RELEASE_STOREPASSWORD },
@@ -1646,13 +1927,14 @@ class WithMatrix(
                 matrix.uploadApk
             }
             if (shouldUpload) {
-                usesWithAttempts(
-                    name = "Upload Android Release APK $arch",
-                    action = UploadArtifact(
-                        name = "ani-android-${arch}-release",
-                        path_Untyped = "app/android/build/outputs/apk/default/release/android-default-${arch}-release.apk",
-                        overwrite = true,
-                    ),
+                // 没有签名密钥时 (例如来自 fork 的 PR) 不产生 release APK, 跳过上传.
+                uploadFileArtifact(
+                    path = "app/android/build/outputs/apk/default/release/android-default-${arch}-release.apk",
+                    artifactName = ArtifactNames.androidApk(arch, "release"),
+                )
+                uploadFileArtifact(
+                    path = "app/android/build/outputs/apk/tv/release/android-tv-${arch}-release.apk",
+                    artifactName = ArtifactNames.androidTvApk(arch, "release"),
                 )
             }
         }
@@ -1687,13 +1969,9 @@ class WithMatrix(
                 name = "Build iOS Debug IPA",
                 tasks = arrayOf(":app:ios:buildDebugIpa"),
             )
-            usesWithAttempts(
-                name = "Upload iOS Debug IPA",
-                action = UploadArtifact(
-                    name = "ani-ios-debug",
-                    path_Untyped = "app/ios/build/archives/debug/Animeko.ipa",
-                    overwrite = true,
-                ),
+            uploadFileArtifact(
+                path = "app/ios/build/archives/debug/Animeko.ipa",
+                artifactName = ArtifactNames.iosIpa("debug"),
             )
         }
     }
@@ -1736,70 +2014,146 @@ class WithMatrix(
                 maxAttempts = 3,
                 timeoutMinutes = 180,
             )
+            // 只有构建 iOS framework 的机器配置了应用模块的 native 依赖 (FFmpeg, onnxruntime), 测试可执行文件才能链接.
+            if (matrix.buildIosFramework) {
+                runGradle(
+                    name = "Check (iOS)",
+                    tasks = arrayOf(
+                        ":app:ios:testSentryTerminatePatch",
+                        ":app:shared:application:iosSimulatorArm64Test",
+                    ),
+                    maxAttempts = 2,
+                    timeoutMinutes = 120,
+                )
+            }
         }
     }
 
-    fun JobBuilder<*>.androidConnectedTests() {
-        if (matrix.runAndroidInstrumentedTests && matrix.isUnix) {
-            if (matrix.isUbuntu) {
-                run(
-                    name = "Enable KVM",
-                    command = """
+    fun JobBuilder<*>.androidInstrumentedTest(testJob: AndroidInstrumentedTestJob) {
+        if (matrix.isUbuntu) {
+            run(
+                name = "Enable KVM",
+                command = """
                   echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
                   sudo udevadm control --reload-rules
                   sudo udevadm trigger --name-match=kvm
                 """.trimIndent(),
-                )
-            }
-            runGradle(
-                name = "Build Android Instrumented Tests",
-                tasks = arrayOf(
-                    "compileAndroidDeviceTest",
-                    "\"-Pandroid.min.sdk=30\"",
-                ),
-                maxAttempts = 3,
             )
-            for (arch in listOfNotNull(
-                // test loading anitorrent and other native libraries
-                if (matrix.arch == Arch.AARCH64) AndroidEmulatorRunner.Arch.Arm64V8a else null,
-                if (matrix.arch == Arch.X64) AndroidEmulatorRunner.Arch.X8664 else null,
-            )) {
-                // 30 is min for instrumented test (because we have spaces in func names), 
-                // 35 is our targetSdk
-                for (apiLevel in listOf(30, 36)) {
-                    uses(
-                        name = "Android Instrumented Test (api=$apiLevel, arch=${arch.stringValue})",
-                        action = AndroidEmulatorRunner(
-                            apiLevel = apiLevel.toString(),
-                            arch = arch,
-                            script = buildString {
-                                append("./gradlew connectedDeviceTest \"-Pandroid.min.sdk=30\" ")
-                                append(matrix.gradleArgs)
-                                // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
-                                append(" && killall -INT crashpad_handler || true")
-                            },
-                            emulatorBootTimeout = 1800,
-                        ),
+        }
+        // device test 以 minSdk 30 构建: 测试函数内的局部类会以带空格的测试名命名, DEX 040 (API 30) 起才允许类名含空格.
+        // 先打包 APK, 测试名不能 dex 之类的问题在启动模拟器之前就能暴露.
+        runGradle(
+            name = "Build Android Instrumented Tests",
+            tasks = (testJob.buildTasks("assembleAndroidDeviceTest") + "\"-Pandroid.min.sdk=30\"").toTypedArray(),
+            maxAttempts = 3,
+        )
+
+        // 每种模拟器的测试结果. 一种模拟器上的测试失败不跳过其余模拟器, 最后统一判定.
+        val testFailures = testJob.emulators.mapIndexed { index, emulator ->
+            if (index > 0) {
+                // 上一次的测试结果已经上传, 删掉以免混进下一次的报告.
+                val removeResults = "find . -type d \\( -path '*/build/outputs/androidTest-results' -o -path '*/build/reports/androidTests' \\) -prune -exec rm -rf {} +"
+                if (matrix.selfHosted) {
+                    // 自托管机器的 SDK 由其他构建共用, 保留模拟器与系统镜像.
+                    run(name = "Remove previous test results", command = removeResults)
+                } else {
+                    // GitHub 托管的机器磁盘较小, 装下一个系统镜像前先删掉上一个.
+                    run(
+                        name = "Remove previous emulator and test results",
+                        command = $$"""
+                            sdkmanager --uninstall emulator || true
+                            rm -rf "$ANDROID_HOME/emulator" "$ANDROID_HOME/system-images"
+                            $$removeResults
+                        """.trimIndent(),
                     )
-                    if (!matrix.runner.isSelfHosted && matrix.isUnix) {
-                        // GitHub hosted runners allow only 14GB space, so we have to remove old emulators before installing new ones
-                        run(
-                            name = "Uninstall emulators",
-                            command = "sdkmanager --uninstall \$(sdkmanager --list | grep emulator | awk '{print \$1}')\n",
-                        )
-                        run(
-                            name = "Remove AVD",
-                            command = $$"""
-                                echo "Removing Emulator binaries..."
-                                rm -rf $ANDROID_HOME/emulator
-                                echo "Removing System Images..."
-                                rm -rf $ANDROID_HOME/system-images
-                            """.trimIndent(),
-                        )
-                    }
                 }
             }
+            runOnEmulator(emulator)
         }
+        run(
+            name = "Check Android Instrumented Test results",
+            `if` = expr { testFailures.joinToString(" || ") { "($it)" } },
+            command = "echo '::error::Android instrumented tests failed. See the \"Android Instrumented Test\" steps.'; exit 1",
+        )
+    }
+
+    /**
+     * 在 [emulator] 上运行测试并上传报告. 测试失败不让步骤失败.
+     *
+     * @return 测试失败的条件表达式, 不带 `${{ }}`.
+     */
+    private fun JobBuilder<*>.runOnEmulator(emulator: AndroidEmulator): String {
+        if (!matrix.selfHosted) {
+            // GitHub 托管的机器只有 16 GB 内存, 模拟器要和 Gradle 一起跑.
+            // 先停掉打包阶段留下的 Gradle/Kotlin daemon, 并记录内存与磁盘余量便于排查.
+            // 自托管机器上可能同时有其他 job 在用 daemon, 不能停.
+            run(
+                name = "Stop Gradle daemons before emulator (${emulator.label})",
+                command = """
+                    ./gradlew --stop
+                    pkill -f KotlinCompileDaemon || true
+                    free -h
+                    df -h .
+                """.trimIndent(),
+            )
+        }
+
+        // 脚本第一条命令留下的标记. 没有标记说明失败发生在下载 SDK 或启动模拟器阶段 (例如开机后 adb 短暂 offline),
+        // 与测试无关, 可以重试. 测试开始后的失败只有 ART 崩溃会在 run-android-device-tests.sh 里重跑, 这里不重试, 以免掩盖不稳定的测试.
+        val startedMarker = "android-instrumented-test-started-${emulator.artifactSuffix}"
+        val emulatorRunner = AndroidEmulatorRunner(
+            apiLevel = emulator.apiLevel.toString(),
+            arch = emulator.arch,
+            target = emulator.target,
+            profile = emulator.profile,
+            ramSize = "2048M",
+            script = buildString {
+                append("touch $startedMarker; ")
+                append("./ci-helper/prepare-android-emulator.sh; ")
+                append("./ci-helper/run-android-device-tests.sh logcat-${emulator.artifactSuffix}.txt ")
+                append(emulator.gradleTasks("connectedDeviceTest").joinToString(" "))
+                // --continue: 一个模块失败也把其余模块的测试跑完, 最后统一报告.
+                append(" --continue \"-Pandroid.min.sdk=30\" ")
+                // 测试 APK 已在上一步打包好, 这里 Gradle 只负责安装和运行, 用小堆给模拟器留内存.
+                append(matrix.gradleArgsWith(gradleHeap = "3g", kotlinCompilerHeap = "2g"))
+                // 结束 crashpad_handler 后要以测试脚本的退出码退出, 否则测试失败不会让步骤失败.
+                // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
+                append("; status=\$?; ")
+                if (matrix.selfHosted) {
+                    // 自托管机器上还有其他程序, 只结束模拟器自己的 crashpad_handler.
+                    append("pkill -INT -f \"\$ANDROID_HOME/emulator/crashpad_handler\" || true; exit \$status")
+                } else {
+                    append("killall -INT crashpad_handler || true; exit \$status")
+                }
+            },
+            emulatorBootTimeout = 1800,
+        )
+        // 正常约 20 分钟. 模拟器卡死时尽早失败, 不占用 runner 到 job 的默认超时.
+        val emulatorTimeoutMinutes = 60
+        val firstAttempt = uses(
+            name = "Android Instrumented Test (${emulator.label})",
+            action = emulatorRunner,
+            continueOnError = true,
+            timeoutMinutes = emulatorTimeoutMinutes,
+        )
+        val retry = uses(
+            name = "Android Instrumented Test (${emulator.label}) (Retry after emulator failure)",
+            `if` = expr { firstAttempt.outcome.eq(AbstractResult.Status.Failure) and "hashFiles('$startedMarker') == ''" },
+            action = emulatorRunner,
+            continueOnError = true,
+            timeoutMinutes = emulatorTimeoutMinutes,
+        )
+        uses(
+            name = "Upload Android Instrumented Test Reports (${emulator.label})",
+            `if` = "always()",
+            action = UploadArtifact(
+                name = "android-device-test-reports-${emulator.artifactSuffix}",
+                path_Untyped = "**/build/reports/androidTests/**\n**/build/outputs/androidTest-results/**\nlogcat-${emulator.artifactSuffix}.txt",
+                ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Ignore,
+                overwrite = true,
+            ),
+        )
+        return firstAttempt.outcome.eq(AbstractResult.Status.Failure) and retry.outcome.neq(AbstractResult.Status.Success)
     }
 
     class PackageDesktopAndUploadOutputs {
@@ -1845,40 +2199,16 @@ class WithMatrix(
         uploadComposeLogs()
 
         return PackageDesktopAndUploadOutputs().also {
-            if (matrix.isMacOS && matrix.isAArch64) {
-                usesWithAttempts(
-                    name = "Upload macOS AArch64 dmg",
-                    action = UploadArtifact(
-                        name = ArtifactNames.macosDmg(matrix.arch),
-                        path_Untyped = "app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg",
-                        overwrite = true,
-                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
-                    ),
+            if (matrix.isMacOSAArch64) {
+                uploadFileArtifact(
+                    path = "app/desktop/build/compose/binaries/main-release/dmg/Ani-*.dmg",
+                    artifactName = ArtifactNames.macosDmg(matrix.arch),
+                    ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
                 )
             }
 
-            if (matrix.isMacOS && matrix.isX64) {
-                usesWithAttempts(
-                    name = "Upload macOS x86_64 ZIP",
-                    action = UploadArtifact(
-                        name = ArtifactNames.macosPortable(matrix.arch),
-                        path_Untyped = "app/desktop/build/compose/binaries/main-release/app/Ani.app",
-                        overwrite = true,
-                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
-                    ),
-                )
-            }
-
-            if (matrix.isWindows) {
-                usesWithAttempts(
-                    name = "Upload Windows packages",
-                    action = UploadArtifact(
-                        name = ArtifactNames.windowsPortable(matrix.arch),
-                        path_Untyped = "app/desktop/build/compose/binaries/main-release/app",
-                        overwrite = true,
-                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
-                    ),
-                )
+            if (matrix.isWindows || matrix.isMacOS) {
+                uploadDesktopPackage()
             }
 
             if (matrix.isUbuntu && matrix.isX64) {
@@ -1938,20 +2268,53 @@ class WithMatrix(
                 // Expected output paths: Animeko-x86_64.AppImage and Animeko-x86_64.AppImage.zsync.
                 // If changed, change also uploadDesktopDistributions in :ci-helper
 
-                usesWithAttempts(
-                    name = "Upload Linux packages",
-                    action = UploadArtifact(
-                        name = ArtifactNames.linuxAppImage(matrix.arch),
-                        path_Untyped = $$"""
-                            Animeko-x86_64.AppImage
-                            Animeko-x86_64.AppImage.zsync
-                            """.trimIndent(),
-                        overwrite = true,
-                        ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
-                    ),
+                // zsync 元数据指向 Release 的资产, 对 CI 构建没有用, 只上传 AppImage.
+                uploadFileArtifact(
+                    path = "Animeko-x86_64.AppImage",
+                    artifactName = ArtifactNames.linuxAppImage(matrix.arch),
+                    ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
                 )
             }
         }
+    }
+
+    /**
+     * 上传 zip 发布包和增量更新清单. 开发者设置的「安装 CI 构建」以已安装的版本为基础增量拼包, 只下载有变化的文件;
+     * 不压缩上传, 客户端才能按清单里的偏移用 Range 读取.
+     */
+    fun JobBuilder<*>.uploadDesktopPackage() {
+        val packageName = ArtifactNames.desktopPackage(matrix.os, matrix.arch)
+        runGradle(
+            name = "Prepare desktop package",
+            tasks = arrayOf(":ci-helper:prepareDevBuildDesktopPackage"),
+            env = mapOf("DEV_BUILD_PACKAGE_NAME" to packageName),
+        )
+        for (fileName in listOf(packageName, ArtifactNames.desktopPackageManifest(matrix.os, matrix.arch))) {
+            uploadFileArtifact(
+                path = "ci-helper/build/dev-build-package/$fileName",
+                ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
+            )
+        }
+    }
+
+    /**
+     * 自动更新端到端测试的驱动器 (tools/desktop-update-e2e) 打成独立 jar 上传, Verify job 用它对下载的产物跑测试, 见 addDesktopUpdateE2e.
+     */
+    fun JobBuilder<*>.uploadUpdateE2eRunner() {
+        if (!matrix.uploadDesktopInstallers || !(matrix.isWindows || matrix.isMacOS)) return
+        runGradle(
+            name = "Build update E2E runner",
+            tasks = arrayOf(":tools:desktop-update-e2e:standaloneJar"),
+        )
+        usesWithAttempts(
+            name = "Upload update E2E runner",
+            action = UploadArtifact(
+                name = ArtifactNames.updateE2eRunner(matrix.os, matrix.arch),
+                path_Untyped = "tools/desktop-update-e2e/build/libs/desktop-update-e2e.jar",
+                overwrite = true,
+                ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
+            ),
+        )
     }
 
     fun JobBuilder<*>.uploadComposeLogs() {
@@ -2006,6 +2369,11 @@ class WithMatrix(
                 runGradle(
                     name = "Upload Android APK for Release",
                     tasks = arrayOf(":ci-helper:uploadAndroidApk", "\"--no-configuration-cache\""),
+                    env = ciHelperSecrets,
+                )
+                runGradle(
+                    name = "Upload Android TV APK for Release",
+                    tasks = arrayOf(":ci-helper:uploadAndroidTvApk", "\"--no-configuration-cache\""),
                     env = ciHelperSecrets,
                 )
             }
@@ -2072,13 +2440,9 @@ class WithMatrix(
 
         fun JobBuilder<*>.uploadIosIpa() {
             if (matrix.uploadIpa) {
-                usesWithAttempts(
-                    name = "Upload iOS Release IPA to GitHub Assets",
-                    action = UploadArtifact(
-                        name = "ani-ios-release",
-                        path_Untyped = "app/ios/build/archives/release/Animeko.ipa",
-                        overwrite = true,
-                    ),
+                uploadFileArtifact(
+                    path = "app/ios/build/archives/release/Animeko.ipa",
+                    artifactName = ArtifactNames.iosIpa("release"),
                 )
                 runGradle(
                     name = "Upload iOS Release IPA to Bucket",
@@ -2153,6 +2517,15 @@ val GitHubContext.isAnimekoRepository
 val GitHubContext.isPullRequest
     get() = """$event_name == 'pull_request'"""
 
+val GitHubContext.isPush
+    get() = """$event_name == 'push'"""
+
+/**
+ * 能读取仓库 secrets 的运行: 本仓库的 push 与手动运行, 以及来自本仓库分支的 PR. fork 的 PR 读不到 secrets.
+ */
+val GitHubContext.hasRepositorySecrets
+    get() = isAnimekoRepository and (!isPullRequest or "github.event.pull_request.head.repo.full_name == $repository")
+
 val MatrixInstance.isX64 get() = arch == Arch.X64
 val MatrixInstance.isAArch64 get() = arch == Arch.AARCH64
 
@@ -2179,6 +2552,49 @@ fun String.neq(other: String) = "($this != '$other')"
 fun String.neq(other: Boolean) = "($this != $other)"
 
 operator fun String.not() = "!($this)"
+
+/**
+ * 以 `archive: false` 上传单个文件: 下载得到的就是文件本身, 不再包一层 zip. 这时 artifact 名就是文件名.
+ *
+ * [artifactName] 与 [path] 的文件名不同时, 先把文件复制成 [artifactName]. [path] 可以是 glob, 但只能匹配一个文件;
+ * 没有匹配时按 [ifNoFilesFound] 处理.
+ *
+ * `name` 只在 `overwrite` 删除上一次尝试留下的同名 artifact 时用到, 要设成文件名才能删对 (actions/upload-artifact#769).
+ */
+fun JobBuilder<*>.uploadFileArtifact(
+    path: String,
+    artifactName: String = path.substringAfterLast('/'),
+    ifNoFilesFound: UploadArtifact.BehaviorIfNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Warn,
+) {
+    val uploadPath = if (artifactName == path.substringAfterLast('/')) {
+        path
+    } else {
+        val stagedPath = "file-artifacts/$artifactName"
+        run(
+            name = "Prepare $artifactName",
+            shell = Shell.Bash,
+            command = shell(
+                $$"""
+                    mkdir -p file-artifacts
+                    rm -f "$$stagedPath"
+                    if ls $$path > /dev/null 2>&1; then cp $$path "$$stagedPath"; fi
+                """.trimIndent(),
+            ),
+        )
+        stagedPath
+    }
+    usesWithAttempts(
+        name = "Upload $artifactName",
+        action = UploadArtifact(
+            name = artifactName,
+            path_Untyped = uploadPath,
+            overwrite = true,
+            ifNoFilesFound = ifNoFilesFound,
+            _customInputs = mapOf("archive" to "false"),
+            _customVersion = "v7",
+        ),
+    )
+}
 
 /**
  * Unroll attempts at compile time.

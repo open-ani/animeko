@@ -1,0 +1,5231 @@
+{
+  "formatVersion": 1,
+  "provenance": {
+    "capturedAt": "2026-09-05T20:01:40.354804Z",
+    "applicationVersion": "4.9.0-dev",
+    "acquisition": "desktop-playback",
+    "searchCacheCleared": true,
+    "rawSha256": "63dd36522e6ae1a552dcc0d442510aff584bcbafe6fb8beeeb0b501c93ac0174",
+    "rawBytes": 7173598,
+    "rawFrameCount": 68
+  },
+  "request": {
+    "subjectId": "638497",
+    "episodeId": "1704756",
+    "subjectNameCN": "相反的你和我 第二季",
+    "subjectNames": [
+      "相反的你和我 第二季",
+      "正反対な君と僕 第2期",
+      "Seihantai na Kimi to Boku 2nd Season"
+    ],
+    "episodeSort": {
+      "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+      "number": 13.0
+    },
+    "episodeName": "平安夜",
+    "episodeEp": {
+      "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+      "number": 1.0
+    }
+  },
+  "preferredSourceId": null,
+  "durationMillis": 45006,
+  "sources": [
+    {
+      "id": "local-file-system",
+      "name": "LocalTorrent",
+      "kind": "LocalCache"
+    },
+    {
+      "id": "local-file-system",
+      "name": "LocalWebM3u",
+      "kind": "LocalCache"
+    },
+    {
+      "id": "mikan-mikanime-tv",
+      "name": "蜜柑计划 (CN)",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "dmhy",
+      "name": "動漫花園",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "e0fa1500-ba3e-4767-b108-cc6f241b5559",
+      "name": "nyaa.land",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "2355e16c-8737-42ea-aa58-140251822359",
+      "name": "AnimeGarden",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "name": "稀饭动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "c03f162b-a5c0-442c-8834-060ae87669a4",
+      "name": "girigiri愛動漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "name": "嘀嗒影视",
+      "kind": "WEB"
+    },
+    {
+      "id": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "name": "叽哔动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "name": "E-ACG",
+      "kind": "WEB"
+    },
+    {
+      "id": "474f8053-6293-4472-9816-86e802db7776",
+      "name": "森之屋动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "ca0aa9a3-ab41-414e-a4d6-b15411551cf3",
+      "name": "风车影视",
+      "kind": "WEB"
+    },
+    {
+      "id": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "name": "去看吧",
+      "kind": "WEB"
+    },
+    {
+      "id": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "name": "海星动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "name": "樱花动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "bf067292-2d24-4dca-aac4-d53808700b03",
+      "name": "嘀哩嘀哩",
+      "kind": "WEB"
+    },
+    {
+      "id": "5d8ce041-086c-4075-8a6c-e9957ec1241c",
+      "name": "新优酷",
+      "kind": "WEB"
+    },
+    {
+      "id": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "name": "番茄动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "c7c80227-2175-4985-ac2c-5343dd0fa489",
+      "name": "hanime1_1080p",
+      "kind": "WEB"
+    },
+    {
+      "id": "0147498a-84da-4be7-b780-378b03234070",
+      "name": "hanime1_720p",
+      "kind": "WEB"
+    },
+    {
+      "id": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "name": "wedm",
+      "kind": "WEB"
+    },
+    {
+      "id": "257d123e-9441-424b-924e-abf3e4cef14b",
+      "name": "影视森林",
+      "kind": "WEB"
+    },
+    {
+      "id": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "name": "热播之家",
+      "kind": "WEB"
+    }
+  ],
+  "initial": {
+    "context": {
+      "subjectFinished": false,
+      "sourcePrecedence": [
+        "local-file-system",
+        "local-file-system",
+        "mikan-mikanime-tv",
+        "dmhy",
+        "e0fa1500-ba3e-4767-b108-cc6f241b5559",
+        "2355e16c-8737-42ea-aa58-140251822359",
+        "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+        "c03f162b-a5c0-442c-8834-060ae87669a4",
+        "9bbbef46-7372-4199-853c-95b348113cb6",
+        "104d2594-4202-4bcc-b4da-9b03d99558e2",
+        "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+        "474f8053-6293-4472-9816-86e802db7776",
+        "ca0aa9a3-ab41-414e-a4d6-b15411551cf3",
+        "419b2d59-be72-436c-9c28-6960bcb9809a",
+        "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+        "8d036176-2614-4f2c-9e12-2f56af69619f",
+        "bf067292-2d24-4dca-aac4-d53808700b03",
+        "5d8ce041-086c-4075-8a6c-e9957ec1241c",
+        "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+        "c7c80227-2175-4985-ac2c-5343dd0fa489",
+        "0147498a-84da-4be7-b780-378b03234070",
+        "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+        "257d123e-9441-424b-924e-abf3e4cef14b",
+        "7642d509-20b1-4dd3-b40a-87a344cb12f9"
+      ],
+      "subtitlePreferences": {
+        "EMBEDDED": "NORMAL",
+        "CLOSED": "HIDE",
+        "EXTERNAL_PROVIDED": "NORMAL",
+        "EXTERNAL_DISCOVER": "HIDE",
+        "CLOSED_OR_EXTERNAL_DISCOVER": "HIDE"
+      },
+      "series": {
+        "seasonSort": 2,
+        "sequelNames": [],
+        "otherNames": [
+          "正反対な君と僕",
+          "相反的你和我",
+          "正相反的你与我",
+          "Seihantai na Kimi to Boku",
+          "You and I Are Polar Opposites"
+        ]
+      },
+      "subject": {
+        "id": 638497,
+        "name": "正反対な君と僕 第2期",
+        "nameCn": "相反的你和我 第二季",
+        "aliases": [
+          "Seihantai na Kimi to Boku 2nd Season"
+        ]
+      },
+      "episode": {
+        "episodeId": 1704756,
+        "type": "MainStory",
+        "name": "クリスマスイヴ",
+        "nameCn": "平安夜",
+        "airDate": 132777733,
+        "comment": 0,
+        "desc": "",
+        "sort": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        },
+        "ep": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "sourceTiers": null,
+      "channelTiers": null
+    },
+    "settings": {
+      "showDisabled": true,
+      "hideSingleEpisodeForCompleted": true,
+      "preferSeasons": true,
+      "autoEnableLastSelected": true,
+      "preferKind": "WEB",
+      "fastSelectWebKind": true,
+      "fastSelectWebLowTierToleranceDuration": "PT5S",
+      "enableImageCaptchaAutoSolve": true,
+      "webSearchCacheTtl": "PT6H"
+    },
+    "preference": {
+      "alliance": null,
+      "alliancePatterns": null,
+      "resolution": null,
+      "fallbackResolutions": [
+        "2160P",
+        "1440P",
+        "1080P",
+        "720P"
+      ],
+      "subtitleLanguageId": null,
+      "fallbackSubtitleLanguageIds": [
+        "CHS",
+        "CHT"
+      ],
+      "showWithoutSubtitle": false,
+      "mediaSourceId": null,
+      "fallbackMediaSourceIds": null
+    },
+    "defaultPreference": {
+      "alliance": null,
+      "alliancePatterns": null,
+      "resolution": null,
+      "fallbackResolutions": [
+        "2160P",
+        "1440P",
+        "1080P",
+        "720P"
+      ],
+      "subtitleLanguageId": null,
+      "fallbackSubtitleLanguageIds": [
+        "CHS",
+        "CHT"
+      ],
+      "showWithoutSubtitle": false,
+      "mediaSourceId": null,
+      "fallbackMediaSourceIds": null
+    }
+  },
+  "media": [
+    {
+      "mediaId": "media-d3d286a6ccb34c8ce3ff9b65",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-d3d286a6ccb34c8ce3ff9b65",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d3d286a6ccb34c8ce3ff9b65"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清G",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-3d57391fc0679874c8706586",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-3d57391fc0679874c8706586",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-3d57391fc0679874c8706586"
+      },
+      "originalTitle": "相反的你和我 1",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "1",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清B",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-26155ec86026a2d93be7a202",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-26155ec86026a2d93be7a202",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-26155ec86026a2d93be7a202"
+      },
+      "originalTitle": "相反的你和我 1",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "1",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清K",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-6d3e7db33e96fea2ed87e3c4",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-6d3e7db33e96fea2ed87e3c4",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6d3e7db33e96fea2ed87e3c4"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清G",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-af0123068590b62fbac3c96e",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-af0123068590b62fbac3c96e",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-af0123068590b62fbac3c96e"
+      },
+      "originalTitle": "相反的你和我第二季 1",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "1",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清B",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-637e249974fa9ef954044f32",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-637e249974fa9ef954044f32",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-637e249974fa9ef954044f32"
+      },
+      "originalTitle": "相反的你和我第二季 1",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "1",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清K",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-bf3fb782d56d90cdd55a2d10",
+      "mediaSourceId": "474f8053-6293-4472-9816-86e802db7776",
+      "originalUrl": "https://fixture.invalid/media-bf3fb782d56d90cdd55a2d10",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-bf3fb782d56d90cdd55a2d10"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "HD",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-79293b5746f62321119ed0a5",
+      "mediaSourceId": "474f8053-6293-4472-9816-86e802db7776",
+      "originalUrl": "https://fixture.invalid/media-79293b5746f62321119ed0a5",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-79293b5746f62321119ed0a5"
+      },
+      "originalTitle": "相反的你和我 第13集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第13集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "HD",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-46c968f66db44eb53957bfbc",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-46c968f66db44eb53957bfbc",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-46c968f66db44eb53957bfbc"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅰ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-fd6d3611c7a39395123e454a",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-fd6d3611c7a39395123e454a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-fd6d3611c7a39395123e454a"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅱ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-74dd8426c75c1f1dfed4aa35",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-74dd8426c75c1f1dfed4aa35",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-74dd8426c75c1f1dfed4aa35"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅲ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-7cfa2d5a2f1c7cb5ac3449ae",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-7cfa2d5a2f1c7cb5ac3449ae",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-7cfa2d5a2f1c7cb5ac3449ae"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅳ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-85e25c1ef76565e2585efc25",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-85e25c1ef76565e2585efc25",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-85e25c1ef76565e2585efc25"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅴ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-4be5d0361f42fbbd4afe65ad",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-4be5d0361f42fbbd4afe65ad",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-4be5d0361f42fbbd4afe65ad"
+      },
+      "originalTitle": "[ANi] You and I Are Polar Opposites S02 / 相反的你和我 第二季 - 13 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]",
+      "publishedTime": 1783240260000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "ANi",
+        "size": 352636096,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-875e147328592ef9f2188d6d",
+      "mediaSourceId": "bf067292-2d24-4dca-aac4-d53808700b03",
+      "originalUrl": "https://fixture.invalid/media-875e147328592ef9f2188d6d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-875e147328592ef9f2188d6d"
+      },
+      "originalTitle": "相反的你和我 第13集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第13集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-520de810a9877070c643a4ef",
+      "mediaSourceId": "bf067292-2d24-4dca-aac4-d53808700b03",
+      "originalUrl": "https://fixture.invalid/media-520de810a9877070c643a4ef",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-520de810a9877070c643a4ef"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-5d0f0f1ab41e83079f1e692c",
+      "mediaSourceId": "bf067292-2d24-4dca-aac4-d53808700b03",
+      "originalUrl": "https://fixture.invalid/media-5d0f0f1ab41e83079f1e692c",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-5d0f0f1ab41e83079f1e692c"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-4f3d6c5a9ebb2af044f6ef96",
+      "mediaSourceId": "c03f162b-a5c0-442c-8834-060ae87669a4",
+      "originalUrl": "https://fixture.invalid/media-4f3d6c5a9ebb2af044f6ef96",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-4f3d6c5a9ebb2af044f6ef96"
+      },
+      "originalTitle": "相反的你和我 01",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "01",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "简中",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-9a97eee231040dc6180ea71b",
+      "mediaSourceId": "c03f162b-a5c0-442c-8834-060ae87669a4",
+      "originalUrl": "https://fixture.invalid/media-9a97eee231040dc6180ea71b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-9a97eee231040dc6180ea71b"
+      },
+      "originalTitle": "相反的你和我 第二季 01",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "01",
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "繁中",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-9f872818211c29dfe930c8b7",
+      "mediaSourceId": "c03f162b-a5c0-442c-8834-060ae87669a4",
+      "originalUrl": "https://fixture.invalid/media-9f872818211c29dfe930c8b7",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-9f872818211c29dfe930c8b7"
+      },
+      "originalTitle": "相反的你和我 第二季 01",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "01",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "简中",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-df001d59687f371f14f62d21",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-df001d59687f371f14f62d21",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-df001d59687f371f14f62d21"
+      },
+      "originalTitle": "[Nix-Raws] 相反的你和我 第二季 / 正反対な君と仆 第2期 / Seihantai na Kimi to Boku S01E13 [CATCHPLAY WEB-DL 1080p AVC AAC][简繁内封]",
+      "publishedTime": 1783588500000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT",
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "Nix-Raws",
+        "size": 751199232,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-6668a39d92444339acde0bd9",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-6668a39d92444339acde0bd9",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6668a39d92444339acde0bd9"
+      },
+      "originalTitle": "[Nix-Raws] 相反的你和我 第二季 / 正反対な君と仆 第2期 / Seihantai na Kimi to Boku S01E13 [CR WEB-DL 1080p AVC AAC][简繁内封]",
+      "publishedTime": 1783588500000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "Nix-Raws",
+        "size": 1503238144,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-ac3c68c38cf9c5dead9b22c6",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-ac3c68c38cf9c5dead9b22c6",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ac3c68c38cf9c5dead9b22c6"
+      },
+      "originalTitle": "[黒ネズミたち] 相反的你和我 第二季 / Seihantai na Kimi to Boku 2nd Season - 13 (ABEMA 1920x1080 AVC AAC MKV)",
+      "publishedTime": 1783467054000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 797400064,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-daf44ae2eee93114b18ea8d9",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-daf44ae2eee93114b18ea8d9",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-daf44ae2eee93114b18ea8d9"
+      },
+      "originalTitle": "[黒ネズミたち] 相反的你和我 第二季 / Seihantai na Kimi to Boku 2nd Season - 13 (CR 1920x1080 AVC AAC MKV)",
+      "publishedTime": 1783207860000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 880457728,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-b999d6cb3f4ab61e807fa3f6",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-b999d6cb3f4ab61e807fa3f6",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-b999d6cb3f4ab61e807fa3f6"
+      },
+      "originalTitle": "[黒ネズミたち] 相反的你和我 第二季 / Seihantai na Kimi to Boku 2nd Season - 13 (Baha 1920x1080 AVC AAC MP4)",
+      "publishedTime": 1783207856000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 369485824,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-a227f1232cebf9bc36164687",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-a227f1232cebf9bc36164687",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-a227f1232cebf9bc36164687"
+      },
+      "originalTitle": "[黒ネズミたち] 正相反的你与我 / Seihantai na Kimi to Boku 2nd Season - 13 (B-Global 1920x1080 HEVC AAC MKV)",
+      "publishedTime": 1783207838000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 297690112,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-02551248e00135b7eb864d39",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-02551248e00135b7eb864d39",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-02551248e00135b7eb864d39"
+      },
+      "originalTitle": "[ANi] You and I Are Polar Opposites S02 / 相反的你和我 第二季 - 13 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]",
+      "publishedTime": 1783207860000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "ANi",
+        "size": 352635904,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-7e3c42ce7e947e2bd9cf96d3",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-7e3c42ce7e947e2bd9cf96d3",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-7e3c42ce7e947e2bd9cf96d3"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路3",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-deb20bf8c9a9d91b71d48438",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-deb20bf8c9a9d91b71d48438",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-deb20bf8c9a9d91b71d48438"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD动漫",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-d20e223695c51f7303647644",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-d20e223695c51f7303647644",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d20e223695c51f7303647644"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-9bc3a88a1da10d603072bc89",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-9bc3a88a1da10d603072bc89",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-9bc3a88a1da10d603072bc89"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "看吧⑤",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-c57be52675c4cfe8c1743354",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-c57be52675c4cfe8c1743354",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-c57be52675c4cfe8c1743354"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "海外专线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-5c418972a93a2a1c4c640dbf",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-5c418972a93a2a1c4c640dbf",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-5c418972a93a2a1c4c640dbf"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路3",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-54ac5b71899677460ad9249b",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-54ac5b71899677460ad9249b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-54ac5b71899677460ad9249b"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD动漫",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-ffddffd01c82066360edd339",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-ffddffd01c82066360edd339",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ffddffd01c82066360edd339"
+      },
+      "originalTitle": "相反的你和我第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-113e67b164c2cfe4cce95c90",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-113e67b164c2cfe4cce95c90",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-113e67b164c2cfe4cce95c90"
+      },
+      "originalTitle": "相反的你和我第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "海外专线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-3291a59f752a31c17e521986",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-3291a59f752a31c17e521986",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-3291a59f752a31c17e521986"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "高清在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-fb0aa980c1793983c0d12188",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-fb0aa980c1793983c0d12188",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-fb0aa980c1793983c0d12188"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光G",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-11df0a44835a7d7058067b60",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-11df0a44835a7d7058067b60",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-11df0a44835a7d7058067b60"
+      },
+      "originalTitle": "相反的你和我 1",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "1",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光B",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-cea59e29f15412e8a07d2894",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-cea59e29f15412e8a07d2894",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-cea59e29f15412e8a07d2894"
+      },
+      "originalTitle": "相反的你和我 1",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "1",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光K",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-b9a28c12986b25fb93213607",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-b9a28c12986b25fb93213607",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-b9a28c12986b25fb93213607"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光G",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-e15d3b295efcb4c6a8c1bf6c",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-e15d3b295efcb4c6a8c1bf6c",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-e15d3b295efcb4c6a8c1bf6c"
+      },
+      "originalTitle": "相反的你和我第二季 1",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "1",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光B",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-ba112141dd8f068b968f1657",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-ba112141dd8f068b968f1657",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ba112141dd8f068b968f1657"
+      },
+      "originalTitle": "相反的你和我第二季 1",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "1",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光K",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-a75a82df674fd8329cbde1e1",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-a75a82df674fd8329cbde1e1",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-a75a82df674fd8329cbde1e1"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔3线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-7d81f3b52c69535588cf9011",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-7d81f3b52c69535588cf9011",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-7d81f3b52c69535588cf9011"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔2线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-8de677834d9ecec7277d9362",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-8de677834d9ecec7277d9362",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-8de677834d9ecec7277d9362"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔1线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-b07bf1893058df6771d80cf6",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-b07bf1893058df6771d80cf6",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-b07bf1893058df6771d80cf6"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔4线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-e667e95bb71067bd66db8cdf",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-e667e95bb71067bd66db8cdf",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-e667e95bb71067bd66db8cdf"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "无尽③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-49209d4f22d46ec32e7db679",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-49209d4f22d46ec32e7db679",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-49209d4f22d46ec32e7db679"
+      },
+      "originalTitle": "相反的你和我 第13集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第13集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "无尽③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-14d4d06d6f2411ab0e8a2a7e",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-14d4d06d6f2411ab0e8a2a7e",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-14d4d06d6f2411ab0e8a2a7e"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔3线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-48e828df52a76cf9101effb4",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-48e828df52a76cf9101effb4",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-48e828df52a76cf9101effb4"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔1线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-597bf92c727ed7d89241f245",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-597bf92c727ed7d89241f245",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-597bf92c727ed7d89241f245"
+      },
+      "originalTitle": "相反的你和我 第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "无尽③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2057a276e8b3fd66729cd5f2",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-2057a276e8b3fd66729cd5f2",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2057a276e8b3fd66729cd5f2"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔4线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-52d50a214792c1f264c2c39f",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-52d50a214792c1f264c2c39f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-52d50a214792c1f264c2c39f"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "新番主线①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-389958fc96e8cd050684a156",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-389958fc96e8cd050684a156",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-389958fc96e8cd050684a156"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "新番主线②",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-aaf441966e2289a3a4bfda1a",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-aaf441966e2289a3a4bfda1a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-aaf441966e2289a3a4bfda1a"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "备用①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-d8fb4554e5213cdc5c54f2f2",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-d8fb4554e5213cdc5c54f2f2",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d8fb4554e5213cdc5c54f2f2"
+      },
+      "originalTitle": "相反的你和我 第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "新番主线①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2d4463ff2fac9940b734a02f",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-2d4463ff2fac9940b734a02f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2d4463ff2fac9940b734a02f"
+      },
+      "originalTitle": "相反的你和我 第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "新番主线②",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-ab24064e0c09149ffe5feb22",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-ab24064e0c09149ffe5feb22",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ab24064e0c09149ffe5feb22"
+      },
+      "originalTitle": "相反的你和我 第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "备用①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-0c377aabd286e389b2a15f50",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-0c377aabd286e389b2a15f50",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-0c377aabd286e389b2a15f50"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路3",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-92cac519be2ca02b2f40c054",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-92cac519be2ca02b2f40c054",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-92cac519be2ca02b2f40c054"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-d7d362f50f9439bcb1c96635",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-d7d362f50f9439bcb1c96635",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d7d362f50f9439bcb1c96635"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-4b2e899d13036b061b01c3ab",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-4b2e899d13036b061b01c3ab",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-4b2e899d13036b061b01c3ab"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "看吧⑤",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-cd7134dd50108afd08dd0bf0",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-cd7134dd50108afd08dd0bf0",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-cd7134dd50108afd08dd0bf0"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "海外专线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-10912b181f521178834115b5",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-10912b181f521178834115b5",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-10912b181f521178834115b5"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路3",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-ad21bcd1e7905a7075cb5cb4",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-ad21bcd1e7905a7075cb5cb4",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ad21bcd1e7905a7075cb5cb4"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-6cdfb6b37f5935b1a4e8d256",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-6cdfb6b37f5935b1a4e8d256",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6cdfb6b37f5935b1a4e8d256"
+      },
+      "originalTitle": "相反的你和我第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2d4ced25d3a5fefbbfdeec8b",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-2d4ced25d3a5fefbbfdeec8b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2d4ced25d3a5fefbbfdeec8b"
+      },
+      "originalTitle": "相反的你和我第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "海外专线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-40a0f23c6c04efc9c690fc0a",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-40a0f23c6c04efc9c690fc0a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-40a0f23c6c04efc9c690fc0a"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "高清在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2f2378cee94c5e256637fc43",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-2f2378cee94c5e256637fc43",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2f2378cee94c5e256637fc43"
+      },
+      "originalTitle": "[喵萌奶茶屋&LoliHouse] 相反的你和我 / Seihantai na Kimi to Boku - 13 [WebRip 1080p HEVC-10bit AAC][简繁日内封字幕]",
+      "publishedTime": 1784367229806,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "喵萌奶茶屋&LoliHouse",
+        "size": 387669024,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-c14500450072c35874b1c894",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-c14500450072c35874b1c894",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-c14500450072c35874b1c894"
+      },
+      "originalTitle": "【喵萌奶茶屋】★07月新番★[相反的你和我 / Seihantai na Kimi to Boku][13][1080p][繁日双语]",
+      "publishedTime": 1784363328115,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "喵萌奶茶屋",
+        "size": 313513728,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-293ffee8a89b2838a0dc1501",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-293ffee8a89b2838a0dc1501",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-293ffee8a89b2838a0dc1501"
+      },
+      "originalTitle": "【喵萌奶茶屋】★07月新番★[相反的你和我 / Seihantai na Kimi to Boku][13][1080p][简日双语]",
+      "publishedTime": 1784211299015,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "喵萌奶茶屋",
+        "size": 313650048,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-011c984f5500dce0a496d773",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-011c984f5500dce0a496d773",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-011c984f5500dce0a496d773"
+      },
+      "originalTitle": "[Nix-Raws] 相反的你和我 第二季 / 正反対な君と仆 第2期 / Seihantai na Kimi to Boku S01E13 [CATCHPLAY WEB-DL 1080p AVC AAC][简繁内封]",
+      "publishedTime": 1783620928063,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT",
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "Nix-Raws",
+        "size": 751199872,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-f09ad85ec9aa1b850f37205e",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-f09ad85ec9aa1b850f37205e",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-f09ad85ec9aa1b850f37205e"
+      },
+      "originalTitle": "[Nix-Raws] 相反的你和我 第二季 / 正反対な君と仆 第2期 / Seihantai na Kimi to Boku S01E13 [CR WEB-DL 1080p AVC AAC][简繁内封]",
+      "publishedTime": 1783620923990,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "Nix-Raws",
+        "size": 1503238528,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-4a9f7ad0a90cf91ac96e71ac",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-4a9f7ad0a90cf91ac96e71ac",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-4a9f7ad0a90cf91ac96e71ac"
+      },
+      "originalTitle": "[樱桃花字幕组]正相反的你和我 Seihantai na Kimi to Boku - 13 [1080p][简日内嵌]",
+      "publishedTime": 1783565337977,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "樱桃花字幕组",
+        "size": 290245824,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-f7359cdf2e261f5efe8f2491",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-f7359cdf2e261f5efe8f2491",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-f7359cdf2e261f5efe8f2491"
+      },
+      "originalTitle": "[黒ネズミたち] 相反的你和我 第二季 / Seihantai na Kimi to Boku 2nd Season - 13 (ABEMA 1920x1080 AVC AAC MKV)",
+      "publishedTime": 1783499453621,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 760427328,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-057d2670b24f8f83ef9cdd57",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-057d2670b24f8f83ef9cdd57",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-057d2670b24f8f83ef9cdd57"
+      },
+      "originalTitle": "[SweetSub][正相反的你与我][Seihantai na Kimi to Boku][13][WebRip][1080P][HEVC 10bit][简繁日内封]（检索用：相反的你和我）",
+      "publishedTime": 1783437600000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "SweetSub",
+        "size": 370042464,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-83c6f11c73ca47503d619bb8",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-83c6f11c73ca47503d619bb8",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-83c6f11c73ca47503d619bb8"
+      },
+      "originalTitle": "[SweetSub][正相反的你与我][Seihantai na Kimi to Boku][13][WebRip][1080P][AVC 8bit][简日双语]（检索用：相反的你和我）",
+      "publishedTime": 1783343640000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "SweetSub",
+        "size": 353265248,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-f3054097f4894bdce12a11db",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-f3054097f4894bdce12a11db",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-f3054097f4894bdce12a11db"
+      },
+      "originalTitle": "[SweetSub][正相反的你与我][Seihantai na Kimi to Boku][13][WebRip][1080P][AVC 8bit][繁日双语]（检索用：相反的你和我）",
+      "publishedTime": 1783343460000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "SweetSub",
+        "size": 353265248,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-fc126607998cf6b5516dbcf2",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-fc126607998cf6b5516dbcf2",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-fc126607998cf6b5516dbcf2"
+      },
+      "originalTitle": "【极影字幕·毁片党】完全相反的你和我 第13集 GB_CN AV1_opus 1080p",
+      "publishedTime": 1783256912640,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "极影字幕·毁片党",
+        "size": 246551680,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-94ac27b978c83e2846e957ca",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-94ac27b978c83e2846e957ca",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-94ac27b978c83e2846e957ca"
+      },
+      "originalTitle": "[ANi] You and I Are Polar Opposites S02 / 相反的你和我 第二季 - 13 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]",
+      "publishedTime": 1783240265481,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "ANi",
+        "size": 352636096,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-5846941f4684a9d38af6343f",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-5846941f4684a9d38af6343f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-5846941f4684a9d38af6343f"
+      },
+      "originalTitle": "[黒ネズミたち] 相反的你和我 第二季 / Seihantai na Kimi to Boku 2nd Season - 13 (CR 1920x1080 AVC AAC MKV)",
+      "publishedTime": 1783240260537,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 839699648,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-a9fe61ece681aa29ef377871",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-a9fe61ece681aa29ef377871",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-a9fe61ece681aa29ef377871"
+      },
+      "originalTitle": "[黒ネズミたち] 相反的你和我 第二季 / Seihantai na Kimi to Boku 2nd Season - 13 (Baha 1920x1080 AVC AAC MP4)",
+      "publishedTime": 1783240255320,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 352426400,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-40d1f6a393e4109cf8608ed1",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-40d1f6a393e4109cf8608ed1",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-40d1f6a393e4109cf8608ed1"
+      },
+      "originalTitle": "[黒ネズミたち] 正相反的你与我 / Seihantai na Kimi to Boku 2nd Season - 13 (B-Global 1920x1080 HEVC AAC MKV)",
+      "publishedTime": 1783240238966,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 283849536,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-519d4eb995973d0b94302ba1",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-519d4eb995973d0b94302ba1",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-519d4eb995973d0b94302ba1"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "新浪资源2",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-4674baaac2cad1047e90df0d",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-4674baaac2cad1047e90df0d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-4674baaac2cad1047e90df0d"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "番茄2线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-84ab90bafb0f20a74c17e08f",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-84ab90bafb0f20a74c17e08f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-84ab90bafb0f20a74c17e08f"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "番茄1线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-73050b9c5c07f05408b4798a",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-73050b9c5c07f05408b4798a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-73050b9c5c07f05408b4798a"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-18317ee96f7d171d558de6aa",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-18317ee96f7d171d558de6aa",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-18317ee96f7d171d558de6aa"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "速播资源1",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-9b473a7f947a54f808736800",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-9b473a7f947a54f808736800",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-9b473a7f947a54f808736800"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "无尽③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-cbccef31aed4d54a48234b14",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-cbccef31aed4d54a48234b14",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-cbccef31aed4d54a48234b14"
+      },
+      "originalTitle": "相反的你和我 第13集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第13集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "无尽③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 13.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-98ae971b9de010b709fdcfbf",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-98ae971b9de010b709fdcfbf",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-98ae971b9de010b709fdcfbf"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "新浪资源2",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-afcd825bd71a3f6f5b98453e",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-afcd825bd71a3f6f5b98453e",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-afcd825bd71a3f6f5b98453e"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "番茄1线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-102c044170639c1655b58465",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-102c044170639c1655b58465",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-102c044170639c1655b58465"
+      },
+      "originalTitle": "相反的你和我 第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "无尽③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-dcd55ed8d7a0f506e45388ec",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-dcd55ed8d7a0f506e45388ec",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-dcd55ed8d7a0f506e45388ec"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "速播资源1",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-3107ff0aec801b8370c9325a",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-3107ff0aec801b8370c9325a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-3107ff0aec801b8370c9325a"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路1",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-559a909f1276e452b56ff58f",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-559a909f1276e452b56ff58f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-559a909f1276e452b56ff58f"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路2",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-6e7095e67aca7ec745d0073e",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-6e7095e67aca7ec745d0073e",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6e7095e67aca7ec745d0073e"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路3",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2fcde6f76a651a109c8420eb",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-2fcde6f76a651a109c8420eb",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2fcde6f76a651a109c8420eb"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路4",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-cb79982df8492083c040ec8a",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-cb79982df8492083c040ec8a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-cb79982df8492083c040ec8a"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "5线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-d2bb16c2d9d5e11a97cf8cc2",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-d2bb16c2d9d5e11a97cf8cc2",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d2bb16c2d9d5e11a97cf8cc2"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路6",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-00034e6c8968630fbe168f47",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-00034e6c8968630fbe168f47",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-00034e6c8968630fbe168f47"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路8",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-252886e92802c05e9e58d637",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-252886e92802c05e9e58d637",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-252886e92802c05e9e58d637"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路9",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2805e05b89ed561a6782a41e",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-2805e05b89ed561a6782a41e",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2805e05b89ed561a6782a41e"
+      },
+      "originalTitle": "相反的你和我 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路10",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-49e4209accecaa107c296572",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-49e4209accecaa107c296572",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-49e4209accecaa107c296572"
+      },
+      "originalTitle": "相反的你和我 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路12",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-00f80430253c80c7f47c3786",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-00f80430253c80c7f47c3786",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-00f80430253c80c7f47c3786"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路1",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-0ff74c29ca434bce03c7be8a",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-0ff74c29ca434bce03c7be8a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-0ff74c29ca434bce03c7be8a"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路4",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-c1d8a61d177c513801c1af22",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-c1d8a61d177c513801c1af22",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-c1d8a61d177c513801c1af22"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "5线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-ef9e109abe80065755ffd7a4",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-ef9e109abe80065755ffd7a4",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ef9e109abe80065755ffd7a4"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路8",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-670d4303d8f005cb91ff59af",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-670d4303d8f005cb91ff59af",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-670d4303d8f005cb91ff59af"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路9",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-938a05387c51a83bb29c0455",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-938a05387c51a83bb29c0455",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-938a05387c51a83bb29c0455"
+      },
+      "originalTitle": "相反的你和我第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路10",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-1417b1603da0411a4e5e36df",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-1417b1603da0411a4e5e36df",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-1417b1603da0411a4e5e36df"
+      },
+      "originalTitle": "相反的你和我 第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路2",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-e08ff93b23a8f2ee28548f5b",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-e08ff93b23a8f2ee28548f5b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-e08ff93b23a8f2ee28548f5b"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路3",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-7c0491d38ad6dbe3aeafb123",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-7c0491d38ad6dbe3aeafb123",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-7c0491d38ad6dbe3aeafb123"
+      },
+      "originalTitle": "相反的你和我 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "相反的你和我 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路12",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    }
+  ],
+  "events": [
+    {
+      "elapsedMillis": 27,
+      "sources": [
+        {
+          "source": 0,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        },
+        {
+          "source": 1,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 2,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 4,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 6,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 7,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 8,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 9,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 10,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 11,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 12,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 13,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 14,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 15,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 16,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 17,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 18,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 19,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 20,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 21,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 22,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 23,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 27,
+      "sources": [
+        {
+          "source": 1,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 32,
+      "sources": [],
+      "selectedMediaId": null,
+      "context": {
+        "subjectFinished": false,
+        "sourcePrecedence": [
+          "local-file-system",
+          "local-file-system",
+          "mikan-mikanime-tv",
+          "dmhy",
+          "e0fa1500-ba3e-4767-b108-cc6f241b5559",
+          "2355e16c-8737-42ea-aa58-140251822359",
+          "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+          "c03f162b-a5c0-442c-8834-060ae87669a4",
+          "9bbbef46-7372-4199-853c-95b348113cb6",
+          "104d2594-4202-4bcc-b4da-9b03d99558e2",
+          "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+          "474f8053-6293-4472-9816-86e802db7776",
+          "ca0aa9a3-ab41-414e-a4d6-b15411551cf3",
+          "419b2d59-be72-436c-9c28-6960bcb9809a",
+          "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+          "8d036176-2614-4f2c-9e12-2f56af69619f",
+          "bf067292-2d24-4dca-aac4-d53808700b03",
+          "5d8ce041-086c-4075-8a6c-e9957ec1241c",
+          "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+          "c7c80227-2175-4985-ac2c-5343dd0fa489",
+          "0147498a-84da-4be7-b780-378b03234070",
+          "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+          "257d123e-9441-424b-924e-abf3e4cef14b",
+          "7642d509-20b1-4dd3-b40a-87a344cb12f9"
+        ],
+        "subtitlePreferences": {
+          "EMBEDDED": "NORMAL",
+          "CLOSED": "HIDE",
+          "EXTERNAL_PROVIDED": "NORMAL",
+          "EXTERNAL_DISCOVER": "HIDE",
+          "CLOSED_OR_EXTERNAL_DISCOVER": "HIDE"
+        },
+        "series": {
+          "seasonSort": 2,
+          "sequelNames": [],
+          "otherNames": [
+            "正反対な君と僕",
+            "相反的你和我",
+            "正相反的你与我",
+            "Seihantai na Kimi to Boku",
+            "You and I Are Polar Opposites"
+          ]
+        },
+        "subject": {
+          "id": 638497,
+          "name": "正反対な君と僕 第2期",
+          "nameCn": "相反的你和我 第二季",
+          "aliases": [
+            "Seihantai na Kimi to Boku 2nd Season"
+          ]
+        },
+        "episode": {
+          "episodeId": 1704756,
+          "type": "MainStory",
+          "name": "クリスマスイヴ",
+          "nameCn": "平安夜",
+          "airDate": 132777733,
+          "comment": 0,
+          "desc": "",
+          "sort": {
+            "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+            "number": 13.0
+          },
+          "ep": {
+            "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+            "number": 1.0
+          }
+        },
+        "sourceTiers": {
+          "local-file-system": 2,
+          "mikan-mikanime-tv": 2,
+          "dmhy": 2,
+          "e0fa1500-ba3e-4767-b108-cc6f241b5559": 2,
+          "2355e16c-8737-42ea-aa58-140251822359": 2,
+          "02953f1e-fbfd-438b-b3bf-c4dad6a346d4": 0,
+          "c03f162b-a5c0-442c-8834-060ae87669a4": 0,
+          "9bbbef46-7372-4199-853c-95b348113cb6": 1,
+          "104d2594-4202-4bcc-b4da-9b03d99558e2": 3,
+          "2406da2f-695c-4cea-869b-fd7ca8aa3a9f": 3,
+          "474f8053-6293-4472-9816-86e802db7776": 3,
+          "ca0aa9a3-ab41-414e-a4d6-b15411551cf3": 3,
+          "419b2d59-be72-436c-9c28-6960bcb9809a": 3,
+          "1b96801a-2fa9-4ac8-be97-5258da3f44d7": 4,
+          "8d036176-2614-4f2c-9e12-2f56af69619f": 4,
+          "bf067292-2d24-4dca-aac4-d53808700b03": 4,
+          "5d8ce041-086c-4075-8a6c-e9957ec1241c": 4,
+          "577f82d8-a01c-45a3-862a-9de2643e2b8f": 4,
+          "c7c80227-2175-4985-ac2c-5343dd0fa489": 4,
+          "0147498a-84da-4be7-b780-378b03234070": 4,
+          "ff888bd2-fc1c-4aa3-be29-d302d84b1588": 4,
+          "257d123e-9441-424b-924e-abf3e4cef14b": 4,
+          "7642d509-20b1-4dd3-b40a-87a344cb12f9": 4
+        },
+        "channelTiers": {
+          "02953f1e-fbfd-438b-b3bf-c4dad6a346d4": {
+            "新番主线②": 0,
+            "新番主线①": 0,
+            "旧番主线①": 1,
+            "备用①": 6
+          },
+          "c03f162b-a5c0-442c-8834-060ae87669a4": {
+            "简中": 1,
+            "繁中": 2,
+            "杜比": 6
+          },
+          "9bbbef46-7372-4199-853c-95b348113cb6": {
+            "超清A": 0,
+            "超清C": 0,
+            "超清G": 5,
+            "超清E": 6,
+            "超清K": 6
+          },
+          "104d2594-4202-4bcc-b4da-9b03d99558e2": {
+            "叽哔1线": 5,
+            "叽哔3线": 5,
+            "叽哔4线": 5,
+            "叽哔2线": 6,
+            "无尽③": 6
+          },
+          "2406da2f-695c-4cea-869b-fd7ca8aa3a9f": {
+            "172": 6,
+            "EDD动漫": 1,
+            "线路13": 1,
+            "高清在线": 1,
+            "极速在线": 4,
+            "海外专线": 4,
+            "线路3(若黑屏用手机)": 5,
+            "线路4": 5,
+            "看吧③": 6,
+            "看吧④": 6,
+            "看吧⑤": 6,
+            "看吧备用": 6
+          },
+          "474f8053-6293-4472-9816-86e802db7776": {
+            "HD": 5
+          },
+          "ca0aa9a3-ab41-414e-a4d6-b15411551cf3": {
+            "动漫大全": 1,
+            "备用②": 5,
+            "备用③": 5,
+            "线路③": 5,
+            "B站": 6,
+            "优酷": 6,
+            "备用①": 6,
+            "奇异": 6,
+            "线路①": 6,
+            "线路②": 6,
+            "腾讯": 6,
+            "芒果": 6
+          },
+          "419b2d59-be72-436c-9c28-6960bcb9809a": {
+            "172": 6,
+            "线路13": 1,
+            "线路3": 1,
+            "高清在线": 1,
+            "EDD": 2,
+            "线路4": 3,
+            "极速在线": 5,
+            "海外专线": 5,
+            "看吧③": 6,
+            "看吧④": 6,
+            "看吧⑤": 6,
+            "看吧备用": 6
+          },
+          "1b96801a-2fa9-4ac8-be97-5258da3f44d7": {
+            "播放Ⅱ": 1,
+            "播放Ⅲ": 1,
+            "播放Ⅳ": 5,
+            "播放Ⅵ": 5,
+            "播放Ⅰ": 6,
+            "播放Ⅴ": 6
+          },
+          "8d036176-2614-4f2c-9e12-2f56af69619f": {
+            "线路10": 1,
+            "线路6": 1,
+            "5线": 2,
+            "线路1": 2,
+            "线路12": 5,
+            "线路2": 5,
+            "线路3": 5,
+            "线路8": 5,
+            "主线": 6,
+            "线路4": 6,
+            "线路9": 6
+          },
+          "bf067292-2d24-4dca-aac4-d53808700b03": {
+            "在线": 6
+          },
+          "5d8ce041-086c-4075-8a6c-e9957ec1241c": {
+            "MD1": 1,
+            "MD4": 1,
+            "线路3": 2,
+            "线路1": 5,
+            "MD2": 6,
+            "MD5": 6,
+            "线路2": 6
+          },
+          "577f82d8-a01c-45a3-862a-9de2643e2b8f": {
+            "新浪资源2": 5,
+            "番茄1线": 5,
+            "速播资源1": 5,
+            "无尽③": 6,
+            "极速在线": 6,
+            "番茄2线": 6
+          },
+          "ff888bd2-fc1c-4aa3-be29-d302d84b1588": {
+            "第一线路": 1,
+            "云播①号": 6,
+            "备用线路": 6,
+            "最新可用线路": 6,
+            "非凡资源M3U": 6
+          },
+          "7642d509-20b1-4dd3-b40a-87a344cb12f9": {
+            "4K蓝光": 6,
+            "蓝光A": 6,
+            "蓝光C": 6,
+            "蓝光E": 6,
+            "蓝光G": 6,
+            "蓝光K": 6
+          }
+        }
+      }
+    },
+    {
+      "elapsedMillis": 172,
+      "sources": [
+        {
+          "source": 20,
+          "state": "CaptchaRequired",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 172,
+      "sources": [
+        {
+          "source": 19,
+          "state": "CaptchaRequired",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 302,
+      "sources": [
+        {
+          "source": 22,
+          "state": "CaptchaRequired",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 554,
+      "sources": [
+        {
+          "source": 4,
+          "state": "Failed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 589,
+      "sources": [
+        {
+          "source": 12,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 682,
+      "sources": [
+        {
+          "source": 21,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 760,
+      "sources": [
+        {
+          "source": 8,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 796,
+      "sources": [
+        {
+          "source": 8,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 798,
+      "sources": [
+        {
+          "source": 8,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 946,
+      "sources": [
+        {
+          "source": 11,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            6
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 946,
+      "sources": [
+        {
+          "source": 11,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            6,
+            7
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 951,
+      "sources": [
+        {
+          "source": 14,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            8
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 951,
+      "sources": [
+        {
+          "source": 14,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            8,
+            9,
+            10,
+            11,
+            12
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 957,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            13
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1153,
+      "sources": [
+        {
+          "source": 16,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            14
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1154,
+      "sources": [
+        {
+          "source": 16,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            14,
+            15,
+            16
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1226,
+      "sources": [
+        {
+          "source": 7,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            17
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1227,
+      "sources": [
+        {
+          "source": 7,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            17,
+            18,
+            19
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1247,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            20
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1249,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            20,
+            21
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1252,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            20,
+            21,
+            22
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1254,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            20,
+            21,
+            22,
+            23,
+            24,
+            25
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1312,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1518,
+      "sources": [
+        {
+          "source": 10,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            27
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1520,
+      "sources": [
+        {
+          "source": 10,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            27,
+            28,
+            29,
+            30,
+            31,
+            32
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1523,
+      "sources": [
+        {
+          "source": 10,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1526,
+      "sources": [
+        {
+          "source": 10,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            27,
+            28,
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35,
+            36
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1663,
+      "sources": [
+        {
+          "source": 23,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            37,
+            38,
+            39,
+            40,
+            41,
+            42
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1779,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            13
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 2013,
+      "sources": [
+        {
+          "source": 9,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            43,
+            44,
+            45,
+            46,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 2117,
+      "sources": [
+        {
+          "source": 6,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            53
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 2120,
+      "sources": [
+        {
+          "source": 6,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            53,
+            54,
+            55,
+            56,
+            57,
+            58
+          ]
+        }
+      ],
+      "selectedMediaId": "media-d8fb4554e5213cdc5c54f2f2"
+    },
+    {
+      "elapsedMillis": 2177,
+      "sources": [
+        {
+          "source": 13,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            59
+          ]
+        }
+      ],
+      "selectedMediaId": "media-d8fb4554e5213cdc5c54f2f2"
+    },
+    {
+      "elapsedMillis": 2180,
+      "sources": [
+        {
+          "source": 13,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            66,
+            67,
+            68
+          ]
+        }
+      ],
+      "selectedMediaId": "media-d8fb4554e5213cdc5c54f2f2"
+    },
+    {
+      "elapsedMillis": 2718,
+      "sources": [
+        {
+          "source": 2,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            69
+          ]
+        }
+      ],
+      "selectedMediaId": "media-d8fb4554e5213cdc5c54f2f2"
+    },
+    {
+      "elapsedMillis": 2721,
+      "sources": [
+        {
+          "source": 2,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            69,
+            70,
+            71,
+            72,
+            73,
+            74,
+            75,
+            76,
+            77,
+            78,
+            79,
+            80,
+            81,
+            82,
+            83
+          ]
+        }
+      ],
+      "selectedMediaId": "media-d8fb4554e5213cdc5c54f2f2"
+    },
+    {
+      "elapsedMillis": 2734,
+      "sources": [
+        {
+          "source": 18,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            84,
+            85,
+            86,
+            87,
+            88,
+            89,
+            90,
+            91,
+            92,
+            93,
+            94
+          ]
+        }
+      ],
+      "selectedMediaId": "media-d8fb4554e5213cdc5c54f2f2"
+    },
+    {
+      "elapsedMillis": 5298,
+      "sources": [
+        {
+          "source": 15,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            95,
+            96,
+            97,
+            98,
+            99,
+            100,
+            101,
+            102,
+            103,
+            104,
+            105,
+            106,
+            107,
+            108,
+            109,
+            110,
+            111,
+            112,
+            113
+          ]
+        }
+      ],
+      "selectedMediaId": "media-d8fb4554e5213cdc5c54f2f2"
+    },
+    {
+      "elapsedMillis": 5385,
+      "sources": [
+        {
+          "source": 17,
+          "state": "RateLimited",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-d8fb4554e5213cdc5c54f2f2"
+    },
+    {
+      "elapsedMillis": 35356,
+      "sources": [
+        {
+          "source": 17,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-d8fb4554e5213cdc5c54f2f2"
+    },
+    {
+      "elapsedMillis": 41519,
+      "sources": [
+        {
+          "source": 17,
+          "state": "RateLimited",
+          "generation": 1,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-d8fb4554e5213cdc5c54f2f2"
+    }
+  ]
+}

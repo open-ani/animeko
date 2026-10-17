@@ -29,6 +29,7 @@ import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
@@ -93,6 +94,7 @@ interface SettingsRepository {
     val analyticsSettings: Settings<AnalyticsSettings>
     val debugSettings: Settings<DebugSettings>
     val watchTogetherSettings: Settings<WatchTogetherSettings>
+    val notificationSettings: Settings<NotificationSettings>
 }
 
 @Stable
@@ -275,6 +277,12 @@ class PreferencesRepositoryImpl(
         "watchTogetherSettings",
         WatchTogetherSettings.serializer(),
         default = { WatchTogetherSettings.Default },
+    )
+
+    override val notificationSettings: Settings<NotificationSettings> = SerializablePreference(
+        "notificationSettings",
+        NotificationSettings.serializer(),
+        default = { NotificationSettings.Default },
     )
 
     private companion object {

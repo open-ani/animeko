@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.exploration.search
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -39,6 +40,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.data.models.preference.NsfwMode
+import me.him188.ani.app.data.models.schedule.AnimeSeason
 import me.him188.ani.app.data.models.subject.CanonicalTagKind
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.lang.Lang
@@ -50,10 +53,12 @@ import me.him188.ani.app.ui.lang.exploration_search_filter_emotion
 import me.him188.ani.app.ui.lang.exploration_search_filter_genre
 import me.him188.ani.app.ui.lang.exploration_search_filter_rating
 import me.him188.ani.app.ui.lang.exploration_search_filter_region
+import me.him188.ani.app.ui.lang.exploration_search_filter_season_all
 import me.him188.ani.app.ui.lang.exploration_search_filter_series
 import me.him188.ani.app.ui.lang.exploration_search_filter_setting
 import me.him188.ani.app.ui.lang.exploration_search_filter_source
 import me.him188.ani.app.ui.lang.exploration_search_filter_technology
+import me.him188.ani.app.ui.lang.exploration_search_filter_year_all
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.stringResource
 import kotlin.random.Random
@@ -65,6 +70,12 @@ import kotlin.random.Random
 data class SearchFilterState(
     val chips: List<SearchFilterChipState>,
 ) {
+    /**
+     * 筛选栏展示的标签分类, 不含自定义标签.
+     */
+    val tagKinds: List<CanonicalTagKind>
+        get() = chips.mapNotNull { it.kind }
+
     companion object {
         val DEFAULT_TAG_KINDS = listOf(
             // order matters
@@ -78,6 +89,17 @@ data class SearchFilterState(
             CanonicalTagKind.Rating,
             CanonicalTagKind.Category,
         )
+
+        /**
+         * 按 NSFW 设置决定筛选栏展示的标签分类. [NsfwMode.HIDE] 下不展示分级 (R18).
+         */
+        fun tagKinds(nsfwMode: NsfwMode): List<CanonicalTagKind> {
+            return if (nsfwMode == NsfwMode.HIDE) {
+                DEFAULT_TAG_KINDS - CanonicalTagKind.Rating
+            } else {
+                DEFAULT_TAG_KINDS
+            }
+        }
     }
 }
 
@@ -97,8 +119,13 @@ fun SearchFilterChipsRow(
     onClickItemText: (SearchFilterChipState, value: String) -> Unit,
     onCheckedChange: (SearchFilterChipState, value: String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * 渲染在标签 chips 之前的自定义内容 (如年份/季度筛选), 与标签 chips 共处同一 FlowRow.
+     */
+    leadingContent: @Composable FlowRowScope.() -> Unit = {},
 ) {
     FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        leadingContent()
         for (chipState in state.chips) {
             SearchFilterChip(
                 chipState,
@@ -172,6 +199,116 @@ fun SearchFilterChip(
             }
         }
     }
+}
+
+private data class DropdownChipOption(
+    val label: String,
+    val onClick: () -> Unit,
+)
+
+/**
+ * 单选下拉筛选 chip 的共享骨架: InputChip + DropdownMenu.
+ *
+ * [label] 显示在 chip 上; 下拉菜单逐项渲染 [options].
+ */
+@Composable
+private fun SingleSelectFilterChip(
+    selected: Boolean,
+    enabled: Boolean,
+    label: String,
+    options: List<DropdownChipOption>,
+    modifier: Modifier = Modifier,
+) {
+    var showDropdown by rememberSaveable { mutableStateOf(false) }
+
+    Box(modifier) {
+        InputChip(
+            selected = selected,
+            onClick = { showDropdown = true },
+            enabled = enabled,
+            label = {
+                Text(
+                    label,
+                    Modifier.widthIn(max = 120.dp),
+                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
+                    maxLines = 1,
+                )
+            },
+            trailingIcon = {
+                Icon(
+                    Icons.Rounded.ArrowDropDown, null,
+                    Modifier.size(InputChipDefaults.IconSize),
+                )
+            },
+        )
+
+        DropdownMenu(expanded = showDropdown, onDismissRequest = { showDropdown = false }) {
+            for (option in options) {
+                DropdownMenuItem(
+                    text = { Text(option.label) },
+                    onClick = {
+                        option.onClick()
+                        showDropdown = false
+                    },
+                    contentPadding = PaddingValues(start = 16.dp, end = 12.dp),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 番剧索引的年份筛选 chip. [selectedYear] 为 null 表示"全部年份".
+ */
+@Composable
+fun YearFilterChip(
+    years: List<Int>,
+    selectedYear: Int?,
+    onSelect: (Int?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val allYearsText = stringResource(Lang.exploration_search_filter_year_all)
+    SingleSelectFilterChip(
+        selected = selectedYear != null,
+        enabled = true,
+        label = selectedYear?.toString() ?: allYearsText,
+        options = buildList {
+            add(DropdownChipOption(allYearsText) { onSelect(null) })
+            for (year in years) {
+                add(DropdownChipOption(year.toString()) { onSelect(year) })
+            }
+        },
+        modifier = modifier,
+    )
+}
+
+/**
+ * 番剧索引的季度筛选 chip. 季度从属于年份: [enabled] 为 false 时 (未选年份) 禁用.
+ *
+ * [selectedSeason] 为 null 表示"全部季度"; 选项按 [AnimeSeason] 显示为 Q1..Q4
+ * (即冬/春/夏/秋档).
+ */
+@Composable
+fun SeasonFilterChip(
+    selectedSeason: AnimeSeason?,
+    onSelect: (AnimeSeason?) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val allSeasonsText = stringResource(Lang.exploration_search_filter_season_all)
+    SingleSelectFilterChip(
+        selected = selectedSeason != null,
+        enabled = enabled,
+        label = selectedSeason?.let { "Q${it.quarterNumber}" } ?: allSeasonsText,
+        options = buildList {
+            add(DropdownChipOption(allSeasonsText) { onSelect(null) })
+            for (season in AnimeSeason.entries) {
+                add(DropdownChipOption("Q${season.quarterNumber}") { onSelect(season) })
+            }
+        },
+        modifier = modifier,
+    )
 }
 
 private fun renderChipLabel(

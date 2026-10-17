@@ -16,7 +16,11 @@
 
 package me.him188.ani.client.models
 
+import me.him188.ani.client.models.AniCommentVoteValue
 import me.him188.ani.client.models.AniEpisodeCommentAuthor
+import me.him188.ani.client.models.AniEpisodeCommentReaction
+import me.him188.ani.client.models.AniPersonCommentReply
+import me.him188.ani.client.models.AniPersonCommentSource
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -26,24 +30,45 @@ import kotlinx.serialization.encoding.*
  *
  *
  * @param id
- * @param content
- * @param createdAt
+ * @param sourceCommentId
+ * @param contentBbcode
+ * @param createdAtMillis
  * @param replyCount
+ * @param briefReplies
+ * @param reactions
+ * @param canReply
+ * @param source
+ * @param likeCount
  * @param author
+ * @param selfVote
  */
 @Serializable
 
 data class AniPersonComment (
 
-    @SerialName(value = "id") @Required val id: kotlin.Long,
+    @SerialName(value = "id") @Required val id: kotlin.String,
 
-    @SerialName(value = "content") @Required val content: kotlin.String,
+    @SerialName(value = "sourceCommentId") @Required val sourceCommentId: kotlin.String,
 
-    @SerialName(value = "createdAt") @Required val createdAt: kotlin.String,
+    @SerialName(value = "contentBbcode") @Required val contentBbcode: kotlin.String,
+
+    @SerialName(value = "createdAtMillis") @Required val createdAtMillis: kotlin.Long,
 
     @SerialName(value = "replyCount") @Required val replyCount: kotlin.Int,
 
-    @SerialName(value = "author") val author: AniEpisodeCommentAuthor? = null
+    @SerialName(value = "briefReplies") @Required val briefReplies: kotlin.collections.List<AniPersonCommentReply>,
+
+    @SerialName(value = "reactions") @Required val reactions: kotlin.collections.List<AniEpisodeCommentReaction>,
+
+    @SerialName(value = "canReply") @Required val canReply: kotlin.Boolean,
+
+    @SerialName(value = "source") @Required val source: AniPersonCommentSource,
+
+    @SerialName(value = "likeCount") @Required val likeCount: kotlin.Int,
+
+    @SerialName(value = "author") val author: AniEpisodeCommentAuthor? = null,
+
+    @SerialName(value = "selfVote") val selfVote: AniCommentVoteValue? = null
 
 ) {
 

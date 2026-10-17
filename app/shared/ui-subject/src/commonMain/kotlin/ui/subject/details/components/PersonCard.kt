@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.subject.details.components
 
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,37 +30,26 @@ import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
-import me.him188.ani.app.ui.foundation.ifThen
 
 /** 人物卡行: 方圆角头像 + 名字 + `职位/角色 (· CV)`. 用于角色/制作人员的"查看全部"列表. */
 @Composable
-fun PersonCard(
-    info: RelatedPersonInfo,
-    modifier: Modifier = Modifier,
-    onClickImage: (() -> Unit)? = null,
-) {
+fun PersonCard(info: RelatedPersonInfo, modifier: Modifier = Modifier) {
     PersonCard(
         avatarUrl = info.personInfo.imageMedium,
         name = info.personInfo.displayName,
         relation = info.position.nameCn ?: "",
         modifier = modifier,
-        onClickImage = onClickImage,
     )
 }
 
 @Composable
-fun PersonCard(
-    info: RelatedCharacterInfo,
-    modifier: Modifier = Modifier,
-    onClickImage: (() -> Unit)? = null,
-) {
+fun PersonCard(info: RelatedCharacterInfo, modifier: Modifier = Modifier) {
     PersonCard(
         avatarUrl = info.character.imageMedium,
         name = info.character.displayName,
         relation = info.role.nameCn,
         modifier = modifier,
         actorName = remember(info) { getFirstName(info.character.actors) },
-        onClickImage = onClickImage,
     )
 }
 
@@ -78,19 +66,13 @@ fun PersonCard(
     relation: String,
     modifier: Modifier = Modifier,
     actorName: String? = null,
-    onClickImage: (() -> Unit)? = null,
 ) {
     Row(modifier) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                Modifier
-                    .clip(MaterialTheme.shapes.small)
-                    .ifThen(onClickImage != null) { clickable(onClick = checkNotNull(onClickImage)) }
-                    .size(48.dp),
-            ) {
+            Box(Modifier.clip(MaterialTheme.shapes.small).size(48.dp)) {
                 AvatarImage(avatarUrl, Modifier.matchParentSize(), alignment = Alignment.TopCenter)
             }
 

@@ -44,6 +44,7 @@ import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_schedule_episode
 import me.him188.ani.app.ui.lang.exploration_schedule_episode_ep_and_sort
+import me.him188.ani.app.ui.lang.exploration_schedule_time_unknown
 import me.him188.ani.app.ui.lang.exploration_schedule_view_details
 import me.him188.ani.datasources.api.EpisodeSort
 import org.jetbrains.compose.resources.stringResource
@@ -179,12 +180,15 @@ object ScheduleItemDefaults {
         )
     }
 
+    /**
+     * @param time 放送时刻, `null` 表示时间未定, 显示 [Lang.exploration_schedule_time_unknown].
+     */
     @Composable
     fun Time(
-        time: LocalTime,
+        time: LocalTime?,
         modifier: Modifier = Modifier
     ) {
-        val text = renderTime(null, time)
+        val text = renderTime(null, time, timeUnknownText = stringResource(Lang.exploration_schedule_time_unknown))
         Text(
             text,
             modifier,
@@ -201,12 +205,24 @@ object ScheduleItemDefaults {
         minute()
     }
 
+    /**
+     * 渲染已知的放送时刻, 例如 "12:00"; [futureStartDate] 不为 `null` 时在上一行加上日期, 例如 "1/2\n12:00".
+     */
     fun renderTime(
         futureStartDate: LocalDate?,
         time: LocalTime,
-    ): String {
-        val timeString = timeFormatter.format(time)
+    ): String = withFutureStartDate(futureStartDate, timeFormatter.format(time))
 
+    /**
+     * @param time 放送时刻, `null` 表示时间未定, 渲染为 [timeUnknownText] (由 composable 传入 [Lang.exploration_schedule_time_unknown]).
+     */
+    fun renderTime(
+        futureStartDate: LocalDate?,
+        time: LocalTime?,
+        timeUnknownText: String,
+    ): String = withFutureStartDate(futureStartDate, if (time == null) timeUnknownText else timeFormatter.format(time))
+
+    private fun withFutureStartDate(futureStartDate: LocalDate?, timeString: String): String {
         return if (futureStartDate != null) {
             "${futureStartDate.month.number}/${futureStartDate.day}\n${timeString}"
         } else {

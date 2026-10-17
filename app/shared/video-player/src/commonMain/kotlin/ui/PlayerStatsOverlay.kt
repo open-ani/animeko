@@ -63,6 +63,7 @@ expect fun rememberPlayerStatsState(player: MediampPlayer): State<PlayerStatsSna
 fun PlayerStatsOverlay(
     stats: PlayerStatsSnapshot?,
     modifier: Modifier = Modifier,
+    showHideHint: Boolean = true,
 ) {
     if (stats == null) return
 
@@ -80,7 +81,9 @@ fun PlayerStatsOverlay(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                "${stringResource(Lang.video_player_stats_title)}  ${stringResource(Lang.video_player_stats_hide_hint)}",
+                if (showHideHint) {
+                    "${stringResource(Lang.video_player_stats_title)}  ${stringResource(Lang.video_player_stats_hide_hint)}"
+                } else stringResource(Lang.video_player_stats_title),
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = FontFamily.Monospace,

@@ -1,0 +1,6275 @@
+{
+  "formatVersion": 1,
+  "provenance": {
+    "capturedAt": "2026-09-05T19:58:20.403318Z",
+    "applicationVersion": "4.9.0-dev",
+    "acquisition": "desktop-playback",
+    "searchCacheCleared": true,
+    "rawSha256": "5e292b74a4cbfaa4220eb3ef766a77c15c3e4a3bdd656aeb1f9e1f4dbd321039",
+    "rawBytes": 10651372,
+    "rawFrameCount": 94
+  },
+  "request": {
+    "subjectId": "400602",
+    "episodeId": "1227087",
+    "subjectNameCN": "葬送的芙莉莲",
+    "subjectNames": [
+      "葬送的芙莉莲",
+      "葬送のフリーレン",
+      "Frieren: Beyond Journey's End",
+      "Sousou no Frieren",
+      "葬送的芙莉蓮"
+    ],
+    "episodeSort": {
+      "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+      "number": 1.0
+    },
+    "episodeName": "冒险结束",
+    "episodeEp": {
+      "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+      "number": 1.0
+    }
+  },
+  "preferredSourceId": null,
+  "durationMillis": 45003,
+  "sources": [
+    {
+      "id": "local-file-system",
+      "name": "LocalTorrent",
+      "kind": "LocalCache"
+    },
+    {
+      "id": "local-file-system",
+      "name": "LocalWebM3u",
+      "kind": "LocalCache"
+    },
+    {
+      "id": "mikan-mikanime-tv",
+      "name": "蜜柑计划 (CN)",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "dmhy",
+      "name": "動漫花園",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "e0fa1500-ba3e-4767-b108-cc6f241b5559",
+      "name": "nyaa.land",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "2355e16c-8737-42ea-aa58-140251822359",
+      "name": "AnimeGarden",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "name": "稀饭动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "c03f162b-a5c0-442c-8834-060ae87669a4",
+      "name": "girigiri愛動漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "name": "嘀嗒影视",
+      "kind": "WEB"
+    },
+    {
+      "id": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "name": "叽哔动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "name": "E-ACG",
+      "kind": "WEB"
+    },
+    {
+      "id": "474f8053-6293-4472-9816-86e802db7776",
+      "name": "森之屋动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "ca0aa9a3-ab41-414e-a4d6-b15411551cf3",
+      "name": "风车影视",
+      "kind": "WEB"
+    },
+    {
+      "id": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "name": "去看吧",
+      "kind": "WEB"
+    },
+    {
+      "id": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "name": "海星动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "name": "樱花动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "bf067292-2d24-4dca-aac4-d53808700b03",
+      "name": "嘀哩嘀哩",
+      "kind": "WEB"
+    },
+    {
+      "id": "5d8ce041-086c-4075-8a6c-e9957ec1241c",
+      "name": "新优酷",
+      "kind": "WEB"
+    },
+    {
+      "id": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "name": "番茄动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "c7c80227-2175-4985-ac2c-5343dd0fa489",
+      "name": "hanime1_1080p",
+      "kind": "WEB"
+    },
+    {
+      "id": "0147498a-84da-4be7-b780-378b03234070",
+      "name": "hanime1_720p",
+      "kind": "WEB"
+    },
+    {
+      "id": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "name": "wedm",
+      "kind": "WEB"
+    },
+    {
+      "id": "257d123e-9441-424b-924e-abf3e4cef14b",
+      "name": "影视森林",
+      "kind": "WEB"
+    },
+    {
+      "id": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "name": "热播之家",
+      "kind": "WEB"
+    }
+  ],
+  "initial": {
+    "context": {
+      "subjectFinished": true,
+      "sourcePrecedence": [
+        "local-file-system",
+        "local-file-system",
+        "mikan-mikanime-tv",
+        "dmhy",
+        "e0fa1500-ba3e-4767-b108-cc6f241b5559",
+        "2355e16c-8737-42ea-aa58-140251822359",
+        "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+        "c03f162b-a5c0-442c-8834-060ae87669a4",
+        "9bbbef46-7372-4199-853c-95b348113cb6",
+        "104d2594-4202-4bcc-b4da-9b03d99558e2",
+        "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+        "474f8053-6293-4472-9816-86e802db7776",
+        "ca0aa9a3-ab41-414e-a4d6-b15411551cf3",
+        "419b2d59-be72-436c-9c28-6960bcb9809a",
+        "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+        "8d036176-2614-4f2c-9e12-2f56af69619f",
+        "bf067292-2d24-4dca-aac4-d53808700b03",
+        "5d8ce041-086c-4075-8a6c-e9957ec1241c",
+        "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+        "c7c80227-2175-4985-ac2c-5343dd0fa489",
+        "0147498a-84da-4be7-b780-378b03234070",
+        "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+        "257d123e-9441-424b-924e-abf3e4cef14b",
+        "7642d509-20b1-4dd3-b40a-87a344cb12f9"
+      ],
+      "subtitlePreferences": {
+        "EMBEDDED": "NORMAL",
+        "CLOSED": "HIDE",
+        "EXTERNAL_PROVIDED": "NORMAL",
+        "EXTERNAL_DISCOVER": "HIDE",
+        "CLOSED_OR_EXTERNAL_DISCOVER": "HIDE"
+      },
+      "series": {
+        "seasonSort": 1,
+        "sequelNames": [
+          "葬送のフリーレン 第2期",
+          "葬送的芙莉莲 第二季",
+          "Sousou no Frieren 2nd Season",
+          "Frieren: Beyond Journey's End Season 2",
+          "Sousou no Frieren (2026)",
+          "Beyond Journey`s End (2026)",
+          "葬送のフリーレン (2026)",
+          "葬送のフリーレン 第3期【黄金郷編】",
+          "葬送的芙莉莲 第三季 黄金乡篇"
+        ],
+        "otherNames": [
+          "葬送のフリーレン 第2期",
+          "葬送的芙莉莲 第二季",
+          "Sousou no Frieren 2nd Season",
+          "Frieren: Beyond Journey's End Season 2",
+          "Sousou no Frieren (2026)",
+          "Beyond Journey`s End (2026)",
+          "葬送のフリーレン (2026)"
+        ]
+      },
+      "subject": {
+        "id": 400602,
+        "name": "葬送のフリーレン",
+        "nameCn": "葬送的芙莉莲",
+        "aliases": [
+          "Frieren: Beyond Journey's End",
+          "Sousou no Frieren",
+          "葬送的芙莉蓮"
+        ]
+      },
+      "episode": {
+        "episodeId": 1227087,
+        "type": "MainStory",
+        "name": "冒険の終わり",
+        "nameCn": "冒险结束",
+        "airDate": 132581661,
+        "comment": 0,
+        "desc": "",
+        "sort": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "ep": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "sourceTiers": {
+        "local-file-system": 2,
+        "mikan-mikanime-tv": 2,
+        "dmhy": 2,
+        "e0fa1500-ba3e-4767-b108-cc6f241b5559": 2,
+        "2355e16c-8737-42ea-aa58-140251822359": 2,
+        "02953f1e-fbfd-438b-b3bf-c4dad6a346d4": 0,
+        "c03f162b-a5c0-442c-8834-060ae87669a4": 0,
+        "9bbbef46-7372-4199-853c-95b348113cb6": 1,
+        "104d2594-4202-4bcc-b4da-9b03d99558e2": 3,
+        "2406da2f-695c-4cea-869b-fd7ca8aa3a9f": 3,
+        "474f8053-6293-4472-9816-86e802db7776": 3,
+        "ca0aa9a3-ab41-414e-a4d6-b15411551cf3": 3,
+        "419b2d59-be72-436c-9c28-6960bcb9809a": 3,
+        "1b96801a-2fa9-4ac8-be97-5258da3f44d7": 4,
+        "8d036176-2614-4f2c-9e12-2f56af69619f": 4,
+        "bf067292-2d24-4dca-aac4-d53808700b03": 4,
+        "5d8ce041-086c-4075-8a6c-e9957ec1241c": 4,
+        "577f82d8-a01c-45a3-862a-9de2643e2b8f": 4,
+        "c7c80227-2175-4985-ac2c-5343dd0fa489": 4,
+        "0147498a-84da-4be7-b780-378b03234070": 4,
+        "ff888bd2-fc1c-4aa3-be29-d302d84b1588": 4,
+        "257d123e-9441-424b-924e-abf3e4cef14b": 4,
+        "7642d509-20b1-4dd3-b40a-87a344cb12f9": 4
+      },
+      "channelTiers": {
+        "02953f1e-fbfd-438b-b3bf-c4dad6a346d4": {
+          "新番主线②": 0,
+          "新番主线①": 0,
+          "旧番主线①": 1,
+          "备用①": 6
+        },
+        "c03f162b-a5c0-442c-8834-060ae87669a4": {
+          "简中": 1,
+          "繁中": 2,
+          "杜比": 6
+        },
+        "9bbbef46-7372-4199-853c-95b348113cb6": {
+          "超清A": 0,
+          "超清C": 0,
+          "超清G": 5,
+          "超清E": 6,
+          "超清K": 6
+        },
+        "104d2594-4202-4bcc-b4da-9b03d99558e2": {
+          "叽哔1线": 5,
+          "叽哔3线": 5,
+          "叽哔4线": 5,
+          "叽哔2线": 6,
+          "无尽③": 6
+        },
+        "2406da2f-695c-4cea-869b-fd7ca8aa3a9f": {
+          "172": 6,
+          "EDD动漫": 1,
+          "线路13": 1,
+          "高清在线": 1,
+          "极速在线": 4,
+          "海外专线": 4,
+          "线路3(若黑屏用手机)": 5,
+          "线路4": 5,
+          "看吧③": 6,
+          "看吧④": 6,
+          "看吧⑤": 6,
+          "看吧备用": 6
+        },
+        "474f8053-6293-4472-9816-86e802db7776": {
+          "HD": 5
+        },
+        "ca0aa9a3-ab41-414e-a4d6-b15411551cf3": {
+          "动漫大全": 1,
+          "备用②": 5,
+          "备用③": 5,
+          "线路③": 5,
+          "B站": 6,
+          "优酷": 6,
+          "备用①": 6,
+          "奇异": 6,
+          "线路①": 6,
+          "线路②": 6,
+          "腾讯": 6,
+          "芒果": 6
+        },
+        "419b2d59-be72-436c-9c28-6960bcb9809a": {
+          "172": 6,
+          "线路13": 1,
+          "线路3": 1,
+          "高清在线": 1,
+          "EDD": 2,
+          "线路4": 3,
+          "极速在线": 5,
+          "海外专线": 5,
+          "看吧③": 6,
+          "看吧④": 6,
+          "看吧⑤": 6,
+          "看吧备用": 6
+        },
+        "1b96801a-2fa9-4ac8-be97-5258da3f44d7": {
+          "播放Ⅱ": 1,
+          "播放Ⅲ": 1,
+          "播放Ⅳ": 5,
+          "播放Ⅵ": 5,
+          "播放Ⅰ": 6,
+          "播放Ⅴ": 6
+        },
+        "8d036176-2614-4f2c-9e12-2f56af69619f": {
+          "线路10": 1,
+          "线路6": 1,
+          "5线": 2,
+          "线路1": 2,
+          "线路12": 5,
+          "线路2": 5,
+          "线路3": 5,
+          "线路8": 5,
+          "主线": 6,
+          "线路4": 6,
+          "线路9": 6
+        },
+        "bf067292-2d24-4dca-aac4-d53808700b03": {
+          "在线": 6
+        },
+        "5d8ce041-086c-4075-8a6c-e9957ec1241c": {
+          "MD1": 1,
+          "MD4": 1,
+          "线路3": 2,
+          "线路1": 5,
+          "MD2": 6,
+          "MD5": 6,
+          "线路2": 6
+        },
+        "577f82d8-a01c-45a3-862a-9de2643e2b8f": {
+          "新浪资源2": 5,
+          "番茄1线": 5,
+          "速播资源1": 5,
+          "无尽③": 6,
+          "极速在线": 6,
+          "番茄2线": 6
+        },
+        "ff888bd2-fc1c-4aa3-be29-d302d84b1588": {
+          "第一线路": 1,
+          "云播①号": 6,
+          "备用线路": 6,
+          "最新可用线路": 6,
+          "非凡资源M3U": 6
+        },
+        "7642d509-20b1-4dd3-b40a-87a344cb12f9": {
+          "4K蓝光": 6,
+          "蓝光A": 6,
+          "蓝光C": 6,
+          "蓝光E": 6,
+          "蓝光G": 6,
+          "蓝光K": 6
+        }
+      }
+    },
+    "settings": {
+      "showDisabled": true,
+      "hideSingleEpisodeForCompleted": true,
+      "preferSeasons": true,
+      "autoEnableLastSelected": true,
+      "preferKind": "WEB",
+      "fastSelectWebKind": true,
+      "fastSelectWebLowTierToleranceDuration": "PT5S",
+      "enableImageCaptchaAutoSolve": true,
+      "webSearchCacheTtl": "PT6H"
+    },
+    "preference": {
+      "alliance": null,
+      "alliancePatterns": null,
+      "resolution": null,
+      "fallbackResolutions": [
+        "2160P",
+        "1440P",
+        "1080P",
+        "720P"
+      ],
+      "subtitleLanguageId": null,
+      "fallbackSubtitleLanguageIds": [
+        "CHS",
+        "CHT"
+      ],
+      "showWithoutSubtitle": false,
+      "mediaSourceId": null,
+      "fallbackMediaSourceIds": null
+    },
+    "defaultPreference": {
+      "alliance": null,
+      "alliancePatterns": null,
+      "resolution": null,
+      "fallbackResolutions": [
+        "2160P",
+        "1440P",
+        "1080P",
+        "720P"
+      ],
+      "subtitleLanguageId": null,
+      "fallbackSubtitleLanguageIds": [
+        "CHS",
+        "CHT"
+      ],
+      "showWithoutSubtitle": false,
+      "mediaSourceId": null,
+      "fallbackMediaSourceIds": null
+    }
+  },
+  "media": [
+    {
+      "mediaId": "media-ac6e2c54d6244a545b8f0a5f",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-ac6e2c54d6244a545b8f0a5f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ac6e2c54d6244a545b8f0a5f"
+      },
+      "originalTitle": "[Furretar] 台粤配 - 葬送的芙莉莲 (Sousou no Frieren) (Season 1) (Mandarin Chinese + Cantonese Dub) (Matching Soft Subs) [國語][粵語][国语][CHT][繁字][中文配音][中配版] (葬送的芙莉蓮) (Beyond Journey's End)",
+      "publishedTime": 1730665380000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHC",
+          "CHT",
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "中配版",
+        "size": 11811160064,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-6655a759b52578a94faaaffd",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-6655a759b52578a94faaaffd",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6655a759b52578a94faaaffd"
+      },
+      "originalTitle": "[AI-Raws] 葬送のフリーレン / Frieren: Beyond Journey`s End / 葬送的芙莉莲 S1 BDRip 1080p MKV",
+      "publishedTime": 1722045900000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "AI-Raws",
+        "size": 55190331392,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": 1
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-d24a7d5e89f79b22c702972d",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-d24a7d5e89f79b22c702972d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d24a7d5e89f79b22c702972d"
+      },
+      "originalTitle": "[7³ACG] 葬送的芙莉莲/Sousou no Frieren S01 | 01-28+SPx11 [简繁字幕] BDrip 1080p x265 OPUS 2.0",
+      "publishedTime": 1787866320000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "简繁字幕",
+        "size": 52076478464,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+        "start": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "end": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 28.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-ee6d7c3c0afcca5a9ba0e1c2",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-ee6d7c3c0afcca5a9ba0e1c2",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ee6d7c3c0afcca5a9ba0e1c2"
+      },
+      "originalTitle": "[Shiniori-Raws]葬送的芙莉莲 第二季/Sousou no Frieren S2 4k 2160p x265 10bit",
+      "publishedTime": 1787404620000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "4K",
+        "alliance": "Shiniori-Raws",
+        "size": 22655952896,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": 2
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-74ee4ab9e27aee72183eca41",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-74ee4ab9e27aee72183eca41",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-74ee4ab9e27aee72183eca41"
+      },
+      "originalTitle": "[Xspitfire911] 葬送的芙莉莲/Sousou No Frieren S01 + S02 BDRIP 1080p X265 10bit VOSTFR",
+      "publishedTime": 1787404560000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "Xspitfire911",
+        "size": 49928994816,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": 2
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-04593f45fc0b7c325946fb9c",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-04593f45fc0b7c325946fb9c",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-04593f45fc0b7c325946fb9c"
+      },
+      "originalTitle": "[Shiniori-Raws] 葬送的芙莉莲 第二季/Sousou no Frieren S2 (BD 1920x1080 x265 10bit FLAC)",
+      "publishedTime": 1786807200000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "Shiniori-Raws",
+        "size": 19005231104,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": 2
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-b82393c03a506ee6ea7ce5c8",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-b82393c03a506ee6ea7ce5c8",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-b82393c03a506ee6ea7ce5c8"
+      },
+      "originalTitle": "[7³ACG] 葬送的芙莉莲/Sousou no Frieren S01 | 01-28+SPx11 [简繁字幕] BDrip 1080p AV1 OPUS 2.0",
+      "publishedTime": 1786603560000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "简繁字幕",
+        "size": 27702538240,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+        "start": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "end": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 28.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-bd27a82dff92a3df2d3610a6",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-bd27a82dff92a3df2d3610a6",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-bd27a82dff92a3df2d3610a6"
+      },
+      "originalTitle": "[H-Enc] 葬送的芙莉莲 第二季 / Sousou no Frieren 2nd Season (BDRip 1080p HEVC FLAC)",
+      "publishedTime": 1786486020000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "H-Enc",
+        "size": 28239409152,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": -1
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-3529ca634635cb57c557c9a2",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-3529ca634635cb57c557c9a2",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-3529ca634635cb57c557c9a2"
+      },
+      "originalTitle": "[Zzz睡不醒][葬送的芙莉莲 第二季][Sousou no Frieren 2nd Season][01-10][BDRip][1080P][HEVC-10bit][简繁日内封][MKV]",
+      "publishedTime": 1785916920000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "Zzz睡不醒",
+        "size": 12562779136,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+        "start": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "end": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 10.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-9802390d67412c1ac84fe4dc",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-9802390d67412c1ac84fe4dc",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-9802390d67412c1ac84fe4dc"
+      },
+      "originalTitle": "[云光字幕组]葬送的芙莉莲 第二季 Sousou no Frieren S2 [合集][简体双语][1080p]招募翻译V2",
+      "publishedTime": 1775976360000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "云光字幕组",
+        "size": 7194070016,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": 2
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-b921f0dbf8600e25abf24a33",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-b921f0dbf8600e25abf24a33",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-b921f0dbf8600e25abf24a33"
+      },
+      "originalTitle": "[jibaketa合成][代理商粵語]葬送的芙莉蓮 第二季 / Sousou no Frieren 2nd Season - 01 [粵日雙語+內封繁體中文字幕] (WEB 1920x1080 AVC AACx2 SRT MUSE CHT)",
+      "publishedTime": 1775402700000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHC",
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "粵日雙語+內封繁體中文字幕",
+        "size": 881432960,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-fc0740afc583dd7a5327c3a1",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-fc0740afc583dd7a5327c3a1",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-fc0740afc583dd7a5327c3a1"
+      },
+      "originalTitle": "[愛戀&貓戀漢化組][1月新番][葬送的芙莉蓮 第二季][Sousou no Frieren S2][1080P][BIG5][MP4][繁中]",
+      "publishedTime": 1775392320000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "爱恋字幕社",
+        "size": 3758096384,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": 2
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-a684bef50829b751902ac018",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-a684bef50829b751902ac018",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-a684bef50829b751902ac018"
+      },
+      "originalTitle": "[愛戀&貓戀漢化組][1月新番][葬送的芙莉蓮 第二季][Sousou no Frieren S2][720P][BIG5][MP4][繁中]",
+      "publishedTime": 1775392320000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "720P",
+        "alliance": "爱恋字幕社",
+        "size": 1932735232,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": 2
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-21e8e6aa3e8f55b368675bb6",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-21e8e6aa3e8f55b368675bb6",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-21e8e6aa3e8f55b368675bb6"
+      },
+      "originalTitle": "[爱恋&漫猫字幕社][1月新番][葬送的芙莉蓮 第二季][Sousou no Frieren S2][1080P][GB][MP4][简中]",
+      "publishedTime": 1775392260000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "爱恋字幕社",
+        "size": 3758096384,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": 2
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-8f0e0d5c0d3d7236d4e1dce0",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-8f0e0d5c0d3d7236d4e1dce0",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-8f0e0d5c0d3d7236d4e1dce0"
+      },
+      "originalTitle": "[爱恋&漫猫字幕社][1月新番][葬送的芙莉蓮 第二季][Sousou no Frieren S2][720P][GB][MP4][简中]",
+      "publishedTime": 1775392260000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "爱恋字幕社",
+        "size": 1932735232,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": 2
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-db74d91326716a73eb65593c",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-db74d91326716a73eb65593c",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-db74d91326716a73eb65593c"
+      },
+      "originalTitle": "[❀拨雪寻春❀] 送葬者芙莉莲 / 葬送のフリーレン / Sousou no Frieren [01-28 Fin][BDRip][HEVC-10bit 1080p][简繁日内封]（检索用：葬送的芙莉莲）",
+      "publishedTime": 1768772040000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "拨雪寻春",
+        "size": 28668907520,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+        "start": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "end": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 28.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-bc2174f23afbe03ca9580cce",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-bc2174f23afbe03ca9580cce",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-bc2174f23afbe03ca9580cce"
+      },
+      "originalTitle": "[喵萌奶茶屋&VCB-Studio] 葬送的芙莉莲 / Sousou no Frieren / 葬送のフリーレン 10-bit 1080p HEVC BDRip [S1 Fin]",
+      "publishedTime": 1753416180000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "VCB-Studio",
+        "size": 53901840384,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": 1
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-cc9247fbe37770e495dd115c",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-cc9247fbe37770e495dd115c",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-cc9247fbe37770e495dd115c"
+      },
+      "originalTitle": "[❀拨雪寻春❀] 葬送的芙莉莲 / 葬送のフリーレン / Sousou no Frieren - 01 [BDRip][HEVC-10bit 1080p][繁日内嵌]",
+      "publishedTime": 1731338100000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "拨雪寻春",
+        "size": 782971712,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-37627d7781a1921021acc941",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-37627d7781a1921021acc941",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-37627d7781a1921021acc941"
+      },
+      "originalTitle": "[❀拨雪寻春❀] 葬送的芙莉莲 / 葬送のフリーレン / Sousou no Frieren - 01 [BDRip][HEVC-10bit 1080p][简日内嵌]",
+      "publishedTime": 1731338040000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "拨雪寻春",
+        "size": 783391104,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-0b7fd586b54bc36382afd91e",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-0b7fd586b54bc36382afd91e",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-0b7fd586b54bc36382afd91e"
+      },
+      "originalTitle": "[❀拨雪寻春❀] 葬送的芙莉莲 / 葬送のフリーレン / Sousou no Frieren - 01 [BDRip][HEVC-10bit 1080p][简繁日内封]",
+      "publishedTime": 1731338040000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "拨雪寻春",
+        "size": 1181116032,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-cad0c205cd475ad5df319cc1",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-cad0c205cd475ad5df319cc1",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-cad0c205cd475ad5df319cc1"
+      },
+      "originalTitle": "[DBD-Raws][葬送的芙莉莲/Sousou no Frieren/葬送のフリーレン][01-28TV全集+特典映像][1080P][BDRip][HEVC-10bit][简繁日双语外挂][FLAC][MKV]",
+      "publishedTime": 1721982360000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "DBD制作组",
+        "size": 43379171328,
+        "subtitleKind": "EXTERNAL_DISCOVER"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+        "start": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "end": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 28.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-e63b32c9436b330fb6a6206b",
+      "mediaSourceId": "474f8053-6293-4472-9816-86e802db7776",
+      "originalUrl": "https://fixture.invalid/media-e63b32c9436b330fb6a6206b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-e63b32c9436b330fb6a6206b"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "HD",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-7517626e64aef675fe966b67",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-7517626e64aef675fe966b67",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-7517626e64aef675fe966b67"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清G",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-92769adf69077552c8cfdde2",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-92769adf69077552c8cfdde2",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-92769adf69077552c8cfdde2"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清A",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-53301662b9dedee559479122",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-53301662b9dedee559479122",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-53301662b9dedee559479122"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清C",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-953a65261d2e660ce438a3f1",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-953a65261d2e660ce438a3f1",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-953a65261d2e660ce438a3f1"
+      },
+      "originalTitle": "葬送的芙莉莲 1",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "1",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清K",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-a45aeea68f851e802c18e6f7",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-a45aeea68f851e802c18e6f7",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-a45aeea68f851e802c18e6f7"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清G",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-cfc82f648de0e467769e6cfb",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-cfc82f648de0e467769e6cfb",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-cfc82f648de0e467769e6cfb"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清C",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-993f820f50d3820842c4e0c7",
+      "mediaSourceId": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "originalUrl": "https://fixture.invalid/media-993f820f50d3820842c4e0c7",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-993f820f50d3820842c4e0c7"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 1",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "1",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "超清K",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2f16fa8e0527cc6e055279ff",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-2f16fa8e0527cc6e055279ff",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2f16fa8e0527cc6e055279ff"
+      },
+      "originalTitle": "终结的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "终结的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD动漫",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-13c0d206098e719c1847547b",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-13c0d206098e719c1847547b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-13c0d206098e719c1847547b"
+      },
+      "originalTitle": "终结的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "终结的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-8f5204602b1bb3ff90fdd388",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-8f5204602b1bb3ff90fdd388",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-8f5204602b1bb3ff90fdd388"
+      },
+      "originalTitle": "终结的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "终结的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "看吧③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-0416394ee0b353782d705ce6",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-0416394ee0b353782d705ce6",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-0416394ee0b353782d705ce6"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD动漫",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-8a0042c059f41b43d7b77e4d",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-8a0042c059f41b43d7b77e4d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-8a0042c059f41b43d7b77e4d"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-c7e6fea2f87a867fae2513ba",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-c7e6fea2f87a867fae2513ba",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-c7e6fea2f87a867fae2513ba"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "看吧③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-4f6f88f8a02fd86b93587502",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-4f6f88f8a02fd86b93587502",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-4f6f88f8a02fd86b93587502"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "海外专线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-31aca830539aa8db165da7da",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-31aca830539aa8db165da7da",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-31aca830539aa8db165da7da"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅰ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-ad4c5d1ba92c1565c36bf9ec",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-ad4c5d1ba92c1565c36bf9ec",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ad4c5d1ba92c1565c36bf9ec"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅱ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-10b4722f56db83720f16f04f",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-10b4722f56db83720f16f04f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-10b4722f56db83720f16f04f"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅲ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-80cded1d53d0a60c087b9adc",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-80cded1d53d0a60c087b9adc",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-80cded1d53d0a60c087b9adc"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅳ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-f78d1193685006618a21d9f0",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-f78d1193685006618a21d9f0",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-f78d1193685006618a21d9f0"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅴ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2b9ecfd05f37b0dc95198e8f",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-2b9ecfd05f37b0dc95198e8f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2b9ecfd05f37b0dc95198e8f"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅵ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-20ff9a961a2d8410f374714d",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-20ff9a961a2d8410f374714d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-20ff9a961a2d8410f374714d"
+      },
+      "originalTitle": "葬送的芙莉莲 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅰ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-f9bcb1e731ead5a567494afd",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-f9bcb1e731ead5a567494afd",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-f9bcb1e731ead5a567494afd"
+      },
+      "originalTitle": "葬送的芙莉莲 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅱ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-cb99dfed32473e3fa184f53f",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-cb99dfed32473e3fa184f53f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-cb99dfed32473e3fa184f53f"
+      },
+      "originalTitle": "葬送的芙莉莲 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅲ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-6d5bd9794a55b002a06c73fa",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-6d5bd9794a55b002a06c73fa",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6d5bd9794a55b002a06c73fa"
+      },
+      "originalTitle": "葬送的芙莉莲 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅳ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-00ea7394a488d468e26ff24b",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-00ea7394a488d468e26ff24b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-00ea7394a488d468e26ff24b"
+      },
+      "originalTitle": "葬送的芙莉莲 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅴ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-66db5be88482172b830f51f4",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-66db5be88482172b830f51f4",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-66db5be88482172b830f51f4"
+      },
+      "originalTitle": "葬送的芙莉莲 第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲 第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅵ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-cccef1255a855e4ccf97f01b",
+      "mediaSourceId": "bf067292-2d24-4dca-aac4-d53808700b03",
+      "originalUrl": "https://fixture.invalid/media-cccef1255a855e4ccf97f01b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-cccef1255a855e4ccf97f01b"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-f3027a9b160f7d50d31d1d6f",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-f3027a9b160f7d50d31d1d6f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-f3027a9b160f7d50d31d1d6f"
+      },
+      "originalTitle": "[H-Enc] 葬送的芙莉莲 第二季 / Sousou no Frieren 2nd Season (BDRip 1080p HEVC FLAC)",
+      "publishedTime": 1786453620000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "H-Enc",
+        "size": 28239409152,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": -1
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-f20a0d93d3dafc6e34128a8a",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-f20a0d93d3dafc6e34128a8a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-f20a0d93d3dafc6e34128a8a"
+      },
+      "originalTitle": "[云光字幕组]葬送的芙莉莲 第二季 Sousou no Frieren S2 [合集][简体双语][1080p]招募翻译",
+      "publishedTime": 1775628900000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "云光字幕组",
+        "size": 7194070016,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": 2
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-378c12dc330dbb8229f4e890",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-378c12dc330dbb8229f4e890",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-378c12dc330dbb8229f4e890"
+      },
+      "originalTitle": "[jibaketa合成][代理商粵語]葬送的芙莉蓮 第二季 / Sousou no Frieren 2nd Season - 01 [粵日雙語+內封繁體中文字幕] (WEB 1920x1080 AVC AACx2 SRT MUSE CHT)",
+      "publishedTime": 1775370300000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHC",
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "jibaketa合成",
+        "size": 881432576,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-d43ff0deb668fe846ca319e3",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-d43ff0deb668fe846ca319e3",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d43ff0deb668fe846ca319e3"
+      },
+      "originalTitle": "[Furretar] 台粤配 - 葬送的芙莉莲 (Sousou no Frieren) (Season 1) (Mandarin Chinese + Cantonese Dub) (Matching Soft Subs) [國語][粵語][国语][CHT][繁字][中文配音][中配版] (葬送的芙莉蓮) (Beyond Journey's End)",
+      "publishedTime": 1730632980000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHC",
+          "CHT",
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "Furretar",
+        "size": 11811160064,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-e40420e5fe1a17d4ebfb0bd1",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-e40420e5fe1a17d4ebfb0bd1",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-e40420e5fe1a17d4ebfb0bd1"
+      },
+      "originalTitle": "[❀拨雪寻春❀] 送葬者芙莉莲 / 葬送のフリーレン / Sousou no Frieren [01-28 Fin][BDRip][HEVC-10bit 1080p][简繁日内封]（检索用：葬送的芙莉莲）",
+      "publishedTime": 1768739640000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "❀拨雪寻春❀",
+        "size": 28668906496,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+        "start": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "end": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 28.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-32cb8ce534e82624c4e20da9",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-32cb8ce534e82624c4e20da9",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-32cb8ce534e82624c4e20da9"
+      },
+      "originalTitle": "[❀拨雪寻春❀] 葬送的芙莉莲 / 葬送のフリーレン / Sousou no Frieren - 01 [BDRip][HEVC-10bit 1080p][繁日内嵌]",
+      "publishedTime": 1731305700000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "❀拨雪寻春❀",
+        "size": 782970880,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-c65b251617bf543bbeea9309",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-c65b251617bf543bbeea9309",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-c65b251617bf543bbeea9309"
+      },
+      "originalTitle": "[❀拨雪寻春❀] 葬送的芙莉莲 / 葬送のフリーレン / Sousou no Frieren - 01 [BDRip][HEVC-10bit 1080p][简日内嵌]",
+      "publishedTime": 1731305640000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "❀拨雪寻春❀",
+        "size": 783390720,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-8e885cc6eb845c1131c6eeb6",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-8e885cc6eb845c1131c6eeb6",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-8e885cc6eb845c1131c6eeb6"
+      },
+      "originalTitle": "[❀拨雪寻春❀] 葬送的芙莉莲 / 葬送のフリーレン / Sousou no Frieren - 01 [BDRip][HEVC-10bit 1080p][简繁日内封]",
+      "publishedTime": 1731305640000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "❀拨雪寻春❀",
+        "size": 1181115392,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-11b70746891e30b639d4a5a9",
+      "mediaSourceId": "c03f162b-a5c0-442c-8834-060ae87669a4",
+      "originalUrl": "https://fixture.invalid/media-11b70746891e30b639d4a5a9",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-11b70746891e30b639d4a5a9"
+      },
+      "originalTitle": "葬送的芙莉莲 01",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "01",
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "繁中",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-f8aafa4e9864b8255986ce35",
+      "mediaSourceId": "c03f162b-a5c0-442c-8834-060ae87669a4",
+      "originalUrl": "https://fixture.invalid/media-f8aafa4e9864b8255986ce35",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-f8aafa4e9864b8255986ce35"
+      },
+      "originalTitle": "葬送的芙莉莲 01",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "01",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "简中",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-07e013c9c7a6a4301e0d51cc",
+      "mediaSourceId": "c03f162b-a5c0-442c-8834-060ae87669a4",
+      "originalUrl": "https://fixture.invalid/media-07e013c9c7a6a4301e0d51cc",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-07e013c9c7a6a4301e0d51cc"
+      },
+      "originalTitle": "葬送的芙莉莲 第二季 01",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲 第二季",
+        "episodeName": "01",
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "繁中",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-ab24c1c8642e74fec8907d47",
+      "mediaSourceId": "c03f162b-a5c0-442c-8834-060ae87669a4",
+      "originalUrl": "https://fixture.invalid/media-ab24c1c8642e74fec8907d47",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ab24c1c8642e74fec8907d47"
+      },
+      "originalTitle": "葬送的芙莉莲 第二季 01",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲 第二季",
+        "episodeName": "01",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "简中",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-3302be56f7043c7c8e71cf2d",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-3302be56f7043c7c8e71cf2d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-3302be56f7043c7c8e71cf2d"
+      },
+      "originalTitle": "[离谱Sub] 葬送的芙莉蓮 / 葬送のフリーレン / Sousou no Frieren [01-28 Fin][AVC AAC][1080p][繁日內嵌]",
+      "publishedTime": 1711644780000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "离谱Sub",
+        "size": 15676631040,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+        "start": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "end": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 28.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-750f107573f968c7cc615626",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-750f107573f968c7cc615626",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-750f107573f968c7cc615626"
+      },
+      "originalTitle": "[离谱Sub] 葬送的芙莉莲 / 葬送のフリーレン / Sousou no Frieren [01-28 Fin][AVC AAC][1080p][简日内嵌]",
+      "publishedTime": 1711643760000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "离谱Sub",
+        "size": 15676631040,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+        "start": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "end": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 28.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-43ad51734026ee45559eac70",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-43ad51734026ee45559eac70",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-43ad51734026ee45559eac70"
+      },
+      "originalTitle": "[离谱Sub] 葬送的芙莉莲 / 葬送のフリーレン / Sousou no Frieren [01-28 Fin][HEVC AAC][1080p][简繁日外挂]",
+      "publishedTime": 1711643280000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "离谱Sub",
+        "size": 14925010944,
+        "subtitleKind": "EXTERNAL_DISCOVER"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+        "start": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "end": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 28.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-938ae7599d5909724615983b",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-938ae7599d5909724615983b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-938ae7599d5909724615983b"
+      },
+      "originalTitle": "[DBD-Raws][葬送的芙莉莲/Sousou no Frieren/葬送のフリーレン][01-04TV][BOX1][1080P][BDRip][HEVC-10bit][FLAC][MKV]",
+      "publishedTime": 1706005920000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "DBD制作组",
+        "size": 6764573696,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+        "start": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        },
+        "end": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 4.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-1d5afac40043138ac2ace14a",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-1d5afac40043138ac2ace14a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-1d5afac40043138ac2ace14a"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "番茄2线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-614f57f4b4277e3af5d299be",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-614f57f4b4277e3af5d299be",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-614f57f4b4277e3af5d299be"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "番茄1线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-3b7c6372bb453a8a73e734eb",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-3b7c6372bb453a8a73e734eb",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-3b7c6372bb453a8a73e734eb"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "速播资源1",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2876e58b004d07f960a948b5",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-2876e58b004d07f960a948b5",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2876e58b004d07f960a948b5"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "新浪资源2",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-9a0eb72cb280258b14468ebc",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-9a0eb72cb280258b14468ebc",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-9a0eb72cb280258b14468ebc"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "番茄2线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-caff2b2cce1413c1283c77db",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-caff2b2cce1413c1283c77db",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-caff2b2cce1413c1283c77db"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "番茄1线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-95a22b8a449f700e4d86e34d",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-95a22b8a449f700e4d86e34d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-95a22b8a449f700e4d86e34d"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-52621a3f8a1c05336adc9ac2",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-52621a3f8a1c05336adc9ac2",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-52621a3f8a1c05336adc9ac2"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "速播资源1",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-82755e82c907befc31b6462f",
+      "mediaSourceId": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "originalUrl": "https://fixture.invalid/media-82755e82c907befc31b6462f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-82755e82c907befc31b6462f"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "最新可用线路",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-f338cc5517d3453f0f8dccff",
+      "mediaSourceId": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "originalUrl": "https://fixture.invalid/media-f338cc5517d3453f0f8dccff",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-f338cc5517d3453f0f8dccff"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "非凡资源M3U",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-11c92a5dacbcde9a56d5581a",
+      "mediaSourceId": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "originalUrl": "https://fixture.invalid/media-11c92a5dacbcde9a56d5581a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-11c92a5dacbcde9a56d5581a"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "第一线路",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-6e86979dfa5e2abc48069ecf",
+      "mediaSourceId": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "originalUrl": "https://fixture.invalid/media-6e86979dfa5e2abc48069ecf",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6e86979dfa5e2abc48069ecf"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "最新可用线路",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2b78b653039d99b9cdfff5ef",
+      "mediaSourceId": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "originalUrl": "https://fixture.invalid/media-2b78b653039d99b9cdfff5ef",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2b78b653039d99b9cdfff5ef"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "非凡资源M3U",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-7be05bcccb16a8680998c3ed",
+      "mediaSourceId": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "originalUrl": "https://fixture.invalid/media-7be05bcccb16a8680998c3ed",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-7be05bcccb16a8680998c3ed"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "第一线路",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-6f9986bd04ad0c3a45d8b822",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-6f9986bd04ad0c3a45d8b822",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6f9986bd04ad0c3a45d8b822"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔2线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-0d01326a9b5d32dbea0619ff",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-0d01326a9b5d32dbea0619ff",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-0d01326a9b5d32dbea0619ff"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔1线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-49b528795e3998b3ff84966f",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-49b528795e3998b3ff84966f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-49b528795e3998b3ff84966f"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔4线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-3937054815e772fb7465c144",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-3937054815e772fb7465c144",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-3937054815e772fb7465c144"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔3线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-41ca78794984fe55b9b807d6",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-41ca78794984fe55b9b807d6",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-41ca78794984fe55b9b807d6"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔2线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-4006b13296a079e1de143856",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-4006b13296a079e1de143856",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-4006b13296a079e1de143856"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔1线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-75c508789779a52d0b76c6de",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-75c508789779a52d0b76c6de",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-75c508789779a52d0b76c6de"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔4线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-40d256f62d11b3101f6fb71b",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-40d256f62d11b3101f6fb71b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-40d256f62d11b3101f6fb71b"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "旧番主线①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-759228e3e5d823d37c186faf",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-759228e3e5d823d37c186faf",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-759228e3e5d823d37c186faf"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "备用①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-bd4ce61e11ded5ee1a741f73",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-bd4ce61e11ded5ee1a741f73",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-bd4ce61e11ded5ee1a741f73"
+      },
+      "originalTitle": "葬送的芙莉莲 第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲 第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "新番主线①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-4ca91a97ea255b1a639d86e9",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-4ca91a97ea255b1a639d86e9",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-4ca91a97ea255b1a639d86e9"
+      },
+      "originalTitle": "葬送的芙莉莲 第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲 第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "新番主线②",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-494804fdb979c03b8516fb7b",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-494804fdb979c03b8516fb7b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-494804fdb979c03b8516fb7b"
+      },
+      "originalTitle": "葬送的芙莉莲 第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲 第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "备用①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-4fc3fba40f7c02fbf566024a",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-4fc3fba40f7c02fbf566024a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-4fc3fba40f7c02fbf566024a"
+      },
+      "originalTitle": "终结的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "终结的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-811fb0b5fe13aaba92a4bed0",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-811fb0b5fe13aaba92a4bed0",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-811fb0b5fe13aaba92a4bed0"
+      },
+      "originalTitle": "终结的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "终结的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-62b087363cfb24ba05ce4d53",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-62b087363cfb24ba05ce4d53",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-62b087363cfb24ba05ce4d53"
+      },
+      "originalTitle": "终结的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "终结的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "看吧③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-cf308a3d523340f788579b43",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-cf308a3d523340f788579b43",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-cf308a3d523340f788579b43"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-b2ab7db4abafb47eb96ee763",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-b2ab7db4abafb47eb96ee763",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-b2ab7db4abafb47eb96ee763"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-923d3217634e0f483bfeb991",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-923d3217634e0f483bfeb991",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-923d3217634e0f483bfeb991"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "看吧③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-5b744fc73c0eee93251170ba",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-5b744fc73c0eee93251170ba",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-5b744fc73c0eee93251170ba"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "海外专线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-1ba937b6fb36580793538ed4",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-1ba937b6fb36580793538ed4",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-1ba937b6fb36580793538ed4"
+      },
+      "originalTitle": "[离谱Sub] 葬送的芙莉蓮 / 葬送のフリーレン / Sousou no Frieren [01][AVC AAC][1080p][繁日內嵌]",
+      "publishedTime": 1697779380000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "离谱Sub",
+        "size": 652004544,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-40f87f79b5ac95402189756c",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-40f87f79b5ac95402189756c",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-40f87f79b5ac95402189756c"
+      },
+      "originalTitle": "[离谱Sub] 葬送的芙莉莲 / 葬送のフリーレン / Sousou no Frieren [01][AVC AAC][1080p][简日内嵌]",
+      "publishedTime": 1697779380000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "离谱Sub",
+        "size": 651899712,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-2615fce2bd30cebb0137f81d",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-2615fce2bd30cebb0137f81d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2615fce2bd30cebb0137f81d"
+      },
+      "originalTitle": "[离谱Sub] 葬送的芙莉莲 / 葬送のフリーレン / Sousou no Frieren [01][HEVC AAC][1080p][简繁日内封]",
+      "publishedTime": 1697708460000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "离谱Sub",
+        "size": 739455808,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-bf1a35216786ba22074d8376",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-bf1a35216786ba22074d8376",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-bf1a35216786ba22074d8376"
+      },
+      "originalTitle": "[❀拨雪寻春❀] 葬送的芙莉莲 / 葬送のフリーレン / Sousou no Frieren - 01 [WEBRip][HEVC-10bit 1080p][简繁日内封]",
+      "publishedTime": 1696726440000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "拨雪寻春",
+        "size": 758749568,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-855663cfe2dd243a4bb2f76d",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-855663cfe2dd243a4bb2f76d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-855663cfe2dd243a4bb2f76d"
+      },
+      "originalTitle": "[❀拨雪寻春❀] 葬送的芙莉蓮 / 葬送のフリーレン / Sousou no Frieren - 01 [WEBRip][AVC-8bit 1080p][繁日内嵌]",
+      "publishedTime": 1696725300000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "拨雪寻春",
+        "size": 657771712,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-56e1570cc1b61982f541a445",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-56e1570cc1b61982f541a445",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-56e1570cc1b61982f541a445"
+      },
+      "originalTitle": "[❀拨雪寻春❀] 葬送的芙莉莲 / 葬送のフリーレン / Sousou no Frieren - 01 [WEBRip][AVC-8bit 1080p][简日内嵌]",
+      "publishedTime": 1696725300000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "拨雪寻春",
+        "size": 658086272,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-04fa24a8ecb9212c80e77b43",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-04fa24a8ecb9212c80e77b43",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-04fa24a8ecb9212c80e77b43"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光G",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-16dc30ecf35a67ab679581fe",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-16dc30ecf35a67ab679581fe",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-16dc30ecf35a67ab679581fe"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光A",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-86344741a1fc9926d9d4d4a8",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-86344741a1fc9926d9d4d4a8",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-86344741a1fc9926d9d4d4a8"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光C",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-92d65d62dd50a288aef07056",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-92d65d62dd50a288aef07056",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-92d65d62dd50a288aef07056"
+      },
+      "originalTitle": "葬送的芙莉莲 1",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "1",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光K",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-fa2d85e69122b1dd6a11d571",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-fa2d85e69122b1dd6a11d571",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-fa2d85e69122b1dd6a11d571"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光G",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-40969f8342aa539eb8951df9",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-40969f8342aa539eb8951df9",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-40969f8342aa539eb8951df9"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光C",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-6e838b10bb018a0195cba758",
+      "mediaSourceId": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "originalUrl": "https://fixture.invalid/media-6e838b10bb018a0195cba758",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6e838b10bb018a0195cba758"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 1",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "1",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "蓝光K",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-eb8b9eb0b6fb6e0dc9d8d6d7",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-eb8b9eb0b6fb6e0dc9d8d6d7",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-eb8b9eb0b6fb6e0dc9d8d6d7"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路1",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-6cf233cfc4e739263a748ada",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-6cf233cfc4e739263a748ada",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6cf233cfc4e739263a748ada"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路2",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-5ed565b35f0afcccdb0e6bc9",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-5ed565b35f0afcccdb0e6bc9",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-5ed565b35f0afcccdb0e6bc9"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路3",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2721ac58472befc96dc32f2a",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-2721ac58472befc96dc32f2a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2721ac58472befc96dc32f2a"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路4",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-a979d6841a25c6c1794655db",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-a979d6841a25c6c1794655db",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-a979d6841a25c6c1794655db"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路6",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-817fb77eb7b41205411ad868",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-817fb77eb7b41205411ad868",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-817fb77eb7b41205411ad868"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路8",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-8072cdddda6c4c78c86e3c0f",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-8072cdddda6c4c78c86e3c0f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-8072cdddda6c4c78c86e3c0f"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路9",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-49e5ef2b483372af2b259470",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-49e5ef2b483372af2b259470",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-49e5ef2b483372af2b259470"
+      },
+      "originalTitle": "葬送的芙莉莲 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路10",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-c21edf0523ed18dec1005399",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-c21edf0523ed18dec1005399",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-c21edf0523ed18dec1005399"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路12",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-fbc32a019446adadcdf86e85",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-fbc32a019446adadcdf86e85",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-fbc32a019446adadcdf86e85"
+      },
+      "originalTitle": "葬送的芙莉莲 第1集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲",
+        "episodeName": "第1集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "主线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-3a8127643a58d8304499591a",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-3a8127643a58d8304499591a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-3a8127643a58d8304499591a"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路1",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-8b496f9d2a3af7b8e00b4681",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-8b496f9d2a3af7b8e00b4681",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-8b496f9d2a3af7b8e00b4681"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路4",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-e1dd01e3bc22ce107b943a0a",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-e1dd01e3bc22ce107b943a0a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-e1dd01e3bc22ce107b943a0a"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "5线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-bfd3d70e11124b2ae1a51d31",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-bfd3d70e11124b2ae1a51d31",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-bfd3d70e11124b2ae1a51d31"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路6",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-a959c6b485ca642886e7e285",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-a959c6b485ca642886e7e285",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-a959c6b485ca642886e7e285"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路8",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-c227773d689f3557ea261214",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-c227773d689f3557ea261214",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-c227773d689f3557ea261214"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路9",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-31d2b0351e3236d9f2892829",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-31d2b0351e3236d9f2892829",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-31d2b0351e3236d9f2892829"
+      },
+      "originalTitle": "葬送的芙莉莲第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路10",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-66086294d633818c6720ec1b",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-66086294d633818c6720ec1b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-66086294d633818c6720ec1b"
+      },
+      "originalTitle": "葬送的芙莉莲 第二季 第01集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "葬送的芙莉莲 第二季",
+        "episodeName": "第01集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路2",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 1.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    }
+  ],
+  "events": [
+    {
+      "elapsedMillis": 17,
+      "sources": [
+        {
+          "source": 0,
+          "state": "Idle",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 1,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        },
+        {
+          "source": 2,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 3,
+          "state": "Idle",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 4,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 6,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 7,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 8,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 9,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 10,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 11,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 12,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 13,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 14,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 15,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 16,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 17,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 18,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 19,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 20,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 21,
+          "state": "Idle",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 22,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 23,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 27,
+      "sources": [
+        {
+          "source": 0,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 28,
+      "sources": [
+        {
+          "source": 0,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 30,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 50,
+      "sources": [
+        {
+          "source": 21,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 230,
+      "sources": [
+        {
+          "source": 19,
+          "state": "CaptchaRequired",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 243,
+      "sources": [
+        {
+          "source": 20,
+          "state": "CaptchaRequired",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 370,
+      "sources": [
+        {
+          "source": 22,
+          "state": "CaptchaRequired",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 616,
+      "sources": [
+        {
+          "source": 4,
+          "state": "Failed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 753,
+      "sources": [
+        {
+          "source": 12,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 984,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 985,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1064,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1064,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1064,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1064,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1064,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1064,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1065,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1103,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1103,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1104,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1143,
+      "sources": [
+        {
+          "source": 11,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            21
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1144,
+      "sources": [
+        {
+          "source": 11,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            21
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1166,
+      "sources": [
+        {
+          "source": 8,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            22
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1167,
+      "sources": [
+        {
+          "source": 8,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            22,
+            23,
+            24,
+            25
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1168,
+      "sources": [
+        {
+          "source": 8,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1169,
+      "sources": [
+        {
+          "source": 8,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1170,
+      "sources": [],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1282,
+      "sources": [
+        {
+          "source": 10,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            29
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1285,
+      "sources": [
+        {
+          "source": 10,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            29,
+            30,
+            31,
+            32,
+            33,
+            34,
+            35
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1333,
+      "sources": [
+        {
+          "source": 14,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            36
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1335,
+      "sources": [
+        {
+          "source": 14,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1378,
+      "sources": [
+        {
+          "source": 16,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            48
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1380,
+      "sources": [
+        {
+          "source": 16,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            48
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1410,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            49
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1412,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            49,
+            50,
+            51
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1419,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            49,
+            50,
+            51,
+            52
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1456,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            49,
+            50,
+            51,
+            52,
+            53
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1466,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1473,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1522,
+      "sources": [
+        {
+          "source": 7,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            57
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1524,
+      "sources": [
+        {
+          "source": 7,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            57,
+            58,
+            59,
+            60
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1753,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            61
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1755,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            61,
+            62,
+            63,
+            64
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1927,
+      "sources": [
+        {
+          "source": 18,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            65
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1930,
+      "sources": [
+        {
+          "source": 18,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            65,
+            66,
+            67,
+            68,
+            69,
+            70
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1936,
+      "sources": [
+        {
+          "source": 18,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            65,
+            66,
+            67,
+            68,
+            69,
+            70,
+            71,
+            72
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 1994,
+      "sources": [
+        {
+          "source": 21,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            73
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 2018,
+      "sources": [
+        {
+          "source": 21,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            73,
+            74,
+            75,
+            76,
+            77,
+            78
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 2201,
+      "sources": [
+        {
+          "source": 9,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            79
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 2207,
+      "sources": [
+        {
+          "source": 9,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            79,
+            80,
+            81,
+            82,
+            83,
+            84,
+            85
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 2281,
+      "sources": [
+        {
+          "source": 6,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            86
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 2288,
+      "sources": [
+        {
+          "source": 6,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            86,
+            87,
+            88,
+            89,
+            90
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 2624,
+      "sources": [
+        {
+          "source": 13,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            91,
+            92
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 2627,
+      "sources": [
+        {
+          "source": 13,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            91,
+            92,
+            93,
+            94,
+            95,
+            96,
+            97
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 2630,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            61,
+            62,
+            63,
+            64,
+            98
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 2634,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            61,
+            62,
+            63,
+            64,
+            98,
+            99,
+            100
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 2637,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            61,
+            62,
+            63,
+            64,
+            98,
+            99,
+            100,
+            101,
+            102,
+            103
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 3063,
+      "sources": [
+        {
+          "source": 23,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            104
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 3066,
+      "sources": [
+        {
+          "source": 23,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            104,
+            105,
+            106,
+            107,
+            108,
+            109,
+            110
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 3534,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            61,
+            62,
+            63,
+            64,
+            98,
+            99,
+            100,
+            101,
+            102,
+            103
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 4908,
+      "sources": [
+        {
+          "source": 15,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            111
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 4910,
+      "sources": [
+        {
+          "source": 15,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            111,
+            112,
+            113,
+            114,
+            115,
+            116,
+            117,
+            118,
+            119,
+            120,
+            121,
+            122,
+            123,
+            124,
+            125,
+            126,
+            127,
+            128
+          ]
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 5339,
+      "sources": [
+        {
+          "source": 17,
+          "state": "RateLimited",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 35347,
+      "sources": [
+        {
+          "source": 17,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    },
+    {
+      "elapsedMillis": 40668,
+      "sources": [
+        {
+          "source": 17,
+          "state": "RateLimited",
+          "generation": 1,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-92769adf69077552c8cfdde2"
+    }
+  ]
+}

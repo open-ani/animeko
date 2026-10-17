@@ -27,10 +27,10 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.mediasource.test.web.SelectorMediaSourceTester
-import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodeListResult
-import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
-import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSearchSubjectResult
-import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSubjectPresentation
+import me.him188.ani.app.domain.mediasource.test.TestEpisodeListResult
+import me.him188.ani.app.domain.mediasource.test.TestEpisodePresentation
+import me.him188.ani.app.domain.mediasource.test.TestSubjectSearchResult
+import me.him188.ani.app.domain.mediasource.test.TestSubjectPresentation
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
@@ -44,10 +44,10 @@ import kotlin.time.Duration.Companion.seconds
 data class SelectorTestPresentation(
     val isSearchingSubject: Boolean,
     val isSearchingEpisode: Boolean,
-    val subjectSearchResult: SelectorTestSearchSubjectResult?,
-    val episodeListSearchResult: SelectorTestEpisodeListResult?,
-    val selectedSubject: SelectorTestSubjectPresentation?,
-    val filteredEpisodes: List<SelectorTestEpisodePresentation>?,
+    val subjectSearchResult: TestSubjectSearchResult?,
+    val episodeListSearchResult: TestEpisodeListResult?,
+    val selectedSubject: TestSubjectPresentation?,
+    val filteredEpisodes: List<TestEpisodePresentation>?,
     val filterByChannel: String?,
     val selectedSubjectIndex: Int,
     val subjectCaptchaRequest: SolveRequest?,
@@ -91,7 +91,7 @@ class SelectorTestState(
         searchConfigState.value?.searchUrl
     }
     private val useOnlyFirstWord by derivedStateOf {
-        searchConfigState.value?.searchUseOnlyFirstWord
+        searchConfigState.value?.autoMatch?.searchUseOnlyFirstWord
     }
 
     val gridState = LazyGridState()
@@ -109,7 +109,7 @@ class SelectorTestState(
         tester.subjectSelectionResultFlow,
         selectedSubjectIndexFlow,
     ) { subjectSearchResult, selectedSubjectIndex ->
-        val success = subjectSearchResult as? SelectorTestSearchSubjectResult.Success ?: return@combine null
+        val success = subjectSearchResult as? TestSubjectSearchResult.Success ?: return@combine null
         success.subjects.getOrNull(selectedSubjectIndex)
     }
 
@@ -118,14 +118,14 @@ class SelectorTestState(
         filterByChannelFlow,
     ) { result, filterByChannel ->
         when (result) {
-            is SelectorTestEpisodeListResult.Success -> result.episodes.filter {
+            is TestEpisodeListResult.Success -> result.episodes.filter {
                 filterByChannel == null || it.channel == filterByChannel
             }
 
-            is SelectorTestEpisodeListResult.ApiError -> null
-            is SelectorTestEpisodeListResult.CaptchaRequired -> null
-            SelectorTestEpisodeListResult.InvalidConfig -> null
-            is SelectorTestEpisodeListResult.UnknownError -> null
+            is TestEpisodeListResult.ApiError -> null
+            is TestEpisodeListResult.CaptchaRequired -> null
+            TestEpisodeListResult.InvalidConfig -> null
+            is TestEpisodeListResult.UnknownError -> null
         }
     }
 
@@ -161,8 +161,8 @@ class SelectorTestState(
             filteredEpisodes = filteredEpisodes,
             filterByChannel = filterByChannel,
             selectedSubjectIndex = selectedSubjectIndex,
-            subjectCaptchaRequest = (subjectSearchResult as? SelectorTestSearchSubjectResult.CaptchaRequired)?.request,
-            episodeCaptchaRequest = (episodeListSearchResult as? SelectorTestEpisodeListResult.CaptchaRequired)?.request,
+            subjectCaptchaRequest = (subjectSearchResult as? TestSubjectSearchResult.CaptchaRequired)?.request,
+            episodeCaptchaRequest = (episodeListSearchResult as? TestEpisodeListResult.CaptchaRequired)?.request,
             hasCaptchaSession = hasCaptchaSession,
             isHandlingCaptcha = isHandlingCaptcha,
         )
@@ -177,7 +177,7 @@ class SelectorTestState(
                         snapshotFlow { searchKeyword },
                         snapshotFlow { searchUrl },
                         snapshotFlow { useOnlyFirstWord },
-                        snapshotFlow { searchConfigState.value?.searchRemoveSpecial },
+                        snapshotFlow { searchConfigState.value?.autoMatch?.searchRemoveSpecial },
                     ) { searchKeyword, searchUrl, useOnlyFirstWord, searchRemoveSpecial ->
                         SelectorMediaSourceTester.SubjectQuery(
                             searchKeyword = searchKeyword,

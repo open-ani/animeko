@@ -11,10 +11,16 @@ package me.him188.ani.app.domain.media.player.data
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
+import me.him188.ani.app.torrent.api.TorrentSession
 import me.him188.ani.app.torrent.api.files.TorrentFileHandle
+import me.him188.ani.app.torrent.api.files.TorrentRemoteFile
 import me.him188.ani.app.torrent.api.files.averageRate
 import org.openani.mediamp.ExperimentalMediampApi
+import org.openani.mediamp.features.FramePreview
+import org.openani.mediamp.features.PreviewFrame
 import org.openani.mediamp.io.SeekableInput
+import org.openani.mediamp.source.MediaData
 import org.openani.mediamp.source.MediaExtraFiles
 import org.openani.mediamp.source.SeekableInputMediaData
 import kotlin.coroutines.CoroutineContext
@@ -23,11 +29,15 @@ import kotlin.coroutines.CoroutineContext
 class TorrentMediaData(
     private val handle: TorrentFileHandle,
     private val onClose: () -> Unit,
+    val engineKey: MediaCacheEngineKey? = null,
     override val extraFiles: MediaExtraFiles = MediaExtraFiles.EMPTY,
     override val options: List<String> = emptyList(),
+    val session: TorrentSession? = null,
 ) : SeekableInputMediaData, DownloadingMediaData, FileMediaData {
     private inline val entry get() = handle.entry
     override val filename: String get() = entry.fileName
+
+    val pathInTorrent: String get() = entry.pathInTorrent
     override val uri: String get() = "torrent://dummy/${entry.fileName}"
 
     override fun fileLength(): Long = entry.length
@@ -46,6 +56,21 @@ class TorrentMediaData(
     override suspend fun createInput(coroutineContext: CoroutineContext): SeekableInput =
         entry.createInput(coroutineContext)
 
+    /**
+     * 请求提前下载文件内 [byteRange] 的数据, 见 [TorrentFileHandle.setPrefetchRange]. 传 `null` 取消.
+     */
+    fun setPrefetchByteRange(byteRange: LongRange?) {
+        handle.setPrefetchRange(byteRange)
+    }
+
+    /**
+     * The seek-bar preview to use in place of the player's own [FramePreview], or null for the
+     * player's. While the engine streams the file from far away there are no frames at all; see
+     * [TorrentRemoteFile].
+     */
+    val framePreview: FramePreview?
+        get() = if ((entry as? TorrentRemoteFile)?.isStreamingRemotely == true) NoFramePreview else null
+
     override fun close() {
         onClose()
     }
@@ -53,4 +78,11 @@ class TorrentMediaData(
     override fun toString(): String {
         return "TorrentMediaData(entry=$entry)"
     }
+}
+
+/** The seek-bar preview [this] media supplies in place of the player's, if any. */
+fun MediaData.suppliedFramePreview(): FramePreview? = (this as? TorrentMediaData)?.framePreview
+
+private object NoFramePreview : FramePreview {
+    override suspend fun getPreviewFrame(positionMillis: Long, maxWidth: Int, maxHeight: Int): PreviewFrame? = null
 }

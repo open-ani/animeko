@@ -27,10 +27,15 @@ data class AiringScheduleForDate(
     val list: List<EpisodeWithAiringTime>,
 )
 
+/**
+ * @param airingTime 放送时间. [timeKnown] 为 `false` 时, 这是该剧集的 Bangumi 放送日期在客户端时区的 00:00.
+ * @param timeKnown 放送时间是否精确已知. `false` 表示服务端只知道 Bangumi 的放送日期, 而没有可靠的放送时刻 (如没有 recurrence, 或与 Bangumi 日期不符).
+ */
 data class EpisodeWithAiringTime(
     val subject: LightSubjectInfo,
     val episode: LightEpisodeInfo,
     val airingTime: Instant,
+    val timeKnown: Boolean,
 ) {
     val combinedId = packInts(subject.subjectId, episode.episodeId)
 }

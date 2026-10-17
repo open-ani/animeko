@@ -45,17 +45,20 @@ import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.details.components.RelatedSubjectCard
 import me.him188.ani.app.ui.subject.details.components.RelatedSubjectsLazyRow
 import me.him188.ani.app.ui.subject.details.components.rememberNavigateToRelatedSubject
+import me.him188.ani.app.ui.subject.details.components.rememberNavigateToRelationGraph
 import me.him188.ani.app.ui.subject.details.sections.CharactersSection
 import me.him188.ani.app.ui.subject.details.sections.EpisodesRow
 import me.him188.ani.app.ui.subject.details.sections.SectionHeader
 import me.him188.ani.app.ui.subject.details.sections.SectionHeaderActionButton
 import me.him188.ani.app.ui.subject.details.sections.SectionHeaderCacheButton
+import me.him188.ani.app.ui.subject.details.sections.SectionHeaderRelationGraphButton
 import me.him188.ani.app.ui.subject.details.sections.StaffSection
 import me.him188.ani.app.ui.subject.details.sections.SubjectInfoTable
 import me.him188.ani.app.ui.subject.details.sections.SubjectSummarySection
 import me.him188.ani.app.ui.subject.details.sections.SubjectTagsSection
 import me.him188.ani.app.ui.subject.details.sections.ViewAllSheet
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
+import me.him188.ani.app.ui.subject.details.state.rememberAiringLabelState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import org.jetbrains.compose.resources.stringResource
 
@@ -78,18 +81,17 @@ internal fun CompactDetailsTabContent(
     listState: LazyListState = rememberLazyListState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
     horizontalPadding: Dp = 16.dp,
-    onClickPersonImage: ((url: String) -> Unit)? = null,
 ) {
-    val presentation by state.presentation.collectAsStateWithLifecycle()
-    val episodes = presentation.episodeListUiState.mainEpisodes
+    val uiState by state.uiState.collectAsStateWithLifecycle()
+    val episodes = uiState.episodeListUiState.mainEpisodes
     val currentEpisodeId = remember(episodes) { episodes.firstOrNull { !it.isDoneOrDropped }?.episodeId }
 
     val exposedCharacters = state.exposedCharactersPager.collectAsLazyPagingItemsWithLifecycle()
     val allCharacters = state.charactersPager.collectAsLazyPagingItemsWithLifecycle()
-    val totalCharactersCount by state.totalCharactersCountState
+    val totalCharactersCount = uiState.totalCharactersCount
     val exposedStaff = state.exposedStaffPager.collectAsLazyPagingItemsWithLifecycle()
     val allStaff = state.staffPager.collectAsLazyPagingItemsWithLifecycle()
-    val totalStaffCount by state.totalStaffCountState
+    val totalStaffCount = uiState.totalStaffCount
     val related = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle()
 
     val horizontalPaddingValues = PaddingValues(horizontal = horizontalPadding)
@@ -114,7 +116,7 @@ internal fun CompactDetailsTabContent(
                         SectionHeaderCacheButton(onClickCache, showLabel = false)
                         SectionHeaderActionButton(onShowEpisodeList) {
                             AiringLabel(
-                                state.airingLabelState,
+                                uiState.rememberAiringLabelState(),
                                 style = LocalTextStyle.current,
                                 progressColor = MaterialTheme.colorScheme.primary,
                             )
@@ -169,7 +171,6 @@ internal fun CompactDetailsTabContent(
                 contentPadding = horizontalPaddingValues,
                 avatarSize = 56.dp,
                 itemSpacing = 0.dp,
-                onClickImage = onClickPersonImage,
             )
         }
 
@@ -181,7 +182,6 @@ internal fun CompactDetailsTabContent(
                 totalStaffCount,
                 horizontalPaddingModifier,
                 gridColumns = 3,
-                onClickImage = onClickPersonImage,
             )
         }
 
@@ -189,6 +189,7 @@ internal fun CompactDetailsTabContent(
         if (related.itemCount > 0) {
             item("related") {
                 RelatedSubjectsCompactSection(
+                    state.subjectId,
                     related,
                     headerModifier = horizontalPaddingModifier,
                     contentPadding = horizontalPaddingValues,
@@ -202,19 +203,21 @@ internal fun CompactDetailsTabContent(
 
 @Composable
 private fun RelatedSubjectsCompactSection(
+    subjectId: Int,
     related: LazyPagingItems<RelatedSubjectInfo>,
     headerModifier: Modifier,
     contentPadding: PaddingValues,
 ) {
     val onClickRelated = rememberNavigateToRelatedSubject()
+    val onClickRelationGraph = rememberNavigateToRelationGraph(subjectId)
     var showAll by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SectionHeader(
-            stringResource(Lang.subject_details_related_subjects),
-            actionLabel = stringResource(Lang.subject_details_view_all),
-            onAction = { showAll = true },
-            modifier = headerModifier,
-        )
+        SectionHeader(stringResource(Lang.subject_details_related_subjects), headerModifier) {
+            SectionHeaderRelationGraphButton(onClickRelationGraph)
+            SectionHeaderActionButton({ showAll = true }) {
+                Text(stringResource(Lang.subject_details_view_all))
+            }
+        }
         RelatedSubjectsLazyRow(
             related,
             onClick = onClickRelated,

@@ -71,8 +71,11 @@ import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuite
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteLayout
-import me.him188.ani.app.ui.cache.CacheManagementScreen
-import me.him188.ani.app.ui.cache.CacheManagementViewModel
+import me.him188.ani.app.ui.bangumi.merge.BangumiConflictNotifier
+import me.him188.ani.app.ui.exploration.ExplorationPageViewModel
+import me.him188.ani.app.ui.download.DownloadManagementScreen
+import me.him188.ani.app.ui.download.DownloadManagementViewModel
+import me.him188.ani.app.ui.download.createDownloadManagementViewModel
 import me.him188.ani.app.ui.exploration.ExplorationScreen
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -87,6 +90,7 @@ import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isTopRight
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
+import me.him188.ani.app.ui.foundation.session.LocalSelfAvatarUnreadDot
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.LocalAppChromeHazeState
@@ -124,6 +128,7 @@ fun MainScreen(
     onNavigateToPage: (MainScreenPage) -> Unit,
     onNavigateToSettings: (tab: SettingsTab?) -> Unit,
     onNavigateToSearch: () -> Unit,
+    showNotificationDot: Boolean,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
         currentWindowAdaptiveInfo1(),
     ),
@@ -142,6 +147,7 @@ fun MainScreen(
         onNavigateToPage,
         onNavigateToSettings,
         onNavigateToSearch,
+        showNotificationDot,
         modifier,
         navigationLayoutType,
     )
@@ -154,6 +160,7 @@ private fun MainScreenContent(
     onNavigateToPage: (MainScreenPage) -> Unit,
     onNavigateToSettings: (tab: SettingsTab?) -> Unit,
     onNavigateToSearch: () -> Unit,
+    showNotificationDot: Boolean,
     modifier: Modifier = Modifier,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
         currentWindowAdaptiveInfo1(),
@@ -161,7 +168,7 @@ private fun MainScreenContent(
 ) {
     val explorationPageViewModel = viewModel { ExplorationPageViewModel() }
     val userCollectionsViewModel = viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
-    val cacheManagementViewModel = viewModel { CacheManagementViewModel() }
+    val downloadManagementViewModel = viewModel { createDownloadManagementViewModel() }
 
     var showAccountSettingsPopup: Boolean by remember { mutableStateOf(false) }
     val profileViewModel = viewModel { ProfileViewModel() }
@@ -169,9 +176,16 @@ private fun MainScreenContent(
     val navigatorState = rememberUpdatedState(LocalNavigator.current)
     val navigator by navigatorState
 
+    // 未读红点显示在各 tab 页面顶栏的头像上和头像菜单的“通知”上, 两处用同一个值.
+    // 与 SelfAvatar 一致: 顶栏显示“登录”按钮时 (包括 token 过期且因网络错误未能刷新) 两处都不显示红点.
+    val notificationDotVisible = showNotificationDot && selfInfo.isSessionValid == true && selfInfo.selfInfo != null
+
     // 毛玻璃 app chrome 仅在主页面启用: 各 tab 页面通过 appChromeHazeSource 标记模糊来源,
     // 其他页面不提供 HazeState, 保持不透明的 chrome.
-    CompositionLocalProvider(LocalAppChromeHazeState provides rememberHazeState()) {
+    CompositionLocalProvider(
+        LocalAppChromeHazeState provides rememberHazeState(),
+        LocalSelfAvatarUnreadDot provides notificationDotVisible,
+    ) {
         MainScreenNavigationLayout(
             page = page,
             selfInfo = selfInfo,
@@ -181,7 +195,7 @@ private fun MainScreenContent(
             onLogin = { showAccountSettingsPopup = true },
             explorationPageViewModel = explorationPageViewModel,
             userCollectionsViewModel = userCollectionsViewModel,
-            cacheManagementViewModel = cacheManagementViewModel,
+            downloadManagementViewModel = downloadManagementViewModel,
             modifier = modifier,
             navigationLayoutType = navigationLayoutType,
         )
@@ -198,6 +212,11 @@ private fun MainScreenContent(
             onNavigateToAccountSettings = {
                 showAccountSettingsPopup = false
                 onNavigateToSettings(SettingsTab.PROFILE)
+            },
+            showNotificationDot = notificationDotVisible,
+            onNavigateToNotifications = {
+                showAccountSettingsPopup = false
+                navigator.navigateNotifications()
             },
             onNavigateToPlaybackHistory = {
                 showAccountSettingsPopup = false
@@ -221,7 +240,7 @@ private fun MainScreenNavigationLayout(
     onLogin: () -> Unit,
     explorationPageViewModel: ExplorationPageViewModel,
     userCollectionsViewModel: UserCollectionsViewModel,
-    cacheManagementViewModel: CacheManagementViewModel,
+    downloadManagementViewModel: DownloadManagementViewModel,
     modifier: Modifier = Modifier,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
         currentWindowAdaptiveInfo1(),
@@ -288,7 +307,7 @@ private fun MainScreenNavigationLayout(
                                         userCollectionsViewModel.state.scrollToTop()
 
                                     MainScreenPage.CacheManagement -> {
-                                        // cacheManagementViewModel.lazyGridState.animateScrollToItem(0)
+                                        // downloadManagementViewModel.lazyGridState.animateScrollToItem(0)
                                     }
                                 }
                             }
@@ -309,7 +328,8 @@ private fun MainScreenNavigationLayout(
 
         TabContent(
             layoutType = navigationLayoutType,
-            Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar && !isRightCaptionButton) {
+            selfInfo = selfInfo,
+            modifier = Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar && !isRightCaptionButton) {
                 // macos 标题栏只会在 NavigationRail 的区域内, TabContent 区域无需这些 padding.
                 consumeWindowInsets(WindowInsets.desktopTitleBar())
             },
@@ -362,8 +382,8 @@ private fun MainScreenNavigationLayout(
                     }
 
                     MainScreenPage.CacheManagement -> {
-                        CacheManagementScreen(
-                            cacheManagementViewModel,
+                        DownloadManagementScreen(
+                            downloadManagementViewModel,
                             selfInfo = selfInfo,
                             onPlay = { navigator.navigateEpisodeDetails(it.subjectId, it.episodeId) },
                             onNavigateCacheDetail = { navigator.navigateCacheDetails(it) },
@@ -383,6 +403,7 @@ private fun MainScreenNavigationLayout(
 @Composable
 private fun TabContent(
     layoutType: NavigationSuiteType,
+    selfInfo: SelfInfoUiState,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -409,13 +430,42 @@ private fun TabContent(
             // 毛玻璃导航栏覆盖在内容上时, 通知需要避开导航栏.
             // 注意不能用 windowInsetsPadding: 祖先已 consume 了系统导航栏 insets,
             // windowInsetsPadding 会减去已消耗的部分, 导致通知被导航栏遮挡一截.
-            Box(
+            BottomNotifierStack(
                 Modifier.matchParentSize()
                     .padding(LocalAppChromeOverlayInsets.current.asPaddingValues()),
-            ) {
-                UpdateNotifierWithVersionExpiryCheck()
-            }
+                top = { UpdateNotifierWithVersionExpiryCheck() },
+                bottom = {
+                    // 版本过期锁定页展示时不检查 Bangumi 收藏冲突, 也不在其上叠加可跳转的提示.
+                    val versionExpiryService = remember { KoinPlatform.getKoin().get<VersionExpiryService>() }
+                    val versionExpired by versionExpiryService.state.collectAsStateWithLifecycle(null)
+                    if (versionExpired == null) {
+                        val navigator = LocalNavigator.current
+                        BangumiConflictNotifier(
+                            selfInfo = selfInfo,
+                            onNavigateToMerge = { navigator.navigateBangumiMerge() },
+                        )
+                    }
+                },
+            )
         }
+    }
+}
+
+/**
+ * 主界面底部的通知堆叠: [top] (更新提示 / 版本过期锁定页) 在上, [bottom] (Bangumi 收藏冲突提示) 在下, 竖向排列.
+ * 两者各自持有 SnackbarHostState 且都是 Indefinite (手机上更新提示也是 snackbar), 若都锚在同一个 BottomCenter 会互相遮挡.
+ *
+ * 版本过期锁定页 (fillMaxSize) 也在 [top] 里, 用 weight 让它能占满剩余高度; 平时更新提示只占自身高度.
+ */
+@Composable
+internal fun BottomNotifierStack(
+    modifier: Modifier = Modifier,
+    top: @Composable BoxScope.() -> Unit,
+    bottom: @Composable BoxScope.() -> Unit,
+) {
+    Column(modifier, verticalArrangement = Arrangement.Bottom) {
+        Box(Modifier.fillMaxWidth().weight(1f, fill = false), content = top)
+        Box(Modifier.fillMaxWidth(), content = bottom)
     }
 }
 

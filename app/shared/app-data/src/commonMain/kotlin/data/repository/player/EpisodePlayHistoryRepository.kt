@@ -12,6 +12,7 @@ package me.him188.ani.app.data.repository.player
 import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -68,6 +69,15 @@ sealed class PlaybackHistoryPendingOp {
 interface EpisodePlayHistoryRepository {
     val flow: Flow<List<EpisodeHistory>>
     val allHistoriesFlow: Flow<List<EpisodeHistory>>
+
+    /**
+     * 只订阅 [episodeIds] 这些剧集的未删除记录, 供剧集列表显示播放进度; [episodeIds] 为空时恒为空列表.
+     * 与 [flow] 不同, 不会把全部记录读进内存.
+     */
+    fun flowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>>
+
+    /** 同 [flowByEpisodeIds], 但包含已删除的记录; 用于给待同步的删除操作显示条目名. */
+    fun allHistoriesFlowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>>
     val pendingOpsFlow: Flow<List<PlaybackHistoryPendingOp>>
     val lastSyncAtMillisFlow: Flow<Long>
 
@@ -96,7 +106,20 @@ interface EpisodePlayHistoryRepository {
 
     suspend fun deletePendingOps(ids: Collection<Long>)
 
-    suspend fun getPositionMillisByEpisodeId(episodeId: Int): Long?
+    /**
+     * 下次播放应恢复到的位置. 没有记录、记录已删除或已看完 ([EpisodeHistory.isFinished]) 时为 `null`, 表示从头播放.
+     */
+    suspend fun getResumePositionMillisByEpisodeId(episodeId: Int): Long?
+
+    /**
+     * 本机的播放记录数, 包含已删除的记录 (旧版本会把看完的剧集标记为删除, 它们同样代表看过).
+     */
+    suspend fun countAllRecords(): Int
+
+    /**
+     * 本机最早一条播放记录的更新时间, 没有记录时为 `null`. 同步过的记录可能来自其他设备.
+     */
+    suspend fun getEarliestRecordTimeMillis(): Long?
 }
 
 class EpisodePlayHistoryRepositoryImpl(
@@ -113,6 +136,18 @@ class EpisodePlayHistoryRepositoryImpl(
     }
     override val flow: Flow<List<EpisodeHistory>> = playbackHistoryDao.activeRecordsFlow().map { records ->
         records.map { it.toEpisodeHistory() }
+    }
+    override fun flowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>> {
+        if (episodeIds.isEmpty()) return flowOf(emptyList())
+        return playbackHistoryDao.activeRecordsFlowByEpisodeIds(episodeIds).map { records ->
+            records.map { it.toEpisodeHistory() }
+        }
+    }
+    override fun allHistoriesFlowByEpisodeIds(episodeIds: Collection<Int>): Flow<List<EpisodeHistory>> {
+        if (episodeIds.isEmpty()) return flowOf(emptyList())
+        return playbackHistoryDao.recordsFlowByEpisodeIds(episodeIds).map { records ->
+            records.map { it.toEpisodeHistory() }
+        }
     }
     override val pendingOpsFlow: Flow<List<PlaybackHistoryPendingOp>> = playbackHistoryDao.pendingOpsFlow().map { ops ->
         ops.map { it.toPendingOp() }
@@ -238,15 +273,25 @@ class EpisodePlayHistoryRepositoryImpl(
         playbackHistoryDao.deletePendingOpsByIds(ids)
     }
 
-    override suspend fun getPositionMillisByEpisodeId(episodeId: Int): Long? {
+    override suspend fun getResumePositionMillisByEpisodeId(episodeId: Int): Long? {
         ensureLegacyDataStoreMigrated()
         return playbackHistoryDao.getRecordByEpisodeId(episodeId)
             ?.toEpisodeHistory()
-            ?.takeUnless(EpisodeHistory::isDeleted)
+            ?.takeUnless { it.isDeleted || it.isFinished }
             ?.positionMillis
             ?.also {
                 logger.info { "load play progress for episode $episodeId: positionMillis=$it" }
             }
+    }
+
+    override suspend fun countAllRecords(): Int {
+        ensureLegacyDataStoreMigrated()
+        return playbackHistoryDao.countAllRecords()
+    }
+
+    override suspend fun getEarliestRecordTimeMillis(): Long? {
+        ensureLegacyDataStoreMigrated()
+        return playbackHistoryDao.getEarliestUpdatedAtMillis()
     }
 
     private fun EpisodeHistory.toPendingUpsertOrNull(): PlaybackHistoryPendingOp.Upsert? {

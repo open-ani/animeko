@@ -17,11 +17,14 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
+import me.him188.ani.app.domain.media.selector.MediaAutoSelectSnapshot
+import me.him188.ani.app.domain.media.selector.MediaSourceSelectionSnapshot
 import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorEvents
 import me.him188.ani.app.domain.media.selector.MutableMediaSelectorEvents
 import me.him188.ani.app.domain.media.selector.OptionalPreference
+import me.him188.ani.app.domain.media.selector.SelectOrigin
 import me.him188.ani.app.domain.media.selector.filter.MediaSelectorFilterSortAlgorithm
 import me.him188.ani.app.domain.media.selector.orElse
 import me.him188.ani.datasources.api.Media
@@ -65,8 +68,17 @@ open class TestMediaSelector(
     ),
     private val algorithm: MediaSelectorFilterSortAlgorithm = MediaSelectorFilterSortAlgorithm(),
 ) : MediaSelector {
+    override fun autoSelectSnapshots(sources: Flow<List<MediaSourceSelectionSnapshot>>): Flow<MediaAutoSelectSnapshot> {
+        throw UnsupportedOperationException()
+    }
+
+    override suspend fun selectAutomatically(candidate: Media, expectedSelection: Media?): Media? {
+        throw UnsupportedOperationException()
+    }
+
     final override val filteredCandidatesMedia: Flow<List<Media>> =
         filteredCandidates.map { list -> list.mapNotNull { it.result } }
+    override val subjectCandidates: Flow<List<MaybeExcludedMedia>> get() = filteredCandidates
     final override val alliance: TestMediaPreferenceItem<String> = TestMediaPreferenceItem()
     final override val resolution: TestMediaPreferenceItem<String> = TestMediaPreferenceItem()
     final override val subtitleLanguageId: TestMediaPreferenceItem<String> = TestMediaPreferenceItem()
@@ -95,13 +107,17 @@ open class TestMediaSelector(
         preferredCandidates.map { list -> list.mapNotNull { it.result } }
 
     final override val selected: MutableStateFlow<Media?> = MutableStateFlow(null)
+    override val selectedMaybeExcludedMedia: Flow<MaybeExcludedMedia?>
+        get() = throw UnsupportedOperationException()
     final override val events: MediaSelectorEvents = MutableMediaSelectorEvents()
 
-    override suspend fun select(candidate: Media): Boolean {
+    override suspend fun select(candidate: Media, origin: SelectOrigin): Boolean {
         if (this.selected.value == candidate) return false
         this.selected.value = candidate
         return true
     }
+
+    override suspend fun selectTemporarily(candidate: Media): Boolean = select(candidate)
 
     override fun unselect() {
         this.selected.value = null

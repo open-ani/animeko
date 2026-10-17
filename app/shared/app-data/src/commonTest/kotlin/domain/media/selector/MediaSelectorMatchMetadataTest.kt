@@ -177,7 +177,8 @@ class MatchMetadataApi(
     @OptIn(UnsafeOriginalMediaAccess::class)
     suspend fun checkAll() {
         if (checks.isEmpty()) return
-        val allIncluded = suite.selector.filteredCandidates.first().filterIsInstance<MaybeExcludedMedia.Included>()
+        // 条目级候选不按当前剧集筛选, 不匹配当前剧集的资源也带有 MatchMetadata (episodeMatchKind = NONE).
+        val allIncluded = suite.selector.subjectCandidates.first().filterIsInstance<MaybeExcludedMedia.Included>()
         checks.forEach { check ->
             val found = allIncluded.firstOrNull { included ->
                 included.original.mediaId == check.mediaId

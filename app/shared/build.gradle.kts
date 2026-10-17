@@ -71,7 +71,8 @@ kotlin {
         api(projects.app.shared.uiSettings)
         api(projects.app.shared.uiExploration)
         api(projects.app.shared.uiSubject)
-        api(projects.app.shared.uiCache)
+        api(projects.app.shared.uiDownload)
+        api(projects.app.shared.uiNotification)
         api(projects.app.shared.uiAdaptive)
         api(projects.app.shared.uiOnboarding)
         api(projects.app.shared.uiEpisode)
@@ -94,14 +95,12 @@ kotlin {
         // Data sources
         api(projects.datasource.datasourceApi)
         api(projects.datasource.datasourceCore)
-        api(projects.datasource.bangumi)
         api(projects.datasource.mikan)
 
         api(projects.client)
         api(projects.utils.logging)
         api(projects.utils.coroutines)
         api(projects.utils.io)
-        api(projects.app.shared.imageViewer)
         api(projects.utils.xml)
         api(projects.utils.bbcode)
         api(projects.danmaku.danmakuApi)
@@ -119,9 +118,6 @@ kotlin {
 
         // Others
         api(libs.koin.core)
-        api(libs.coil.core)
-        api(libs.coil.svg)
-        api(libs.coil.compose.core)
         implementation(libs.constraintlayout.compose)
     }
 
@@ -155,7 +151,6 @@ kotlin {
         api(libs.androidx.activity.ktx)
         api(libs.koin.android)
         implementation(libs.androidx.browser)
-        api(libs.coil)
         api(libs.logback.android)
         api(projects.utils.buildConfig)
     }
@@ -206,7 +201,10 @@ val mergeCommonMainComposeResources = tasks.register<Sync>("mergeCommonMainCompo
 }
 
 compose.resources {
-    packageOfResClass = "me.him188.ani.app"
+    // 不能用 "me.him188.ani.app": 资源会打进以包名命名的目录, 目录名以 ".app" 结尾时
+    // App Store 校验会把它当成嵌套 app bundle, 因缺少可执行文件和 Info.plist 拒绝上传
+    // (ITMS-90207 / ITMS-90036).
+    packageOfResClass = "me.him188.ani.app.shared"
     generateResClass = always
     // provider 从 merge task 派生, 自动携带任务依赖.
     customDirectory(

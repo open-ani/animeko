@@ -6,9 +6,10 @@ file: section EOF;
 
 section : element+ ;
 
-element: 
-    b | i | u | s | code | 
-    url | url_named | img | quote | size | color | mask | bgm_sticker | text_stiker |  
+element:
+    b | i | u | s | code |
+    url | url_named | img | quote | size | color | mask |
+    center | left | right | bgm_sticker | text_stiker |
     plain;
 
 plain: (TEXT | NUMBER | '(' | ')' | '[' | '/' | ']' | '=' | ',')+;
@@ -22,6 +23,10 @@ mask: ('[mask]' | '[MASK]') content=section? ('[/mask]' | '[/MASK]');
 quote: ('[quote]' | '[QUOTE]') content=section? ('[/quote]' | '[/QUOTE]');
 size: ('[size=' | '[SIZE=') value=NUMBER (']' | ']') content=section? ('[/size]' | '[/SIZE]');
 color: ('[color=' | '[COLOR=') value=TEXT (']' | ']') content=section? ('[/color]' | '[/COLOR]');
+
+center: ('[center]' | '[CENTER]') content=section? ('[/center]' | '[/CENTER]');
+left: ('[left]' | '[LEFT]') content=section? ('[/left]' | '[/LEFT]');
+right: ('[right]' | '[RIGHT]') content=section? ('[/right]' | '[/RIGHT]');
 
 bgm_sticker: ('(bgm' | '(BGM') id=NUMBER ')';
 text_stiker: 

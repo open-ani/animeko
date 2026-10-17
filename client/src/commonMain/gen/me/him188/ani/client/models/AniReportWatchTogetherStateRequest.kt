@@ -44,7 +44,7 @@ data class AniReportWatchTogetherStateRequest (
 
     @SerialName(value = "watching") val watching: AniWatchTogetherWatchingInfo? = null,
 
-    @SerialName(value = "knownVersion") val knownVersion: kotlin.Long? = 0L
+    @SerialName(value = "knownVersion") val knownVersion: kotlin.Long? = null
 
 ) {
 
@@ -53,3 +53,4 @@ data class AniReportWatchTogetherStateRequest (
 
 
 // @formatter:on
+

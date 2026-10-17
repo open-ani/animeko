@@ -26,7 +26,10 @@ fun main() {
 
 
     val contextTags =
-        listOf("b", "i", "u", "s", "url", "img", "quote", "code", "mask", "img=300,200", "img=300", "img=,200")
+        listOf(
+            "b", "i", "u", "s", "url", "img", "quote", "code", "mask", "center", "left", "right",
+            "img=300,200", "img=300", "img=,200",
+        )
             .flatMap {
                 listOf(it, it.uppercase())
             }
@@ -52,6 +55,13 @@ fun main() {
         case("[IMG=300]https://example.com/image.png[/img]")
         case("[IMG=,200]https://example.com/image.png[/img]")
         case("[IMG=0,0]https://example.com/image.png[/img]")
+        case("[center]Hello World![/center]")
+        case("[CENTER]Hello World![/CENTER]")
+        case("[left]Hello World![/left]")
+        case("[LEFT]Hello World![/LEFT]")
+        case("[right]Hello World![/right]")
+        case("[RIGHT]Hello World![/RIGHT]")
+        case("Hello [center]World![/center] Again!")
         case("[size=1]Hello World![/size]")
         case("[color=red]Hello World![/color]")
         case("[color=#AFAFAF]Hello World![/color]")
@@ -82,6 +92,12 @@ fun main() {
         case("[size=1]Hello[size=2]World[/size]![/size]")
         case("[size=1]Hello[b][size=2]World[/size]![/b][/size]")
         case("[color=red][size=1]Hello[b][size=2]World[/size]![/b][/size][/color]")
+        case("[center]Hello [b][i]World![/i][/b][/center]")
+        case("[center]Hello[left]World[/left]![/center]")
+        case("[center][url=https://example.com]Hello World![/url][/center]")
+        case("[center][img]https://example.com/image.png[/img][/center]")
+        case("[center][quote]Hello World![/quote][/center]")
+        case("[b][center]Hello World![/center][/b]")
     }.writeTo(dir)
 
     BBCodeTestGenerator("Specials").apply {
@@ -190,6 +206,11 @@ class BBCodeTestGenerator(
                         if (element.bold) addCode(", bold=%L", true)
                         if (element.mask) addCode(", mask=%L", true)
                         if (element.code) addCode(", code=%L", true)
+                        if (element.align != RichElement.Text.DEFAULT_ALIGN) addCode(
+                            ", align=%T.%L",
+                            ClassName.bestGuess("me.him188.ani.utils.bbcode.RichElement.Text.Align"),
+                            element.align.name,
+                        )
                         addStatement(")")
                     }
                 }

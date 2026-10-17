@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,29 +9,21 @@
 
 package me.him188.ani.app.ui.settings.mediasource.selector.edit
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormat
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatA
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatIndexed
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatJsonPathIndexed
-import me.him188.ani.app.ui.foundation.effects.moveFocusOnEnter
+import me.him188.ani.app.ui.settings.mediasource.editor.ConfigTextField
+import me.him188.ani.app.ui.settings.mediasource.editor.UnsupportedFormatIdHint
 
 @Composable
 internal fun SelectorSubjectConfigurationColumn(
@@ -39,7 +31,6 @@ internal fun SelectorSubjectConfigurationColumn(
     state: SelectorConfigState,
     textFieldShape: Shape,
     verticalSpacing: Dp,
-    listItemColors: ListItemColors,
     modifier: Modifier = Modifier,
 ) {
     when (format) {
@@ -51,29 +42,14 @@ internal fun SelectorSubjectConfigurationColumn(
             )
 
             val conf = state.subjectFormatA
-            OutlinedTextField(
+            ConfigTextField(
                 conf.selectLists, { conf.selectLists = it },
-                Modifier.fillMaxWidth().moveFocusOnEnter().padding(top = verticalSpacing),
-                label = { Text("提取条目列表") },
-                supportingText = { Text("CSS Selector 表达式。期望返回一些 <a>，每个对应一个条目，将会读取其 href 属性和 text") },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                shape = textFieldShape,
+                label = "提取条目列表",
+                Modifier.padding(top = verticalSpacing),
+                supportingText = "CSS Selector 表达式。期望返回一些 <a>，每个对应一个条目，将会读取其 href 属性和 text",
                 isError = conf.selectListsIsError,
                 enabled = state.enableEdit,
-            )
-            ListItem(
-                headlineContent = { Text("优先选择最短标题") },
-                Modifier
-                    .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
-                    .clickable(enabled = state.enableEdit) { conf.preferShorterName = !conf.preferShorterName },
-                supportingContent = { Text("优先选择满足匹配的标题最短的条目。可避免为第一季匹配到第二季") },
-                trailingContent = {
-                    Switch(
-                        conf.preferShorterName, { conf.preferShorterName = it },
-                        enabled = state.enableEdit,
-                    )
-                },
-                colors = listItemColors,
+                shape = textFieldShape,
             )
         }
 
@@ -84,39 +60,23 @@ internal fun SelectorSubjectConfigurationColumn(
                 style = MaterialTheme.typography.labelLarge,
             )
             val conf = state.subjectFormatIndex
-            OutlinedTextField(
+            ConfigTextField(
                 conf.selectNames, { conf.selectNames = it },
-                Modifier.fillMaxWidth().moveFocusOnEnter().padding(top = verticalSpacing),
-                label = { Text("提取条目名称列表") },
-                supportingText = { Text("CSS Selector 表达式。选取条目名称列表") },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                shape = textFieldShape,
+                label = "提取条目名称列表",
+                Modifier.padding(top = verticalSpacing),
+                supportingText = "CSS Selector 表达式。选取条目名称列表",
                 isError = conf.selectNamesIsError,
                 enabled = state.enableEdit,
-            )
-            OutlinedTextField(
-                conf.selectLinks, { conf.selectLinks = it },
-                Modifier.fillMaxWidth().moveFocusOnEnter().padding(top = verticalSpacing),
-                label = { Text("提取条目链接列表") },
-                supportingText = { Text("CSS Selector 表达式。选取链接列表") },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 shape = textFieldShape,
+            )
+            ConfigTextField(
+                conf.selectLinks, { conf.selectLinks = it },
+                label = "提取条目链接列表",
+                Modifier.padding(top = verticalSpacing),
+                supportingText = "CSS Selector 表达式。选取链接列表",
                 isError = conf.selectLinksIsError,
                 enabled = state.enableEdit,
-            )
-            ListItem(
-                headlineContent = { Text("优先选择最短标题") },
-                Modifier
-                    .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
-                    .clickable(enabled = state.enableEdit) { conf.preferShorterName = !conf.preferShorterName },
-                supportingContent = { Text("优先选择满足匹配的标题最短的条目。可避免为第一季匹配到第二季") },
-                trailingContent = {
-                    Switch(
-                        conf.preferShorterName, { conf.preferShorterName = it },
-                        enabled = state.enableEdit,
-                    )
-                },
-                colors = listItemColors,
+                shape = textFieldShape,
             )
         }
 
@@ -127,45 +87,29 @@ internal fun SelectorSubjectConfigurationColumn(
                 style = MaterialTheme.typography.labelLarge,
             )
             val conf = state.subjectFormatJsonPathIndex
-            OutlinedTextField(
+            ConfigTextField(
                 conf.selectNames, { conf.selectNames = it },
-                Modifier.fillMaxWidth().moveFocusOnEnter().padding(top = verticalSpacing),
-                label = { Text("提取条目名称列表") },
-                supportingText = { Text("""JsonPath 表达式。选取条目名称列表。期望返回一个数组，每个元素对应一个名称。支持嵌套结构，例如 ["a", "b"] 与 [{"any": "a"}, {"any": "b"}] 都可以解析为两个名称 a b""") },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                shape = textFieldShape,
+                label = "提取条目名称列表",
+                Modifier.padding(top = verticalSpacing),
+                supportingText = """JsonPath 表达式。选取条目名称列表。期望返回一个数组，每个元素对应一个名称。支持嵌套结构，例如 ["a", "b"] 与 [{"any": "a"}, {"any": "b"}] 都可以解析为两个名称 a b""",
                 isError = conf.selectNamesIsError,
                 enabled = state.enableEdit,
-            )
-            OutlinedTextField(
-                conf.selectLinks, { conf.selectLinks = it },
-                Modifier.fillMaxWidth().moveFocusOnEnter().padding(top = verticalSpacing),
-                label = { Text("提取条目链接列表") },
-                supportingText = { Text("""JsonPath 表达式。选取链接列表。期望返回一个数组，每个元素对应一个链接。支持嵌套结构""") },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 shape = textFieldShape,
+            )
+            ConfigTextField(
+                conf.selectLinks, { conf.selectLinks = it },
+                label = "提取条目链接列表",
+                Modifier.padding(top = verticalSpacing),
+                supportingText = "JsonPath 表达式。选取链接列表。期望返回一个数组，每个元素对应一个链接。支持嵌套结构",
                 isError = conf.selectLinksIsError,
                 enabled = state.enableEdit,
-            )
-            ListItem(
-                headlineContent = { Text("优先选择最短标题") },
-                Modifier
-                    .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
-                    .clickable(enabled = state.enableEdit) { conf.preferShorterName = !conf.preferShorterName },
-                supportingContent = { Text("优先选择满足匹配的标题最短的条目。可避免为第一季匹配到第二季") },
-                trailingContent = {
-                    Switch(
-                        conf.preferShorterName, { conf.preferShorterName = it },
-                        enabled = state.enableEdit,
-                    )
-                },
-                colors = listItemColors,
+                shape = textFieldShape,
             )
         }
 
         null -> Column(modifier) {
             UnsupportedFormatIdHint(
-                state.subjectFormatId,
+                state.subjectFormatId.value,
                 Modifier.align(Alignment.CenterHorizontally),
             )
         }

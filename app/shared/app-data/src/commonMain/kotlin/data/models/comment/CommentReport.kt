@@ -15,6 +15,16 @@ package me.him188.ani.app.data.models.comment
 enum class CommentReportTargetType {
     EPISODE_COMMENT,
     SUBJECT_REVIEW,
+
+    /**
+     * 人物 (声优/制作人员) 评论.
+     */
+    PERSON_COMMENT,
+
+    /**
+     * 角色评论.
+     */
+    CHARACTER_COMMENT,
 }
 
 /**

@@ -198,8 +198,20 @@ class CachedMedia(
     override val kind: MediaSourceKind = MediaSourceKind.LocalCache,
     override val properties: MediaProperties = origin.properties,
     val cacheProperties: MediaCacheProperties? = null,
+    /**
+     * 该缓存记录覆盖的剧集. 一条缓存记录只对应一个文件, 因此合集资源的每条记录只覆盖各自的那一集.
+     * 默认沿用 [origin] 的剧集范围.
+     */
+    override val episodeRange: EpisodeRange? = origin.episodeRange,
+    /**
+     * 该缓存记录所属剧集的 ID. 提供时参与 [mediaId], 以区分同一合集资源的多条记录.
+     */
+    val cacheEpisodeId: String? = null,
 ) : Media by origin {
-    override val mediaId: String = "${cacheMediaSourceId}:${origin.mediaId}"
+    override val mediaId: String = buildString {
+        append(cacheMediaSourceId).append(':').append(origin.mediaId)
+        if (cacheEpisodeId != null) append(':').append(cacheEpisodeId)
+    }
     override val mediaSourceId: String = cacheMediaSourceId
 }
 

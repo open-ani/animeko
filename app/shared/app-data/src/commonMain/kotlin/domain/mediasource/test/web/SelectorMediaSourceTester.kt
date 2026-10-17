@@ -25,6 +25,10 @@ import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
 import me.him188.ani.app.domain.mediasource.MediaSourceEngineHelpers
+import me.him188.ani.app.domain.mediasource.test.TestEpisodeListResult
+import me.him188.ani.app.domain.mediasource.test.TestEpisodePresentation
+import me.him188.ani.app.domain.mediasource.test.TestSubjectPresentation
+import me.him188.ani.app.domain.mediasource.test.TestSubjectSearchResult
 import me.him188.ani.app.domain.mediasource.web.BlockReason
 import me.him188.ani.app.domain.mediasource.web.PageExpectation
 import me.him188.ani.app.domain.mediasource.web.PageVerdict
@@ -35,17 +39,18 @@ import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.mediasource.web.normalizedSessionHost
+import me.him188.ani.app.domain.mediasource.web.orderSubjectsForAutoMatch
 import me.him188.ani.app.domain.mediasource.web.selectEpisodesImpl
 import me.him188.ani.app.domain.mediasource.web.selectSubjectsForCaptchaProbe
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
 import me.him188.ani.utils.coroutines.flows.restartable
+import me.him188.ani.utils.coroutines.runCatchingCancellable
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.xml.Document
 import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * 交互式的数据源测试器. 用于 UI 的 "测试数据源" 功能.
@@ -140,7 +145,7 @@ class SelectorMediaSourceTester(
         selectorSearchQueryFlow,
     ) { apiResponse, searchConfig, query ->
         if (apiResponse == null) return@combine null
-        if (searchConfig == null || query == null) return@combine SelectorTestSearchSubjectResult.InvalidConfig
+        if (searchConfig == null || query == null) return@combine TestSubjectSearchResult.InvalidConfig
 
         selectSubjectResult(apiResponse, searchConfig, query)
     }
@@ -154,7 +159,7 @@ class SelectorMediaSourceTester(
         .combine(selectedSubjectIndexFlow) { result, index ->
             if (result == null) return@combine null
 
-            (result as? SelectorTestSearchSubjectResult.Success)?.subjects?.getOrNull(index)
+            (result as? TestSubjectSearchResult.Success)?.subjects?.getOrNull(index)
         } // not shared
         .distinctUntilChanged() // required, 否则在修改无关配置时也会触发重新搜索
 
@@ -186,11 +191,11 @@ class SelectorMediaSourceTester(
     ) { episodeListResult, query, searchConfig, episodeQuery ->
         when {
             query == null || searchConfig == null || episodeQuery == null -> {
-                SelectorTestEpisodeListResult.InvalidConfig
+                TestEpisodeListResult.InvalidConfig
             }
 
             episodeListResult == null -> {
-                SelectorTestEpisodeListResult.Success(null, emptyList())
+                TestEpisodeListResult.Success(null, emptyList())
             }
 
             else -> {
@@ -306,35 +311,28 @@ class SelectorMediaSourceTester(
 
         val searchUrl = createSearchUrl(url, searchKeyword, useOnlyFirstWord, removeSpecial)
         val searchConfig = selectorSearchConfigFlow.value ?: SelectorSearchConfig.Empty
-        return try {
+        return runCatchingCancellable {
             val verdict = fetchWithRetries(searchUrl, PageExpectation.SearchResults(searchConfig))
             logger.info {
                 "SelectorMediaSourceTester[$mediaSourceId] searchSubject url=$searchUrl verdict=${verdict::class.simpleName}"
             }
-            Result.success(FetchedPage(searchUrl, verdict))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
+            FetchedPage(searchUrl, verdict)
+        }.onFailure { e ->
             logger.info {
                 "SelectorMediaSourceTester[$mediaSourceId] searchSubject failure " +
                         "type=${e::class.qualifiedName} message=${e.message} cause=${e.cause?.let { it::class.qualifiedName }}"
             }
-            Result.failure(e)
         }
     }
 
     private suspend fun searchEpisodes(subjectDetailsPageUrl: String): Result<FetchedPage> {
         val searchConfig = selectorSearchConfigFlow.value ?: SelectorSearchConfig.Empty
-        return try {
+        return runCatchingCancellable {
             val verdict = fetchWithRetries(
                 subjectDetailsPageUrl,
                 PageExpectation.SubjectDetails(searchConfig, subjectDetailsPageUrl),
             )
-            Result.success(FetchedPage(subjectDetailsPageUrl, verdict))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
-            Result.failure(e)
+            FetchedPage(subjectDetailsPageUrl, verdict)
         }
     }
 
@@ -342,7 +340,7 @@ class SelectorMediaSourceTester(
         res: Result<FetchedPage>,
         searchConfig: SelectorSearchConfig,
         query: SelectorSearchQuery,
-    ): SelectorTestSearchSubjectResult {
+    ): TestSubjectSearchResult {
         return res.fold(
             onSuccess = { fetched ->
                 val document = fetched.verdict.documentOrNull()
@@ -351,16 +349,15 @@ class SelectorMediaSourceTester(
                         // 用当前配置重新解析缓存的 document, 编辑 selector 时无需重新抓取
                         val subjects = document?.let { selectSubjectsForCaptchaProbe(it, searchConfig) }
                         if (document != null && subjects == null) {
-                            return SelectorTestSearchSubjectResult.InvalidConfig
+                            return TestSubjectSearchResult.InvalidConfig
                         }
-                        SelectorTestSearchSubjectResult.Success(
+                        TestSubjectSearchResult.Success(
                             fetched.url,
-                            subjects.orEmpty().map {
-                                SelectorTestSubjectPresentation.compute(
+                            searchConfig.orderSubjectsForAutoMatch(subjects.orEmpty()).map {
+                                TestSubjectPresentation.compute(
                                     it,
                                     query,
                                     document,
-                                    searchConfig.filterBySubjectName,
                                 )
                             },
                         )
@@ -371,9 +368,9 @@ class SelectorMediaSourceTester(
             },
             onFailure = { reason ->
                 if (reason is RepositoryException) {
-                    SelectorTestSearchSubjectResult.ApiError(reason)
+                    TestSubjectSearchResult.ApiError(reason)
                 } else {
-                    SelectorTestSearchSubjectResult.UnknownError(reason)
+                    TestSubjectSearchResult.UnknownError(reason)
                 }
             },
         )
@@ -382,8 +379,8 @@ class SelectorMediaSourceTester(
     private fun BlockReason.toSubjectResult(
         pageUrl: String,
         searchConfig: SelectorSearchConfig,
-    ): SelectorTestSearchSubjectResult = when (this) {
-        is BlockReason.Captcha -> SelectorTestSearchSubjectResult.CaptchaRequired(
+    ): TestSubjectSearchResult = when (this) {
+        is BlockReason.Captcha -> TestSubjectSearchResult.CaptchaRequired(
             SolveRequest(
                 mediaSourceId = mediaSourceId,
                 pageUrl = pageUrl,
@@ -393,37 +390,37 @@ class SelectorMediaSourceTester(
         )
 
         // 限流不是验证码: 如实显示为 API 错误, 不误导用户去解验证码
-        is BlockReason.RateLimited -> SelectorTestSearchSubjectResult.ApiError(RepositoryRateLimitedException())
-        BlockReason.NotFound -> SelectorTestSearchSubjectResult.Success(pageUrl, emptyList())
-        is BlockReason.Forbidden -> SelectorTestSearchSubjectResult.ApiError(RepositoryAuthorizationException())
+        is BlockReason.RateLimited -> TestSubjectSearchResult.ApiError(RepositoryRateLimitedException())
+        BlockReason.NotFound -> TestSubjectSearchResult.Success(pageUrl, emptyList())
+        is BlockReason.Forbidden -> TestSubjectSearchResult.ApiError(RepositoryAuthorizationException())
     }
 
     private fun convertEpisodeResult(
         res: Result<FetchedPage>,
         config: SelectorSearchConfig,
         query: SelectorSearchQuery,
-    ): SelectorTestEpisodeListResult {
+    ): TestEpisodeListResult {
         return res.fold(
             onSuccess = { fetched ->
                 val document = fetched.verdict.documentOrNull()
                 when (val verdict = fetched.verdict) {
                     is PageVerdict.Ok<*>, is PageVerdict.EmptyContent -> {
-                        document ?: return SelectorTestEpisodeListResult.Success(null, emptyList())
+                        document ?: return TestEpisodeListResult.Success(null, emptyList())
                         val episodeList = runCatching {
                             selectEpisodesImpl(document, fetched.url, config)
-                        }.getOrNull() ?: return SelectorTestEpisodeListResult.InvalidConfig
-                        SelectorTestEpisodeListResult.Success(
+                        }.getOrNull() ?: return TestEpisodeListResult.InvalidConfig
+                        TestEpisodeListResult.Success(
                             episodeList.channels,
                             episodeList.episodes
                                 .fastDistinctBy { it.playUrl }
                                 .map {
-                                    SelectorTestEpisodePresentation.compute(it, query, document, config)
+                                    TestEpisodePresentation.compute(it, query, document, config)
                                 },
                         )
                     }
 
                     is PageVerdict.Blocked -> when (val reason = verdict.reason) {
-                        is BlockReason.Captcha -> SelectorTestEpisodeListResult.CaptchaRequired(
+                        is BlockReason.Captcha -> TestEpisodeListResult.CaptchaRequired(
                             SolveRequest(
                                 mediaSourceId = mediaSourceId,
                                 pageUrl = fetched.url,
@@ -433,19 +430,19 @@ class SelectorMediaSourceTester(
                         )
 
                         is BlockReason.RateLimited ->
-                            SelectorTestEpisodeListResult.ApiError(RepositoryRateLimitedException())
+                            TestEpisodeListResult.ApiError(RepositoryRateLimitedException())
 
-                        BlockReason.NotFound -> SelectorTestEpisodeListResult.Success(null, emptyList())
+                        BlockReason.NotFound -> TestEpisodeListResult.Success(null, emptyList())
                         is BlockReason.Forbidden ->
-                            SelectorTestEpisodeListResult.ApiError(RepositoryAuthorizationException())
+                            TestEpisodeListResult.ApiError(RepositoryAuthorizationException())
                     }
                 }
             },
             onFailure = { reason ->
                 if (reason is RepositoryException) {
-                    SelectorTestEpisodeListResult.ApiError(reason)
+                    TestEpisodeListResult.ApiError(reason)
                 } else {
-                    SelectorTestEpisodeListResult.UnknownError(reason)
+                    TestEpisodeListResult.UnknownError(reason)
                 }
             },
         )

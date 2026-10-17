@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.player.extension
 
 import androidx.annotation.VisibleForTesting
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.collections.immutable.persistentHashSetOf
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -24,10 +25,11 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
+import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.selector.MediaAutoSelector
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
-import me.him188.ani.app.domain.media.selector.autoSelect
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
@@ -38,10 +40,11 @@ import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlayerState
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * 当播放失败时, 自动切换到下一个可选择的 media.
+ *
+ * 用户拖入的本地文件 ([DroppedFileMedia]) 播放失败时不切换, 保留报错.
  */
 class SwitchMediaOnPlayerErrorExtension(
     private val context: PlayerExtensionContext,
@@ -122,7 +125,8 @@ class SwitchMediaOnPlayerErrorExtension(
                 videoLoadingStateFlow, // 解析链接出错 (未匹配到链接)
                 playerStateFlow, // 解析成功, 但播放器出错 (无法链接到链接, 例如链接错误)
             ) { videoLoadingState, playerState ->
-                videoLoadingState is VideoLoadingState.Failed || playerState.mediaStatus is MediaStatus.Error
+                (videoLoadingState is VideoLoadingState.Failed && PlayerLoadErrorHandler.canRecoverBySwitching(videoLoadingState))
+                        || playerState.mediaStatus is MediaStatus.Error
             }.distinctUntilChanged()
                 .collectLatest { isError ->
                     if (isError) {
@@ -161,15 +165,23 @@ internal class PlayerLoadErrorHandler(
         session: MediaFetchSession,
         mediaSelector: MediaSelector,
     ) {
+        val failedMedia = mediaSelector.selected.value
+        if (failedMedia != null && DroppedFileMedia.isDroppedFile(failedMedia)) {
+            // 用户拖入的本地文件: 用户明确要播放这个文件, 保留报错, 不替换为其他资源
+            logger.info { "Player errored on a dropped file, skip automatic switch" }
+            return
+        }
+
         // 播放出错了
         logger.info { "Player errored, automatically switching to next media" }
 
         // 将当前播放的 mediaId 加入黑名单
-        mediaSelector.selected.value?.let {
+        failedMedia?.let {
             blacklistedMediaIds = blacklistedMediaIds.add(it.mediaId) // thread-safe
         }
 
         delay(1.seconds) // 稍等让用户看到播放出错
+        if (mediaSelector.selected.value != failedMedia) return
 
         // Load data in parallel
         val (preferKind, sourceTiers) = combine(
@@ -182,19 +194,35 @@ internal class PlayerLoadErrorHandler(
             return
         }
 
-        val result = mediaSelector.autoSelect.fastSelectWebSources(
+        val result = MediaAutoSelector(mediaSelector).select(
             session,
-            sourceTiers = sourceTiers,
-            overrideUserSelection = true, // Note: 覆盖用户选择
-            blacklistMediaIds = blacklistedMediaIds,
-            // 错误切换不需要等太长时间.
-            lowTierToleranceDuration = 1.seconds,
+            MediaAutoSelector.Config(
+                selectCache = false,
+                blacklist = blacklistedMediaIds,
+                web = MediaAutoSelector.Web(
+                    sourceTiers = sourceTiers,
+                    // 错误切换不需要等太长时间。
+                    exactMatchAfter = 1.seconds,
+                    fuzzyMatchAfter = 1.seconds,
+                    waitForPendingSources = false,
+                ),
+            ),
+            expectedSelection = failedMedia,
         )
         logger.info { "Player errored, automatically switched to next media: $result" }
     }
 
     companion object {
         private val logger = logger<PlayerLoadErrorHandler>()
+
+        /**
+         * 换到另一个 media 是否有可能解决这次失败.
+         *
+         * 网页引擎不可用是环境问题而不是资源问题, 换源只会让每个网页资源以同样的方式失败一遍,
+         * 并且把真正的原因藏在一串"自动切换"之后. 此时保留报错让用户看到.
+         */
+        fun canRecoverBySwitching(state: VideoLoadingState.Failed): Boolean =
+            state !is VideoLoadingState.WebEngineUnavailable
     }
 
     @VisibleForTesting

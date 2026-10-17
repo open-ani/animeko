@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.foundation.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -46,7 +45,7 @@ fun MaterialThemeFromPaletteAndImage(
     val isDark = when (themeSettings.darkMode) {
         DarkMode.LIGHT -> false
         DarkMode.DARK -> true
-        DarkMode.AUTO -> isSystemInDarkTheme()
+        DarkMode.AUTO -> isSystemInDarkThemeDetected()
     }
     val useBlackBackground = themeSettings.useBlackBackground
 

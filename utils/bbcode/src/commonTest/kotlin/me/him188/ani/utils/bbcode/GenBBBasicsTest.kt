@@ -179,6 +179,64 @@ public class GenBBBasicsTest : BBCodeParserTestHelper() {
     }
 
     @Test
+    public fun parse1038614614() {
+        BBCode.parse("[center]Hello World![/center]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", align=RichElement.Text.Align.CENTER)
+        }
+    }
+
+    @Test
+    public fun parse554139562() {
+        BBCode.parse("[CENTER]Hello World![/CENTER]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", align=RichElement.Text.Align.CENTER)
+        }
+    }
+
+    @Test
+    public fun parse77622314() {
+        BBCode.parse("[left]Hello World![/left]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", align=RichElement.Text.Align.LEFT)
+        }
+    }
+
+    @Test
+    public fun parse661427158() {
+        BBCode.parse("[LEFT]Hello World![/LEFT]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", align=RichElement.Text.Align.LEFT)
+        }
+    }
+
+    @Test
+    public fun parse605006574() {
+        BBCode.parse("[right]Hello World![/right]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", align=RichElement.Text.Align.RIGHT)
+        }
+    }
+
+    @Test
+    public fun parse1823325394() {
+        BBCode.parse("[RIGHT]Hello World![/RIGHT]")
+        .run {
+            assertText(elements.at(0), value="Hello World!", align=RichElement.Text.Align.RIGHT)
+        }
+    }
+
+    @Test
+    public fun parse931168727() {
+        BBCode.parse("Hello [center]World![/center] Again!")
+        .run {
+            assertText(elements.at(0), value="Hello ")
+            assertText(elements.at(1), value="World!", align=RichElement.Text.Align.CENTER)
+            assertText(elements.at(2), value=" Again!")
+        }
+    }
+
+    @Test
     public fun parse1690130686() {
         BBCode.parse("[size=1]Hello World![/size]")
         .run {

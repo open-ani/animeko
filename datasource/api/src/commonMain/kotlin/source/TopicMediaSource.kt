@@ -37,8 +37,7 @@ abstract class TopicMediaSource : HttpMediaSource() {
                     DownloadSearchQuery(
                         keywords = name,
                         category = TopicCategory.ANIME,
-                        episodeSort = query.episodeSort,
-                        episodeEp = query.episodeEp,
+                        allowAny = true,
                     ),
                 ).map {
                     MediaMatch(it.toOnlineMedia(mediaSourceId), MatchKind.FUZZY)

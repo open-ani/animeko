@@ -79,6 +79,19 @@ annotation class UnsafeOriginalMediaAccess
 
 sealed class MediaExclusionReason {
     /**
+     * 资源的剧集范围 [Media.episodeRange] 不包含当前剧集: 既不含 [EpisodeInfo.sort], 也不含 [EpisodeInfo.ep].
+     * 剧集范围未知 (`null`) 的资源同样排除.
+     *
+     * 数据源返回条目下的全部资源, 属于其他集的资源在这里排除. 这是第 0 条规则, 先于本地缓存的豁免:
+     * 缓存数据源返回本条目的全部缓存记录, 其他集的记录不能被自动选中.
+     *
+     * UI 不在 "显示已被排除的资源" 中列出此原因, 否则每集都会看到整季的资源.
+     *
+     * @see MediaSelector.subjectCandidates
+     */
+    data class EpisodeMismatch(val episodeRange: EpisodeRange?) : MediaExclusionReason()
+
+    /**
      * 完结番隐藏单集资源
      * @see MediaSelectorContext.subjectFinished
      * @see me.him188.ani.app.data.models.preference.MediaSelectorSettings.hideSingleEpisodeForCompleted
@@ -116,7 +129,7 @@ sealed class MediaExclusionReason {
 
 data class MatchMetadata(
     val subjectMatchKind: SubjectMatchKind, // FUZZY or EXACT
-    val episodeMatchKind: EpisodeMatchKind, // NONE, EP, SORT
+    val episodeMatchKind: EpisodeMatchKind, // NONE, EP, SORT, SEASON
     /** 条目名称相似度 */
     val similarity: @Range(from = 0L, to = 100L) Int, 
 ) {
@@ -147,6 +160,12 @@ data class MatchMetadata(
          * 注意, 这不包含匹配 [EpisodeInfo.ep], 因为我们无法在第二季时根据 ep 区分是否正确.
          */
         SORT,
+
+        /**
+         * 正在观看的是拆分季的后半, 站点把整季合成一页或者后半接着前半编号, media 的序号匹配正在观看的一集在整季里的序号.
+         * @see me.him188.ani.app.data.models.subject.SplitSeason
+         */
+        SEASON,
     }
 }
 

@@ -15,6 +15,9 @@ class RelatedSubjectInfo(
 ) {
     val displayName get() = nameCn.ifBlank { name } ?: nameCn
 
+    fun preferredDisplayName(useOriginalTitle: Boolean): String =
+        if (useOriginalTitle) name?.ifBlank { nameCn } ?: nameCn else displayName
+
     companion object {
         fun sortList(subjectList: List<RelatedSubjectInfo>): List<RelatedSubjectInfo> {
             return subjectList.sortedByDescending {
@@ -50,4 +53,14 @@ enum class SubjectRelation {
      * 对应 Bangumi "番外篇". 例如 OAD
      */
     SPECIAL,
+
+    /**
+     * 对应 Bangumi "主线故事", 即番外篇和衍生作品所依附的原作
+     */
+    MAIN_STORY,
+
+    /**
+     * 对应 Bangumi "总集篇", 包括剧场版形式的总集篇
+     */
+    COMPILATION,
 }

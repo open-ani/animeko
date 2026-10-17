@@ -61,11 +61,12 @@ import me.him188.ani.app.data.models.person.PersonCastInfo
 import me.him188.ani.app.data.models.person.PersonDetailsInfo
 import me.him188.ani.app.data.models.person.PersonWorkInfo
 import me.him188.ani.app.data.models.subject.nameCn
-import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.ImageViewer
+import me.him188.ani.app.ui.foundation.ImageViewerHandler
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
-import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.LocalAppChromeHazeState
 import me.him188.ani.app.ui.foundation.theme.appChromeFrostedGlass
@@ -116,12 +117,11 @@ fun PersonDetailsScreen(
         },
         summary = details?.person?.summary.orEmpty(),
         centerStrips = { PersonStrips(casts, works) },
-        commentState = vm.commentState,
-        originalCommentsUrl = vm.originalCommentsUrl,
-        compactContent = {
+        comments = vm.comments,
+        compactContent = { imageViewer ->
             PersonDetailsContentColumn(
-                details, casts, works, vm.commentState,
-                originalCommentsUrl = vm.originalCommentsUrl,
+                details, casts, works, vm.comments,
+                imageViewer = imageViewer,
             )
         },
         modifier = modifier,
@@ -158,12 +158,11 @@ fun CharacterDetailsScreen(
         },
         summary = details?.summary.orEmpty(),
         centerStrips = { CharacterStrips(details, subjects) },
-        commentState = vm.commentState,
-        originalCommentsUrl = vm.originalCommentsUrl,
-        compactContent = {
+        comments = vm.comments,
+        compactContent = { imageViewer ->
             CharacterDetailsContentColumn(
-                details, subjects, vm.commentState,
-                originalCommentsUrl = vm.originalCommentsUrl,
+                details, subjects, vm.comments,
+                imageViewer = imageViewer,
             )
         },
         modifier = modifier,
@@ -177,6 +176,8 @@ fun CharacterDetailsScreen(
  * - Expanded: 评论卡移到右栏.
  *
  * 整页一起滚动, 与条目详情多栏布局一致.
+ *
+ * 页面级 [ImageViewer] 覆盖整个骨架, 供多栏左栏图片与单栏头部行图片 (经 [compactContent] 参数传入) 点击放大.
  */
 @Composable
 private fun PeopleDetailsScaffold(
@@ -189,12 +190,12 @@ private fun PeopleDetailsScaffold(
     titleBlock: @Composable (isPlaceholder: Boolean) -> Unit,
     summary: String,
     centerStrips: @Composable () -> Unit,
-    commentState: CommentState,
-    compactContent: @Composable () -> Unit,
+    comments: PeopleCommentsState,
+    compactContent: @Composable (imageViewer: ImageViewerHandler) -> Unit,
     modifier: Modifier = Modifier,
-    originalCommentsUrl: String? = null,
 ) {
     var showAllComments by rememberSaveable { mutableStateOf(false) }
+    val imageViewer = rememberImageViewerHandler()
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val layoutParams = SubjectDetailsLayoutParams.calculate(maxWidth)
@@ -218,163 +219,179 @@ private fun PeopleDetailsScaffold(
 
         // 本页自带一个独立的毛玻璃作用域: 粘性顶栏模糊其下方滚过的内容.
         CompositionLocalProvider(LocalAppChromeHazeState provides rememberHazeState()) {
-        val frostedGlassActive = isAppChromeFrostedGlassActive()
-        Scaffold(
-            topBar = {
-                Box {
-                    // 透明背景的, 总是显示
-                    TopAppBar(
-                        title = {},
-                        navigationIcon = navigationIcon,
-                        colors = AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent),
-                        windowInsets = topAppBarWindowInsets,
-                    )
-                    // 有背景和标题的, 仅在页内标题滚出后显示
-                    AniAnimatedVisibility(stickyTopBarVisible && topBarTitle.isNotBlank()) {
+            val frostedGlassActive = isAppChromeFrostedGlassActive()
+            Scaffold(
+                topBar = {
+                    Box {
+                        // 透明背景的, 总是显示
                         TopAppBar(
-                            title = {
-                                Text(topBarTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            },
-                            modifier = Modifier.appChromeFrostedGlass(
-                                enabled = frostedGlassActive,
-                                containerColor = stickyTopBarColor,
-                            ),
+                            title = {},
                             navigationIcon = navigationIcon,
-                            colors = if (frostedGlassActive) {
-                                AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent)
-                            } else {
-                                AniThemeDefaults.topAppBarColors(containerColor = stickyTopBarColor)
-                            },
+                            colors = AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent),
                             windowInsets = topAppBarWindowInsets,
                         )
-                    }
-                }
-            },
-            containerColor = backgroundColor,
-            contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
-        ) { padding ->
-            if (!layoutParams.isMultiColumn) {
-                val layoutDirection = LocalLayoutDirection.current
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        // 毛玻璃粘性顶栏的模糊来源.
-                        .appChromeHazeSource(backgroundColor = backgroundColor)
-                        // top padding 放在滚动内容内, 让内容可以滚动到顶栏下方 (与条目详情单栏一致).
-                        .padding(
-                            start = padding.calculateStartPadding(layoutDirection),
-                            end = padding.calculateEndPadding(layoutDirection),
-                            bottom = padding.calculateBottomPadding(),
-                        )
-                        .verticalScroll(scrollState)
-                        .padding(top = padding.calculateTopPadding())
-                        .padding(horizontal = layoutParams.contentHorizontalPadding)
-                        .padding(
-                            top = contentTopPadding,
-                            bottom = layoutParams.contentBottomPadding,
-                        ),
-                ) {
-                    compactContent()
-                }
-            } else {
-                Row(
-                    Modifier
-                        .fillMaxSize()
-                        // 毛玻璃粘性顶栏的模糊来源 (多栏内容不延伸到顶栏下方, 采样到页面背景).
-                        .appChromeHazeSource(backgroundColor = backgroundColor)
-                        .padding(padding)
-                        .verticalScroll(scrollState)
-                        .padding(
-                            start = layoutParams.contentHorizontalPadding,
-                            end = layoutParams.contentHorizontalPadding,
-                            top = contentTopPadding,
-                            bottom = layoutParams.contentBottomPadding,
-                        ),
-                    horizontalArrangement = Arrangement.spacedBy(layoutParams.columnSpacing),
-                ) {
-                    // 左栏: 图片 + 基本信息
-                    Column(
-                        Modifier.width(layoutParams.sidebarWidth),
-                        verticalArrangement = Arrangement.spacedBy(layoutParams.sidebarItemSpacing),
-                    ) {
-                        // 定稿: 固定宽度, 高按原图比例自适应 (加载前用 340:482 占位)
-                        var coverAspect by remember(sidebarImageUrl) { mutableStateOf(340f / 482f) }
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(coverAspect.coerceIn(0.4f, 1.6f))
-                                .clip(MaterialTheme.shapes.medium)
-                                .placeholder(isPlaceholder),
-                        ) {
-                            AsyncImage(
-                                model = sidebarImageUrl,
-                                contentDescription = null,
-                                modifier = Modifier.matchParentSize(),
-                                contentScale = ContentScale.Fit,
-                                onSuccess = { state ->
-                                    val size = state.painter.intrinsicSize
-                                    if (size.width > 0f && size.height > 0f) {
-                                        coverAspect = size.width / size.height
-                                    }
+                        // 有背景和标题的, 仅在页内标题滚出后显示
+                        AniAnimatedVisibility(stickyTopBarVisible && topBarTitle.isNotBlank()) {
+                            TopAppBar(
+                                title = {
+                                    Text(topBarTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 },
+                                modifier = Modifier.appChromeFrostedGlass(
+                                    enabled = frostedGlassActive,
+                                    containerColor = stickyTopBarColor,
+                                ),
+                                navigationIcon = navigationIcon,
+                                colors = if (frostedGlassActive) {
+                                    AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent)
+                                } else {
+                                    AniThemeDefaults.topAppBarColors(containerColor = stickyTopBarColor)
+                                },
+                                windowInsets = topAppBarWindowInsets,
                             )
                         }
-                        if (sidebarInfo.isNotEmpty()) {
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text(
-                                    stringResource(Lang.person_details_basic_info),
-                                    style = MaterialTheme.typography.titleSmall,
+                    }
+                },
+                containerColor = backgroundColor,
+                contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+            ) { padding ->
+                if (!layoutParams.isMultiColumn) {
+                    val layoutDirection = LocalLayoutDirection.current
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            // 毛玻璃粘性顶栏的模糊来源.
+                            .appChromeHazeSource(backgroundColor = backgroundColor)
+                            // top padding 放在滚动内容内, 让内容可以滚动到顶栏下方 (与条目详情单栏一致).
+                            .padding(
+                                start = padding.calculateStartPadding(layoutDirection),
+                                end = padding.calculateEndPadding(layoutDirection),
+                                bottom = padding.calculateBottomPadding(),
+                            )
+                            .verticalScroll(scrollState)
+                            .padding(top = padding.calculateTopPadding())
+                            .padding(horizontal = layoutParams.contentHorizontalPadding)
+                            .padding(
+                                top = contentTopPadding,
+                                bottom = layoutParams.contentBottomPadding,
+                            ),
+                    ) {
+                        compactContent(imageViewer)
+                    }
+                } else {
+                    Row(
+                        Modifier
+                            .fillMaxSize()
+                            // 毛玻璃粘性顶栏的模糊来源 (多栏内容不延伸到顶栏下方, 采样到页面背景).
+                            .appChromeHazeSource(backgroundColor = backgroundColor)
+                            .padding(padding)
+                            .verticalScroll(scrollState)
+                            .padding(
+                                start = layoutParams.contentHorizontalPadding,
+                                end = layoutParams.contentHorizontalPadding,
+                                top = contentTopPadding,
+                                bottom = layoutParams.contentBottomPadding,
+                            ),
+                        horizontalArrangement = Arrangement.spacedBy(layoutParams.columnSpacing),
+                    ) {
+                        // 左栏: 图片 + 基本信息
+                        Column(
+                            Modifier.width(layoutParams.sidebarWidth),
+                            verticalArrangement = Arrangement.spacedBy(layoutParams.sidebarItemSpacing),
+                        ) {
+                            // 定稿: 固定宽度, 高按原图比例自适应 (加载前用 340:482 占位)
+                            var coverAspect by remember(sidebarImageUrl) { mutableStateOf(340f / 482f) }
+                            val onClickSidebarImage = imageViewer.viewImageOrNull(sidebarImageUrl)
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(coverAspect.coerceIn(0.4f, 1.6f))
+                                    .clip(MaterialTheme.shapes.medium)
+                                    .then(
+                                        if (onClickSidebarImage != null) {
+                                            Modifier.clickable(onClick = onClickSidebarImage)
+                                        } else {
+                                            Modifier
+                                        },
+                                    )
+                                    .placeholder(isPlaceholder),
+                            ) {
+                                AsyncImage(
+                                    model = sidebarImageUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.matchParentSize(),
+                                    contentScale = ContentScale.Fit,
+                                    onSuccess = { result ->
+                                        if (result.width > 0 && result.height > 0) {
+                                            coverAspect = result.width.toFloat() / result.height
+                                        }
+                                    },
                                 )
-                                PeopleInfoTable(sidebarInfo)
+                            }
+                            if (sidebarInfo.isNotEmpty()) {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text(
+                                        stringResource(Lang.person_details_basic_info),
+                                        style = MaterialTheme.typography.titleSmall,
+                                    )
+                                    PeopleInfoTable(sidebarInfo)
+                                }
                             }
                         }
-                    }
 
-                    // 中栏
-                    Column(
-                        Modifier.weight(1f).widthIn(max = 840.dp),
-                        verticalArrangement = Arrangement.spacedBy(layoutParams.sectionSpacing),
-                    ) {
-                        titleBlock(isPlaceholder)
-                        if (summary.isNotBlank()) {
-                            SubjectSummarySection(summary)
-                        }
-                        centerStrips()
-                        if (!layoutParams.showRail) {
-                            PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
-                        }
-                    }
-
-                    // 右栏 (仅三栏): 评论卡
-                    if (layoutParams.showRail) {
-                        Surface(
-                            Modifier.width(layoutParams.railWidth),
-                            shape = MaterialTheme.shapes.medium,
-                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        // 中栏
+                        Column(
+                            Modifier.weight(1f).widthIn(max = 840.dp),
+                            verticalArrangement = Arrangement.spacedBy(layoutParams.sectionSpacing),
                         ) {
-                            PersonCommentsSection(
-                                commentState,
-                                onShowAll = { showAllComments = true },
-                                // 对齐修正后的设计稿 rail 卡 (视觉: 标题字形距顶 ~21, 距侧 20):
-                                // 标题行自带 ~17dp 顶空 (TextButton min 40dp 居中 + 行框留白, 截图实测),
-                                // 故 top=4; 左右 20 / 下 18 与设计稿一致.
-                                Modifier.padding(start = 20.dp, top = 4.dp, end = 20.dp, bottom = 18.dp),
-                            )
+                            titleBlock(isPlaceholder)
+                            if (summary.isNotBlank()) {
+                                SubjectSummarySection(summary)
+                            }
+                            centerStrips()
+                            if (!layoutParams.showRail) {
+                                PersonCommentsSection(comments.commentState, onShowAll = { showAllComments = true })
+                            }
+                        }
+
+                        // 右栏 (仅三栏): 评论卡
+                        if (layoutParams.showRail) {
+                            Surface(
+                                Modifier.width(layoutParams.railWidth),
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                            ) {
+                                PersonCommentsSection(
+                                    comments.commentState,
+                                    onShowAll = { showAllComments = true },
+                                    // 对齐修正后的设计稿 rail 卡 (视觉: 标题字形距顶 ~21, 距侧 20):
+                                    // 标题行自带 ~17dp 顶空 (TextButton min 40dp 居中 + 行框留白, 截图实测),
+                                    // 故 top=4; 左右 20 / 下 18 与设计稿一致.
+                                    Modifier.padding(start = 20.dp, top = 4.dp, end = 20.dp, bottom = 18.dp),
+                                )
+                            }
                         }
                     }
                 }
             }
         }
+
+        // 页面级大图查看器, 覆盖整个骨架 (含顶栏).
+        ImageViewer(imageViewer) { imageViewer.clear() }
+
+        // 评论区宿主 (举报弹层/失败提示/全量评论 sheet). 单栏由 compactContent 里的内容列自带, 这里只在多栏挂.
+        if (layoutParams.isMultiColumn) {
+            PeopleCommentsHost(comments, showAllComments, onDismissAllComments = { showAllComments = false })
         }
     }
+}
 
-    if (showAllComments) {
-        PersonCommentsSheet(
-            commentState,
-            onDismissRequest = { showAllComments = false },
-            originalCommentsUrl = originalCommentsUrl,
-        )
-    }
+/**
+ * 图片 URL 非空且提供了查看器时, 返回打开该图片的点击回调; 否则返回 `null` (图片不可点击).
+ */
+private fun ImageViewerHandler?.viewImageOrNull(imageUrl: String?): (() -> Unit)? {
+    val handler = this ?: return null
+    val url = imageUrl?.takeIf { it.isNotBlank() } ?: return null
+    return { handler.viewImage(url) }
 }
 
 /** 单栏头部行里名字的大致底部位置 (110x147 图片右侧垂直居中), 用于估算标题滚出的时机. */
@@ -391,10 +408,10 @@ internal fun PersonDetailsContentColumn(
     details: PersonDetailsInfo?,
     casts: LazyPagingItems<PersonCastInfo>,
     works: LazyPagingItems<PersonWorkInfo>,
-    commentState: CommentState,
-    originalCommentsUrl: String? = null,
+    comments: PeopleCommentsState,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
+    imageViewer: ImageViewerHandler? = null,
 ) {
     var showAllComments by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -404,6 +421,7 @@ internal fun PersonDetailsContentColumn(
             originalName = details?.person?.name,
             metaLine = peopleMetaLine(personKindLabel(details?.career.orEmpty()), details?.collects ?: 0),
             isPlaceholder = details == null,
+            onClickImage = imageViewer.viewImageOrNull(details?.person?.imageLarge),
         )
         details?.person?.summary?.takeIf { it.isNotBlank() }?.let { summaryText ->
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -418,15 +436,9 @@ internal fun PersonDetailsContentColumn(
             }
         }
         PersonStrips(casts, works, navigation)
-        PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
+        PersonCommentsSection(comments.commentState, onShowAll = { showAllComments = true })
     }
-    if (showAllComments) {
-        PersonCommentsSheet(
-            commentState,
-            onDismissRequest = { showAllComments = false },
-            originalCommentsUrl = originalCommentsUrl,
-        )
-    }
+    PeopleCommentsHost(comments, showAllComments, onDismissAllComments = { showAllComments = false })
 }
 
 /** 人物详情的两个横滑条: 出演角色 / 参与作品 (+ 各自的查看全部 sheet). */
@@ -504,10 +516,10 @@ private fun PersonStrips(
 internal fun CharacterDetailsContentColumn(
     details: CharacterDetailsInfo?,
     subjects: LazyPagingItems<CharacterSubjectInfo>,
-    commentState: CommentState,
-    originalCommentsUrl: String? = null,
+    comments: PeopleCommentsState,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
+    imageViewer: ImageViewerHandler? = null,
 ) {
     var showAllComments by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -517,6 +529,7 @@ internal fun CharacterDetailsContentColumn(
             originalName = details?.character?.name,
             metaLine = peopleMetaLine(characterRoleLabel(details?.role ?: 1), details?.collects ?: 0),
             isPlaceholder = details == null,
+            onClickImage = imageViewer.viewImageOrNull(details?.character?.imageLarge),
         )
         details?.summary?.takeIf { it.isNotBlank() }?.let { summaryText ->
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -531,15 +544,9 @@ internal fun CharacterDetailsContentColumn(
             }
         }
         CharacterStrips(details, subjects, navigation)
-        PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
+        PersonCommentsSection(comments.commentState, onShowAll = { showAllComments = true })
     }
-    if (showAllComments) {
-        PersonCommentsSheet(
-            commentState,
-            onDismissRequest = { showAllComments = false },
-            originalCommentsUrl = originalCommentsUrl,
-        )
-    }
+    PeopleCommentsHost(comments, showAllComments, onDismissAllComments = { showAllComments = false })
 }
 
 /** 角色详情的两个横滑条: 声优 / 出演作品 (+ 查看全部 sheet). */

@@ -34,7 +34,6 @@ import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.WarningAmber
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,14 +58,15 @@ import io.ktor.http.Url
 import kotlinx.coroutines.launch
 import kotlinx.io.IOException
 import me.him188.ani.app.domain.mediasource.test.web.SelectorMediaSourceTester
-import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodeListResult
-import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
-import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSearchSubjectResult
+import me.him188.ani.app.domain.mediasource.test.TestEpisodeListResult
+import me.him188.ani.app.domain.mediasource.test.TestEpisodePresentation
+import me.him188.ani.app.domain.mediasource.test.TestSubjectSearchResult
 import me.him188.ani.app.domain.mediasource.web.captcha.createTestWebSessionManager
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
+import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatId
 import me.him188.ani.app.domain.mediasource.web.displayName
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -82,13 +82,15 @@ import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_copied
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_copy_link
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_open_page
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_title
-import me.him188.ani.app.ui.settings.mediasource.EditMediaSourceTestDataCardDefaults
 import me.him188.ani.app.ui.settings.mediasource.RefreshIndicatedHeadlineRow
-import me.him188.ani.app.ui.settings.mediasource.selector.edit.SelectorConfigurationDefaults
+import me.him188.ani.app.ui.settings.mediasource.editor.MediaSourceEditorDefaults
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.xml.Document
 import me.him188.ani.utils.xml.Element
 import org.jetbrains.compose.resources.stringResource
+import me.him188.ani.app.ui.settings.mediasource.test.MediaSourceTestDataCard
+import me.him188.ani.app.ui.settings.mediasource.test.TestEpisodeListGridDefaults
+import me.him188.ani.app.ui.settings.mediasource.test.TestSubjectResultLazyRow
 
 /**
  * 测试数据源. 编辑
@@ -96,7 +98,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun SelectorTestPane(
     state: SelectorTestState,
-    onViewEpisode: (SelectorTestEpisodePresentation) -> Unit,
+    onViewEpisode: (TestEpisodePresentation) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
@@ -132,7 +134,7 @@ fun SelectorTestPane(
                     }
                 }
 
-                EditTestDataCard(
+                MediaSourceTestDataCard(
                     state,
                     Modifier
                         .padding(top = verticalSpacing)
@@ -140,7 +142,7 @@ fun SelectorTestPane(
                 )
 
                 RefreshIndicatedHeadlineRow(
-                    headline = { Text(SelectorConfigurationDefaults.STEP_NAME_1) },
+                    headline = { Text(MediaSourceEditorDefaults.STEP_NAME_1) },
                     onRefresh = { state.restartCurrentSubjectSearch() },
                     result = presentation.subjectSearchResult,
                     Modifier.padding(top = verticalSpacing),
@@ -164,8 +166,8 @@ fun SelectorTestPane(
                     presentation.subjectSearchResult,
                     transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
                 ) { result ->
-                    if (result is SelectorTestSearchSubjectResult.Success) {
-                        SelectorTestSubjectResultLazyRow(
+                    if (result is TestSubjectSearchResult.Success) {
+                        TestSubjectResultLazyRow(
                             items = result.subjects,
                             presentation.selectedSubjectIndex,
                             onSelect = { index, _ ->
@@ -183,7 +185,7 @@ fun SelectorTestPane(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Column {
                     RefreshIndicatedHeadlineRow(
-                        headline = { Text(SelectorConfigurationDefaults.STEP_NAME_2) },
+                        headline = { Text(MediaSourceEditorDefaults.STEP_NAME_2) },
                         onRefresh = { state.restartCurrentEpisodeSearch() },
                         result = presentation.episodeListSearchResult,
                         Modifier.padding(top = verticalSpacing),
@@ -240,7 +242,7 @@ fun SelectorTestPane(
             }
 
             val result = presentation.episodeListSearchResult
-            if (result is SelectorTestEpisodeListResult.Success) {
+            if (result is TestEpisodeListResult.Success) {
                 val channels = result.channels
                 if (channels != null) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
@@ -275,7 +277,7 @@ fun SelectorTestPane(
                     key = { "selector-test-filteredEpisodes-" + it.id.toString() },
                     contentType = { 1 },
                 ) { episode ->
-                    SelectorTestEpisodeListGridDefaults.EpisodeCard(
+                    TestEpisodeListGridDefaults.EpisodeCard(
                         episode,
                         { onViewEpisode(episode) },
                         Modifier
@@ -315,25 +317,6 @@ private fun SelectorCaptchaHintRow(
 }
 
 @Composable
-private fun EditTestDataCard(
-    state: SelectorTestState,
-    modifier: Modifier = Modifier,
-) {
-    with(EditMediaSourceTestDataCardDefaults) {
-        Card(
-            modifier,
-            shape = cardShape,
-            colors = cardColors,
-        ) {
-            FlowRow {
-                KeywordTextField(state, Modifier.weight(1f))
-                EpisodeSortTextField(state, Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-@Composable
 @Suppress("UnusedContentLambdaTargetStateParameter")
 @Preview
 fun PreviewSelectorTestPane() = ProvideCompositionLocalsForPreview {
@@ -364,7 +347,8 @@ fun PreviewSelectorTestPane() = ProvideCompositionLocalsForPreview {
 @TestOnly
 class TestSelectorMediaSourceEngine : SelectorMediaSourceEngine() {
     override suspend fun searchImpl(
-        finalUrl: Url
+        finalUrl: Url,
+        subjectFormatId: SelectorFormatId,
     ): SearchSubjectResult {
         return SearchSubjectResult(
             Url("https://example.com"),

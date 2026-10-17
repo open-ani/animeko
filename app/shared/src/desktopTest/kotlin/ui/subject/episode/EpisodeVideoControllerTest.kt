@@ -11,6 +11,8 @@ package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -19,7 +21,6 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -28,13 +29,18 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
+import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.filterToOne
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onChild
+import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -46,14 +52,17 @@ import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.swipe
+import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.pip.PictureInPictureController
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -66,9 +75,8 @@ import me.him188.ani.app.ui.framework.doesNotExist
 import me.him188.ani.app.ui.framework.exists
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
-import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
-import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
+import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
@@ -203,6 +211,12 @@ class EpisodeVideoControllerTest {
         get() = onNodeWithTag(TAG_PROGRESS_SLIDER, useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.danmakuEditor
         get() = onNodeWithTag(TAG_DANMAKU_EDITOR, useUnmergedTree = true)
+
+    /**
+     * 弹幕编辑器里的文本输入框 (编辑器行里还有样式选择按钮).
+     */
+    private val SemanticsNodeInteractionsProvider.danmakuEditorTextField
+        get() = danmakuEditor.onChildren().filterToOne(hasSetTextAction())
     private val SemanticsNodeInteractionsProvider.danmakuIconButton
         get() = onNodeWithTag(TAG_DANMAKU_ICON_BUTTON, useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.player
@@ -233,6 +247,11 @@ class EpisodeVideoControllerTest {
         fullscreenState: PlayerFullscreenState = remember(expanded) { TestFullscreenState(expanded) },
         framePreview: MediaProgressFramePreviewState? = null,
         cacheChunkState: ChunkState = ChunkState.NONE,
+        isInPictureInPicture: Boolean = false,
+        danmakuEnabled: Boolean = false,
+        danmakuHost: @Composable () -> Unit = {},
+        sidebarVisible: Boolean = true,
+        onToggleSidebar: (Boolean) -> Unit = {},
     ) {
         ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
             val actualWatchTogetherPlayerController = watchTogetherPlayerController
@@ -262,10 +281,12 @@ class EpisodeVideoControllerTest {
                     playerControllerState = playerControllerState,
                     opEdSkipDuration = opEdSkipDuration,
                     title = { PlayerTopBar() },
-                    danmakuHost = {},
-                    danmakuEnabled = false,
+                    danmakuHost = danmakuHost,
+                    danmakuEnabled = danmakuEnabled,
                     onToggleDanmaku = onToggleDanmaku,
-                    videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
+                    videoLoadingStateFlow = remember {
+                        MutableStateFlow(VideoLoadingState.Succeed(MediaCacheEngineKey.Anitorrent))
+                    },
                     fullscreenState = fullscreenState,
                     danmakuEditor = {
                         if (showDanmakuEditor()) {
@@ -294,8 +315,8 @@ class EpisodeVideoControllerTest {
                             showFramePreviewInPopup = expanded,
                         )
                     },
-                    sidebarVisible = true,
-                    onToggleSidebar = {},
+                    sidebarVisible = sidebarVisible,
+                    onToggleSidebar = onToggleSidebar,
                     progressSliderState = progressSliderState,
                     cacheProgressInfoFlow = cacheProgressInfoFlow,
                     framePreview = framePreview,
@@ -343,21 +364,12 @@ class EpisodeVideoControllerTest {
                                 )
                             },
                             mediaSelectorPage = {
-                                val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(ViewKind.WEB) }
-                                val (fetchRequest, onFetchRequestChange) = rememberSaveable {
-                                    mutableStateOf(
-                                        TestMediaFetchRequest,
-                                    )
-                                }
                                 EpisodeVideoSideSheets.MediaSelectorSheet(
                                     mediaSelectorState = rememberTestMediaSelectorState(),
                                     mediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
-                                    viewKind = viewKind,
-                                    onViewKindChange = onViewKindChange,
-                                    fetchRequest = fetchRequest,
-                                    onFetchRequestChange = onFetchRequestChange,
+                                    mode = MediaSelectorMode.AUTO,
+                                    onModeChange = {},
                                     onDismissRequest = { goBack() },
-                                    onRefresh = {},
                                     onRestartSource = {},
                                 )
                             },
@@ -376,9 +388,98 @@ class EpisodeVideoControllerTest {
                     shareData = MediaShareData(null, null),
                     onClickCache = {},
                     modifier = Modifier.testTag("PLAYER"),
+                    isInPictureInPicture = isInPictureInPicture,
                 )
             }
         }
+    }
+
+    @Test
+    fun `picture in picture omits danmaku and fills viewport`() = runAniComposeUiTest {
+        var isInPictureInPicture by mutableStateOf(false)
+        setContent {
+            Box(Modifier.size(320.dp, 180.dp)) {
+                Player(
+                    gestureFamily = GestureFamily.TOUCH,
+                    isInPictureInPicture = isInPictureInPicture,
+                    danmakuEnabled = true,
+                    danmakuHost = { Box(Modifier.fillMaxSize().testTag("danmakuHost")) },
+                )
+            }
+        }
+
+        onNodeWithTag("danmakuHost").assertIsDisplayed()
+        runOnIdle { isInPictureInPicture = true }
+        onNodeWithTag("danmakuHost").assertDoesNotExist()
+        player.assertWidthIsEqualTo(320.dp).assertHeightIsEqualTo(180.dp)
+
+        runOnIdle { isInPictureInPicture = false }
+        onNodeWithTag("danmakuHost").assertIsDisplayed()
+    }
+
+    @Test
+    fun `desktop fullscreen hides sidebar by default and toggles it separately from window`() = runAniComposeUiTest {
+        val fullscreenState = TestFullscreenState(initialIsFullscreen = false)
+        val sidebarState = EpisodeSidebarState { fullscreenState.isFullscreen }
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        var playerCreatedCount = 0
+        setContent {
+            EpisodeScreenLayout(
+                mode = episodeScreenLayoutMode(
+                    isFullscreen = fullscreenState.isFullscreen,
+                    showExpandedUI = true,
+                    sidebarVisible = sidebarState.isVisible,
+                    isDesktop = true,
+                ),
+                video = {
+                    Player(
+                        GestureFamily.MOUSE,
+                        playerControllerState = visibleControllerState,
+                        fullscreenState = fullscreenState,
+                        sidebarVisible = sidebarState.isVisible,
+                        onToggleSidebar = { sidebarState.isVisible = it },
+                        onPlayerStateCreated = { playerCreatedCount++ },
+                    )
+                },
+                secondary = { Box(Modifier.fillMaxSize().testTag("sidebar")) },
+                modifier = Modifier.requiredSize(1000.dp, 600.dp),
+            )
+        }
+
+        fun assertSidebar(fullscreen: Boolean, visible: Boolean) {
+            runOnIdle { assertEquals(fullscreen, fullscreenState.isFullscreen) }
+            if (visible) {
+                onNodeWithTag("sidebar").assertWidthIsEqualTo(340.dp)
+                player.assertWidthIsEqualTo(660.dp)
+            } else {
+                onNodeWithTag("sidebar").assertDoesNotExist()
+                player.assertWidthIsEqualTo(1000.dp)
+            }
+        }
+
+        assertSidebar(fullscreen = false, visible = true)
+
+        // 进入全屏默认只显示视频, 按钮仍能展开侧边栏
+        fullScreenButton.performClick()
+        assertSidebar(fullscreen = true, visible = false)
+        onNodeWithTag(TAG_COLLAPSE_SIDEBAR).performClick()
+        assertSidebar(fullscreen = true, visible = true)
+
+        // 全屏里的开关不影响窗口
+        fullScreenButton.performClick()
+        assertSidebar(fullscreen = false, visible = true)
+        onNodeWithTag(TAG_COLLAPSE_SIDEBAR).performClick()
+        assertSidebar(fullscreen = false, visible = false)
+
+        // 窗口里的开关也不影响全屏
+        fullScreenButton.performClick()
+        assertSidebar(fullscreen = true, visible = true)
+        onNodeWithTag(TAG_COLLAPSE_SIDEBAR).performClick()
+        assertSidebar(fullscreen = true, visible = false)
+        fullScreenButton.performClick()
+        assertSidebar(fullscreen = false, visible = false)
+
+        runOnIdle { assertEquals(1, playerCreatedCount) }
     }
 
     /**
@@ -539,6 +640,7 @@ class EpisodeVideoControllerTest {
         runOnIdle {
             isFullscreen = false
         }
+        settleFrame()
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             watchTogetherPlayerController.isDraggablePopupVisible
         }
@@ -547,6 +649,7 @@ class EpisodeVideoControllerTest {
             isExpandedLayout = true
             sidebarVisible = false
         }
+        settleFrame()
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             !watchTogetherPlayerController.isDraggablePopupVisible
         }
@@ -554,10 +657,130 @@ class EpisodeVideoControllerTest {
         runOnIdle {
             sidebarVisible = true
         }
+        settleFrame()
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             watchTogetherPlayerController.isDraggablePopupVisible
         }
     }
+
+    /**
+     * 系统小窗展示整个应用窗口, 一起看浮层不随播放器页最小化, 因此小窗期间必须隐藏气泡.
+     */
+    @Test
+    fun `watch together popup hidden in picture in picture`() = runAniComposeUiTest {
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        val watchTogetherPlayerController = WatchTogetherPlayerController()
+        val pictureInPictureController = FakePictureInPictureController()
+        setContent {
+            CompositionLocalProvider(LocalWatchTogetherPlayerController provides watchTogetherPlayerController) {
+                WatchTogetherPopupVisibilityEffect(
+                    playerControllerState = visibleControllerState,
+                    isFullscreen = false,
+                    isExpandedLayout = false,
+                    sidebarVisible = true,
+                    pictureInPictureController = pictureInPictureController,
+                )
+            }
+        }
+
+        runOnIdle {
+            assertTrue(watchTogetherPlayerController.isDraggablePopupVisible)
+            pictureInPictureController.isInPictureInPicture.value = true
+        }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            !watchTogetherPlayerController.isDraggablePopupVisible
+        }
+
+        // 退出小窗后恢复常显
+        runOnIdle { pictureInPictureController.isInPictureInPicture.value = false }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            watchTogetherPlayerController.isDraggablePopupVisible
+        }
+    }
+
+    /**
+     * 一起看跟播切集会重建播放页: 新页先组合 (写 false), 旧页在转场结束后才销毁.
+     * 旧页销毁时不能把可见性写回, 否则小窗里刚隐藏的气泡又出现.
+     */
+    @Test
+    fun `watch together popup stays hidden when the old page is disposed in picture in picture`() =
+        runAniComposeUiTest {
+            val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+            val watchTogetherPlayerController = WatchTogetherPlayerController()
+            val pictureInPictureController = FakePictureInPictureController()
+            var oldPageComposed by mutableStateOf(true)
+            var newPageComposed by mutableStateOf(false)
+            setContent {
+                CompositionLocalProvider(LocalWatchTogetherPlayerController provides watchTogetherPlayerController) {
+                    if (oldPageComposed) {
+                        WatchTogetherPopupVisibilityEffect(
+                            playerControllerState = visibleControllerState,
+                            isFullscreen = false,
+                            isExpandedLayout = false,
+                            sidebarVisible = true,
+                            pictureInPictureController = pictureInPictureController,
+                        )
+                    }
+                    if (newPageComposed) {
+                        WatchTogetherPopupVisibilityEffect(
+                            playerControllerState = visibleControllerState,
+                            isFullscreen = false,
+                            isExpandedLayout = false,
+                            sidebarVisible = true,
+                            pictureInPictureController = pictureInPictureController,
+                        )
+                    }
+                }
+            }
+
+            runOnIdle { pictureInPictureController.isInPictureInPicture.value = true }
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+                !watchTogetherPlayerController.isDraggablePopupVisible
+            }
+
+            // 转场期间新旧两页并存, 转场结束后旧页才销毁
+            runOnIdle { newPageComposed = true }
+            settleFrame()
+            runOnIdle { oldPageComposed = false }
+            settleFrame()
+
+            assertFalse(watchTogetherPlayerController.isDraggablePopupVisible)
+        }
+
+    /**
+     * 播放页销毁会撤销自己提出的隐藏请求, 没有人再要求隐藏时气泡恢复常显.
+     */
+    @Test
+    fun `watch together popup is restored when the page is disposed outside picture in picture`() =
+        runAniComposeUiTest {
+            val invisibleControllerState = PlayerControllerState(NORMAL_INVISIBLE)
+            val watchTogetherPlayerController = WatchTogetherPlayerController()
+            val pictureInPictureController = FakePictureInPictureController()
+            var effectComposed by mutableStateOf(true)
+            setContent {
+                CompositionLocalProvider(LocalWatchTogetherPlayerController provides watchTogetherPlayerController) {
+                    if (effectComposed) {
+                        WatchTogetherPopupVisibilityEffect(
+                            playerControllerState = invisibleControllerState,
+                            // 全屏时气泡跟随控制条, 控制条隐藏 → 气泡隐藏
+                            isFullscreen = true,
+                            isExpandedLayout = false,
+                            sidebarVisible = true,
+                            pictureInPictureController = pictureInPictureController,
+                        )
+                    }
+                }
+            }
+
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+                !watchTogetherPlayerController.isDraggablePopupVisible
+            }
+
+            runOnIdle { effectComposed = false }
+            settleFrame()
+
+            assertTrue(watchTogetherPlayerController.isDraggablePopupVisible)
+        }
 
     /**
      * @see GestureFamily.clickToToggleController
@@ -1032,7 +1255,7 @@ class EpisodeVideoControllerTest {
 
         videoGestureHost.assertIsFocused()
         danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
         danmakuEditor.performKeyInput {
             pressKey(Key.B)
             pressKey(Key.Spacebar)
@@ -1087,7 +1310,7 @@ class EpisodeVideoControllerTest {
         }
 
         danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
         danmakuEditor.performKeyInput {
             pressKey(Key.Tab)
         }
@@ -1134,7 +1357,7 @@ class EpisodeVideoControllerTest {
             waitForIdle()
 
             danmakuEditor.performClick()
-            danmakuEditor.onChild().assertIsFocused()
+            danmakuEditorTextField.assertIsFocused()
             danmakuEditor.performKeyInput {
                 pressKey(Key.Escape)
             }
@@ -1157,7 +1380,7 @@ class EpisodeVideoControllerTest {
         }
 
     @Test
-    fun `mouse - keyboard shortcuts - reclaim focus from editor on mouse move`() = runAniComposeUiTest {
+    fun `mouse - keyboard shortcuts - keep editor focus on mouse move`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {
             Player(
@@ -1169,11 +1392,12 @@ class EpisodeVideoControllerTest {
 
         videoGestureHost.assertIsFocused()
         danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
 
         videoGestureHost.slightlyMoveFromCenterToRight()
         waitForIdle()
-        videoGestureHost.assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
+        videoGestureHost.assertIsNotFocused()
     }
 
     @Test
@@ -1197,7 +1421,7 @@ class EpisodeVideoControllerTest {
         }
 
         danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
         runOnIdle {
             showDanmakuEditor = false
         }
@@ -1308,7 +1532,7 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
-    fun `touch - keyboard shortcuts - reclaim focus from editor on mouse move`() = runAniComposeUiTest {
+    fun `touch - keyboard shortcuts - keep editor focus on mouse move`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {
             CompositionLocalProvider(LocalPlatform provides Platform.Android(Arch.ARMV8A)) {
@@ -1322,11 +1546,12 @@ class EpisodeVideoControllerTest {
 
         videoGestureHost.assertIsFocused()
         danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
 
         videoGestureHost.slightlyMoveFromCenterToRight()
         waitForIdle()
-        videoGestureHost.assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
+        videoGestureHost.assertIsNotFocused()
     }
 
     @Test
@@ -1366,15 +1591,15 @@ class EpisodeVideoControllerTest {
         waitForIdle()
 
         danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditorTextField.assertIsFocused()
 
         fullScreenButton.performClick()
         waitForIdle()
-        danmakuEditor.onChild().assertIsNotFocused()
+        danmakuEditorTextField.assertIsNotFocused()
 
         fullScreenButton.performClick()
         waitForIdle()
-        danmakuEditor.onChild().assertIsNotFocused()
+        danmakuEditorTextField.assertIsNotFocused()
     }
 
     private fun AniComposeUiTest.testClickAndWaitForHide() {
@@ -1799,6 +2024,7 @@ class EpisodeVideoControllerTest {
             }
         }
         waitForIdle()
+        settleFrame()
 
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithText("00:47 / 01:40").exists() }
@@ -1854,6 +2080,7 @@ class EpisodeVideoControllerTest {
                 }
             }
 
+            settleFrame()
             runOnIdle {
                 waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithText("00:48 / 01:40").exists() }
                 assertEquals(NORMAL_VISIBLE, controllerState.visibility)
@@ -1861,6 +2088,7 @@ class EpisodeVideoControllerTest {
 
             currentPositionMillis += 5000L // 播放 5 秒
 
+            settleFrame()
             runOnIdle {
                 waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithText("00:53 / 01:40").exists() }
                 assertEquals(NORMAL_VISIBLE, controllerState.visibility)
@@ -1892,6 +2120,7 @@ class EpisodeVideoControllerTest {
         progressSlider.performTouchInput {
             moveTo(playerBounds.topLeft + Offset(1f, 1f) - sliderBounds.topLeft)
         }
+        settleFrame()
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) {
                 onNodeWithText("Release to cancel").exists()
@@ -1914,6 +2143,7 @@ class EpisodeVideoControllerTest {
         progressSlider.performTouchInput {
             moveTo(playerBounds.topLeft + Offset(1f, 1f) - sliderBounds.topLeft)
         }
+        settleFrame()
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) {
                 onNodeWithText("Release to cancel").exists()
@@ -2020,7 +2250,7 @@ class EpisodeVideoControllerTest {
             gestureFamily = GestureFamily.TOUCH,
             openSideSheet = { onNodeWithTag(TAG_SHOW_MEDIA_SELECTOR).performClick() },
             waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).doesNotExist() } },
+            waitForSideSheetClose = { waitUntilFrames { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).doesNotExist() } },
         )
     }
 
@@ -2030,7 +2260,7 @@ class EpisodeVideoControllerTest {
             gestureFamily = GestureFamily.TOUCH,
             openSideSheet = { onNodeWithTag(TAG_SELECT_EPISODE_ICON_BUTTON).performClick() },
             waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).doesNotExist() } },
+            waitForSideSheetClose = { waitUntilFrames { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).doesNotExist() } },
         )
     }
 
@@ -2122,12 +2352,30 @@ class EpisodeVideoControllerTest {
         testMoveMouseAndWaitForHide()
     }
 
+    /**
+     * `mainClock.autoAdvance = false` 时 `waitUntil` 不推进帧时钟, 触发状态变化后先推进一帧,
+     * 让重组与布局完成, 再等待条件.
+     */
+    private fun AniComposeUiTest.settleFrame() = mainClock.advanceTimeByFrame()
+
+    /**
+     * 同 [settleFrame], 但条件要等动画完成 (如面板关闭) 才满足时, 每次轮询前推进一帧, 直到条件满足或超时.
+     */
+    private fun AniComposeUiTest.waitUntilFrames(timeoutMillis: Long = WAIT_TIMEOUT, condition: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + timeoutMillis
+        while (!condition()) {
+            check(System.currentTimeMillis() < deadline) { "Condition still not satisfied after $timeoutMillis ms" }
+            mainClock.advanceTimeByFrame()
+        }
+    }
+
     private fun AniComposeUiTest.testMoveMouseAndWaitForHide() {
         // 移动鼠标来显示控制器
         runOnIdle {
             mainClock.autoAdvance = false // 三秒后会自动隐藏, 这里不能让他自动前进时间
             player.slightlyMoveFromCenterToRight()
         }
+        settleFrame()
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             assertEquals(
@@ -2229,10 +2477,12 @@ class EpisodeVideoControllerTest {
             performGesture = {
                 openSideSheet()
                 waitForIdle()
+                settleFrame()
                 root.performMouseInput {
                     moveTo(centerRight)
                 }
                 waitForIdle()
+                settleFrame()
                 waitForSideSheetOpen()
                 runOnIdle {
                     assertEquals(true, controllerState.alwaysOn)
@@ -2252,6 +2502,7 @@ class EpisodeVideoControllerTest {
             // 关闭面板后移动鼠标, 触发控制器的自动隐藏计时.
             root.slightlyMoveFromCenterToRight()
         }
+        settleFrame()
         runOnIdle {
             waitForSideSheetClose()
             assertEquals(false, controllerState.alwaysOn)
@@ -2274,7 +2525,7 @@ class EpisodeVideoControllerTest {
             gestureFamily = GestureFamily.MOUSE,
             openSideSheet = { onNodeWithTag(TAG_SHOW_MEDIA_SELECTOR).performClick() },
             waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).doesNotExist() } },
+            waitForSideSheetClose = { waitUntilFrames { onNodeWithTag(TAG_MEDIA_SELECTOR_SHEET).doesNotExist() } },
         )
     }
 
@@ -2284,7 +2535,7 @@ class EpisodeVideoControllerTest {
             gestureFamily = GestureFamily.MOUSE,
             openSideSheet = { onNodeWithTag(TAG_SELECT_EPISODE_ICON_BUTTON).performClick() },
             waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).doesNotExist() } },
+            waitForSideSheetClose = { waitUntilFrames { onNodeWithTag(TAG_EPISODE_SELECTOR_SHEET).doesNotExist() } },
         )
     }
 
@@ -2424,5 +2675,17 @@ class EpisodeVideoControllerTest {
                 controllerState.visibility,
             )
         }
+    }
+}
+
+private class FakePictureInPictureController : PictureInPictureController {
+    override val isSupported: Boolean get() = true
+    override val isInPictureInPicture: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    override val isPictureInPicturePossible: MutableStateFlow<Boolean> = MutableStateFlow(true)
+
+    override fun updatePolicy(autoEnterEnabled: Boolean, aspectWidth: Int?, aspectHeight: Int?) {
+    }
+
+    override fun enterPictureInPicture() {
     }
 }

@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-// Generated from /Users/general_k1ng/Documents/project/animeko/utils/bbcode/BBCode.g4 by ANTLR 4.13.1
+// Generated from /Users/stageguard/Projects/animeko/utils/bbcode/BBCode.g4 by ANTLR 4.13.1
 package me.him188.ani.utils.bbcode
 
 import org.antlr.v4.kotlinruntime.ParserRuleContext
@@ -149,6 +149,36 @@ public open class BBCodeBaseListener : BBCodeListener {
      * The default implementation does nothing.
      */
     override fun exitColor(ctx: BBCodeParser.ColorContext) {}
+
+    /**
+     * The default implementation does nothing.
+     */
+    override fun enterCenter(ctx: BBCodeParser.CenterContext) {}
+
+    /**
+     * The default implementation does nothing.
+     */
+    override fun exitCenter(ctx: BBCodeParser.CenterContext) {}
+
+    /**
+     * The default implementation does nothing.
+     */
+    override fun enterLeft(ctx: BBCodeParser.LeftContext) {}
+
+    /**
+     * The default implementation does nothing.
+     */
+    override fun exitLeft(ctx: BBCodeParser.LeftContext) {}
+
+    /**
+     * The default implementation does nothing.
+     */
+    override fun enterRight(ctx: BBCodeParser.RightContext) {}
+
+    /**
+     * The default implementation does nothing.
+     */
+    override fun exitRight(ctx: BBCodeParser.RightContext) {}
 
     /**
      * The default implementation does nothing.

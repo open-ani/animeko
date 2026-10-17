@@ -2,9 +2,17 @@
 <paths>
     <cache-path
             name="cache_files"
-            path="updates/download/" /> <!-- /data/data/me.him188.ani.debug2/cache/updates/download/ani-3.0.0.apk -->
+            path="updates/" /> <!-- 自动更新: cache/updates/download/ani-3.0.0.apk; 开发者安装指定 commit: cache/updates/dev-builds/ -->
+
+    <cache-path
+            name="image_viewer"
+            path="image-viewer/" /> <!-- 图片查看器导出的副本, 复制到剪贴板时以 content URI 共享 -->
 
     <files-path
             name="logs"
             path="logs/" /> <!-- /data/data/0/me.him188.ani/files/logs/ -->
+
+    <external-path
+            name="screenshots"
+            path="Pictures/Animeko/" /> <!-- Android 9 及以下的播放器截图直接写入公共图片目录, 分享时以 content URI 共享 -->
 </paths>

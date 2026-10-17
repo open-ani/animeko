@@ -54,6 +54,43 @@ fun AbstractJPackageTask.unpackComposeDesktopNativeLibraries() {
 
     // endregion
 
+    // region: unpack the macOS share sheet JNI library, re-pack the macos-share jar without it
+    if (triple.startsWith("macos-")) {
+        val macosShareJar = destinationDirFile.walk()
+            .find { it.isFile && it.extension == "jar" && it.name.startsWith("macos-share-") }
+            ?: throw FileNotFoundException(
+                "macos-share jar doesn't exist at app runtime directory after compose jpackage task.",
+            )
+        val macosShareTempDir = Files.createTempDirectory("ani-build-macos-share")
+        val tempRepackedMacosShareJar = macosShareTempDir.resolve(macosShareJar.name)
+        try {
+            extractEntriesAndRepackJar(
+                jar = macosShareJar,
+                repackedJar = tempRepackedMacosShareJar,
+                extractedDir = macosShareTempDir,
+                entriesToExtract = mapOf(MACOS_SHARE_LIBRARY to MACOS_SHARE_LIBRARY),
+                strippedRoot = MACOS_SHARE_LIBRARY,
+            )
+            Files.move(
+                macosShareTempDir.resolve(MACOS_SHARE_LIBRARY),
+                macosShareJar.parentFile.toPath().resolve(MACOS_SHARE_LIBRARY),
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+            Files.move(
+                tempRepackedMacosShareJar,
+                macosShareJar.toPath(),
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+            logger.lifecycle(
+                "Extracted $MACOS_SHARE_LIBRARY into ${macosShareJar.parentFile} " +
+                        "and replaced ${macosShareJar.name} with the library stripped.",
+            )
+        } finally {
+            macosShareTempDir.deleteRecursively()
+        }
+    }
+    // endregion
+
     // region: unpack onnxruntime, re-pack the original onnx jar without runtime native libraries inside
     val onnxruntimeJar = destinationDirFile.walk()
         .find {
@@ -476,6 +513,9 @@ private fun unpackJar(jar: File, dest: File, filter: (ZipEntry) -> Boolean = { t
 
 private const val ONNXRUNTIME_NATIVE_ROOT = "ai/onnxruntime/native/"
 
+/** JNI library of `:utils:macos-share`, stored at the root of its jar. */
+private const val MACOS_SHARE_LIBRARY = "libanimeko_macos_share.dylib"
+
 private const val VIDEO_ENHANCEMENT_SHADER_ROOT =
     "composeResources/me.him188.ani.utils.video.enhancement.shader.provider/files/shaders/"
 
@@ -549,11 +589,29 @@ private fun extractNativesAndRepackOnnxRuntimeJar(
     tempNativeDir: Path,
     archPathInJar: String,
     nativeLibraryNames: List<String>,
-) {
-    val requiredNativeEntries = nativeLibraryNames.associateBy { libraryName ->
+) = extractEntriesAndRepackJar(
+    jar = onnxruntimeJar,
+    repackedJar = repackedJar,
+    extractedDir = tempNativeDir,
+    entriesToExtract = nativeLibraryNames.associateBy { libraryName ->
         "$ONNXRUNTIME_NATIVE_ROOT$archPathInJar/$libraryName"
-    }
-    val missingNativeEntries = requiredNativeEntries.keys.toMutableSet()
+    },
+    strippedRoot = ONNXRUNTIME_NATIVE_ROOT,
+)
+
+/**
+ * Copies the entries of [jar] named by the keys of [entriesToExtract] into [extractedDir] under the mapped file
+ * names, and writes [repackedJar] with every entry whose name starts with [strippedRoot] left out.
+ * Fails when any entry to extract is missing.
+ */
+private fun extractEntriesAndRepackJar(
+    jar: File,
+    repackedJar: Path,
+    extractedDir: Path,
+    entriesToExtract: Map<String, String>,
+    strippedRoot: String,
+) {
+    val missingEntries = entriesToExtract.keys.toMutableSet()
 
     ZipOutputStream(
         BufferedOutputStream(
@@ -565,23 +623,23 @@ private fun extractNativesAndRepackOnnxRuntimeJar(
             ),
         ),
     ).use { zipOutput ->
-        ZipFile(onnxruntimeJar).use { sourceJar ->
+        ZipFile(jar).use { sourceJar ->
             sourceJar.entries().asSequence().forEach { entry ->
-                requiredNativeEntries[entry.name]?.let { libraryName ->
+                entriesToExtract[entry.name]?.let { fileName ->
                     require(!entry.isDirectory) {
-                        "Expected onnxruntime native library is a directory: ${entry.name}"
+                        "Expected native library is a directory: ${entry.name}"
                     }
                     sourceJar.getInputStream(entry).use { input ->
                         Files.copy(
                             input,
-                            tempNativeDir.resolve(libraryName),
+                            extractedDir.resolve(fileName),
                             StandardCopyOption.REPLACE_EXISTING,
                         )
                     }
-                    missingNativeEntries.remove(entry.name)
+                    missingEntries.remove(entry.name)
                 }
 
-                if (!entry.name.startsWith(ONNXRUNTIME_NATIVE_ROOT)) {
+                if (!entry.name.startsWith(strippedRoot)) {
                     val repackedEntry = ZipEntry(entry.name).apply {
                         entry.comment?.let { comment = it }
                         entry.lastModifiedTime?.let { lastModifiedTime = it }
@@ -598,10 +656,9 @@ private fun extractNativesAndRepackOnnxRuntimeJar(
         }
     }
 
-    if (missingNativeEntries.isNotEmpty()) {
+    if (missingEntries.isNotEmpty()) {
         throw FileNotFoundException(
-            "onnxruntime native libraries don't exist in runtime jar: " +
-                    missingNativeEntries.joinToString(),
+            "Native libraries don't exist in ${jar.name}: " + missingEntries.joinToString(),
         )
     }
 }

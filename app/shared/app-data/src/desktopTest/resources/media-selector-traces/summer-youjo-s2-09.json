@@ -1,0 +1,3195 @@
+{
+  "formatVersion": 1,
+  "provenance": {
+    "capturedAt": "2026-09-05T20:00:41.109496Z",
+    "applicationVersion": "4.9.0-dev",
+    "acquisition": "desktop-playback",
+    "searchCacheCleared": true,
+    "rawSha256": "01a36066b0b021bf29dc3168d6cb31ad786a6ad88577b65957c3a00facabb82c",
+    "rawBytes": 3381812,
+    "rawFrameCount": 53
+  },
+  "request": {
+    "subjectId": "339515",
+    "episodeId": "1699976",
+    "subjectNameCN": "幼女战记 第二季",
+    "subjectNames": [
+      "幼女战记 第二季",
+      "幼女戦記Ⅱ",
+      "Saga of Tanya the Evil II",
+      "Youjo Senki II",
+      "谭雅战记 第二季"
+    ],
+    "episodeSort": {
+      "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+      "number": 9.0
+    },
+    "episodeName": "观光旅行",
+    "episodeEp": {
+      "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+      "number": 9.0
+    }
+  },
+  "preferredSourceId": null,
+  "durationMillis": 45020,
+  "sources": [
+    {
+      "id": "local-file-system",
+      "name": "LocalTorrent",
+      "kind": "LocalCache"
+    },
+    {
+      "id": "local-file-system",
+      "name": "LocalWebM3u",
+      "kind": "LocalCache"
+    },
+    {
+      "id": "mikan-mikanime-tv",
+      "name": "蜜柑计划 (CN)",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "dmhy",
+      "name": "動漫花園",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "e0fa1500-ba3e-4767-b108-cc6f241b5559",
+      "name": "nyaa.land",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "2355e16c-8737-42ea-aa58-140251822359",
+      "name": "AnimeGarden",
+      "kind": "BitTorrent"
+    },
+    {
+      "id": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "name": "稀饭动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "c03f162b-a5c0-442c-8834-060ae87669a4",
+      "name": "girigiri愛動漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "9bbbef46-7372-4199-853c-95b348113cb6",
+      "name": "嘀嗒影视",
+      "kind": "WEB"
+    },
+    {
+      "id": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "name": "叽哔动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "name": "E-ACG",
+      "kind": "WEB"
+    },
+    {
+      "id": "474f8053-6293-4472-9816-86e802db7776",
+      "name": "森之屋动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "ca0aa9a3-ab41-414e-a4d6-b15411551cf3",
+      "name": "风车影视",
+      "kind": "WEB"
+    },
+    {
+      "id": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "name": "去看吧",
+      "kind": "WEB"
+    },
+    {
+      "id": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "name": "海星动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "name": "樱花动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "bf067292-2d24-4dca-aac4-d53808700b03",
+      "name": "嘀哩嘀哩",
+      "kind": "WEB"
+    },
+    {
+      "id": "5d8ce041-086c-4075-8a6c-e9957ec1241c",
+      "name": "新优酷",
+      "kind": "WEB"
+    },
+    {
+      "id": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "name": "番茄动漫",
+      "kind": "WEB"
+    },
+    {
+      "id": "c7c80227-2175-4985-ac2c-5343dd0fa489",
+      "name": "hanime1_1080p",
+      "kind": "WEB"
+    },
+    {
+      "id": "0147498a-84da-4be7-b780-378b03234070",
+      "name": "hanime1_720p",
+      "kind": "WEB"
+    },
+    {
+      "id": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "name": "wedm",
+      "kind": "WEB"
+    },
+    {
+      "id": "257d123e-9441-424b-924e-abf3e4cef14b",
+      "name": "影视森林",
+      "kind": "WEB"
+    },
+    {
+      "id": "7642d509-20b1-4dd3-b40a-87a344cb12f9",
+      "name": "热播之家",
+      "kind": "WEB"
+    }
+  ],
+  "initial": {
+    "context": {
+      "subjectFinished": false,
+      "sourcePrecedence": [
+        "local-file-system",
+        "local-file-system",
+        "mikan-mikanime-tv",
+        "dmhy",
+        "e0fa1500-ba3e-4767-b108-cc6f241b5559",
+        "2355e16c-8737-42ea-aa58-140251822359",
+        "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+        "c03f162b-a5c0-442c-8834-060ae87669a4",
+        "9bbbef46-7372-4199-853c-95b348113cb6",
+        "104d2594-4202-4bcc-b4da-9b03d99558e2",
+        "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+        "474f8053-6293-4472-9816-86e802db7776",
+        "ca0aa9a3-ab41-414e-a4d6-b15411551cf3",
+        "419b2d59-be72-436c-9c28-6960bcb9809a",
+        "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+        "8d036176-2614-4f2c-9e12-2f56af69619f",
+        "bf067292-2d24-4dca-aac4-d53808700b03",
+        "5d8ce041-086c-4075-8a6c-e9957ec1241c",
+        "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+        "c7c80227-2175-4985-ac2c-5343dd0fa489",
+        "0147498a-84da-4be7-b780-378b03234070",
+        "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+        "257d123e-9441-424b-924e-abf3e4cef14b",
+        "7642d509-20b1-4dd3-b40a-87a344cb12f9"
+      ],
+      "subtitlePreferences": {
+        "EMBEDDED": "NORMAL",
+        "CLOSED": "HIDE",
+        "EXTERNAL_PROVIDED": "NORMAL",
+        "EXTERNAL_DISCOVER": "HIDE",
+        "CLOSED_OR_EXTERNAL_DISCOVER": "HIDE"
+      },
+      "series": {
+        "seasonSort": 1,
+        "sequelNames": [],
+        "otherNames": [
+          "幼女戦記",
+          "幼女战记",
+          "谭雅战记",
+          "Saga of Tanya the Evil",
+          "Youjo Senki"
+        ]
+      },
+      "subject": {
+        "id": 339515,
+        "name": "幼女戦記Ⅱ",
+        "nameCn": "幼女战记 第二季",
+        "aliases": [
+          "Saga of Tanya the Evil II",
+          "Youjo Senki II",
+          "谭雅战记 第二季"
+        ]
+      },
+      "episode": {
+        "episodeId": 1699976,
+        "type": "MainStory",
+        "name": "観光旅行",
+        "nameCn": "观光旅行",
+        "airDate": 132778242,
+        "comment": 0,
+        "desc": "",
+        "sort": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        },
+        "ep": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "sourceTiers": {
+        "local-file-system": 2,
+        "mikan-mikanime-tv": 2,
+        "dmhy": 2,
+        "e0fa1500-ba3e-4767-b108-cc6f241b5559": 2,
+        "2355e16c-8737-42ea-aa58-140251822359": 2,
+        "02953f1e-fbfd-438b-b3bf-c4dad6a346d4": 0,
+        "c03f162b-a5c0-442c-8834-060ae87669a4": 0,
+        "9bbbef46-7372-4199-853c-95b348113cb6": 1,
+        "104d2594-4202-4bcc-b4da-9b03d99558e2": 3,
+        "2406da2f-695c-4cea-869b-fd7ca8aa3a9f": 3,
+        "474f8053-6293-4472-9816-86e802db7776": 3,
+        "ca0aa9a3-ab41-414e-a4d6-b15411551cf3": 3,
+        "419b2d59-be72-436c-9c28-6960bcb9809a": 3,
+        "1b96801a-2fa9-4ac8-be97-5258da3f44d7": 4,
+        "8d036176-2614-4f2c-9e12-2f56af69619f": 4,
+        "bf067292-2d24-4dca-aac4-d53808700b03": 4,
+        "5d8ce041-086c-4075-8a6c-e9957ec1241c": 4,
+        "577f82d8-a01c-45a3-862a-9de2643e2b8f": 4,
+        "c7c80227-2175-4985-ac2c-5343dd0fa489": 4,
+        "0147498a-84da-4be7-b780-378b03234070": 4,
+        "ff888bd2-fc1c-4aa3-be29-d302d84b1588": 4,
+        "257d123e-9441-424b-924e-abf3e4cef14b": 4,
+        "7642d509-20b1-4dd3-b40a-87a344cb12f9": 4
+      },
+      "channelTiers": {
+        "02953f1e-fbfd-438b-b3bf-c4dad6a346d4": {
+          "新番主线②": 0,
+          "新番主线①": 0,
+          "旧番主线①": 1,
+          "备用①": 6
+        },
+        "c03f162b-a5c0-442c-8834-060ae87669a4": {
+          "简中": 1,
+          "繁中": 2,
+          "杜比": 6
+        },
+        "9bbbef46-7372-4199-853c-95b348113cb6": {
+          "超清A": 0,
+          "超清C": 0,
+          "超清G": 5,
+          "超清E": 6,
+          "超清K": 6
+        },
+        "104d2594-4202-4bcc-b4da-9b03d99558e2": {
+          "叽哔1线": 5,
+          "叽哔3线": 5,
+          "叽哔4线": 5,
+          "叽哔2线": 6,
+          "无尽③": 6
+        },
+        "2406da2f-695c-4cea-869b-fd7ca8aa3a9f": {
+          "172": 6,
+          "EDD动漫": 1,
+          "线路13": 1,
+          "高清在线": 1,
+          "极速在线": 4,
+          "海外专线": 4,
+          "线路3(若黑屏用手机)": 5,
+          "线路4": 5,
+          "看吧③": 6,
+          "看吧④": 6,
+          "看吧⑤": 6,
+          "看吧备用": 6
+        },
+        "474f8053-6293-4472-9816-86e802db7776": {
+          "HD": 5
+        },
+        "ca0aa9a3-ab41-414e-a4d6-b15411551cf3": {
+          "动漫大全": 1,
+          "备用②": 5,
+          "备用③": 5,
+          "线路③": 5,
+          "B站": 6,
+          "优酷": 6,
+          "备用①": 6,
+          "奇异": 6,
+          "线路①": 6,
+          "线路②": 6,
+          "腾讯": 6,
+          "芒果": 6
+        },
+        "419b2d59-be72-436c-9c28-6960bcb9809a": {
+          "172": 6,
+          "线路13": 1,
+          "线路3": 1,
+          "高清在线": 1,
+          "EDD": 2,
+          "线路4": 3,
+          "极速在线": 5,
+          "海外专线": 5,
+          "看吧③": 6,
+          "看吧④": 6,
+          "看吧⑤": 6,
+          "看吧备用": 6
+        },
+        "1b96801a-2fa9-4ac8-be97-5258da3f44d7": {
+          "播放Ⅱ": 1,
+          "播放Ⅲ": 1,
+          "播放Ⅳ": 5,
+          "播放Ⅵ": 5,
+          "播放Ⅰ": 6,
+          "播放Ⅴ": 6
+        },
+        "8d036176-2614-4f2c-9e12-2f56af69619f": {
+          "线路10": 1,
+          "线路6": 1,
+          "5线": 2,
+          "线路1": 2,
+          "线路12": 5,
+          "线路2": 5,
+          "线路3": 5,
+          "线路8": 5,
+          "主线": 6,
+          "线路4": 6,
+          "线路9": 6
+        },
+        "bf067292-2d24-4dca-aac4-d53808700b03": {
+          "在线": 6
+        },
+        "5d8ce041-086c-4075-8a6c-e9957ec1241c": {
+          "MD1": 1,
+          "MD4": 1,
+          "线路3": 2,
+          "线路1": 5,
+          "MD2": 6,
+          "MD5": 6,
+          "线路2": 6
+        },
+        "577f82d8-a01c-45a3-862a-9de2643e2b8f": {
+          "新浪资源2": 5,
+          "番茄1线": 5,
+          "速播资源1": 5,
+          "无尽③": 6,
+          "极速在线": 6,
+          "番茄2线": 6
+        },
+        "ff888bd2-fc1c-4aa3-be29-d302d84b1588": {
+          "第一线路": 1,
+          "云播①号": 6,
+          "备用线路": 6,
+          "最新可用线路": 6,
+          "非凡资源M3U": 6
+        },
+        "7642d509-20b1-4dd3-b40a-87a344cb12f9": {
+          "4K蓝光": 6,
+          "蓝光A": 6,
+          "蓝光C": 6,
+          "蓝光E": 6,
+          "蓝光G": 6,
+          "蓝光K": 6
+        }
+      }
+    },
+    "settings": {
+      "showDisabled": true,
+      "hideSingleEpisodeForCompleted": true,
+      "preferSeasons": true,
+      "autoEnableLastSelected": true,
+      "preferKind": "WEB",
+      "fastSelectWebKind": true,
+      "fastSelectWebLowTierToleranceDuration": "PT5S",
+      "enableImageCaptchaAutoSolve": true,
+      "webSearchCacheTtl": "PT6H"
+    },
+    "preference": {
+      "alliance": null,
+      "alliancePatterns": null,
+      "resolution": null,
+      "fallbackResolutions": [
+        "2160P",
+        "1440P",
+        "1080P",
+        "720P"
+      ],
+      "subtitleLanguageId": null,
+      "fallbackSubtitleLanguageIds": [
+        "CHS",
+        "CHT"
+      ],
+      "showWithoutSubtitle": false,
+      "mediaSourceId": null,
+      "fallbackMediaSourceIds": null
+    },
+    "defaultPreference": {
+      "alliance": null,
+      "alliancePatterns": null,
+      "resolution": null,
+      "fallbackResolutions": [
+        "2160P",
+        "1440P",
+        "1080P",
+        "720P"
+      ],
+      "subtitleLanguageId": null,
+      "fallbackSubtitleLanguageIds": [
+        "CHS",
+        "CHT"
+      ],
+      "showWithoutSubtitle": false,
+      "mediaSourceId": null,
+      "fallbackMediaSourceIds": null
+    }
+  },
+  "media": [
+    {
+      "mediaId": "media-a4306384e4d3319e487866c7",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-a4306384e4d3319e487866c7",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-a4306384e4d3319e487866c7"
+      },
+      "originalTitle": "[VCB-Studio] 剧场版 幼女战记 / Gekijouban Youjo Senki / 劇場版 幼女戦記 10-bit 1080p HEVC BDRip [MOVIE]",
+      "publishedTime": 1704778380000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "VCB-Studio",
+        "size": 7623566848,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": -1
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-aff2ee1eb470687cbb077672",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-aff2ee1eb470687cbb077672",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-aff2ee1eb470687cbb077672"
+      },
+      "originalTitle": "[DBD-Raws][幼女战记/谭雅战记/Youjo Senki/幼女戦記][01-12TV全集+SP+剧场版][1080P][BDRip][HEVC-10bit][FLAC][MKV]",
+      "publishedTime": 1626081000000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "MKV",
+        "size": 10844792832,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Combined",
+        "first": {
+          "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Combined",
+          "first": {
+            "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Range",
+            "start": {
+              "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+              "number": 1.0
+            },
+            "end": {
+              "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+              "number": 12.0
+            }
+          },
+          "second": {
+            "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+            "value": {
+              "type": "me.him188.ani.datasources.api.EpisodeSort.Special",
+              "episodeType": "SP",
+              "number": null
+            }
+          }
+        },
+        "second": {
+          "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+          "rawNumber": -1
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-ff5b8e3734d26451c58dbe39",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-ff5b8e3734d26451c58dbe39",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ff5b8e3734d26451c58dbe39"
+      },
+      "originalTitle": "[VCB-Studio] Youjo Senki / 幼女战记 / 幼女戦記 10-bit 1080p HEVC BDRip [Fin]",
+      "publishedTime": 1586758140000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "VCB-Studio",
+        "size": 16320875520,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Season",
+        "rawNumber": -1
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-029691437ee571a61f24f108",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-029691437ee571a61f24f108",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-029691437ee571a61f24f108"
+      },
+      "originalTitle": "[LoliHouse] 幼女战记II / Youjo Senki II - 09 [WebRip 1080p HEVC-10bit AAC][简繁内封字幕](检索用：谭雅战记)",
+      "publishedTime": 1788421560000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "LoliHouse",
+        "size": 652738560,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-d16c7951a56a00a1a9542c2f",
+      "mediaSourceId": "dmhy",
+      "originalUrl": "https://fixture.invalid/media-d16c7951a56a00a1a9542c2f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d16c7951a56a00a1a9542c2f"
+      },
+      "originalTitle": "[YYQ字幕组][幼女战记 第二季 / 谭雅战记 第二季 / Youjo Senki S2][09][1080P][简日双语][MP4][AVC_AAC][TVRIP]",
+      "publishedTime": 1788407400000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "夜莺家族",
+        "size": 345191232,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-1cce15f25709f3333146510d",
+      "mediaSourceId": "474f8053-6293-4472-9816-86e802db7776",
+      "originalUrl": "https://fixture.invalid/media-1cce15f25709f3333146510d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-1cce15f25709f3333146510d"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "HD",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-33eeb68ea3c311236206acee",
+      "mediaSourceId": "1b96801a-2fa9-4ac8-be97-5258da3f44d7",
+      "originalUrl": "https://fixture.invalid/media-33eeb68ea3c311236206acee",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-33eeb68ea3c311236206acee"
+      },
+      "originalTitle": "幼女战记 第二季 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记 第二季",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "播放Ⅰ",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-98af403e6f83095cf748175a",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-98af403e6f83095cf748175a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-98af403e6f83095cf748175a"
+      },
+      "originalTitle": "[Nix-Raws] 幼女战记 第二季 / 幼女戦记Ⅱ / Youjo Senki S02E09 [CATCHPLAY WEB-DL 1080p AVC AAC][简繁内封]",
+      "publishedTime": 1788369120000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT",
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "Nix-Raws",
+        "size": 723097600,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-e25b34ceb56c97361bab3f0c",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-e25b34ceb56c97361bab3f0c",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-e25b34ceb56c97361bab3f0c"
+      },
+      "originalTitle": "[Nix-Raws] 幼女战记Ⅱ / 幼女戦记Ⅱ / Youjo Senki S02E09 [CR WEB-DL 1080p AVC AAC][简繁内封]",
+      "publishedTime": 1788323700000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "Nix-Raws",
+        "size": 1503238144,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-ddb2fadfab9395501416e5d9",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-ddb2fadfab9395501416e5d9",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ddb2fadfab9395501416e5d9"
+      },
+      "originalTitle": "[LoliHouse] 幼女战记II / Youjo Senki II - 09 [WebRip 1080p HEVC-10bit AAC][简繁内封字幕](检索用：谭雅战记)",
+      "publishedTime": 1788389160000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "LoliHouse",
+        "size": 652738560,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-b82937907fdc830956cdc932",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-b82937907fdc830956cdc932",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-b82937907fdc830956cdc932"
+      },
+      "originalTitle": "[黒ネズミたち] 幼女戰記 2 / Youjo Senki II - 09 (ABEMA 1920x1080 AVC AAC MKV)",
+      "publishedTime": 1788327082000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 781492224,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-7be5aeb7654b105ad474e8e8",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-7be5aeb7654b105ad474e8e8",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-7be5aeb7654b105ad474e8e8"
+      },
+      "originalTitle": "[黒ネズミたち] 幼女戰記 2 / Youjo Senki II - 09 (CR 1920x1080 AVC AAC MKV)",
+      "publishedTime": 1788323465000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 846839808,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-9370042f150c672ab7ffcb28",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-9370042f150c672ab7ffcb28",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-9370042f150c672ab7ffcb28"
+      },
+      "originalTitle": "[黒ネズミたち] 幼女戰記 2 / Youjo Senki II - 09 (Baha 1920x1080 AVC AAC MP4)",
+      "publishedTime": 1788323449000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 453571584,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-3cd57b37d98b0c850df8d3e3",
+      "mediaSourceId": "2355e16c-8737-42ea-aa58-140251822359",
+      "originalUrl": "https://fixture.invalid/media-3cd57b37d98b0c850df8d3e3",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-3cd57b37d98b0c850df8d3e3"
+      },
+      "originalTitle": "[YYQ字幕组][幼女战记 第二季 / 谭雅战记 第二季 / Youjo Senki S2][09][1080P][简日双语][MP4][AVC_AAC][TVRIP]",
+      "publishedTime": 1788375000000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "YYQ字幕组",
+        "size": 345190400,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-674e57eabdd7635813648a1f",
+      "mediaSourceId": "c03f162b-a5c0-442c-8834-060ae87669a4",
+      "originalUrl": "https://fixture.invalid/media-674e57eabdd7635813648a1f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-674e57eabdd7635813648a1f"
+      },
+      "originalTitle": "幼女战记 09",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "09",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "简中",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-076c02de1790f99df1ede791",
+      "mediaSourceId": "c03f162b-a5c0-442c-8834-060ae87669a4",
+      "originalUrl": "https://fixture.invalid/media-076c02de1790f99df1ede791",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-076c02de1790f99df1ede791"
+      },
+      "originalTitle": "幼女战记 第二季 09",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记 第二季",
+        "episodeName": "09",
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "繁中",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-86f026a070758f7f8ae8ab28",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-86f026a070758f7f8ae8ab28",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-86f026a070758f7f8ae8ab28"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD动漫",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-820eb83de47fa4e35645862d",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-820eb83de47fa4e35645862d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-820eb83de47fa4e35645862d"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "看吧③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-6fca1a593c5a7d2ac22b1af1",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-6fca1a593c5a7d2ac22b1af1",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6fca1a593c5a7d2ac22b1af1"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路4",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2d2a3b1ec7b23c152cc305e7",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-2d2a3b1ec7b23c152cc305e7",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2d2a3b1ec7b23c152cc305e7"
+      },
+      "originalTitle": "幼女战记2 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记2",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路3",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-d918b5169628698e20375a8d",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-d918b5169628698e20375a8d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d918b5169628698e20375a8d"
+      },
+      "originalTitle": "幼女战记2 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记2",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD动漫",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-d81693b49f0a7fb46490fdc7",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-d81693b49f0a7fb46490fdc7",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d81693b49f0a7fb46490fdc7"
+      },
+      "originalTitle": "幼女战记2 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记2",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-123e93cc5a2f9fcc16d49263",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-123e93cc5a2f9fcc16d49263",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-123e93cc5a2f9fcc16d49263"
+      },
+      "originalTitle": "幼女战记2 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记2",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "海外专线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-30748e150410d59b545cf0c2",
+      "mediaSourceId": "2406da2f-695c-4cea-869b-fd7ca8aa3a9f",
+      "originalUrl": "https://fixture.invalid/media-30748e150410d59b545cf0c2",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-30748e150410d59b545cf0c2"
+      },
+      "originalTitle": "幼女战记2 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记2",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "高清在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-00c91e92f7d37ed8d9207e6e",
+      "mediaSourceId": "bf067292-2d24-4dca-aac4-d53808700b03",
+      "originalUrl": "https://fixture.invalid/media-00c91e92f7d37ed8d9207e6e",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-00c91e92f7d37ed8d9207e6e"
+      },
+      "originalTitle": "幼女战记 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-e75fdd0af8fdb0b679bac240",
+      "mediaSourceId": "bf067292-2d24-4dca-aac4-d53808700b03",
+      "originalUrl": "https://fixture.invalid/media-e75fdd0af8fdb0b679bac240",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-e75fdd0af8fdb0b679bac240"
+      },
+      "originalTitle": "幼女战记 第二季 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记 第二季",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-2e09bc00370bdffc4758219a",
+      "mediaSourceId": "104d2594-4202-4bcc-b4da-9b03d99558e2",
+      "originalUrl": "https://fixture.invalid/media-2e09bc00370bdffc4758219a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2e09bc00370bdffc4758219a"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "叽哔2线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-d0f53ebf45a721491e2d7978",
+      "mediaSourceId": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "originalUrl": "https://fixture.invalid/media-d0f53ebf45a721491e2d7978",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d0f53ebf45a721491e2d7978"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "最新可用线路",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-ccfb587425d38a8e0a4ae453",
+      "mediaSourceId": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "originalUrl": "https://fixture.invalid/media-ccfb587425d38a8e0a4ae453",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-ccfb587425d38a8e0a4ae453"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "非凡资源M3U",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-add4b3f8931acfe62fc23328",
+      "mediaSourceId": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "originalUrl": "https://fixture.invalid/media-add4b3f8931acfe62fc23328",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-add4b3f8931acfe62fc23328"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "第一线路",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-8ebc1d9c10d6ac8f9df1aa6b",
+      "mediaSourceId": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "originalUrl": "https://fixture.invalid/media-8ebc1d9c10d6ac8f9df1aa6b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-8ebc1d9c10d6ac8f9df1aa6b"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "备用线路",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-8dfeb433ac6fb56d75a0b249",
+      "mediaSourceId": "ff888bd2-fc1c-4aa3-be29-d302d84b1588",
+      "originalUrl": "https://fixture.invalid/media-8dfeb433ac6fb56d75a0b249",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-8dfeb433ac6fb56d75a0b249"
+      },
+      "originalTitle": "幼女战记二 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记二",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "非凡资源M3U",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-64b92cabccbd69e926642239",
+      "mediaSourceId": "577f82d8-a01c-45a3-862a-9de2643e2b8f",
+      "originalUrl": "https://fixture.invalid/media-64b92cabccbd69e926642239",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-64b92cabccbd69e926642239"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "720P",
+        "alliance": "番茄2线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-065dbc7d4ee5c3bba5fa9216",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-065dbc7d4ee5c3bba5fa9216",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-065dbc7d4ee5c3bba5fa9216"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-c0c4734048f9596cb4e63470",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-c0c4734048f9596cb4e63470",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-c0c4734048f9596cb4e63470"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "看吧③",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-abc37a4eaba63cfea5111fea",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-abc37a4eaba63cfea5111fea",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-abc37a4eaba63cfea5111fea"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路4",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-d53709d3744c339c0b168eed",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-d53709d3744c339c0b168eed",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d53709d3744c339c0b168eed"
+      },
+      "originalTitle": "幼女战记2 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记2",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路3",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-0070624b957f150b80f8700d",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-0070624b957f150b80f8700d",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-0070624b957f150b80f8700d"
+      },
+      "originalTitle": "幼女战记2 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记2",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "EDD",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-98a1336f2564af62b17adf0f",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-98a1336f2564af62b17adf0f",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-98a1336f2564af62b17adf0f"
+      },
+      "originalTitle": "幼女战记2 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记2",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "极速在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-3bb0db638d9a4c296ae2648c",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-3bb0db638d9a4c296ae2648c",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-3bb0db638d9a4c296ae2648c"
+      },
+      "originalTitle": "幼女战记2 第9集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记2",
+        "episodeName": "第9集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "海外专线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-0de35374a91d99a4739977b8",
+      "mediaSourceId": "419b2d59-be72-436c-9c28-6960bcb9809a",
+      "originalUrl": "https://fixture.invalid/media-0de35374a91d99a4739977b8",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-0de35374a91d99a4739977b8"
+      },
+      "originalTitle": "幼女战记2 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记2",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "高清在线",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-4d31d18f1f9de060668f6df8",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-4d31d18f1f9de060668f6df8",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-4d31d18f1f9de060668f6df8"
+      },
+      "originalTitle": "幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "旧番主线①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-d796652df82638a536546dae",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-d796652df82638a536546dae",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-d796652df82638a536546dae"
+      },
+      "originalTitle": "迷你幼女战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "迷你幼女战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "旧番主线①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-1a90f3ca98a5960814993520",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-1a90f3ca98a5960814993520",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-1a90f3ca98a5960814993520"
+      },
+      "originalTitle": "幼女战记 第二季 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记 第二季",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "新番主线①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-1d9f9248dce6f78c9664ea9b",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-1d9f9248dce6f78c9664ea9b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-1d9f9248dce6f78c9664ea9b"
+      },
+      "originalTitle": "幼女战记 第二季 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记 第二季",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "新番主线②",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-b5c9c80cf58ef92178d0e60a",
+      "mediaSourceId": "02953f1e-fbfd-438b-b3bf-c4dad6a346d4",
+      "originalUrl": "https://fixture.invalid/media-b5c9c80cf58ef92178d0e60a",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-b5c9c80cf58ef92178d0e60a"
+      },
+      "originalTitle": "幼女战记 第二季 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记 第二季",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "备用①",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-6e5a52a609946aefb4b1d9a4",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-6e5a52a609946aefb4b1d9a4",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6e5a52a609946aefb4b1d9a4"
+      },
+      "originalTitle": "幼女战记 幼女戦記 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记 幼女戦記",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路2",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-1e5997e2f9a3e1e6197e30c9",
+      "mediaSourceId": "8d036176-2614-4f2c-9e12-2f56af69619f",
+      "originalUrl": "https://fixture.invalid/media-1e5997e2f9a3e1e6197e30c9",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-1e5997e2f9a3e1e6197e30c9"
+      },
+      "originalTitle": "幼女战记：谭雅战记 第09集",
+      "publishedTime": 0,
+      "properties": {
+        "subjectName": "幼女战记：谭雅战记",
+        "episodeName": "第09集",
+        "subtitleLanguageIds": [
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "线路9",
+        "size": -9223372036854775808,
+        "subtitleKind": "EMBEDDED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "WEB"
+    },
+    {
+      "mediaId": "media-af735656c7b054582e89518e",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-af735656c7b054582e89518e",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-af735656c7b054582e89518e"
+      },
+      "originalTitle": "[LoliHouse] 幼女战记II / Youjo Senki II - 09 [WebRip 1080p HEVC-10bit AAC][简繁内封字幕](检索用：谭雅战记)",
+      "publishedTime": 1788421560000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "LoliHouse",
+        "size": 652738560,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-4523f23ae9847e5ac9ba4b77",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-4523f23ae9847e5ac9ba4b77",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-4523f23ae9847e5ac9ba4b77"
+      },
+      "originalTitle": "[YYQ字幕组][幼女战记 第二季 / 谭雅战记 第二季 / Youjo Senki S2][09][1080P][简日双语][MP4][AVC_AAC][TVRIP]",
+      "publishedTime": 1788407400000,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "JPN"
+        ],
+        "resolution": "1080P",
+        "alliance": "YYQ字幕组",
+        "size": 345191232,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-e51cf2bd1f2c7dfa73c0d279",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-e51cf2bd1f2c7dfa73c0d279",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-e51cf2bd1f2c7dfa73c0d279"
+      },
+      "originalTitle": "[Nix-Raws] 幼女战记 第二季 / 幼女戦记Ⅱ / Youjo Senki S02E09 [CATCHPLAY WEB-DL 1080p AVC AAC][简繁内封]",
+      "publishedTime": 1788401560300,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT",
+          "CHS"
+        ],
+        "resolution": "1080P",
+        "alliance": "Nix-Raws",
+        "size": 723097984,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-6fbd4d8bfafdd327d089a04b",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-6fbd4d8bfafdd327d089a04b",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6fbd4d8bfafdd327d089a04b"
+      },
+      "originalTitle": "[黒ネズミたち] 幼女战记 2 / Youjo Senki II - 09 (ABEMA 1920x1080 AVC AAC MKV)",
+      "publishedTime": 1788360577642,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 781493184,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-6b3b2ee80a4d123ee96e7118",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-6b3b2ee80a4d123ee96e7118",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-6b3b2ee80a4d123ee96e7118"
+      },
+      "originalTitle": "[Nix-Raws] 幼女战记Ⅱ / 幼女戦记Ⅱ / Youjo Senki S02E09 [CR WEB-DL 1080p AVC AAC][简繁内封]",
+      "publishedTime": 1788356129173,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHS",
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "Nix-Raws",
+        "size": 1503238528,
+        "subtitleKind": "CLOSED"
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-a827b401a197de75d1efc750",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-a827b401a197de75d1efc750",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-a827b401a197de75d1efc750"
+      },
+      "originalTitle": "[ANi] Youjo Senki / 幼女战记 2 - 09 [1080P][Baha][WEB-DL][AAC AVC][CHT][MP4]",
+      "publishedTime": 1788355866482,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "ANi",
+        "size": 432537600,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-99191aeb5aa5b75594e966cc",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-99191aeb5aa5b75594e966cc",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-99191aeb5aa5b75594e966cc"
+      },
+      "originalTitle": "[黒ネズミたち] 幼女战记 2 / Youjo Senki II - 09 (CR 1920x1080 AVC AAC MKV)",
+      "publishedTime": 1788355864941,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 807613248,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    },
+    {
+      "mediaId": "media-2e59bdd475b937fff79e6133",
+      "mediaSourceId": "mikan-mikanime-tv",
+      "originalUrl": "https://fixture.invalid/media-2e59bdd475b937fff79e6133",
+      "download": {
+        "type": "me.him188.ani.datasources.api.topic.ResourceLocation.HttpStreamingFile",
+        "uri": "https://fixture.invalid/media-2e59bdd475b937fff79e6133"
+      },
+      "originalTitle": "[黒ネズミたち] 幼女战记 2 / Youjo Senki II - 09 (Baha 1920x1080 AVC AAC MP4)",
+      "publishedTime": 1788355849092,
+      "properties": {
+        "subjectName": null,
+        "episodeName": null,
+        "subtitleLanguageIds": [
+          "CHT"
+        ],
+        "resolution": "1080P",
+        "alliance": "黒ネズミたち",
+        "size": 432537600,
+        "subtitleKind": null
+      },
+      "episodeRange": {
+        "type": "me.him188.ani.datasources.api.topic.EpisodeRange.Single",
+        "value": {
+          "type": "me.him188.ani.datasources.api.EpisodeSort.Normal",
+          "number": 9.0
+        }
+      },
+      "extraFiles": {
+        "subtitles": []
+      },
+      "location": "ONLINE",
+      "kind": "BitTorrent"
+    }
+  ],
+  "events": [
+    {
+      "elapsedMillis": 80,
+      "sources": [
+        {
+          "source": 0,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        },
+        {
+          "source": 1,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        },
+        {
+          "source": 2,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 4,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 6,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 7,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 8,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 9,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 10,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 11,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 12,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 13,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 14,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 15,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 16,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 17,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 18,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 19,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 20,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 21,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 22,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        },
+        {
+          "source": 23,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 295,
+      "sources": [
+        {
+          "source": 19,
+          "state": "CaptchaRequired",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 295,
+      "sources": [
+        {
+          "source": 20,
+          "state": "CaptchaRequired",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 483,
+      "sources": [
+        {
+          "source": 22,
+          "state": "CaptchaRequired",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 635,
+      "sources": [
+        {
+          "source": 4,
+          "state": "Failed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 766,
+      "sources": [
+        {
+          "source": 12,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 791,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 792,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 993,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1010,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1152,
+      "sources": [
+        {
+          "source": 8,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1154,
+      "sources": [
+        {
+          "source": 11,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            5
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1298,
+      "sources": [
+        {
+          "source": 14,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            6
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1300,
+      "sources": [
+        {
+          "source": 14,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            6
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1482,
+      "sources": [
+        {
+          "source": 23,
+          "state": "Succeed",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1518,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            7
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1522,
+      "sources": [
+        {
+          "source": 3,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            7,
+            8
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1524,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1528,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1533,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1556,
+      "sources": [
+        {
+          "source": 5,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1559,
+      "sources": [
+        {
+          "source": 7,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            14,
+            15
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1674,
+      "sources": [
+        {
+          "source": 10,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            16
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1678,
+      "sources": [
+        {
+          "source": 10,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            16,
+            17,
+            18,
+            19
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1683,
+      "sources": [
+        {
+          "source": 10,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1687,
+      "sources": [
+        {
+          "source": 10,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1731,
+      "sources": [
+        {
+          "source": 16,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            24
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 1736,
+      "sources": [
+        {
+          "source": 16,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            24,
+            25
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 2225,
+      "sources": [
+        {
+          "source": 9,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            26
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 2229,
+      "sources": [
+        {
+          "source": 9,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            26
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 2538,
+      "sources": [
+        {
+          "source": 21,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            27
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 2549,
+      "sources": [
+        {
+          "source": 21,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            27,
+            28,
+            29,
+            30,
+            31
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 2559,
+      "sources": [
+        {
+          "source": 18,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            32
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 2566,
+      "sources": [
+        {
+          "source": 18,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            32
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 3054,
+      "sources": [
+        {
+          "source": 13,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 3239,
+      "sources": [
+        {
+          "source": 6,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            41
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 3245,
+      "sources": [
+        {
+          "source": 6,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            41,
+            42,
+            43,
+            44,
+            45
+          ]
+        }
+      ],
+      "selectedMediaId": null
+    },
+    {
+      "elapsedMillis": 3254,
+      "sources": [],
+      "selectedMediaId": "media-1a90f3ca98a5960814993520"
+    },
+    {
+      "elapsedMillis": 5592,
+      "sources": [
+        {
+          "source": 17,
+          "state": "RateLimited",
+          "generation": 0,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-1a90f3ca98a5960814993520"
+    },
+    {
+      "elapsedMillis": 11792,
+      "sources": [
+        {
+          "source": 15,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            46
+          ]
+        }
+      ],
+      "selectedMediaId": "media-1a90f3ca98a5960814993520"
+    },
+    {
+      "elapsedMillis": 11801,
+      "sources": [
+        {
+          "source": 15,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            46,
+            47
+          ]
+        }
+      ],
+      "selectedMediaId": "media-1a90f3ca98a5960814993520"
+    },
+    {
+      "elapsedMillis": 20305,
+      "sources": [
+        {
+          "source": 2,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            48
+          ]
+        }
+      ],
+      "selectedMediaId": "media-1a90f3ca98a5960814993520"
+    },
+    {
+      "elapsedMillis": 20314,
+      "sources": [
+        {
+          "source": 2,
+          "state": "Working",
+          "generation": null,
+          "media": [
+            48,
+            49,
+            50,
+            51,
+            52,
+            53
+          ]
+        }
+      ],
+      "selectedMediaId": "media-1a90f3ca98a5960814993520"
+    },
+    {
+      "elapsedMillis": 20334,
+      "sources": [
+        {
+          "source": 2,
+          "state": "Succeed",
+          "generation": 0,
+          "media": [
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55
+          ]
+        }
+      ],
+      "selectedMediaId": "media-1a90f3ca98a5960814993520"
+    },
+    {
+      "elapsedMillis": 35610,
+      "sources": [
+        {
+          "source": 17,
+          "state": "Working",
+          "generation": null,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-1a90f3ca98a5960814993520"
+    },
+    {
+      "elapsedMillis": 40995,
+      "sources": [
+        {
+          "source": 17,
+          "state": "RateLimited",
+          "generation": 1,
+          "media": []
+        }
+      ],
+      "selectedMediaId": "media-1a90f3ca98a5960814993520"
+    }
+  ]
+}

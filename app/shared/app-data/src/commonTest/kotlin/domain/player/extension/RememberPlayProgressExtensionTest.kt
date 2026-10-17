@@ -7,12 +7,16 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+@file:OptIn(UnsafeEpisodeSessionApi::class)
+
 package me.him188.ani.app.domain.player.extension
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -38,13 +42,16 @@ import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.utils.coroutines.childScope
 import org.openani.mediamp.PlaybackErrorCode
 import org.openani.mediamp.PlaybackException
-import org.openani.mediamp.metadata.MediaProperties
+import org.openani.mediamp.test.TestMediampPlayer
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNotSame
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     private val repository = EpisodePlayHistoryRepositoryImpl(
@@ -83,12 +90,13 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
 
     private fun TestScope.createCase(
         periodicReportInterval: Duration = Duration.INFINITE,
+        playHistoryRepository: EpisodePlayHistoryRepository = repository,
     ) = run {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
 
         val testScope = this.childScope()
         val suite = EpisodePlayerTestSuite(this, testScope)
-        suite.registerComponent<EpisodePlayHistoryRepository> { repository }
+        suite.registerComponent<EpisodePlayHistoryRepository> { playHistoryRepository }
         suite.registerComponent<MediaResolver> { TestUniversalMediaResolver }
 
         val rememberPlayProgress = EpisodePlayerExtensionFactory { context, koin ->
@@ -119,6 +127,17 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     ) {
         assertSavedHistory(positionMillis, episodeId)
         assertEquals(1, repository.flow.first().size)
+    }
+
+    /** 看完的记录保留位置, 但不会再被恢复. */
+    private suspend fun assertSingleFinishedHistory(
+        positionMillis: Long,
+        episodeId: Int = initialEpisodeId,
+    ) {
+        val history = assertSavedHistory(positionMillis, episodeId)
+        assertTrue(history.isFinished, "expected finished: $history")
+        assertEquals(1, repository.flow.first().size)
+        assertNull(repository.getResumePositionMillisByEpisodeId(episodeId))
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -341,7 +360,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
-    fun `when finish at end - removes play progress`() = runTest {
+    fun `when finish at end - keeps play progress but does not resume`() = runTest {
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
@@ -350,13 +369,10 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
 
         suite.player.seekTo(100_000 - 1)
         advanceUntilIdle()
-        suite.player.injectEnded()
+        suite.player.injectEnded() // 播放结束时播放器把位置推到时长
         advanceUntilIdle()
 
-        assertEquals(
-            listOf(),
-            repository.flow.first(),
-        )
+        assertSingleFinishedHistory(100_000)
 
         testScope.cancel()
     }
@@ -381,7 +397,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
 
     @Test
     @Ignore // TODO: This behavior is currently not implemented. We should implement according to the test.
-    fun `when stopPlayback at end - removes play progress`() = runTest {
+    fun `when stopPlayback at end - keeps play progress but does not resume`() = runTest {
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
@@ -393,10 +409,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         state.player.stopPlayback()
         advanceUntilIdle()
 
-        assertEquals(
-            listOf(),
-            repository.flow.first(),
-        )
+        assertSingleFinishedHistory(100_000 - 1)
 
         testScope.cancel()
     }
@@ -485,7 +498,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
-    fun `removes saved when pausing close to the end`() = runTest {
+    fun `marks finished when pausing close to the end`() = runTest {
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()
 
@@ -504,16 +517,13 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
         suite.player.pause()
         advanceUntilIdle()
-        assertEquals(
-            listOf(),
-            repository.flow.first(),
-        )
+        assertSingleFinishedHistory(100_000 - 1)
 
         testScope.cancel()
     }
 
     @Test
-    fun `does not removes saved if paused and skip close to the end`() = runTest {
+    fun `does not mark finished if paused and skip close to the end`() = runTest {
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()
 
@@ -529,7 +539,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
 
         suite.player.seekTo(100_000 - 1)
         advanceUntilIdle()
-        // current algorithm does not remove the history in this case
+        // current algorithm does not save the history in this case
         assertSingleSavedHistoryList(1000)
 
         testScope.cancel()
@@ -613,56 +623,73 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     ///////////////////////////////////////////////////////////////////////////
 
     @Test
-    fun `loads saved history on first PLAYING`() = runTest {
-        val (testScope, _, _) = createCase()
+    fun `selected media opens at saved history`() = runTest {
+        val (testScope, suite, state) = createCase()
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
+
+        loadSelectedMedia(suite, state, advanceUntilSettled = false)
+
+        // 打开时就在记忆的进度处, 不是起播后再跳转
+        assertEquals(500, suite.player.currentPositionMillis.value)
+        assertTrue(suite.player.state.value.isPlaying)
+
         testScope.cancel()
-
-        val (testScope2, suite2, _) = createCase()
-        advanceUntilIdle()
-        assertNotEquals(500, suite2.player.currentPositionMillis.value) // Not yet loaded
-        suite2.player.loadMedia(durationMs = 100_000L, playWhenReady = false, uri = "file://test")
-        advanceUntilIdle()
-        assertNotEquals(500, suite2.player.currentPositionMillis.value) // Not loaded while Ready (paused)
-
-        suite2.player.play()
-        advanceUntilIdle()
-        assertEquals(500, suite2.player.currentPositionMillis.value) // Load when actually playing
-
-        testScope2.cancel()
     }
 
     @Test
-    fun `loads saved history when READY is immediately followed by PLAYING`() = runTest {
-        val (testScope, suite, _) = createCase()
+    fun `selected media opens at saved history when duration is unknown`() = runTest {
+        val (testScope, suite, state) = createCase()
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
 
-        assertNotEquals(500, suite.player.currentPositionMillis.value)
-        suite.player.loadMedia(durationMs = 100_000L, playWhenReady = true, uri = "file://test")
-        advanceUntilIdle()
+        loadSelectedMedia(suite, state, durationMillis = null, advanceUntilSettled = false)
 
         assertEquals(500, suite.player.currentPositionMillis.value)
+
         testScope.cancel()
     }
 
     @Test
-    fun `waits for video properties before loading saved history`() = runTest {
+    fun `does not seek to saved history after playback starts`() = runTest {
         val (testScope, suite, _) = createCase()
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
 
-        // Duration unknown at the open's Ready point; the restore must wait for it.
-        suite.player.loadMedia(durationMs = null, playWhenReady = true, uri = "file://test")
+        // 绕过 fetch-select 管线, 在开头打开: 起播位置由加载方决定, 这个扩展不跳转
+        suite.player.loadMedia(durationMs = 100_000L, playWhenReady = true, uri = "file://test")
+        runCurrent()
+        assertTrue(suite.player.state.value.isPlaying)
+        advanceTimeBy(1_000)
         runCurrent()
 
         assertEquals(0, suite.player.currentPositionMillis.value)
+        testScope.cancel()
+    }
 
-        suite.player.injectProperties(MediaProperties(durationMillis = 100_000L))
+    @Test
+    fun `keeps position when player reopens the same media data`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
+
+        loadSelectedMedia(suite, state)
+        assertEquals(500, suite.player.currentPositionMillis.value)
+        val mediaData = assertNotNull(suite.player.mediaData.value)
+
+        // Android 上视频输出超时: 播放器出错, 随后在出错位置重新打开同一个 MediaData
+        suite.player.injectError(PlaybackException(PlaybackErrorCode.INTERNAL, "Detaching surface timed out"))
+        runCurrent()
+        val open = TestMediampPlayer.OpenBehavior.Hold()
+        suite.player.openBehavior = open
+        testScope.launch {
+            suite.player.setMediaData(mediaData, playWhenReady = true, startPositionMillis = 30_000L)
+        }
+        runCurrent()
+        open.release()
         advanceUntilIdle()
 
-        assertEquals(500, suite.player.currentPositionMillis.value)
+        assertEquals(30_000, suite.player.currentPositionMillis.value)
         testScope.cancel()
     }
 
@@ -683,13 +710,110 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
 
         // Simulate a new video loaded
         loadSelectedMedia(suite, state, mediaIndex = 1)
-        assertEquals(500, suite.player.currentPositionMillis.value) // Load when playback resumes
+        assertEquals(500, suite.player.currentPositionMillis.value) // Opened at the saved position of episode 1000
+
+        testScope.cancel()
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Switching media within the episode
+    ///////////////////////////////////////////////////////////////////////////
+
+    @Test
+    fun `switching media continues from the current position`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
+
+        val source = suite.mediaSelectorTestBuilder.delayedMediaSource("switch")
+        source.complete(TestMediaList.take(2))
+        val selector = state.mediaSelectorFlow.filterNotNull().first()
+        selector.select(TestMediaList[0])
+        advanceUntilIdle()
+        assertEquals(500, suite.player.currentPositionMillis.value)
+        val firstData = suite.player.mediaData.value
+
+        suite.player.seekTo(3000)
+        advanceUntilIdle()
+        selector.select(TestMediaList[1])
+        advanceUntilIdle()
+
+        assertNotSame(firstData, suite.player.mediaData.value)
+        assertEquals(3000, suite.player.currentPositionMillis.value)
+        assertSingleSavedHistoryList(3000)
 
         testScope.cancel()
     }
 
     @Test
-    fun `remove saved history on switch episode`() = runTest {
+    fun `switching media waits for the progress to be saved before reading it`() = runTest {
+        // 保存要写数据库, 比读取慢: 新资源仍应从换源时的位置开始, 而不是更早保存的进度
+        val slowRepository = object : EpisodePlayHistoryRepository by repository {
+            override suspend fun saveOrUpdate(
+                episodeId: Int,
+                positionMillis: Long,
+                subjectId: Int?,
+                episodeSort: Float?,
+                subjectName: String?,
+                subjectImageUrl: String?,
+                episodeName: String?,
+                durationMillis: Long?,
+            ) {
+                delay(1_000)
+                repository.saveOrUpdate(
+                    episodeId, positionMillis, subjectId, episodeSort,
+                    subjectName, subjectImageUrl, episodeName, durationMillis,
+                )
+            }
+        }
+        val (testScope, suite, state) = createCase(playHistoryRepository = slowRepository)
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
+
+        val source = suite.mediaSelectorTestBuilder.delayedMediaSource("switch")
+        source.complete(TestMediaList.take(2))
+        val selector = state.mediaSelectorFlow.filterNotNull().first()
+        selector.select(TestMediaList[0])
+        advanceUntilIdle()
+
+        suite.player.seekTo(3000)
+        advanceUntilIdle()
+        selector.select(TestMediaList[1])
+        advanceUntilIdle()
+
+        assertEquals(3000, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `switching media after the episode ended starts from the beginning`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+
+        val source = suite.mediaSelectorTestBuilder.delayedMediaSource("switch")
+        source.complete(TestMediaList.take(2))
+        val selector = state.mediaSelectorFlow.filterNotNull().first()
+        selector.select(TestMediaList[0])
+        advanceUntilIdle()
+
+        suite.player.seekTo(100_000 - 1)
+        advanceUntilIdle()
+        suite.player.injectEnded()
+        advanceUntilIdle()
+        assertSingleFinishedHistory(100_000)
+
+        selector.select(TestMediaList[1])
+        advanceUntilIdle()
+
+        // 看完的记录不会被恢复
+        assertEquals(0, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `marks finished on switch episode`() = runTest {
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
@@ -702,12 +826,12 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         state.switchEpisode(1000)
         advanceUntilIdle()
 
-        assertEquals(emptyList(), repository.flow.first())
+        assertSingleFinishedHistory(100_000)
         testScope.cancel()
     }
 
     @Test
-    fun `remove saved history on switch episode even if player position greater than video duration`() = runTest {
+    fun `clamps position to duration and marks finished when player position greater than video duration`() = runTest {
         // https://github.com/open-ani/animeko/issues/1506
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()
@@ -717,14 +841,13 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         // seekTo clamps to the duration in v2; report the out-of-range position as a native fact.
         suite.player.injectPosition(100_001)
         runCurrent()
-        suite.player.pause() // save evaluation with position > duration -> removes
+        suite.player.pause() // save evaluation with position > duration -> clamped to duration
         advanceUntilIdle()
 
         state.switchEpisode(1000)
         advanceUntilIdle()
 
-
-        assertEquals(emptyList(), repository.flow.first())
+        assertSingleFinishedHistory(100_000)
         testScope.cancel()
     }
 

@@ -29,6 +29,9 @@ val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNo
 
 val distroChannel = getPropertyOrNull("ani.distro.channel") ?: "default"
 
+// 构建时的 git 分支 / commit, 在 "关于 > 构建信息" 里展示. 见 build-logic 的 git.kt.
+val currentGitInfo = gitInfo.get()
+
 kotlin {
     android {
         namespace = "me.him188.ani.app.platform"
@@ -50,11 +53,6 @@ kotlin {
         api(libs.kotlinx.coroutines.core)
         api(projects.danmaku.danmakuApi)
         api(libs.kotlinx.collections.immutable)
-        api(projects.app.shared.imageViewer)
-
-        api(libs.coil.compose.core)
-        api(libs.coil.svg)
-        api(libs.coil.network.ktor3)
 
         api(libs.compose.lifecycle.viewmodel.compose)
         api(libs.compose.lifecycle.runtime.compose)
@@ -77,6 +75,8 @@ kotlin {
         api(projects.utils.buildConfig)
     }
     sourceSets.desktopMain.dependencies {
+        implementation(projects.utils.coroutines)
+        implementation(projects.utils.macosShare)
         api(libs.jna)
         api(libs.jna.platform)
     }
@@ -120,6 +120,12 @@ buildConfig {
         booleanField("analyticsEnabled", enableFirebase)
     }
 
+    fun BuildConfigPlatform.gitFields() {
+        stringField("gitBranch", currentGitInfo.branch)
+        stringField("gitCommitSha", currentGitInfo.commitSha)
+        stringField("gitCommitTime", currentGitInfo.commitTime)
+    }
+
     platform("desktop") {
         stringField("versionName", project.version.toString())
         expressionField(
@@ -131,6 +137,7 @@ buildConfig {
         stringField("sentryDsn", sentryDsn)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
         stringField("distroChannel", distroChannel)
+        gitFields()
 
         firebaseFields()
     }
@@ -143,7 +150,8 @@ buildConfig {
         stringField("dandanplayAppSecret", dandanplayAppSecret)
         stringField("sentryDsn", sentryDsn)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
-        stringField("distroChannel", distroChannel)
+        expressionField("distroChannel", "me.him188.ani.buildconfig.AndroidBuildConfig.DISTRO_CHANNEL")
+        gitFields()
 
         booleanField("analyticsEnabled", enableFirebase)
     }
@@ -161,6 +169,7 @@ buildConfig {
             booleanField("sentryEnabled", sentryEnabled)
             stringField("overrideAniApiServer", overrideAniApiServer ?: "")
             stringField("distroChannel", distroChannel)
+            gitFields()
 
             firebaseFields()
         }

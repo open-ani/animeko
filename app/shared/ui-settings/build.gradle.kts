@@ -38,6 +38,7 @@ kotlin {
         implementation(libs.filekit.dialogs.compose)
         implementation(libs.atomicfu)
         implementation(libs.aboutlibraries.compose.m3)
+        implementation(projects.utils.selectorWorkflow)
     }
     sourceSets.commonTest.dependencies {
         implementation(libs.kotlinx.coroutines.test)
@@ -50,6 +51,7 @@ kotlin {
     }
     sourceSets.getByName("jvmTest").dependencies {
         implementation(libs.slf4j.simple)
+        implementation(libs.ktor.client.mock)
         implementation(libs.ktor.server.core)
         implementation(libs.ktor.server.test.host)
     }

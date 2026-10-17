@@ -28,6 +28,8 @@ import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.SplitSeason
+import me.him188.ani.app.data.models.subject.SubjectTmdbArt
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.data.persistent.database.ProtoConverters
 import me.him188.ani.datasources.api.PackedDate
@@ -53,6 +55,12 @@ data class SubjectCollectionEntity(
     val summary: String,
     val nsfw: Boolean,
     val imageLarge: String,
+    /**
+     * 列表用封面, 服务端下发. 为空表示这条记录写入时服务端还没有这个字段.
+     * @since 6.2.0
+     */
+    @ColumnInfo(defaultValue = "")
+    val imageThumb: String = "",
     /**
      * 会在获取剧集列表时使用, 用于验证缓存的剧集数目是否正确
      */
@@ -86,6 +94,12 @@ data class SubjectCollectionEntity(
     val relations: SubjectRelations = SubjectRelations.Empty,
 
     /**
+     * @see SubjectInfo.tmdbArt
+     */
+    @field:TypeConverters(ProtoConverters.SubjectTmdbArtConverter::class)
+    val tmdbArt: SubjectTmdbArt? = null,
+
+    /**
      * 此条目最后被修改的时间 (如修改收藏状态). 与服务器同步.
      */
     @ColumnInfo(defaultValue = "0")
@@ -115,6 +129,11 @@ data class SubjectRelations(
     @ColumnInfo(defaultValue = "'[]'")
     @field:TypeConverters(ProtoConverters.StringList::class)
     val sequelSubjectNames: List<String>,
+    /**
+     * 条目是 Bangumi 拆成几段的一季中的一段时这一季的各段, 由服务端识别. 否则为 `null`.
+     */
+    @field:TypeConverters(ProtoConverters.SplitSeasonConverter::class)
+    val splitSeason: SplitSeason? = null,
 ) {
     companion object {
         val Empty = SubjectRelations(
@@ -142,8 +161,48 @@ interface SubjectCollectionDao {
         lastUpdated: Long = currentTimeMillis(),
     )
 
+    /**
+     * 更新收藏类型和全站统计. 在同一个事务中, 观察者只会看到一次变化.
+     */
+    @Transaction
+    suspend fun updateTypeAndStats(
+        subjectId: Int,
+        collectionType: UnifiedCollectionType,
+        collectionStats: SubjectCollectionStats,
+        ratingInfo: RatingInfo,
+    ) {
+        updateType(subjectId, collectionType)
+        updateStats(subjectId, collectionStats, ratingInfo)
+    }
+
+    /**
+     * 更新全站统计 (收藏数与评分). 条目不在缓存中时什么也不做.
+     */
+    @Transaction
+    suspend fun updateStats(
+        subjectId: Int,
+        collectionStats: SubjectCollectionStats,
+        ratingInfo: RatingInfo,
+    ) {
+        val entity = getById(subjectId) ?: return
+        upsert(entity.copy(collectionStats = collectionStats, ratingInfo = ratingInfo))
+    }
+
     @Query("""DELETE FROM subject_collection WHERE subjectId = :subjectId""")
     suspend fun delete(subjectId: Int)
+
+    /**
+     * 删除多个条目的本地缓存. 剧集缓存 ([EpisodeCollectionEntity]) 会级联删除.
+     */
+    @Query("""DELETE FROM subject_collection WHERE subjectId IN (:subjectIds)""")
+    suspend fun deleteByIds(subjectIds: List<Int>)
+
+    /**
+     * 将所有条目的 [SubjectCollectionEntity.lastFetched] 置 0, 使所有本地缓存视为已过期,
+     * 下次进入收藏页 (分页刷新) 或条目页时会从服务端重新拉取. 不删除本地数据.
+     */
+    @Query("""UPDATE subject_collection SET lastFetched = 0""")
+    suspend fun resetAllLastFetched()
 
     @Query("""DELETE FROM subject_collection WHERE collectionType = :type""")
     suspend fun deleteAll(type: UnifiedCollectionType)
@@ -212,6 +271,9 @@ interface SubjectCollectionDao {
     @Query("""SELECT * FROM subject_collection WHERE subjectId = :subjectId""")
     fun findById(subjectId: Int): Flow<SubjectCollectionEntity?>
 
+    @Query("""SELECT * FROM subject_collection WHERE subjectId = :subjectId""")
+    suspend fun getById(subjectId: Int): SubjectCollectionEntity?
+
     @Query("""SELECT * FROM subject_collection WHERE subjectId IN (:subjectIds)""")
     fun filterByIds(subjectIds: IntArray): Flow<List<SubjectCollectionEntity>>
 
@@ -249,6 +311,23 @@ interface SubjectCollectionDao {
     suspend fun updateRating(subjectId: Int, score: Int?, comment: String?, tags: List<String>?, private: Boolean?)
 
     /**
+     * 更新自己的评分和全站统计. 在同一个事务中, 观察者只会看到一次变化.
+     */
+    @Transaction
+    suspend fun updateRatingAndStats(
+        subjectId: Int,
+        score: Int?,
+        comment: String?,
+        tags: List<String>?,
+        private: Boolean?,
+        collectionStats: SubjectCollectionStats,
+        ratingInfo: RatingInfo,
+    ) {
+        updateRating(subjectId, score, comment, tags, private)
+        updateStats(subjectId, collectionStats, ratingInfo)
+    }
+
+    /**
      * 只包含保存在数据库的, 可能不完整
      */
     @Query("""SELECT COUNT(*) FROM subject_collection WHERE (collectionType is NOT NULL AND (:collectionType IS NULL OR collectionType = :collectionType))""")
@@ -256,15 +335,6 @@ interface SubjectCollectionDao {
 
     @Query("""UPDATE subject_collection SET cachedStaffUpdated = :time, cachedCharactersUpdated = :time WHERE subjectId = :subjectId""")
     suspend fun updateCachedRelationsUpdated(subjectId: Int, time: Long = currentTimeMillis())
-
-    @Query(
-        """
-        SELECT sc.subjectId FROM subject_collection sc
-        WHERE collectionType IS NOT NULL
-        AND (collectionType IN (:collectionTypes))
-        """,
-    )
-    fun subjectIdsByCollectionType(collectionTypes: List<UnifiedCollectionType>): Flow<List<Int>>
 
     @Query(
         """

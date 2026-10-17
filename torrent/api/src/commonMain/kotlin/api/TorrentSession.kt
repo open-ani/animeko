@@ -77,6 +77,11 @@ interface TorrentSession {
     fun getPeers(): List<PeerInfo>
 
     /**
+     * 引擎报告的任务状态. 任务已关闭或引擎不提供时为 `null`.
+     */
+    fun getState(): TorrentHandleState?
+
+    /**
      * 关闭该下载任务, 释放资源. 将会等待 native 线程结束.
      */
     suspend fun close()

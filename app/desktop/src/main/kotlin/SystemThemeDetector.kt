@@ -9,29 +9,24 @@
 
 package me.him188.ani.app.desktop
 
-import androidx.compose.ui.SystemTheme
 import com.jthemedetecor.OsThemeDetector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/**
+ * 通过 jSystemThemeDetector 检测系统是否为深色模式, 并在系统主题变化时更新.
+ * 结果通过 [me.him188.ani.app.ui.foundation.theme.LocalSystemDarkThemeOverride] 提供给 Compose.
+ */
 class SystemThemeDetector {
     private val detector = OsThemeDetector.getDetector()
 
-    private val _current = MutableStateFlow(isDarkToTheme(detector.isDark))
-    val current: StateFlow<SystemTheme> = _current.asStateFlow()
+    private val _isDark = MutableStateFlow(detector.isDark)
+    val isDark: StateFlow<Boolean> = _isDark.asStateFlow()
 
     init {
         detector.registerListener {
-            _current.value = isDarkToTheme(it)
-        }
-    }
-
-    private fun isDarkToTheme(isDark: Boolean): SystemTheme {
-        return if (isDark) {
-            SystemTheme.Dark
-        } else {
-            SystemTheme.Light
+            _isDark.value = it
         }
     }
 }

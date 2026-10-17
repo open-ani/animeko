@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -27,35 +27,10 @@ import org.jetbrains.compose.resources.stringResource
 @Serializable
 sealed class NavRoutes : NavKey {
     @Serializable
-    data object Welcome : NavRoutes()
-
-    @Serializable
     data object EmailLoginStart : NavRoutes()
 
     @Serializable
     data object EmailLoginVerify : NavRoutes()
-
-    @Serializable
-    data class Onboarding(
-        /**
-         * 在这个界面, 用户只能导航到 [OnboardingComplete] 随后导航到 [Main],
-         * 并且不能再回到 [Onboarding] 和 [OnboardingComplete].
-         *
-         * 但是由于用户可能从不同的界面进入 [Onboarding] (如首次进入 APP 从 [Welcome] 进入, 重新运行向导从 [Settings] 进入),
-         * 所以最后 [OnboardingComplete] 导航到 [Main] 时要弹出的目标也不一样.
-         *
-         * 如果为 `null`, 则不弹出任何已有页面.
-         */
-        val popUpTargetInclusive: NavRoutes? = null,
-    ) : NavRoutes()
-
-    @Serializable
-    data class OnboardingComplete(
-        /**
-         * 同 [Onboarding.popUpTargetInclusive]
-         */
-        val popUpTargetInclusive: NavRoutes? = null,
-    ) : NavRoutes()
 
     @Serializable
     data class Main(
@@ -63,8 +38,27 @@ sealed class NavRoutes : NavKey {
         val requestSearchFocus: Boolean = false,
     ) : NavRoutes()
 
+    /**
+     * 第三方账号登录 / 绑定页.
+     *
+     * @param provider 平台 ID, 见 `OAuthPlatform.id`
+     */
     @Serializable
-    data object BangumiAuthorize : NavRoutes()
+    data class OAuthAuthorize(val provider: String) : NavRoutes()
+
+    /**
+     * 扫描其他设备 (例如电视) 上的登录二维码.
+     */
+    @Serializable
+    data object QrLoginScan : NavRoutes()
+
+    /**
+     * 确认为其他设备登录当前账号.
+     *
+     * @param requestId 扫码登录会话的 ID, 来自二维码或 `ani://qr-login` 链接
+     */
+    @Serializable
+    data class QrLoginConfirm(val requestId: String) : NavRoutes()
 
     @Serializable
     data class Settings(
@@ -88,9 +82,18 @@ sealed class NavRoutes : NavKey {
         val placeholder: SubjectDetailPlaceholder? = null,
     ) : NavRoutes()
 
+    /**
+     * 条目所在系列的关系图
+     */
+    @Serializable
+    data class SubjectRelationGraph(
+        val subjectId: Int,
+    ) : NavRoutes()
+
     @Serializable
     data class PersonDetail(
         val personId: Int,
+        val role: PersonDetailRole = PersonDetailRole.Staff,
     ) : NavRoutes()
 
     @Serializable
@@ -130,11 +133,58 @@ sealed class NavRoutes : NavKey {
     data object Schedule : NavRoutes()
 
     @Serializable
+    data object TrendingRanking : NavRoutes()
+
+    @Serializable
     data object PlaybackHistory : NavRoutes()
 
     @Serializable
     data object PlaybackHistorySyncStatus : NavRoutes()
+
+    /**
+     * 合并收藏: 处理 Animeko 与 Bangumi 两侧的收藏冲突.
+     */
+    @Serializable
+    data object BangumiMerge : NavRoutes()
+
+    /**
+     * 通知中心.
+     */
+    @Serializable
+    data object Notifications : NavRoutes()
+
+    /**
+     * 单独打开的一条通知 (窄屏). 宽屏时通知详情显示在通知中心的右侧.
+     *
+     * @param notificationId 服务端的通知 ID
+     */
+    @Serializable
+    data class NotificationDetail(val notificationId: String) : NavRoutes()
+
+    /**
+     * 公告列表.
+     */
+    @Serializable
+    data object Announcements : NavRoutes()
+
+    /**
+     * 单独打开的一条公告 (窄屏). 宽屏时公告详情显示在公告列表的右侧.
+     *
+     * @param announcementId 服务端的公告 ID
+     */
+    @Serializable
+    data class AnnouncementDetail(val announcementId: String) : NavRoutes()
+
+    /**
+     * 通知设置.
+     */
+    @Serializable
+    data object NotificationSettings : NavRoutes()
 }
+
+/** Explicit entry identity; a person's asynchronously loaded careers never change their route. */
+@Serializable
+enum class PersonDetailRole { VoiceActor, Staff }
 
 @Serializable
 data class SubjectDetailPlaceholder(

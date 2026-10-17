@@ -10,10 +10,6 @@
 package me.him188.ani.app.data.models.subject
 
 import androidx.compose.runtime.Immutable
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.daysUntil
-import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.NsfwMode
@@ -21,10 +17,8 @@ import me.him188.ani.app.data.persistent.database.dao.SubjectRelations
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
-import me.him188.ani.datasources.api.toLocalDateOrNull
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
-import kotlin.math.abs
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -45,7 +39,9 @@ data class SubjectCollectionInfo(
 //     */
 //    val isOnAir: Boolean?,
     /**
-     * 连载周期. 仅对连载动画有效. `null` 表示此动画不是连载中, 或者因为各种原因获取失败.
+     * 连载周期, 来自 bangumi-data 的 `broadcast`.
+     * `null` 表示 bangumi-data 中没有此条目的 `broadcast` 信息 (与是否完结无关: 完结番同样保留 `broadcast`),
+     * 或者因为各种原因获取失败.
      */
     val recurrence: SubjectRecurrence?,
     val cachedStaffUpdated: Long,
@@ -65,54 +61,17 @@ data class SubjectCollectionInfo(
     val subjectId: Int get() = subjectInfo.subjectId
 }
 
+/**
+ * 条目的连载周期, 来自 bangumi-data 的 `broadcast` (`R/<startTime>/<interval>`).
+ *
+ * 由上映日期计算一集的播出时刻见 [me.him188.ani.app.domain.episode.EpisodeCompletionContext.resolveEpisodeAirTime].
+ */
 data class SubjectRecurrence(
     /** 首播时间 (UTC) */
     val startTime: Instant,
-    /** 两集之间的时间间隔，例如一周 = `7.days` */
+    /** 两集之间的时间间隔，例如一周 = `7.days`. 可能为 0 (bangumi-data 的 `P0D`, 一次性放送). */
     val interval: Duration,
-) {
-    /**
-     * 根据首播时间和两集间隔，**猜测**某个日期对应集数的大致首播时间。
-     *
-     * * `packedDate` 会被转换为本地日历日 (`LocalDate`)；
-     * * 只要候选时间与该日期 *午夜* 的差值不超过 **24 小时** (±1 day) 就视为有效；
-     * * 若待估日期早于首播日、间隔为 0/负数，或无法在容差内匹配，则返回 `null`。
-     */
-    fun calculateEpisodeAirTime(
-        packedDate: PackedDate,
-        zone: TimeZone = TimeZone.currentSystemDefault(),
-    ): Instant? {
-        val localDate: LocalDate = packedDate.toLocalDateOrNull() ?: return null
-
-        val startDate: LocalDate = startTime.toLocalDateTime(zone).date
-        val intervalDays = interval.inWholeDays
-        if (intervalDays <= 0) return null
-
-        val approxIndex = startDate.daysUntil(localDate) / intervalDays
-        val candidateIndices = listOf(approxIndex - 1, approxIndex, approxIndex + 1).filter { it >= 0 }
-
-        for (idx in candidateIndices) {
-            val candidate = startTime + interval * idx.toInt()
-            val candidateDate = candidate.toLocalDateTime(zone).date
-            // 接受本地日期差 ≤ 1 的候选
-            if (abs(localDate.daysUntil(candidateDate)) <= 1) {
-                return candidate
-            }
-        }
-        return null
-    }
-    /**
-     * @see [calculateEpisodeAirTime]
-     */
-    fun isEpisodeBroadcast(
-        packedDate: PackedDate,
-        currentTime: Instant,
-        zone: TimeZone = TimeZone.currentSystemDefault()
-    ): Boolean {
-        val time = calculateEpisodeAirTime(packedDate, zone) ?: return false
-        return time <= currentTime
-    }
-}
+)
 
 @TestOnly
 val TestSubjectCollections

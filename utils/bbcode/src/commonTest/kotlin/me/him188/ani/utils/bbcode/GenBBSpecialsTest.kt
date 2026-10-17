@@ -165,6 +165,54 @@ public class GenBBSpecialsTest : BBCodeParserTestHelper() {
     }
 
     @Test
+    public fun parse455848923() {
+        BBCode.parse("[center] /[][/]Hello [/center]")
+        .run {
+            assertText(elements.at(0), value=" /[][/]Hello ", align=RichElement.Text.Align.CENTER)
+        }
+    }
+
+    @Test
+    public fun parse1773024293() {
+        BBCode.parse("[CENTER] /[][/]Hello [/CENTER]")
+        .run {
+            assertText(elements.at(0), value=" /[][/]Hello ", align=RichElement.Text.Align.CENTER)
+        }
+    }
+
+    @Test
+    public fun parse128400393() {
+        BBCode.parse("[left] /[][/]Hello [/left]")
+        .run {
+            assertText(elements.at(0), value=" /[][/]Hello ", align=RichElement.Text.Align.LEFT)
+        }
+    }
+
+    @Test
+    public fun parse647965705() {
+        BBCode.parse("[LEFT] /[][/]Hello [/LEFT]")
+        .run {
+            assertText(elements.at(0), value=" /[][/]Hello ", align=RichElement.Text.Align.LEFT)
+        }
+    }
+
+    @Test
+    public fun parse660384353() {
+        BBCode.parse("[right] /[][/]Hello [/right]")
+        .run {
+            assertText(elements.at(0), value=" /[][/]Hello ", align=RichElement.Text.Align.RIGHT)
+        }
+    }
+
+    @Test
+    public fun parse293918305() {
+        BBCode.parse("[RIGHT] /[][/]Hello [/RIGHT]")
+        .run {
+            assertText(elements.at(0), value=" /[][/]Hello ", align=RichElement.Text.Align.RIGHT)
+        }
+    }
+
+    @Test
     public fun parse1613175077() {
         BBCode.parse("[img=300,200] /[][/]Hello [/img]")
         .run {

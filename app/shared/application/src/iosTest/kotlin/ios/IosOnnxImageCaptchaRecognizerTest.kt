@@ -13,6 +13,9 @@ import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaSample
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlin.native.runtime.GC
+import kotlin.native.runtime.NativeRuntimeApi
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -31,6 +34,16 @@ class IosOnnxImageCaptchaRecognizerTest {
         )
 
         assertEquals("0000", result)
+    }
+
+    /**
+     * 识别器持有的 ORTEnv 若存活到进程 exit, onnxruntime 的静态 OrtEnv 析构会锁已销毁的 mutex 并 terminate.
+     * 退出前回收识别器, 让 OrtEnv 随最后一个 ORTEnv 释放.
+     */
+    @OptIn(NativeRuntimeApi::class)
+    @AfterTest
+    fun releaseOnnxRuntime() {
+        GC.collect()
     }
 
     private companion object {

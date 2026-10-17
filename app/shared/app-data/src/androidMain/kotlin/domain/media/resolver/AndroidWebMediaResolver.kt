@@ -61,7 +61,9 @@ class AndroidWebMediaResolver(
         java.util.ServiceLoader.load(WebVideoMatcher::class.java, this::class.java.classLoader).filterNotNull()
     }
 
-    override fun supports(media: Media): Boolean = media.download is ResourceLocation.WebVideo
+    // API 签发地址的网页视频由 ApiVideoMediaResolver 解析, 不打开页面
+    override fun supports(media: Media): Boolean =
+        (media.download as? ResourceLocation.WebVideo)?.isResolvedByApi == false
 
     private var attached: Context? = null
 
@@ -113,6 +115,7 @@ class AndroidWebMediaResolver(
         val webVideo = (
             webSessionManager.extractVideoResource(
                 pageUrl = media.download.uri,
+                userAgent = config.userAgent,
                 timeoutMillis = timeoutMillis,
                 resourceMatcher = resourceMatcher,
             ) ?: AndroidWebViewVideoExtractor(timeoutMillis).getVideoResourceUrl(
@@ -190,7 +193,7 @@ class AndroidWebViewVideoExtractor(
             }
 
             loadedNestedUrls.add(pageUrl)
-            createWebView(context, deferred, ::handleUrl).loadUrl(pageUrl)
+            createWebView(context, config.userAgent, deferred, ::handleUrl).loadUrl(pageUrl)
 
             //            webView.webChromeClient = object : WebChromeClient() {
             //                override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
@@ -210,11 +213,8 @@ class AndroidWebViewVideoExtractor(
                 withTimeoutOrNull(timeoutMillis) {
                     deferred.await()
                 }
-            } catch (e: Throwable) {
-                if (deferred.isActive) {
-                    deferred.cancel()
-                }
-                throw e
+            } finally {
+                deferred.cancel()
             }
         }
 //        }
@@ -224,6 +224,7 @@ class AndroidWebViewVideoExtractor(
     @OptIn(DelicateCoroutinesApi::class)
     private fun createWebView(
         context: Context,
+        userAgent: String?,
         deferred: CompletableDeferred<WebResource>,
         handleUrl: (WebView, String) -> Boolean,
     ): WebView = WebView(context).apply {
@@ -236,6 +237,7 @@ class AndroidWebViewVideoExtractor(
         webView.settings.javaScriptEnabled = true
         webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         webView.settings.domStorageEnabled = true
+        userAgent?.let { webView.settings.userAgentString = it }
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(
                 view: WebView,

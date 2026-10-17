@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.media.cache.storage
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
@@ -19,11 +20,11 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.domain.media.cache.MediaCache
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
+import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.datasources.api.CachedMedia
@@ -38,10 +39,13 @@ import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
-import me.him188.ani.datasources.api.source.matches
+import me.him188.ani.datasources.api.source.matchesSubject
+import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.flowOfFileSizeZero
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 
 /**
  * 表示一个媒体缓存的存储空间, 例如一个本地目录.
@@ -78,6 +82,10 @@ interface MediaCacheStorage : AutoCloseable {
      * Note that to retrieve [Media] (more specifically, [CachedMedia]) from the cache storage, you might want to use [cacheMediaSource].
      */
     val listFlow: Flow<List<MediaCache>>
+
+    /** Whether this storage owns a record, including persisted records awaiting restoration. */
+    suspend fun hasRecordForMedia(mediaId: String): Boolean =
+        listFlow.first().any { it.origin.mediaId == mediaId }
 
     /**
      * 重新加载那些上次 APP 运行时保存在本地的缓存.
@@ -168,12 +176,16 @@ interface MediaSaveDirProvider {
 
 /**
  * 将 [MediaCacheStorage] 作为 [MediaSource], 这样可以被 [MediaFetcher] 搜索到以播放.
+ *
+ * 查询以条目为单位: 返回本条目的全部缓存记录, 每条记录的剧集范围收窄为该记录的那一集
+ * (一条记录只对应一个文件), 并以剧集 ID 区分同一合集资源的多条记录. 属于其他集的记录由 `MediaSelector` 排除.
  */
 class MediaCacheStorageSource(
     private val storage: MediaCacheStorage,
     private val displayName: String,
     override val location: MediaSourceLocation = MediaSourceLocation.Local,
 ) : MediaSource {
+    private val logger = logger<MediaCacheStorageSource>()
     override val mediaSourceId: String get() = storage.mediaSourceId
     override val kind: MediaSourceKind get() = MediaSourceKind.LocalCache
 
@@ -182,12 +194,32 @@ class MediaCacheStorageSource(
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> {
         return SinglePagePagedSource {
             storage.listFlow.first().mapNotNull { cache ->
-                val kind = query.matches(cache.metadata)
-                if (kind == null) null
-                else MediaMatch(cache.getCachedMedia(), kind)
+                val kind = query.matchesSubject(cache.metadata) ?: return@mapNotNull null
+                // 跳过无法提供媒体的缓存; 协程取消必须继续向上传播.
+                val cachedMedia = try {
+                    cache.getCachedMedia()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.warn(e) { "Skipping cache that failed to provide media: ${cache.cacheId}" }
+                    return@mapNotNull null
+                }
+                MediaMatch(cachedMedia.forRecord(cache.metadata), kind)
             }.asFlow()
         }
     }
+
+    private fun CachedMedia.forRecord(metadata: MediaCacheMetadata): CachedMedia = CachedMedia(
+        origin = origin,
+        cacheMediaSourceId = mediaSourceId,
+        download = download,
+        location = location,
+        kind = kind,
+        properties = properties,
+        cacheProperties = cacheProperties,
+        episodeRange = EpisodeRange.single(metadata.episodeSort),
+        cacheEpisodeId = metadata.episodeId,
+    )
 
     override val info: MediaSourceInfo = MediaSourceInfo(
         displayName,
@@ -199,7 +231,7 @@ class MediaCacheStorageSource(
 
 class TestMediaCacheStorage : MediaCacheStorage {
     override val mediaSourceId: String
-        get() = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
+        get() = MediaDownloadManager.LOCAL_FS_MEDIA_SOURCE_ID
     override val cacheMediaSource: MediaSource
         get() = throw UnsupportedOperationException()
     override val engine: MediaCacheEngine = DummyMediaCacheEngine(mediaSourceId)
@@ -238,4 +270,3 @@ class TestMediaCacheStorage : MediaCacheStorage {
     override fun close() {
     }
 }
-

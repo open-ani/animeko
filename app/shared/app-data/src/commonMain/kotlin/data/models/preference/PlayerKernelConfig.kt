@@ -29,6 +29,15 @@ data class PlayerKernelConfig(
      * 仅在使用 mpv 内核的平台 (桌面端) 生效.
      */
     val mpvOptions: List<String> = emptyList(),
+
+    /**
+     * 在用户未启用画质增强的情况下初始化 ExoPlayer 是否提前设置空 video effect list.
+     * Media3 requires the effect graph to exist before the first prepare in order to
+     * support switching effects while playback is active.
+     *
+     * @see [me.him188.ani.app.videoplayer.videoenhancement.ExoPlayerVideoEnhancementController]
+     */
+    val exoPlayerInitEffectGraphInAdvance: Boolean = true,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {

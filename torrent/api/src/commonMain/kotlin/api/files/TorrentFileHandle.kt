@@ -26,6 +26,15 @@ interface TorrentFileHandle {
     fun pause()
 
     /**
+     * 请求提前下载文件中 [byteRange] (相对文件开头的偏移, 闭区间) 覆盖的所有 piece, 用于在即将跳转到某个位置 (如自动跳过 OP 后) 前预缓存那里的数据.
+     *
+     * 优先级低于当前播放位置的下载窗口, 高于其余 piece, 因此不会拖慢当前位置的下载. 再次调用会替换之前的范围, 传 `null` 取消预缓存.
+     *
+     * 这是尽力而为的提示: 已经 [close] 时调用不会抛出异常, 而是被忽略.
+     */
+    fun setPrefetchRange(byteRange: LongRange?)
+
+    /**
      * 停止下载并关闭此 [TorrentFileHandle]. 后续将不能再 [resume] 或 [pause] 等.
      *
      * 若此 torrent 文件是其背后 [TorrentSession] 最后一个要关闭的 torrent 文件，则该函数会挂起，

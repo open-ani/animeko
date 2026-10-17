@@ -16,6 +16,7 @@
 
 package me.him188.ani.client.apis
 
+import me.him188.ani.client.models.AniReportInstallRequest
 import me.him188.ani.client.models.AniUpdateProfileRequest
 
 import me.him188.ani.client.infrastructure.*
@@ -42,6 +43,73 @@ open class UserProfileAniApi : ApiClient {
         baseUrl: String,
         httpClient: HttpClient
     ): super(baseUrl = baseUrl, httpClient = httpClient)
+
+    /**
+     * 注销账号: 删除当前用户的全部数据, 之后用户的所有 token 都会失效
+     * 注销账号: 删除当前用户的全部数据, 之后用户的所有 token 都会失效
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun deleteAccount(): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.DELETE,
+            "/v2/users/me",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * 登录后上报本机的安装信息, 用于统计. 每个账号只记录第一次上报, 之后的上报会被忽略
+     * 登录后上报本机的安装信息, 用于统计. 每个账号只记录第一次上报, 之后的上报会被忽略
+     * @param userAgent
+     * @param aniReportInstallRequest
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun reportInstall(userAgent: kotlin.String, aniReportInstallRequest: AniReportInstallRequest): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = aniReportInstallRequest
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+        userAgent?.apply { localVariableHeaders["User-Agent"] = this.toString() }
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.PUT,
+            "/v2/users/me/install-report",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
 
     /**
      *

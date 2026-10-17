@@ -102,6 +102,10 @@ class TorrentSessionProxy(
         }.toTypedArray()
     }
 
+    override fun getState(): Int {
+        return delegate.getState()?.ordinal ?: -1
+    }
+
     override fun close() {
         scope.launch {
             delegate.close()

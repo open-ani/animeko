@@ -12,6 +12,7 @@ package me.him188.ani.tools.datasourcetestmcp.source
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheDao
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheEntity
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
+import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiMediaSource
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
@@ -53,6 +54,7 @@ class DataSourceRegistry(
         put(IkarosMediaSource.ID, IkarosMediaSource.Factory())
         put(RssMediaSource.FactoryId.value, RssMediaSource.Factory())
         put(SelectorMediaSource.FactoryId.value, SelectorMediaSource.Factory(selectorRepository, webSessionManager))
+        put(JsonApiMediaSource.FactoryId.value, JsonApiMediaSource.Factory(selectorRepository))
     }
 
     fun listToolsDefaultFactories(): List<String> {
@@ -109,6 +111,12 @@ private class NoopWebSearchSessionCacheDao : WebSearchSessionCacheDao {
         subjectName: String,
         now: Long,
     ): List<WebSearchSessionCacheEntity> = emptyList()
+
+    override suspend fun subjectNamesWithCache(
+        requesterSubjectId: Int?,
+        mediaSourceId: String,
+        now: Long,
+    ): List<String> = emptyList()
 
     override suspend fun deleteExpired(now: Long) {
     }

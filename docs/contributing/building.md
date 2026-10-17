@@ -27,6 +27,56 @@ ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
 
 在 IDE 上也可以选择 `Build -> Build Bundle(s) / APK(s) -> Build APK(s)` 来构建 APK。
 
+### Android TV
+
+TV 文件放在对应共享模块的 `src/androidTv/kotlin` 与 `src/androidTvTest/kotlin`，
+由独立的 `ani.kmp-compose` 子模块分别作为 `androidMain` / `androidHostTest` 编译。
+功能子模块位于 `ui-xxx/tv`，主壳子模块位于 `app/shared/shared-tv`。
+例如 `:app:shared:ui-episode-tv` 依赖原 KMP 模块 `:app:shared:ui-episode`，
+编译后者目录下的 TV 文件；原 KMP 模块不编译 TV 文件。
+
+应用通过 `tvImplementation(projects.app.shared.tv)` 引入 TV 主壳及各功能子模块。
+手机不引入 TV 代码与 `tv-material`，TV 仍能复用共享 Android 代码。
+两个应用 flavor 始终可用，无需构建开关，通过任务名选择 APK：
+
+```shell
+./gradlew :app:android:assembleDefaultDebug
+./gradlew :app:android:assembleTvDebug
+# 同一次调用构建两个 APK
+./gradlew :app:android:assembleDefaultDebug :app:android:assembleTvDebug
+```
+
+Release 分别使用 `assembleDefaultRelease` 与 `assembleTvRelease`，也可以在同一次调用中构建。
+`assembleDebug` 和 `assembleRelease` 会构建两种 flavor。
+
+在 IDE 的 Build Variants 中选择 `defaultDebug` 或 `tvDebug` 即可切换手机和 TV 应用。
+
+共享模块只编译一次，无法按 flavor 生成不同的常量。
+随 flavor 变化的构建期常量放在 `:utils:build-config`：
+它与 `:app:android` 声明同一组 flavor，名称定义在 build-logic 的 `AniAndroidFlavors`，
+打包 APK 时 AGP 选中与应用同名的变体。
+共享代码通过 `AndroidBuildConfig` 的 getter 读取这些常量，
+Android 的 `AniBuildConfig` 也由此取值，例如 TV 的 `distroChannel` 为 `tv`。
+`currentPlatform()` 按分发渠道判断 TV，TV 应用中 `isAndroidTv()` 为 true。
+其他 Android 库模块编译和测试时选 `default` 变体，由 `ani.kmp-library` 与 `ani.android-library` 统一配置。
+
+TV 与手机使用相同的 Sentry 和 Firebase Analytics 初始化。
+`app/android/google-services.json` 包含某个 TV 变体的包名（如 `me.him188.ani.tv`）时，该变体才处理 Google Services 并启用 Analytics；
+否则 TV 照常构建，只是不上报 Analytics。
+Analytics 事件参数和 Sentry tag 都带有 `distro_channel`，TV 为 `tv`。
+TV 检查更新时使用 `clientPlatform=androidtv`，服务端据此返回 `ani-tv-*` 安装包。
+
+TV 单元测试由四个子模块的 `testAndroidHostTest` 运行：
+
+```shell
+./gradlew :app:shared:tv:testAndroidHostTest \
+  :app:shared:ui-foundation-tv:testAndroidHostTest \
+  :app:shared:ui-episode-tv:testAndroidHostTest \
+  :app:shared:ui-subject-tv:testAndroidHostTest
+```
+
+父 KMP 模块的 `testAndroidHostTest` 继续测试共享代码，不包含 TV 测试。
+
 ## 打包 iOS APP
 
 默认不启用 iOS 构建。打包之前，请先在 `local.properties` 中加入：
@@ -56,7 +106,7 @@ ani.build.framework=true
 
 ## 运行测试版应用
 
-参考 [testing](testing.md)。
+参考[运行和调试 APP](running.md)。
 
 ## 运行测试
 

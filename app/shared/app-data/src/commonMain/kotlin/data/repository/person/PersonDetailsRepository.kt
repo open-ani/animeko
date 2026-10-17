@@ -17,13 +17,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
-import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import me.him188.ani.app.data.models.person.CharacterDetailsInfo
 import me.him188.ani.app.data.models.person.CharacterSubjectInfo
 import me.him188.ani.app.data.models.person.InfoboxRowInfo
 import me.him188.ani.app.data.models.person.PersonCastInfo
-import me.him188.ani.app.data.models.person.PersonCommentInfo
 import me.him188.ani.app.data.models.person.PersonDetailsInfo
 import me.him188.ani.app.data.models.person.PersonSubjectSummary
 import me.him188.ani.app.data.models.person.PersonWorkInfo
@@ -39,12 +37,12 @@ import me.him188.ani.client.apis.PersonsAniApi
 import me.him188.ani.client.models.AniCharacter
 import me.him188.ani.client.models.AniInfobox
 import me.him188.ani.client.models.AniPerson
-import me.him188.ani.client.models.AniPersonComment
 import me.him188.ani.client.models.AniSubjectSummary
 import me.him188.ani.utils.ktor.ApiInvoker
 
 /**
  * 人物 (声优/制作人员) 与角色详情页数据仓库, 数据来自 ani 服务端 `/persons` 与 `/characters` 接口.
+ * 评论见 [PersonCommentRepository].
  */
 class PersonDetailsRepository(
     private val personsApi: ApiInvoker<PersonsAniApi>,
@@ -138,18 +136,6 @@ class PersonDetailsRepository(
             }
         }
 
-    fun personCommentsPager(personId: Int): Flow<PagingData<PersonCommentInfo>> = offsetPager { offset, limit ->
-        personsApi { getPersonComments(personId.toLong(), offset, limit).body() }.let { page ->
-            Paged(total = page.total, items = page.items.map { it.toInfo() })
-        }
-    }
-
-    fun characterCommentsPager(characterId: Int): Flow<PagingData<PersonCommentInfo>> = offsetPager { offset, limit ->
-        charactersApi { getCharacterComments(characterId.toLong(), offset, limit).body() }.let { page ->
-            Paged(total = page.total, items = page.items.map { it.toInfo() })
-        }
-    }
-
     private class Paged<T>(val total: Int, val items: List<T>)
 
     private fun <T : Any> offsetPager(
@@ -231,16 +217,4 @@ private fun AniInfobox?.toRows(): List<InfoboxRowInfo> {
         if (value.isBlank()) return@mapNotNull null
         InfoboxRowInfo(key = item.key, value = value)
     }
-}
-
-private fun AniPersonComment.toInfo(): PersonCommentInfo {
-    return PersonCommentInfo(
-        id = id,
-        authorId = author?.id,
-        authorNickname = author?.nickname,
-        authorAvatarUrl = author?.avatarUrl,
-        content = content,
-        createdAt = Instant.parse(createdAt),
-        replyCount = replyCount,
-    )
 }

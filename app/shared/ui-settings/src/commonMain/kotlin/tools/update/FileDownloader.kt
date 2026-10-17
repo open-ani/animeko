@@ -11,31 +11,18 @@ package me.him188.ani.app.tools.update
 
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.plugins.timeout
 import io.ktor.client.request.get
-import io.ktor.client.request.prepareRequest
-import io.ktor.client.statement.bodyAsChannel
-import io.ktor.http.contentLength
-import io.ktor.utils.io.readAvailable
-import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.utils.coroutines.IO_
-import me.him188.ani.utils.coroutines.cancellableCoroutineScope
 import me.him188.ani.utils.coroutines.withExceptionCollector
-import me.him188.ani.utils.io.DEFAULT_BUFFER_SIZE
 import me.him188.ani.utils.io.DigestAlgorithm
 import me.him188.ani.utils.io.SystemPath
-import me.him188.ani.utils.io.absolutePath
-import me.him188.ani.utils.io.bufferedSink
 import me.him188.ani.utils.io.bufferedSource
 import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.exists
@@ -46,12 +33,12 @@ import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * 文件下载器.
  *
  * - 从多个 URL 中顺序尝试下载文件
+ * - 服务器支持 Range 时分块并行下载, 见 [downloadToFile]
  * - 为成功下载的文件做校验 (使用 URL 的同级 .sha1)
  * - 提供下载进度 [progress] 与下载状态 [state]
  */
@@ -235,60 +222,22 @@ class DefaultFileDownloader(
      * 下载单个文件并更新进度 [_progress]. 如果下载失败, 抛出异常.
      */
     private suspend fun tryDownload(client: ScopedHttpClient, url: String, file: SystemPath) {
-        cancellableCoroutineScope {
-            logger.info { "Attempting download: $url" }
-            try {
-                client.use {
-                    prepareRequest(url) {
-                        timeout {
-                            requestTimeoutMillis = 1_000_000
-                        }
-                    }.execute { resp ->
-                        val length = resp.contentLength()
-                        logger.info { "Downloading $url to ${file.absolutePath}, length=${(length ?: 0).bytes}" }
-
-                        val downloaded = object {
-                            val value = atomic(0L)
-                        }
-
-                        val input = resp.bodyAsChannel()
-                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-
-                        if (length != null) {
-                            launch {
-                                while (isActive) {
-                                    delay(1.seconds)
-                                    _progress.value = downloaded.value.value.toFloat() / length
-                                }
-                            }
-                        }
-
-                        file.bufferedSink().use { output ->
-                            while (!input.isClosedForRead) {
-                                val read = input.readAvailable(buffer)
-                                if (read == -1) {
-                                    break
-                                }
-                                downloaded.value.addAndGet(read.toLong())
-                                withContext(Dispatchers.IO_) {
-                                    output.write(buffer, 0, read)
-                                }
-                            }
-                        }
-                        _progress.value = 1f
-
-                        logger.info { "Successfully downloaded: $url" }
+        logger.info { "Attempting download: $url" }
+        try {
+            client.use {
+                downloadToFile(url, file) { downloaded, total ->
+                    if (total != null && total > 0) {
+                        _progress.value = downloaded.toFloat() / total
                     }
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                logger.info(e) { "Failed to download $url" }
-                throw e
-            } finally {
-                // Cancel any extra coroutines in the same scope
-                cancelScope()
             }
+            _progress.value = 1f
+            logger.info { "Successfully downloaded: $url" }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logger.info(e) { "Failed to download $url" }
+            throw e
         }
     }
 

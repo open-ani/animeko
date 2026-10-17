@@ -9,8 +9,8 @@
 
 package me.him188.ani.app.ui.login
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -31,36 +30,45 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.icons.BangumiNext
+import me.him188.ani.app.ui.foundation.icons.OAuthPlatformIcon
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.lang.*
 import org.jetbrains.compose.resources.*
 
 
+/**
+ * "其他登录方式" 的按钮列表. [platforms] 为空时什么都不显示.
+ */
 @Composable
 internal fun ThirdPartyLoginMethods(
-    onBangumiClick: () -> Unit,
+    platforms: List<OAuthPlatform>,
+    onClick: (OAuthPlatform) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier) {
+    if (platforms.isEmpty()) return
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TextDivider(
             modifier = Modifier.heightIn(min = 56.dp),
         ) {
             Text(stringResource(Lang.login_other_methods))
         }
 
-        FilledTonalButton(
-            onBangumiClick,
-            Modifier.fillMaxWidth(),
-            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-        ) {
-            Image(Icons.Default.BangumiNext, null, Modifier.size(ButtonDefaults.IconSize))
-            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-            Text("Bangumi")
+        for (platform in platforms) {
+            FilledTonalButton(
+                { onClick(platform) },
+                Modifier.fillMaxWidth().testTag("thirdPartyLogin-${platform.id}"),
+                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+            ) {
+                OAuthPlatformIcon(platform, Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text(platform.displayName)
+            }
         }
     }
 }
@@ -91,6 +99,6 @@ private fun TextDivider(
 @Preview
 private fun PreviewThirdPartyLoginMethods() = ProvideCompositionLocalsForPreview {
     Surface {
-        ThirdPartyLoginMethods({})
+        ThirdPartyLoginMethods(listOf(OAuthPlatform.BANGUMI, OAuthPlatform.GITHUB), onClick = {})
     }
 }

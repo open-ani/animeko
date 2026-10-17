@@ -19,15 +19,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SkikoComposeUiTest
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.paging.PagingData
 import kotlinx.coroutines.flow.MutableStateFlow
+import me.him188.ani.app.data.models.schedule.AnimeSeason
+import me.him188.ani.app.data.models.schedule.AnimeSeasonId
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.doesNotExist
@@ -47,6 +54,9 @@ class SearchPageWideLayoutTest {
         runSearchPageTest(widthDp = 840) {
             assertTrue(onNodeWithTag(SearchFilterSidePanelTestTags.Panel).exists())
             assertTrue(onNodeWithTag(SearchPageTestTags.LegacyFilterRow).doesNotExist())
+            onNodeWithTag(SearchPageTestTags.DateFilterRow).assertIsDisplayed()
+            onNodeWithTag(SearchPageTestTags.YearFilter).assertIsDisplayed()
+            onNodeWithTag(SearchPageTestTags.SeasonFilter).onChild().assertIsNotEnabled()
         }
     }
 
@@ -62,6 +72,34 @@ class SearchPageWideLayoutTest {
         runSearchPageTest(widthDp = 839) {
             assertTrue(onNodeWithTag(SearchFilterSidePanelTestTags.Panel).doesNotExist())
             assertTrue(onNodeWithTag(SearchPageTestTags.LegacyFilterRow).exists())
+            onNodeWithTag(SearchPageTestTags.YearFilter).assertIsDisplayed()
+            onNodeWithTag(SearchPageTestTags.SeasonFilter).onChild().assertIsNotEnabled()
+        }
+    }
+
+    @Test
+    fun `wide desktop date filters emit year and season intents`() {
+        val intents = mutableListOf<SearchPageIntent>()
+        runSearchPageTest(
+            widthDp = 1400,
+            state = createUiTestState(
+                query = SubjectSearchQuery("test", year = 2025),
+            ).copy(seasons = listOf(AnimeSeasonId(2026, AnimeSeason.SPRING))),
+            onIntent = { intents += it },
+        ) {
+            onNodeWithTag(SearchPageTestTags.YearFilter).onChild().performClick()
+            onNodeWithText("2026").performClick()
+            onNodeWithTag(SearchPageTestTags.SeasonFilter).onChild().assertIsEnabled().performClick()
+            onNodeWithText("Q2").performClick()
+            runOnIdle {
+                assertEquals(
+                    listOf(
+                        SearchPageIntent.ChangeYear(2026),
+                        SearchPageIntent.ChangeSeason(AnimeSeason.SPRING),
+                    ),
+                    intents,
+                )
+            }
         }
     }
 
@@ -138,6 +176,7 @@ class SearchPageWideLayoutTest {
     private fun runSearchPageTest(
         widthDp: Int,
         state: SearchPageState = createUiTestState(),
+        onIntent: (SearchPageIntent) -> Unit = {},
         block: SkikoComposeUiTest.() -> Unit,
     ) {
         runSkikoComposeUiTest(
@@ -148,7 +187,7 @@ class SearchPageWideLayoutTest {
                 ProvideCompositionLocalsForPreview {
                     SearchPage(
                         state = state,
-                        onIntent = {},
+                        onIntent = onIntent,
                         suggestionsPager = { MutableStateFlow(PagingData.empty()) },
                         detailContent = { Surface(Modifier.fillMaxSize()) {} },
                     )

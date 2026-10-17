@@ -7,6 +7,7 @@ import androidx.compose.ui.text.intl.Locale
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.SupportedLocales
+import me.him188.ani.app.ui.lang.renderLocale
 import me.him188.ani.app.ui.lang.settings_app_language
 import me.him188.ani.app.ui.lang.settings_app_language_restart
 import me.him188.ani.app.ui.settings.framework.SettingsState

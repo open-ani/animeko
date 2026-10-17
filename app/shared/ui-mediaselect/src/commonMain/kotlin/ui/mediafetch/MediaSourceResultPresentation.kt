@@ -22,19 +22,20 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
-import me.him188.ani.app.domain.media.fetch.isCaptchaRequired
 import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
+import me.him188.ani.app.domain.media.fetch.isCaptchaRequired
 import me.him188.ani.app.domain.media.fetch.isDisabled
 import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
 import me.him188.ani.app.domain.media.fetch.isRateLimited
 import me.him188.ani.app.domain.media.fetch.isWorking
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
-import me.him188.ani.app.domain.mediasource.web.displayName
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -42,7 +43,6 @@ import me.him188.ani.datasources.mikan.MikanCNMediaSource
 import me.him188.ani.datasources.mikan.MikanMediaSource
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.platform.annotations.TestOnly
-
 
 /**
  * 单个数据源的搜索结果.
@@ -67,13 +67,14 @@ data class MediaSourceResultPresentation(
     val isRateLimited: Boolean get() = state.isRateLimited
     val rateLimitedUntilMillis: Long? get() = (state as? MediaSourceFetchState.RateLimited)?.retryAt
     val captchaRequest: SolveRequest? get() = (state as? MediaSourceFetchState.CaptchaRequired)?.request
-    val captchaMessage: String? get() = captchaRequest?.kind?.let { "需要处理${it.displayName()}" }
+    val captchaKind: WebCaptchaKind? get() = captchaRequest?.kind
 }
 
 /**
- * 在 [MediaSelectorView] 使用, 管理多个 [MediaSourceResultPresentation] 的结果
+ * 一次 fetch 会话中全部数据源的结果集合, 按 [MediaSourceKind] 拆分为 [btSources] 与 [webSources].
  *
- * 对应 UI 是 "BT" 和 "WEB" 的两行列表, 列表包含 [MediaSourceResultPresentation]
+ * [btSources] 供 [me.him188.ani.app.ui.mediaselect.bt.BtResourcesPage] 的数据源面板 / 下拉、列表加载态与下载对话框使用, 也用于判断是否显示 BT 模式入口;
+ * [webSources] 经 [MediaSelectorState] 供自动匹配页展示各源状态.
  */
 @Immutable
 data class MediaSourceResultListPresentation(
@@ -90,9 +91,14 @@ data class MediaSourceResultListPresentation(
     }
 }
 
+/**
+ * @param includedMediaFlow 通过选择器过滤的资源 ([me.him188.ani.app.domain.media.selector.MediaSelector.filteredCandidatesMedia]).
+ * 提供时, 每个数据源卡片的计数是该源通过过滤 (属于当前剧集等) 的资源数; 为 `null` 时计数为该源返回的全部资源数.
+ */
 class MediaSourceResultListPresenter(
     resultListFlow: Flow<List<MediaSourceFetchResult>>,
     preferredWebMediaSourceIdFlow: Flow<String?> = flowOf(null),
+    includedMediaFlow: Flow<List<Media>>? = null,
 ) {
     val presentationFlow: Flow<List<MediaSourceResultPresentation>> = resultListFlow
         .combine(preferredWebMediaSourceIdFlow) { list, preferredWebMediaSourceId ->
@@ -100,10 +106,13 @@ class MediaSourceResultListPresenter(
         }
         .flatMapLatest { (list, preferred) ->
             val flows = list.map { source ->
-                combine(source.state, source.results) { state, results ->
+                val countFlow = includedMediaFlow
+                    ?.map { included -> included.count { it.mediaSourceId == source.mediaSourceId } }
+                    ?: source.results.map { it.size }
+                combine(source.state, countFlow) { state, count ->
                     source.toPresentation(
                         state,
-                        results.size,
+                        count,
                         source.mediaSourceId == preferred,
                     )
                 }

@@ -33,6 +33,10 @@ kotlin {
         api(libs.jetbrains.annotations)
     }
 
+    sourceSets.androidMain.dependencies {
+        implementation(projects.utils.buildConfig)
+    }
+
     sourceSets.nativeMain.dependencies {
         implementation(libs.kotlinx.datetime)
     }

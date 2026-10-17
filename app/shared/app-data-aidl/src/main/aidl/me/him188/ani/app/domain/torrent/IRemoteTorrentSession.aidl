@@ -17,6 +17,9 @@ interface IRemoteTorrentSession {
     IDisposableHandle getFiles(in ContTorrentSessionGetFiles cont);
     
     PPeerInfo[] getPeers();
+
+    // TorrentHandleState 的序号, -1 表示 null.
+    int getState();
     
     void close();
     

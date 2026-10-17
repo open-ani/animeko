@@ -14,15 +14,13 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -38,8 +36,8 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
 import me.him188.ani.app.domain.media.fetch.isWorking
 import me.him188.ani.app.domain.media.selector.DefaultMediaSelector
-import me.him188.ani.app.domain.media.selector.MatchMetadata
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
+import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
@@ -47,14 +45,17 @@ import me.him188.ani.app.domain.media.selector.isPerfectMatch
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.mediasource.web.captcha.createTestWebSessionManager
-import me.him188.ani.app.domain.mediasource.web.displayName
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
+import me.him188.ani.app.ui.mediaselect.bt.BtCandidates
+import me.him188.ani.app.ui.mediaselect.bt.BtFilterState
+import me.him188.ani.app.ui.mediaselect.bt.BtListPresentation
+import me.him188.ani.app.ui.mediaselect.bt.projectBtList
 import me.him188.ani.app.ui.mediaselect.selector.WebSource
 import me.him188.ani.app.ui.mediaselect.selector.WebSourceChannel
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
-import me.him188.ani.datasources.api.topic.isSingleEpisode
+import me.him188.ani.utils.coroutines.flows.combine
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -70,6 +71,7 @@ fun rememberMediaSelectorState(
     val selector by remember {
         derivedStateOf(mediaSelector)
     }
+    val btFilterState = remember { BtFilterState() }
     return remember {
         MediaSelectorState(
             selector,
@@ -78,6 +80,7 @@ fun rememberMediaSelectorState(
             flowOf(null),
             scope.backgroundScope,
             webSessionManager,
+            btFilterState,
         )
     }
 }
@@ -139,6 +142,10 @@ suspend fun <T : Any> MediaPreferenceItemState<T>.preferOrRemove(value: T?) {
 
 /**
  * Wraps [MediaSelector] to provide states for UI.
+ *
+ * @param btFilterState BT 页会话内 UI 状态 (集号开关 / 源过滤). 由宿主持有并在每次重建 state 时传同一实例, 因此不随 fetchSelect bundle 重建丢失;
+ * 默认值只给测试与下载对话框 ([rememberMediaSelectorState] 内 `remember { BtFilterState() }`).
+ * @param onUserSelect 用户在选择器里点选一项 ([select]) 后调用. 播放页用它结束本条目的浏览记忆: 用户在自动匹配或 BT 页手动换了源, 说明不想再按记忆走.
  */
 @Stable
 class MediaSelectorState(
@@ -148,13 +155,13 @@ class MediaSelectorState(
     private val preferredWebMediaSource: Flow<String?>,
     private val backgroundScope: CoroutineScope,
     private val webSessionManager: WebSessionManager,
+    val btFilterState: BtFilterState = BtFilterState(),
+    private val onUserSelect: suspend (Media) -> Unit = {},
 ) {
     @Immutable
     data class Presentation(
         val filteredCandidates: List<MaybeExcludedMedia>,
         val preferredCandidates: List<Media>,
-        val groupedMediaListIncluded: List<MediaGroup>,
-        val groupedMediaListExcluded: List<MediaGroup>,
         val selected: Media?,
         val alliance: MediaPreferenceItemState.Presentation<String>,
         val resolution: MediaPreferenceItemState.Presentation<String>,
@@ -167,14 +174,7 @@ class MediaSelectorState(
         val isPlaceholder: Boolean = false,
     )
 
-    private val groupStates: SnapshotStateMap<MediaGroupId, MediaGroupState> = SnapshotStateMap()
     private val resolvingCaptchaInstanceIds = MutableStateFlow<Set<String>>(emptySet())
-
-    fun getGroupState(groupId: MediaGroupId): MediaGroupState {
-        return groupStates.getOrPut(groupId) {
-            MediaGroupState(groupId)
-        }
-    }
 
     val alliance: MediaPreferenceItemState<String> =
         MediaPreferenceItemState(mediaSelector.alliance, backgroundScope)
@@ -185,7 +185,7 @@ class MediaSelectorState(
     val mediaSource: MediaPreferenceItemState<String> =
         MediaPreferenceItemState(mediaSelector.mediaSourceId, backgroundScope)
 
-    val presentationFlow = me.him188.ani.utils.coroutines.flows.combine(
+    val presentationFlow = combine(
         mediaSelector.filteredCandidates,
         mediaSelector.preferredCandidates,
         mediaSelector.selected,
@@ -194,13 +194,13 @@ class MediaSelectorState(
         subtitleLanguageId.presentationFlow,
         mediaSource.presentationFlow,
         createWebSourcesFlow(),
-    ) { filteredCandidatesMedia, preferredCandidates, selected, alliance, resolution, subtitleLanguageId, mediaSource, webSources ->
-        val (groupsExcluded, groupsIncluded) = MediaGrouper.buildGroups(preferredCandidates).partition { it.isExcluded }
+    ) { filteredCandidates, preferredCandidates, selected, alliance, resolution, subtitleLanguageId, mediaSource, webSources ->
+        // 属于其他集的资源不展示, 否则每集都会看到整季的资源.
+        val visibleCandidates = filteredCandidates.filterNot { it.exclusionReason is MediaExclusionReason.EpisodeMismatch }
+        val visiblePreferred = preferredCandidates.filterNot { it.exclusionReason is MediaExclusionReason.EpisodeMismatch }
         Presentation(
-            filteredCandidatesMedia,
-            preferredCandidates.mapNotNull { it.result },
-            groupsIncluded,
-            groupsExcluded,
+            visibleCandidates,
+            visiblePreferred.mapNotNull { it.result },
             selected,
             alliance, resolution, subtitleLanguageId, mediaSource,
             webSources,
@@ -211,7 +211,7 @@ class MediaSelectorState(
         backgroundScope,
         started = SharingStarted.WhileSubscribed(),
         Presentation(
-            emptyList(), emptyList(), emptyList(), emptyList(), null,
+            emptyList(), emptyList(), null,
             alliance = MediaPreferenceItemState.Presentation.placeholder(),
             resolution = MediaPreferenceItemState.Presentation.placeholder(),
             subtitleLanguageId = MediaPreferenceItemState.Presentation.placeholder(),
@@ -221,6 +221,42 @@ class MediaSelectorState(
             selectedWebSourceChannel = null,
             isPlaceholder = true,
         ),
+    )
+
+    /**
+     * BT 页列表. 在 state 内 combine 八个流后交给纯函数 [projectBtList]:
+     * `filteredCandidates, subjectCandidates, selected, alliance/resolution/subtitleLanguageId.presentationFlow,
+     *  btFilterState.episodeFilterEnabled, btFilterState.sourceFilter`.
+     * 数据源偏好不传: BT 页的源维度只由 sourceFilter 表达.
+     */
+    val btPresentationFlow: StateFlow<BtListPresentation> = combine(
+        mediaSelector.filteredCandidates,
+        mediaSelector.subjectCandidates,
+        mediaSelector.selected,
+        alliance.presentationFlow,
+        resolution.presentationFlow,
+        subtitleLanguageId.presentationFlow,
+        btFilterState.episodeFilterEnabled,
+        btFilterState.sourceFilter,
+    ) { filtered, subject, selected, alliance, resolution, subtitleLanguageId, episodeFilterEnabled, sourceFilter ->
+        projectBtList(
+            BtCandidates(
+                filtered = filtered,
+                subject = subject,
+                preference = MediaPreference.Empty.copy(
+                    alliance = alliance.finalSelected,
+                    resolution = resolution.finalSelected,
+                    subtitleLanguageId = subtitleLanguageId.finalSelected,
+                ),
+                selected = selected,
+            ),
+            episodeFilterEnabled = episodeFilterEnabled,
+            sourceFilter = sourceFilter,
+        )
+    }.stateIn(
+        backgroundScope,
+        started = SharingStarted.WhileSubscribed(),
+        BtListPresentation.Placeholder,
     )
 
     private fun createWebSourcesFlow(): Flow<List<WebSource>> {
@@ -260,17 +296,15 @@ class MediaSelectorState(
                 // 属于这个数据源的 medias
                 val myMediaList = allMediaList
                     .asSequence()
-                    .filterIsInstance<MaybeExcludedMedia.Included>()
                     .filter {
                         // Filter medias that are from this source
-                        it.result.mediaSourceId == source.mediaSourceId
+                        it.result?.mediaSourceId == source.mediaSourceId // null result gives `false` and is hence excluded
                     }
                     .filter {
-                        // 只要精确匹配条目的资源.
-                        // 按线路聚合的资源即使缺少当前集也显示 (UI 会标记), 但排除单集且不匹配当前集的资源.
-                        it.metadata.subjectMatchKind == MatchMetadata.SubjectMatchKind.EXACT &&
-                                (it.isPerfectMatch() || it.result.episodeRange?.isSingleEpisode() == false)
+                        // Take only exact matches
+                        it.isPerfectMatch()
                     }
+                    .mapNotNull { it.result }
 
                 createWebSourceFlow(
                     source,
@@ -295,16 +329,13 @@ class MediaSelectorState(
 
     private fun createWebSourceFlow(
         source: MediaSourceFetchResult,
-        myMediaList: Sequence<MaybeExcludedMedia.Included>,
+        myMediaList: Sequence<Media>,
         delayToOvercomeCacheIssue: Boolean,
         resolvingCaptchaInstanceIds: Set<String>,
     ) = source.state.combine(preferredWebMediaSource) { a, b -> a to b }.map { (state, preferred) ->
-        val channels = myMediaList.map { included ->
-            WebSourceChannel(
-                included.result.properties.alliance,
-                original = included.result,
-                hasCurrentEpisode = included.metadata.episodeMatchKind >= MatchMetadata.EpisodeMatchKind.EP,
-            )
+        // 每条线路一个芯片: 同一线路的多个资源取排序靠前的一个.
+        val channels = myMediaList.distinctBy { it.properties.alliance }.map { media ->
+            WebSourceChannel(media.properties.alliance, original = media)
         }.toList()
         val captchaRequest = (state as? MediaSourceFetchState.CaptchaRequired)?.request
         val rateLimitedUntil = (state as? MediaSourceFetchState.RateLimited)?.retryAt
@@ -336,7 +367,6 @@ class MediaSelectorState(
                     isError = state.isFailedOrAbandoned,
                     isPreferred = source.mediaSourceId == preferred,
                     captchaRequest = captchaRequest,
-                    captchaMessage = captchaRequest?.kind?.let { "需要处理${it.displayName()}" },
                     isResolvingCaptcha = source.instanceId in resolvingCaptchaInstanceIds,
                     rateLimitedUntilMillis = rateLimitedUntil,
                     isCaptchaSupported = webSessionManager.isInteractiveSupported,
@@ -346,11 +376,23 @@ class MediaSelectorState(
     }
 
     /**
+     * 用户点选. 之后调用 onUserSelect.
      * @see MediaSelector.select
      */
     fun select(candidate: Media) {
         backgroundScope.launch {
             mediaSelector.select(candidate)
+            onUserSelect(candidate)
+        }
+    }
+
+    /**
+     * 不写偏好, 不写记忆.
+     * @see MediaSelector.selectTemporarily
+     */
+    fun selectTemporarily(candidate: Media) {
+        backgroundScope.launch {
+            mediaSelector.selectTemporarily(candidate)
         }
     }
 
@@ -376,37 +418,41 @@ class MediaSelectorState(
     }
 }
 
-@Stable
-class MediaGroupState(
-    val groupId: MediaGroupId,
-) {
-    var selectedItem: Media? by mutableStateOf(null)
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // Testing
 ///////////////////////////////////////////////////////////////////////////
 
 @Composable
 @TestOnly
-fun rememberTestMediaSelectorState(): MediaSelectorState {
+fun rememberTestMediaSelectorState(mediaList: List<Media> = TestMediaList): MediaSelectorState {
     val backgroundScope = rememberBackgroundScope()
-    return remember(backgroundScope) { createTestMediaSelectorState(backgroundScope.backgroundScope) }
+    return remember(backgroundScope) { createTestMediaSelectorState(backgroundScope.backgroundScope, mediaList = mediaList) }
 }
 
+/**
+ * 占位 / 预览 / 测试用. VM 在 fetchSelect == null 时也用它, 必须传自己的 [btFilterState], 否则占位期间用户切的开关在真实 state 到来后丢失.
+ *
+ * @param mediaList 候选列表, 测试空态 / 加载态时传空.
+ */
 @TestOnly
-fun createTestMediaSelectorState(backgroundScope: CoroutineScope) =
-    MediaSelectorState(
-        DefaultMediaSelector(
-            mediaSelectorContextNotCached = flowOf(MediaSelectorContext.EmptyForPreview),
-            mediaListNotCached = MutableStateFlow(TestMediaList),
-            savedUserPreference = flowOf(MediaPreference.Empty),
-            savedDefaultPreference = flowOf(MediaPreference.Empty),
-            mediaSelectorSettings = flowOf(MediaSelectorSettings.Default),
-        ),
-        mediaSourceFetchResults = createTestMediaSourceResultsFilterer(backgroundScope).filteredSourceResults,
-        createTestMediaSourceInfoProvider(),
-        preferredWebMediaSource = flowOf(null),
-        backgroundScope,
-        createTestWebSessionManager(backgroundScope),
-    )
+fun createTestMediaSelectorState(
+    backgroundScope: CoroutineScope,
+    btFilterState: BtFilterState = BtFilterState(),
+    mediaList: List<Media> = TestMediaList,
+    onUserSelect: suspend (Media) -> Unit = {},
+) = MediaSelectorState(
+    DefaultMediaSelector(
+        mediaSelectorContextNotCached = flowOf(MediaSelectorContext.EmptyForPreview),
+        mediaListNotCached = MutableStateFlow(mediaList),
+        savedUserPreference = flowOf(MediaPreference.Empty),
+        savedDefaultPreference = flowOf(MediaPreference.Empty),
+        mediaSelectorSettings = flowOf(MediaSelectorSettings.Default),
+    ),
+    mediaSourceFetchResults = createTestMediaSourceResultsFilterer(backgroundScope).filteredSourceResults,
+    createTestMediaSourceInfoProvider(),
+    preferredWebMediaSource = flowOf(null),
+    backgroundScope,
+    createTestWebSessionManager(backgroundScope),
+    btFilterState,
+    onUserSelect,
+)

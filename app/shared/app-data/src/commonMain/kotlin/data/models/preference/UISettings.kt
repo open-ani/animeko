@@ -46,11 +46,8 @@ data class UISettings(
     val myCollections: MyCollectionsSettings = MyCollectionsSettings.Default,
     val searchSettings: SearchSettings = SearchSettings.Default,
     val episodeProgress: EpisodeProgressSettings = EpisodeProgressSettings.Default,
+    val subjectAppearance: SubjectAppearanceSettings = SubjectAppearanceSettings.Default,
     val desktopCloseBehavior: DesktopCloseBehavior = DesktopCloseBehavior.EXIT,
-    /**
-     * 欢迎向导是否已经完成, 若为 false 则在启动 APP 时进入 OnboardingScreen, 而非 MainScreen
-     */
-    val onboardingCompleted: Boolean = false,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {
@@ -95,6 +92,18 @@ data class MyCollectionsSettings(
 }
 
 @Serializable
+@Immutable
+data class SubjectAppearanceSettings(
+    /** 优先显示条目原名 (通常为日文), 而非 Bangumi 简体中文名. */
+    val useOriginalTitle: Boolean = false,
+) {
+    companion object {
+        @Stable
+        val Default = SubjectAppearanceSettings()
+    }
+}
+
+@Serializable
 enum class NsfwMode {
     /**
      * 从列表中完全隐藏 NSFW 内容
@@ -128,6 +137,8 @@ data class SearchSettings(
 @Immutable
 data class EpisodeProgressSettings(
     val theme: EpisodeListProgressTheme = EpisodeListProgressTheme.Default,
+    /** 在选集列表中显示 TMDB 剧照 (仅部分番剧提供). */
+    val showEpisodeImages: Boolean = true,
 ) {
     companion object {
         @Stable

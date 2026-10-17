@@ -12,12 +12,11 @@ data class MediaMatch(
 )
 
 /**
- * 判断该 [MediaMatch] 是否满足条件 [request].
+ * 判断该 [MediaMatch] 的剧集范围是否包含 [request] 中的当前剧集.
  *
- * 返回 `null` 表示条件不足以判断. 届时可以根据数据源大致的准确性或者其他信息考虑是否需要在 [MediaSource.fetch] 的返回中包含此资源.
+ * 数据源查询以条目为单位, [MediaSource.fetch] 不得据此剔除资源; 该函数供数据源编辑器的测试功能等展示用途使用.
  *
- * 该函数会在如下情况下返回 `null`:
- * - 当 [Media.episodeRange] 为 `null` 时. 这意味着无法知道该资源的剧集范围.
+ * 返回 `null` 表示条件不足以判断: 当 [Media.episodeRange] 为 `null` 时, 无法知道该资源的剧集范围.
  */
 fun MediaMatch.matches(request: MediaFetchRequest): Boolean? {
     val actualEpRange = this.media.episodeRange ?: return null
@@ -26,21 +25,21 @@ fun MediaMatch.matches(request: MediaFetchRequest): Boolean? {
 }
 
 /**
- * 当且仅当该资源一定满足请求时返回 `true`. 若条件不足, 返回 `false`.
+ * 当且仅当该资源一定包含请求中的当前剧集时返回 `true`. 若条件不足, 返回 `false`.
  */
 fun MediaMatch.definitelyMatches(request: MediaFetchRequest): Boolean = matches(request) == true
 
+/**
+ * 数据源对结果属于请求条目的把握. 匹配以条目为单位.
+ */
 enum class MatchKind {
     /**
-     * The request has an exact match with the cache.
-     * Usually because episode id is the same.
+     * 通过条目 ID (例如 Bangumi 条目 ID 或缓存记录的条目 ID) 精确定位到了条目.
      */
     EXACT,
 
     /**
-     * The request does not have a [EXACT] match but a [FUZZY] one.
-     *
-     * This is done on a best-effort basis where they can be false positives.
+     * 通过关键字搜索得到, 尽力而为, 可能属于其他条目.
      */
     FUZZY,
 }

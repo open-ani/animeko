@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.lists.ScrollStateVerticalScrollbar
 import me.him188.ani.app.ui.foundation.lists.hasScrollableContent
@@ -61,6 +62,12 @@ fun EpisodeListDialog(
 ) {
     val scrollState = rememberScrollState()
     val scrollbarEndPadding = if (scrollState.hasScrollableContent()) 16.dp else 0.dp
+    // 点击剧集会离开当前页面, 对话框必须先关掉. 调用方用 rememberSaveable 记住对话框是否打开,
+    // 不关掉的话播放页做预测性返回手势时, 下层页面预览会重新弹出这个对话框窗口, 系统随即取消手势. #3573
+    val dismissAndClickEpisode: (EpisodeListItem) -> Unit = {
+        onDismissRequest()
+        onEpisodeClick(it)
+    }
     Dialog(onDismissRequest, properties) {
         Card {
             Box {
@@ -75,7 +82,8 @@ fun EpisodeListDialog(
 
                     Row(Modifier.padding(top = 8.dp)) {
                         ProvideTextStyle(MaterialTheme.typography.bodyLarge) {
-                            Text(state.subjectTitle)
+                            val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
+                            Text(if (useOriginalTitle) state.subjectOriginalTitle else state.subjectTitle)
                         }
                     }
 
@@ -90,7 +98,7 @@ fun EpisodeListDialog(
                         ) {
                             EpisodeListFlowRow(
                                 state.mainEpisodes,
-                                onEpisodeClick,
+                                dismissAndClickEpisode,
                                 onCollectionUpdate,
                             )
 
@@ -99,7 +107,7 @@ fun EpisodeListDialog(
 
                                 EpisodeListFlowRow(
                                     state.otherEpisodes,
-                                    onEpisodeClick,
+                                    dismissAndClickEpisode,
                                     onCollectionUpdate,
                                 )
                             }

@@ -31,6 +31,7 @@ abstract class BBCodeParserTestHelper {
         bold: Boolean = false,
         mask: Boolean = false,
         code: Boolean = false,
+        align: RichElement.Text.Align = RichElement.Text.DEFAULT_ALIGN,
     ) {
         assertElement(jumpUrl, element)
         assertEquals(value, element.value)
@@ -42,6 +43,7 @@ abstract class BBCodeParserTestHelper {
         assertEquals(bold, element.bold)
         assertEquals(mask, element.mask)
         assertEquals(code, element.code)
+        assertEquals(align, element.align)
     }
 
     fun assertImage(

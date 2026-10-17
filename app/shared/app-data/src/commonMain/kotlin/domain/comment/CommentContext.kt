@@ -10,12 +10,23 @@
 package me.him188.ani.app.domain.comment
 
 import androidx.compose.runtime.Immutable
+import me.him188.ani.app.data.models.person.PersonCommentTarget
 
 /**
  * 评论发送的对象
  */
 @Immutable
 sealed interface CommentContext {
+    /**
+     * 人物 (声优/制作人员) 或角色的评论 (吐槽箱)
+     */
+    data class PersonComment(val target: PersonCommentTarget) : CommentContext
+
+    /**
+     * 回复人物/角色评论下的某条评论
+     */
+    data class PersonCommentReply(val target: PersonCommentTarget, val commentId: String) : CommentContext
+
     /**
      * 剧集评论
      */

@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.richtext
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import org.jetbrains.compose.resources.DrawableResource
 
 sealed interface UIRichElement {
@@ -39,7 +40,15 @@ sealed interface UIRichElement {
         ) : Annotated
     }
 
-    data class AnnotatedText(val slice: List<Annotated>, val maxLine: Int? = null) : UIRichElement
+    /**
+     * @param align 整段文本的水平对齐方式, [TextAlign.Unspecified] 表示不指定, 跟随默认行为.
+     * 对齐是段落级属性, 因此一个 [AnnotatedText] 内的所有 [slice] 共享同一个对齐方式.
+     */
+    data class AnnotatedText(
+        val slice: List<Annotated>,
+        val maxLine: Int? = null,
+        val align: TextAlign = TextAlign.Unspecified,
+    ) : UIRichElement
 
     data class Quote(val content: List<UIRichElement>) : UIRichElement
 

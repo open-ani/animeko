@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import me.him188.ani.app.data.models.subject.ContinueWatchingStatus
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.tools.WeekFormatter
+import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.datasources.api.toLocalDateOrNull
 
 /**
@@ -26,6 +27,14 @@ class SubjectProgressState(
     info: State<SubjectProgressInfo?>,
     private val weekFormatter: WeekFormatter = WeekFormatter.System,
 ) {
+    /**
+     * 从不可变的值构造. 值变化时由调用方重新构造 (例如 `remember(info) { ... }`).
+     */
+    constructor(
+        info: SubjectProgressInfo?,
+        weekFormatter: WeekFormatter = WeekFormatter.System,
+    ) : this(stateOf(info), weekFormatter)
+
     private val continueWatchingStatus by derivedStateOf {
         info.value?.continueWatchingStatus
     }

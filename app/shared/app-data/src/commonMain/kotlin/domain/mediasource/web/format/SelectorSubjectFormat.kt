@@ -27,7 +27,7 @@ import org.intellij.lang.annotations.Language
 import kotlin.contracts.contract
 
 /**
- * 决定如何匹配条目
+ * 决定如何从搜索结果页列出条目. 结果顺序与页面一致; 自动匹配阶段的排序见 `SelectorAutoMatchConfig.preferShorterName`.
  */
 sealed class SelectorSubjectFormat<in Config : SelectorFormatConfig>(override val id: SelectorFormatId) :
     SelectorFormat { // 方便改名
@@ -67,6 +67,14 @@ data object SelectorSubjectFormatA : SelectorSubjectFormat<SelectorSubjectFormat
     data class Config(
         @param:Language("css")
         val selectLists: String = "div.video-info-header > a",
+        /**
+         * 详情页链接模板. 把 `href` 代入 `{value}` 得到详情页地址. 留空则直接用 `href`.
+         */
+        val linkTemplate: String? = null,
+        /**
+         * 旧格式字段, 已移到 `SelectorAutoMatchConfig.preferShorterName`, 只为读写旧 JSON 保留. 解析时不使用.
+         */
+        @Deprecated("moved to SelectorAutoMatchConfig.preferShorterName")
         val preferShorterName: Boolean = true,
     ) : SelectorFormatConfig {
         override fun isValid(): Boolean {
@@ -84,20 +92,7 @@ data object SelectorSubjectFormatA : SelectorSubjectFormat<SelectorSubjectFormat
         return elements.mapTo(ArrayList(elements.size)) { a ->
             val name = a.attr("title").takeIf { it.isNotBlank() } ?: a.text()
             val href = a.attr("href")
-            val id = guessIdFromUrl(href)
-            WebSearchSubjectInfo(
-                internalId = id,
-                name = name,
-                fullUrl = SelectorHelpers.computeAbsoluteUrl(baseUrl, href),
-                partialUrl = href,
-                origin = a,
-            )
-        }.apply {
-            if (config.preferShorterName) {
-                sortBy { info ->
-                    info.name.length
-                }
-            }
+            buildSubject(name, href, baseUrl, config.linkTemplate, origin = a)
         }
     }
 }
@@ -115,6 +110,14 @@ data object SelectorSubjectFormatIndexed :
         val selectNames: String = ".search-box .thumb-content > .thumb-txt",
         @param:Language("css")
         val selectLinks: String = ".search-box .thumb-menu > a",
+        /**
+         * 详情页链接模板. 把 [selectLinks] 抽出的原始链接代入 `{value}` 得到详情页地址. 留空则直接用原始链接.
+         */
+        val linkTemplate: String? = null,
+        /**
+         * 旧格式字段, 已移到 `SelectorAutoMatchConfig.preferShorterName`, 只为读写旧 JSON 保留. 解析时不使用.
+         */
+        @Deprecated("moved to SelectorAutoMatchConfig.preferShorterName")
         val preferShorterName: Boolean = true,
     ) : SelectorFormatConfig {
         override fun isValid(): Boolean {
@@ -141,20 +144,7 @@ data object SelectorSubjectFormatIndexed :
         }
 
         return names.fastZipNotNullToMutable(links) { name, href ->
-            val id = guessIdFromUrl(href)
-            WebSearchSubjectInfo(
-                internalId = id,
-                name = name,
-                fullUrl = SelectorHelpers.computeAbsoluteUrl(baseUrl, href),
-                partialUrl = href,
-                origin = null,
-            )
-        }.apply {
-            if (config.preferShorterName) {
-                sortBy { info ->
-                    info.name.length
-                }
-            }
+            buildSubject(name, href, baseUrl, config.linkTemplate, origin = null)
         }
     }
 }
@@ -168,6 +158,15 @@ data object SelectorSubjectFormatJsonPathIndexed :
         val selectLinks: String = "$[*]['url', 'link']",
         @param:Language("jsonpath")
         val selectNames: String = "$[*]['title','name']",
+        /**
+         * 详情页链接模板. API 只返回裸 id 时(如 `{"list":[{"id":"5395"}]}`), 用模板把 id 拼成详情页地址
+         * (如 `/GV{value}/`), 其中 `{value}` 为 [selectLinks] 抽出的值. 留空则直接用抽出值作为链接.
+         */
+        val linkTemplate: String? = null,
+        /**
+         * 旧格式字段, 已移到 `SelectorAutoMatchConfig.preferShorterName`, 只为读写旧 JSON 保留. 解析时不使用.
+         */
+        @Deprecated("moved to SelectorAutoMatchConfig.preferShorterName")
         val preferShorterName: Boolean = true,
     ) : SelectorFormatConfig {
         override fun isValid(): Boolean {
@@ -194,20 +193,7 @@ data object SelectorSubjectFormatJsonPathIndexed :
             }?.toList() ?: return emptyList()
 
             return names.fastZipNotNullToMutable(urls) { name, href ->
-                val id = guessIdFromUrl(href)
-                WebSearchSubjectInfo(
-                    internalId = id,
-                    name = name,
-                    fullUrl = SelectorHelpers.computeAbsoluteUrl(baseUrl, href),
-                    partialUrl = href,
-                    origin = null,
-                )
-            }.apply {
-                if (config.preferShorterName) {
-                    sortBy { info ->
-                        info.name.length
-                    }
-                }
+                buildSubject(name, href, baseUrl, config.linkTemplate, origin = null)
             }
         } catch (e: Exception) {
             return null
@@ -231,6 +217,37 @@ private fun JsonElement.getSingleStringValueOrNull(): String? {
         is JsonObject -> values.firstOrNull()?.getSingleStringValueOrNull()
         is JsonPrimitive -> content
     }
+}
+
+/**
+ * 把 select 出的原始链接 [rawHref] 代入 [linkTemplate] 得到详情页链接.
+ * 模板中的 `{value}` 会被替换为 [rawHref]; 未配置模板 (`null` 或空) 时返回 [rawHref] 本身.
+ * 模板可以是相对路径(以 baseUrl 解析为绝对地址)或绝对地址.
+ */
+private fun applyLinkTemplate(linkTemplate: String?, rawHref: String): String {
+    if (linkTemplate.isNullOrBlank()) return rawHref
+    return linkTemplate.replace("{value}", rawHref)
+}
+
+/**
+ * 由 select 出的 [name] 与原始链接 [rawHref] 构造一个条目. 详情页链接取 [applyLinkTemplate] 的结果
+ * (相对路径会以 [baseUrl] 解析为绝对地址), 未配置模板时直接用 [rawHref].
+ */
+private fun buildSubject(
+    name: String,
+    rawHref: String,
+    baseUrl: String,
+    linkTemplate: String?,
+    origin: Element?,
+): WebSearchSubjectInfo {
+    val href = applyLinkTemplate(linkTemplate, rawHref)
+    return WebSearchSubjectInfo(
+        internalId = guessIdFromUrl(href),
+        name = name,
+        fullUrl = SelectorHelpers.computeAbsoluteUrl(baseUrl, href),
+        partialUrl = href,
+        origin = origin,
+    )
 }
 
 private fun guessIdFromUrl(href: String) =

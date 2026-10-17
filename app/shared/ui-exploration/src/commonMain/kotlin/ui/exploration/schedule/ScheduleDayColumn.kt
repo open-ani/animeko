@@ -46,6 +46,7 @@ import androidx.compose.ui.util.packInts
 import kotlinx.datetime.LocalTime
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
@@ -108,24 +109,27 @@ fun ScheduleDayColumn(
 
                     is AiringScheduleColumnItem.Data -> {
                         val item = columnItem.item
+                        val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
+                        val subjectTitle = if (useOriginalTitle) item.subjectOriginalTitle else item.subjectTitle
+                        val episodeName = if (useOriginalTitle) item.episodeOriginalName else item.episodeName
                         ScheduleItem(
                             onClick = { onClickItem(item) },
                             subjectTitle = {
                                 ScheduleItemDefaults.SubjectTitle(
-                                    item.subjectTitle,
+                                    subjectTitle,
                                 )
                             },
                             episode = {
                                 ScheduleItemDefaults.Episode(
                                     item.episodeSort,
                                     item.episodeEp,
-                                    item.episodeName,
+                                    episodeName,
                                 )
                             },
                             leadingImage = {
                                 AsyncImage(
                                     item.imageUrl,
-                                    "${item.subjectTitle} 封面",
+                                    "$subjectTitle 封面",
                                     Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop,
                                 )

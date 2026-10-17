@@ -38,25 +38,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
-import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import me.him188.ani.app.ui.lang.*
 import org.jetbrains.compose.resources.*
 
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun EmailLoginScreenLayout(
-    onBangumiLoginClick: () -> Unit,
+    onThirdPartyLoginClick: (OAuthPlatform) -> Unit,
     onNavigateSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
     title: @Composable () -> Unit = { Text(stringResource(Lang.login_sign_in)) },
-    showThirdPartyLogin: Boolean = true,
+    /**
+     * 显示在底部的第三方登录平台. 为空则不显示 "其他登录方式".
+     */
+    thirdPartyPlatforms: List<OAuthPlatform> = emptyList(),
     content: @Composable ColumnScope.(scrollState: ScrollState) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -79,7 +83,8 @@ internal fun EmailLoginScreenLayout(
     ) { contentPadding ->
         BoxWithConstraints {
             val availableHeight = maxHeight - contentPadding.calculateTopPadding() - contentPadding.calculateBottomPadding() - 48.dp
-            val thirdPartyLoginHeight = if (showThirdPartyLogin) 180.dp else 0.dp
+            // 分割线 56dp + 每个按钮 40dp 及间距, 再留一些余量
+            val thirdPartyLoginHeight = if (thirdPartyPlatforms.isEmpty()) 0.dp else 84.dp + 48.dp * thirdPartyPlatforms.size
             val contentAreaHeight = availableHeight - thirdPartyLoginHeight
             val scrollState = rememberScrollState()
             
@@ -104,12 +109,11 @@ internal fun EmailLoginScreenLayout(
                     content(scrollState)
                 }
 
-                if (showThirdPartyLogin) {
-                    ThirdPartyLoginMethods(
-                        onBangumiLoginClick,
-                        Modifier.heightIn(min = 180.dp).wrapContentHeight(align = Alignment.Top),
-                    )
-                }
+                ThirdPartyLoginMethods(
+                    thirdPartyPlatforms,
+                    onThirdPartyLoginClick,
+                    Modifier.heightIn(min = thirdPartyLoginHeight).wrapContentHeight(align = Alignment.Top),
+                )
             }
         }
     }

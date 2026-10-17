@@ -40,6 +40,7 @@ private data class Context(
     val isStrikethrough: Boolean = false,
     val isCode: Boolean = false,
     val isMask: Boolean = false,
+    val align: RichElement.Text.Align = RichElement.Text.DEFAULT_ALIGN,
     val jumpUrl: String? = null,
 )
 
@@ -86,6 +87,7 @@ private class ElementBuilder(
                 strikethrough = context.isStrikethrough,
                 mask = context.isMask,
                 code = context.isCode,
+                align = context.align,
                 jumpUrl = context.jumpUrl,
             ),
         )
@@ -185,6 +187,24 @@ private class AstToRichElementVisitor(
 
     override fun visitColor(ctx: BBCodeParser.ColorContext) {
         builder.withContext({ copy(color = ctx.value?.text) }) {
+            visitChildren(ctx)
+        }
+    }
+
+    override fun visitCenter(ctx: BBCodeParser.CenterContext) {
+        builder.withContext({ copy(align = RichElement.Text.Align.CENTER) }) {
+            visitChildren(ctx)
+        }
+    }
+
+    override fun visitLeft(ctx: BBCodeParser.LeftContext) {
+        builder.withContext({ copy(align = RichElement.Text.Align.LEFT) }) {
+            visitChildren(ctx)
+        }
+    }
+
+    override fun visitRight(ctx: BBCodeParser.RightContext) {
+        builder.withContext({ copy(align = RichElement.Text.Align.RIGHT) }) {
             visitChildren(ctx)
         }
     }

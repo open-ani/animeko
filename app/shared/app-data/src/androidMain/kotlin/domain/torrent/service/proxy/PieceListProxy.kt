@@ -20,6 +20,7 @@ import me.him188.ani.app.torrent.api.pieces.Piece
 import me.him188.ani.app.torrent.api.pieces.PieceList
 import me.him188.ani.app.torrent.api.pieces.PieceListSubscriptions
 import me.him188.ani.app.torrent.api.pieces.PieceSubscribable
+import me.him188.ani.app.torrent.api.pieces.containsAbsolutePieceIndex
 import me.him188.ani.app.torrent.api.pieces.forEach
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.logger
@@ -49,7 +50,26 @@ class PieceListProxy(
         pieceStateSubscriber = (delegate as PieceSubscribable)
             .subscribePieceState(Piece.Invalid) { piece, state ->
                 with(delegate) {
-                    pieceStatesRwBuf.put(piece.indexInList, state.ordinal.toByte())
+                    // **必须先判范围**: subscribePieceState(Piece.Invalid) 的语义是"订阅所有 piece",
+                    // 而订阅登记表是整个 torrent 共用的 —— 多文件种子(整季合集)里, 别的文件的 piece
+                    // 也会通知到这里. 那些 piece 的 indexInList (= pieceIndex - initialPieceIndex)
+                    // 会超出本 file 的 piece 数, put 直接抛
+                    //     IndexOutOfBoundsException: index=567 out of bounds (limit=324)
+                    //
+                    // 后果远不止"这一次镜像没写": 异常从 notifyPieceStateChanges 一路抛到
+                    // AnitorrentTorrentDownloader 的事件循环 (那里只记一行 "Error while handling event"),
+                    // **排在它后面的订阅者当次全部收不到通知** —— 包括 registerPieceStateObserver
+                    // 注册的那些, 也就是正在等 piece 完成的那一方.
+                    //
+                    // 于是: BT 确实在下载、piece 也在完成, 但 TorrentInput.fillBuffer 里的
+                    // awaitFinished 永远等不到; 而 mediamp 0.3.0 的 setMediaData 会挂起到媒体
+                    // 真正打开, 于是它不返回, 界面一直停在 DecodingData ("正在解析磁力链或查询元数据").
+                    //
+                    // 2026-08-11 真机: 23GB 整季 BDrip 合集, 这个异常每秒刷几十条. v1 时代
+                    // setMediaData 不挂起, 同一个 bug 只表现为"卡缓冲", 所以一直没被发现.
+                    if (containsAbsolutePieceIndex(piece.pieceIndex)) {
+                        pieceStatesRwBuf.put(piece.indexInList, state.ordinal.toByte())
+                    }
                 }
             }
     }

@@ -59,6 +59,12 @@ tasks.register("uploadAndroidApk", UploadAndroidApksTask::class) {
     apkDirectory.set(project(":app:android").layout.buildDirectory.dir("outputs/apk/default/release"))
 }
 
+tasks.register("uploadAndroidTvApk", UploadAndroidApksTask::class) {
+    configureReleaseUploadInputs()
+    apkDirectory.set(project(":app:android").layout.buildDirectory.dir("outputs/apk/tv/release"))
+    flavor.set("tv") // 资产命名 ani-tv-<ver>-<arch>.apk
+}
+
 val uploadAndroidApkGithubQr = tasks.register("uploadAndroidApkGithubQr", UploadReleaseAssetTask::class) {
     configureReleaseUploadInputs()
     artifactFile.set(rootProject.layout.projectDirectory.file("apk-qrcode-github.png"))
@@ -122,22 +128,62 @@ val zipDesktopDistribution = tasks.register("zipDesktopDistribution", Zip::class
     archiveExtension.set("zip")
 }
 
+// 清单生成和自动更新端到端测试都在 tools/desktop-update-e2e 里, 它不依赖 Gradle, CI 的 Verify job 以独立 jar 运行它.
+val desktopUpdateE2e: Configuration by configurations.creating
+dependencies {
+    desktopUpdateE2e(project(":tools:desktop-update-e2e"))
+}
+
+val desktopDistributionManifest: Provider<RegularFile> = zipDesktopDistribution.flatMap { zip ->
+    zip.destinationDirectory.file(zip.archiveFileName.map { it + DESKTOP_PACKAGE_MANIFEST_SUFFIX })
+}
+
+val generateDesktopDistributionManifest = tasks.register("generateDesktopDistributionManifest", JavaExec::class) {
+    // 参数 lambda 只能捕获局部变量: 引用脚本级属性会把整个脚本对象带进 configuration cache.
+    val packageFile = zipDesktopDistribution.flatMap { it.archiveFile }
+    val manifestFile = desktopDistributionManifest
+    inputs.file(packageFile)
+    outputs.file(manifestFile)
+    classpath = desktopUpdateE2e
+    mainClass.set("me.him188.ani.tools.updatee2e.MainKt")
+    argumentProviders.add {
+        listOf(
+            "generate-manifest",
+            packageFile.get().asFile.absolutePath,
+            manifestFile.get().asFile.absolutePath,
+        )
+    }
+}
+
+// CI 构建把 zip 发布包和清单作为两个不压缩的 artifact 上传, 供开发者设置的「安装 CI 构建」增量拼包.
+// 不压缩上传时 artifact 名就是文件名, 文件名由 workflow 通过 DEV_BUILD_PACKAGE_NAME 指定.
+tasks.register("prepareDevBuildDesktopPackage", Sync::class) {
+    val packageName = aniProperty("DEV_BUILD_PACKAGE_NAME")
+    from(zipDesktopDistribution) {
+        rename { packageName.get() }
+    }
+    from(generateDesktopDistributionManifest) {
+        rename { packageName.get() + DESKTOP_PACKAGE_MANIFEST_SUFFIX }
+    }
+    into(layout.buildDirectory.dir("dev-build-package"))
+}
+
 tasks.register("uploadDesktopInstallers", UploadDesktopInstallersTask::class) {
     configureReleaseUploadInputs()
+    fun uploadZipDistributionWithManifest() {
+        dependsOn(zipDesktopDistribution, generateDesktopDistributionManifest)
+        zipDistribution.set(zipDesktopDistribution.flatMap { it.archiveFile })
+        zipDistributionManifest.set(desktopDistributionManifest)
+    }
     when (currentReleaseHostOs()) {
-        ReleaseHostOs.WINDOWS -> {
-            dependsOn(zipDesktopDistribution)
-            zipDistribution.set(zipDesktopDistribution.flatMap { it.archiveFile })
-        }
+        ReleaseHostOs.WINDOWS -> uploadZipDistributionWithManifest()
 
         ReleaseHostOs.MACOS -> {
             if (currentReleaseHostArch() == "aarch64") {
                 dependsOn(":app:desktop:packageReleaseDistributionForCurrentOS")
                 binaryDirectory.set(project(":app:desktop").layout.buildDirectory.dir("compose/binaries/main-release"))
-            } else {
-                dependsOn(zipDesktopDistribution)
-                zipDistribution.set(zipDesktopDistribution.flatMap { it.archiveFile })
             }
+            uploadZipDistributionWithManifest()
         }
 
         ReleaseHostOs.LINUX -> {
@@ -178,6 +224,7 @@ tasks.register("prepareArtifactsForManualUpload") {
         ":app:desktop:createReleaseDistributable",
         ":app:desktop:packageReleaseDistributionForCurrentOS",
         zipDesktopDistribution,
+        generateDesktopDistributionManifest,
     )
 
     doLast {
@@ -235,13 +282,18 @@ tasks.register("prepareArtifactsForManualUpload") {
             )
         }
 
+        val zipName = ReleaseArtifactNames.desktopDistributionFile(
+            releaseVersion,
+            osName = currentReleaseHostOs().name.lowercase(),
+            extension = "zip",
+        )
         copyToDistribution(
-            name = ReleaseArtifactNames.desktopDistributionFile(
-                releaseVersion,
-                osName = currentReleaseHostOs().name.lowercase(),
-                extension = "zip",
-            ),
+            name = zipName,
             file = zipDesktopDistribution.get().archiveFile.get().asFile,
+        )
+        copyToDistribution(
+            name = ReleaseArtifactNames.desktopPackageManifest(zipName),
+            file = desktopDistributionManifest.get().asFile,
         )
     }
 }
@@ -271,13 +323,15 @@ tasks.register("updateDevVersionNameFromGit") {
 tasks.register("updateReleaseVersionNameFromGit") {
     doLast {
         val releaseVersion = ReleaseArtifactNames.fullVersionFromTag(ciTag.get())
-        val releaseVersionCode = ReleaseArtifactNames.versionCodeFromTag(ciTag.get())
+        val iosBundleVersion = ReleaseArtifactNames.iosBundleVersionFromTag(ciTag.get())
+        val packageVersion = releaseVersion.substringBefore("-")
         val propertiesText = gradleProperties.readText()
-        println("New version: $releaseVersion($releaseVersionCode)")
+        println("New version: $releaseVersion, iosBundleVersion=$iosBundleVersion, packageVersion=$packageVersion")
         gradleProperties.writeText(
             propertiesText
                 .replaceFirst(Regex("version.name=(.+)"), "version.name=$releaseVersion")
-                .replaceFirst(Regex("ios.version.code=(.+)"), "ios.version.code=$releaseVersionCode"),
+                .replaceFirst(Regex("ios.version.code=(.+)"), "ios.version.code=$iosBundleVersion")
+                .replaceFirst(Regex("package.version=(.+)"), "package.version=$packageVersion"),
             // 不要更新 version.code, 这是为了让更新到测试版出 bug 的人可以回退到旧版
         )
     }
