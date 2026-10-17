@@ -297,7 +297,7 @@ private fun EpisodeScreenContent(
     VideoNotifEffect(vm)
 
     // 将本地视频文件拖入窗口, 即在当前剧集播放该文件
-    WindowDropHandlerEffect(rememberEpisodeVideoDropHandler { vm.playDroppedFile(it) })
+    WindowDropHandlerEffect(rememberEpisodeVideoDropHandler { vm.playLocalFile(it) })
 
     DarkStatusBarAppearance()
 
@@ -695,6 +695,8 @@ private fun EpisodeScreenSidebar(
                                 page.loadError?.let { vm.retryLoad(it) }
                             },
                             danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
+                            // Android 竖屏下播放器工具栏的选源入口只在全屏时出现, 详情页的数据源卡片是主入口.
+                            onLocalFilePicked = if (LocalPlatform.current.isAndroid()) vm::playLocalFile else null,
                             onBeforeOpenMediaSelector = {
                                 if (vm.mediaSelectorMode == null && !page.isLoading) {
                                     vm.mediaSelectorMode = page.initialMediaSelectorMode
@@ -850,6 +852,7 @@ private fun EpisodeScreenPhoneDetails(
                     },
                     modifier = Modifier.fillMaxSize(),
                     danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
+                    onLocalFilePicked = if (LocalPlatform.current.isAndroid()) vm::playLocalFile else null,
                     onBeforeOpenMediaSelector = {
                         if (vm.mediaSelectorMode == null && !page.isLoading) {
                             vm.mediaSelectorMode = page.initialMediaSelectorMode
@@ -1285,6 +1288,10 @@ private fun EpisodeVideo(
                                     vm.fullscreenSelectorVisible = true
                                 }
                             }
+                            val pickLocalFile = rememberLocalVideoFilePicker { file ->
+                                vm.playLocalFile(file)
+                                goBack()
+                            }
                             EpisodeVideoSideSheets.MediaSelectorSheet(
                                 page.mediaSelectorState,
                                 page.mediaSourceResultListPresentation,
@@ -1292,6 +1299,7 @@ private fun EpisodeVideo(
                                 onModeChange = { vm.mediaSelectorMode = it },
                                 onDismissRequest = { goBack() },
                                 onRestartSource = { vm.restartSource(it) },
+                                onRequestLocalFile = pickLocalFile,
                                 watching = page.watchingEpisode,
                                 fetchRequest = page.fetchRequest,
                                 onFetchRequestChange = { vm.updateFetchRequest(it) },

@@ -23,33 +23,33 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class DroppedFileMediaTest {
+class LocalFileMediaTest {
     @Test
     fun `recognizes video files by extension ignoring case`() {
-        assertTrue(DroppedFileMedia.isVideoFile(Path("/videos/episode-01.mkv")))
-        assertTrue(DroppedFileMedia.isVideoFile(Path("/videos/EPISODE-01.MP4")))
-        assertFalse(DroppedFileMedia.isVideoFile(Path("/videos/episode-01.ass")))
-        assertFalse(DroppedFileMedia.isVideoFile(Path("/videos/mkv")))
-        assertFalse(DroppedFileMedia.isVideoFile(Path("/downloads/Ani-4.12.0.dmg")))
+        assertTrue(LocalFileMedia.isVideoFile(Path("/videos/episode-01.mkv")))
+        assertTrue(LocalFileMedia.isVideoFile(Path("/videos/EPISODE-01.MP4")))
+        assertFalse(LocalFileMedia.isVideoFile(Path("/videos/episode-01.ass")))
+        assertFalse(LocalFileMedia.isVideoFile(Path("/videos/mkv")))
+        assertFalse(LocalFileMedia.isVideoFile(Path("/downloads/Ani-4.12.0.dmg")))
     }
 
     @Test
-    fun `finds the first video file among dropped files`() {
+    fun `finds the first video file among the given files`() {
         val video = Path("/videos/episode-01.mkv")
         assertEquals(
             video.inSystem,
-            DroppedFileMedia.findVideoFile(listOf(Path("/videos/episode-01.ass"), video, Path("/videos/episode-02.mkv"))),
+            LocalFileMedia.findVideoFile(listOf(Path("/videos/episode-01.ass"), video, Path("/videos/episode-02.mkv"))),
         )
-        assertNull(DroppedFileMedia.findVideoFile(listOf(Path("/videos/episode-01.ass"))))
-        assertNull(DroppedFileMedia.findVideoFile(emptyList()))
+        assertNull(LocalFileMedia.findVideoFile(listOf(Path("/videos/episode-01.ass"))))
+        assertNull(LocalFileMedia.findVideoFile(emptyList()))
     }
 
     @Test
     fun `creates a local media that the local file resolver can play`() {
         val file = Path("/videos/episode-01.mkv").inSystem
-        val media = DroppedFileMedia.create(file)
+        val media = LocalFileMedia.create(file)
 
-        assertTrue(DroppedFileMedia.isDroppedFile(media))
+        assertTrue(LocalFileMedia.isLocalFile(media))
         assertEquals("episode-01.mkv", media.originalTitle)
         assertEquals(MediaSourceLocation.Local, media.location)
         val download = assertIs<ResourceLocation.LocalFile>(media.download)
@@ -61,15 +61,15 @@ class DroppedFileMediaTest {
     @Test
     fun `hints the player about MPEG-TS files`() {
         val download = assertIs<ResourceLocation.LocalFile>(
-            DroppedFileMedia.create(Path("/videos/episode-01.TS").inSystem).download,
+            LocalFileMedia.create(Path("/videos/episode-01.TS").inSystem).download,
         )
         assertEquals(ResourceLocation.LocalFile.FileType.MPTS, download.fileType)
     }
 
     @Test
     fun `different files are different media and the same file is the same media`() {
-        val first = DroppedFileMedia.create(Path("/videos/episode-01.mkv").inSystem)
-        assertEquals(first, DroppedFileMedia.create(Path("/videos/episode-01.mkv").inSystem))
-        assertNotEquals(first.mediaId, DroppedFileMedia.create(Path("/videos/episode-02.mkv").inSystem).mediaId)
+        val first = LocalFileMedia.create(Path("/videos/episode-01.mkv").inSystem)
+        assertEquals(first, LocalFileMedia.create(Path("/videos/episode-01.mkv").inSystem))
+        assertNotEquals(first.mediaId, LocalFileMedia.create(Path("/videos/episode-02.mkv").inSystem).mediaId)
     }
 }

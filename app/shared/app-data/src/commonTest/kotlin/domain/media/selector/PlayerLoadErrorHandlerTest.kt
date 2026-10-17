@@ -20,7 +20,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.io.files.Path
-import me.him188.ani.app.domain.media.DroppedFileMedia
+import me.him188.ani.app.domain.media.LocalFileMedia
 import me.him188.ani.app.domain.media.selector.testFramework.collectEvents
 import me.him188.ani.app.domain.media.selector.testFramework.runFetchMediaSelectorTestSuite
 import me.him188.ani.app.domain.media.selector.testFramework.runSimpleMediaSelectorTestSuite
@@ -90,7 +90,7 @@ class PlayerLoadErrorHandlerTest {
     }
 
     @Test
-    fun `拖入的本地文件播放失败不换源也不拉黑`() = runFetchMediaSelectorTestSuite {
+    fun `本地文件播放失败不换源也不拉黑`() = runFetchMediaSelectorTestSuite {
         initSubject("test")
         val (_, session, sources) = configureFetchSession {
             object {
@@ -101,8 +101,8 @@ class PlayerLoadErrorHandlerTest {
         sources.webA.complete(media(kind = WEB, subjectName = initApi.subjectName))
         testScope().runCurrent()
 
-        val dropped = DroppedFileMedia.create(Path("/videos/episode-01.mkv").inSystem)
-        selector.selectTemporarily(dropped)
+        val local = LocalFileMedia.create(Path("/videos/episode-01.mkv").inSystem)
+        selector.selectTemporarily(local)
 
         val handler = PlayerLoadErrorHandler(
             getPreferKind = { MediaSourceKind.WEB },
@@ -116,7 +116,7 @@ class PlayerLoadErrorHandlerTest {
         }
 
         collected.expectNoEvents()
-        assertEquals(dropped, selector.selected.value)
+        assertEquals(local, selector.selected.value)
         assertTrue(handler.blacklist.isEmpty())
     }
 

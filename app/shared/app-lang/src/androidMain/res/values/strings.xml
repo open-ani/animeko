@@ -1286,6 +1286,10 @@
     <string name="media_selector_retry">Retry</string>
     <string name="media_selector_load_failed">Failed to load</string>
     <string name="media_selector_auto_rescue">Can’t find it? Search manually</string>
+    <string name="media_selector_use_local_file">Use a local video file</string>
+    <string name="media_selector_select_local_file">Choose a local video file</string>
+    <string name="media_selector_local_file_importing">Importing local video file…</string>
+    <string name="media_selector_local_file_import_failed">Could not read the selected video file</string>
     <string name="media_selector_manual_no_sources">No browsable sources</string>
     <string name="media_selector_manual_captcha_unsupported">Web verification required, unsupported on this platform</string>
     <string name="media_selector_manual_result_count">%1$d results</string>

@@ -25,7 +25,7 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
-import me.him188.ani.app.domain.media.DroppedFileMedia
+import me.him188.ani.app.domain.media.LocalFileMedia
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.selector.MediaAutoSelector
 import me.him188.ani.app.domain.media.selector.MediaSelector
@@ -44,7 +44,7 @@ import org.openani.mediamp.PlayerState
 /**
  * 当播放失败时, 自动切换到下一个可选择的 media.
  *
- * 用户拖入的本地文件 ([DroppedFileMedia]) 播放失败时不切换, 保留报错.
+ * 用户指定的本地文件 ([LocalFileMedia]) 播放失败时不切换, 保留报错.
  */
 class SwitchMediaOnPlayerErrorExtension(
     private val context: PlayerExtensionContext,
@@ -166,9 +166,9 @@ internal class PlayerLoadErrorHandler(
         mediaSelector: MediaSelector,
     ) {
         val failedMedia = mediaSelector.selected.value
-        if (failedMedia != null && DroppedFileMedia.isDroppedFile(failedMedia)) {
-            // 用户拖入的本地文件: 用户明确要播放这个文件, 保留报错, 不替换为其他资源
-            logger.info { "Player errored on a dropped file, skip automatic switch" }
+        if (failedMedia != null && LocalFileMedia.isLocalFile(failedMedia)) {
+            // 本地文件: 用户明确要播放这个文件, 保留报错, 不替换为其他资源
+            logger.info { "Player errored on a local file, skip automatic switch" }
             return
         }
 

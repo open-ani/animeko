@@ -39,6 +39,7 @@ import me.him188.ani.utils.platform.isMobile
  *
  * @param onClickItem 用户点了线路 chip (channel.original); 宿主负责 select + 关闭容器.
  * @param onRequestManualSearch 点了「找不到想看的？手动查找」; null 时不显示按钮 (宿主没有手动查找).
+ * @param onRequestLocalFile 点了「使用本地视频文件」; null 时不显示按钮 (宿主没有文件选择器).
  * @param scrollable 为 true 时整页 verticalScroll (列表本身是 Column, 不是 LazyColumn).
  */
 @Composable
@@ -47,6 +48,7 @@ fun AutoMatchPage(
     onClickItem: (Media) -> Unit,
     onRestartSource: (instanceId: String) -> Unit,
     onRequestManualSearch: (() -> Unit)?,
+    onRequestLocalFile: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     scrollable: Boolean = true,
 ) {
@@ -70,6 +72,7 @@ fun AutoMatchPage(
             }
         },
         onRequestManualSearch = onRequestManualSearch,
+        onRequestLocalFile = onRequestLocalFile,
         modifier
             .testTag(AutoMatchPageTestTags.ROOT)
             .padding(bottom = bottomPadding)
@@ -81,6 +84,7 @@ fun AutoMatchPage(
 object AutoMatchPageTestTags {
     const val ROOT = "auto_match_page"
     const val RESCUE_BUTTON = "auto_match_rescue_button"
+    const val LOCAL_FILE_BUTTON = "auto_match_local_file_button"
 }
 
 @OptIn(TestOnly::class)
