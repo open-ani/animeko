@@ -22,14 +22,13 @@ import me.him188.ani.app.domain.media.LocalFileMedia
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_select_local_file
-import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.inSystem
 import org.jetbrains.compose.resources.stringResource
 import java.io.File
 
 @Composable
 actual fun rememberLocalVideoFilePicker(
-    onPicked: (SystemPath) -> Unit,
+    onPicked: (LocalVideoFile) -> Unit,
     initialDirectory: String?,
 ): (() -> Unit)? {
     val onPickedUpdated by rememberUpdatedState(onPicked)
@@ -45,7 +44,7 @@ actual fun rememberLocalVideoFilePicker(
             parentWindow = LocalPlatformWindow.current.windowScope?.window,
         ),
     ) { file ->
-        file?.let { onPickedUpdated(Path(it.absolutePath()).inSystem) }
+        file?.let { onPickedUpdated(LocalVideoFile.File(Path(it.absolutePath()).inSystem)) }
     }
     return launcher::launch
 }

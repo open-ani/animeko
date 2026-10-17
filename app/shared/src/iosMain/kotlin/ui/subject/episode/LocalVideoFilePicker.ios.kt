@@ -10,13 +10,12 @@
 package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.runtime.Composable
-import me.him188.ani.utils.io.SystemPath
 
 /**
  * iOS 暂未提供本地视频文件选择器.
  */
 @Composable
 actual fun rememberLocalVideoFilePicker(
-    onPicked: (SystemPath) -> Unit,
+    onPicked: (LocalVideoFile) -> Unit,
     initialDirectory: String?,
 ): (() -> Unit)? = null

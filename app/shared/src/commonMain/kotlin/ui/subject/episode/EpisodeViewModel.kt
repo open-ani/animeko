@@ -1327,7 +1327,7 @@ open class EpisodeViewModel(
      * 只对当前剧集的本次播放有效: 不更新数据源偏好, 之后仍可在数据源选择器中换回其他资源;
      * 切换剧集或重新进入播放页后照常自动选择数据源. 若剧集信息加载完成前切换了剧集, 则放弃播放.
      */
-    fun playLocalFile(file: SystemPath) {
+    fun playLocalVideoFile(file: LocalVideoFile) {
         launchInBackground {
             val session = fetchPlayState.episodeSessionFlow.value
             val mediaSelector = fetchPlayState.episodeSessionFlow
@@ -1337,9 +1337,20 @@ open class EpisodeViewModel(
                 }
                 .first()
                 ?: return@launchInBackground
-            logger.info { "Playing local file: $file" }
-            mediaSelector.selectTemporarily(LocalFileMedia.create(file), SelectTrigger.DROPPED_FILE)
+            val media = when (file) {
+                is LocalVideoFile.File -> LocalFileMedia.create(file.path)
+                is LocalVideoFile.Document -> LocalFileMedia.createFromContentUri(file.uri, file.displayName)
+            }
+            logger.info { "Playing local video: ${media.originalUrl}" }
+            mediaSelector.selectTemporarily(media, SelectTrigger.DROPPED_FILE)
         }
+    }
+
+    /**
+     * 播放拖入窗口或桌面端文件选择器选中的本地文件.
+     */
+    fun playLocalFile(file: SystemPath) {
+        playLocalVideoFile(LocalVideoFile.File(file))
     }
 
     /**

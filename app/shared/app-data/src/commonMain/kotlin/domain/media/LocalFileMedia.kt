@@ -59,16 +59,63 @@ object LocalFileMedia {
 
     fun create(file: SystemPath): Media {
         val absolutePath = file.absolutePath
-        return DefaultMedia(
+        return createMedia(
             mediaId = "$MEDIA_SOURCE_ID:$absolutePath",
-            mediaSourceId = MEDIA_SOURCE_ID,
             originalUrl = "file://$absolutePath",
             download = ResourceLocation.LocalFile(
                 absolutePath,
                 fileType = ResourceLocation.LocalFile.FileType.MPTS
                     .takeIf { file.extension.lowercase() in MPEG_TS_EXTENSIONS },
             ),
-            originalTitle = file.name,
+            title = file.name,
+            size = runCatching { file.length() }.getOrNull()?.takeIf { it > 0 }?.bytes ?: FileSize.Unspecified,
+        )
+    }
+
+    /**
+     * 创建 Android SAF 文档 URI (`content://`) 对应的 [Media].
+     *
+     * 文件由播放器通过 ContentResolver 直接读取, [uri] 存入
+     * [ResourceLocation.LocalFile.filePath], 同时标记在 [ResourceLocation.LocalFile.originalUri] 中,
+     * 由 `LocalFileMediaResolver` 选择 URI 数据源而不是文件路径数据源.
+     */
+    fun createFromContentUri(uri: String, displayName: String? = null): Media {
+        val title = contentUriTitle(uri, displayName)
+        return createMedia(
+            mediaId = "$MEDIA_SOURCE_ID:$uri",
+            originalUrl = uri,
+            download = ResourceLocation.LocalFile(
+                uri,
+                fileType = ResourceLocation.LocalFile.FileType.MPTS
+                    .takeIf { title.substringAfterLast('.', "").lowercase() in MPEG_TS_EXTENSIONS },
+                originalUri = uri,
+            ),
+            title = title,
+            size = FileSize.Unspecified,
+        )
+    }
+
+    private fun contentUriTitle(uri: String, displayName: String?): String {
+        return displayName
+            ?.substringAfterLast('/')
+            ?.substringAfterLast('\\')
+            ?.takeIf { it.isNotBlank() && it != "." && it != ".." }
+            ?: uri.substringBefore('#').substringBefore('?').substringAfterLast('/').ifBlank { "video" }
+    }
+
+    private fun createMedia(
+        mediaId: String,
+        originalUrl: String,
+        download: ResourceLocation.LocalFile,
+        title: String,
+        size: FileSize,
+    ): Media {
+        return DefaultMedia(
+            mediaId = mediaId,
+            mediaSourceId = MEDIA_SOURCE_ID,
+            originalUrl = originalUrl,
+            download = download,
+            originalTitle = title,
             publishedTime = 0,
             properties = MediaProperties(
                 subjectName = null,
@@ -76,7 +123,7 @@ object LocalFileMedia {
                 subtitleLanguageIds = emptyList(),
                 resolution = "",
                 alliance = "",
-                size = runCatching { file.length() }.getOrNull()?.takeIf { it > 0 }?.bytes ?: FileSize.Unspecified,
+                size = size,
                 subtitleKind = null,
             ),
             episodeRange = null,

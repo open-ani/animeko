@@ -9,8 +9,12 @@
 
 package me.him188.ani.app.domain.media
 
+import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
+import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
+import me.him188.ani.app.domain.media.resolver.LocalFileUriMediaDataProvider
+import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.io.absolutePath
@@ -71,5 +75,26 @@ class LocalFileMediaTest {
         val first = LocalFileMedia.create(Path("/videos/episode-01.mkv").inSystem)
         assertEquals(first, LocalFileMedia.create(Path("/videos/episode-01.mkv").inSystem))
         assertNotEquals(first.mediaId, LocalFileMedia.create(Path("/videos/episode-02.mkv").inSystem).mediaId)
+    }
+
+    @Test
+    fun `content uri media is resolved as uri media data`() = runTest {
+        val uri = "content://com.android.providers.media.documents/document/video%3A1"
+        val media = LocalFileMedia.createFromContentUri(uri, "episode-01.mkv")
+
+        assertTrue(LocalFileMedia.isLocalFile(media))
+        assertEquals("episode-01.mkv", media.originalTitle)
+        assertEquals(MediaSourceLocation.Local, media.location)
+        val download = assertIs<ResourceLocation.LocalFile>(media.download)
+        assertEquals(uri, download.filePath)
+        assertEquals(uri, download.originalUri)
+        assertNull(download.fileType)
+
+        val provider = LocalFileMediaResolver().resolve(
+            media,
+            EpisodeMetadata(title = "episode", ep = null, sort = EpisodeSort(1)),
+        )
+        val uriProvider = assertIs<LocalFileUriMediaDataProvider>(provider)
+        assertEquals(uri, uriProvider.uri)
     }
 }
