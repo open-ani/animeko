@@ -9,6 +9,12 @@
 
 package me.him188.ani.app.domain.comment
 
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
 import me.him188.ani.app.data.models.person.PersonCommentTarget
@@ -147,6 +153,93 @@ class PostCommentUseCaseTest {
         assertIs<CommentSendResult.NetworkError>(result)
     }
 
+    @Test
+    fun `invalid image error code is reported`() = runTest {
+        val sender = PostCommentUseCaseImpl(
+            episodeServiceResponding(HttpStatusCode.UnprocessableEntity, "HTTP 422: COMMENT_IMAGE_INVALID"),
+            createPersonCommentService(),
+            context = coroutineContext,
+        )
+
+        assertIs<CommentSendResult.InvalidImage>(sender(CommentContext.Episode(1, 2L), COMMENT_CONTENT))
+        assertIs<CommentSendResult.InvalidImage>(
+            sender(CommentContext.EpisodeReply(1, 2L, "reply-target"), COMMENT_CONTENT),
+        )
+    }
+
+    @Test
+    fun `too many images error code is reported`() = runTest {
+        val sender = PostCommentUseCaseImpl(
+            episodeServiceResponding(HttpStatusCode.UnprocessableEntity, "HTTP 422: COMMENT_IMAGE_TOO_MANY"),
+            createPersonCommentService(),
+            context = coroutineContext,
+        )
+
+        assertIs<CommentSendResult.TooManyImages>(sender(CommentContext.Episode(1, 2L), COMMENT_CONTENT))
+    }
+
+    @Test
+    fun `person comment image error codes are reported`() = runTest {
+        var body = "HTTP 422: COMMENT_IMAGE_INVALID"
+        val personsApi = PersonsAniApi(
+            "http://test",
+            textEngine(HttpStatusCode.UnprocessableEntity) { body },
+            EXPECT_SUCCESS,
+        )
+        val sender = PostCommentUseCaseImpl(
+            createCommentService(),
+            AniPersonCommentService(apiInvoker(personsApi), UnusedCharactersApi, ioDispatcher = coroutineContext),
+            context = coroutineContext,
+        )
+
+        assertIs<CommentSendResult.InvalidImage>(
+            sender(CommentContext.PersonComment(PersonCommentTarget.Person(7)), COMMENT_CONTENT),
+        )
+        body = "HTTP 422: COMMENT_IMAGE_TOO_MANY"
+        assertIs<CommentSendResult.TooManyImages>(
+            sender(CommentContext.PersonCommentReply(PersonCommentTarget.Person(7), "reply-target"), COMMENT_CONTENT),
+        )
+    }
+
+    @Test
+    fun `client errors without image error code keep their mapping`() = runTest {
+        suspend fun send(status: HttpStatusCode, body: String): CommentSendResult =
+            PostCommentUseCaseImpl(
+                episodeServiceResponding(status, body),
+                createPersonCommentService(),
+                context = coroutineContext,
+            ).invoke(CommentContext.Episode(1, 2L), COMMENT_CONTENT)
+
+        assertIs<CommentSendResult.UnknownError>(send(HttpStatusCode.UnprocessableEntity, "HTTP 422: Something else"))
+        assertIs<CommentSendResult.UnknownError>(send(HttpStatusCode.UnprocessableEntity, ""))
+        assertIs<CommentSendResult.UnknownError>(send(HttpStatusCode.BadRequest, "HTTP 400: COMMENT_IMAGE_INVALID"))
+        assertIs<CommentSendResult.UnknownError>(
+            send(HttpStatusCode.BadRequest, "HTTP 400: Comment content cannot be empty"),
+        )
+        assertIs<CommentSendResult.NetworkError>(
+            send(HttpStatusCode.TooManyRequests, "Too Many Requests: comment limited to once per 30 seconds"),
+        )
+        assertIs<CommentSendResult.NetworkError>(send(HttpStatusCode.InternalServerError, "oops"))
+    }
+
+    /**
+     * 真实的 [AniEpisodeCommentService], 所有请求都以纯文本 [body] 和 [status] 响应.
+     */
+    private fun TestScope.episodeServiceResponding(status: HttpStatusCode, body: String): AniEpisodeCommentService {
+        return AniEpisodeCommentService(
+            apiInvoker(EpisodesAniApi("http://test", textEngine(status) { body }, EXPECT_SUCCESS)),
+            ioDispatcher = coroutineContext,
+        )
+    }
+
+    private fun textEngine(status: HttpStatusCode, body: () -> String) = MockEngine {
+        respond(body(), status, headersOf("Content-Type", "text/plain"))
+    }
+
+    private fun <Api> apiInvoker(api: Api): ApiInvoker<Api> = object : ApiInvoker<Api> {
+        override suspend fun <R> invoke(action: suspend Api.() -> R): R = action(api)
+    }
+
     private fun createPersonCommentService(
         onCreateComment: suspend (target: PersonCommentTarget, content: String) -> Unit = { _, _ -> },
         onCreateReply: suspend (target: PersonCommentTarget, commentId: String, content: String) -> Unit = { _, _, _ -> },
@@ -179,6 +272,11 @@ class PostCommentUseCaseTest {
 
     private companion object {
         private const val COMMENT_CONTENT = "小祈好可爱我要死了(bgm38)"
+
+        /**
+         * 与生产的 HttpClient 一致: 4xx/5xx 抛出 ClientRequestException / ServerResponseException, 由服务包装成 RepositoryException.
+         */
+        private val EXPECT_SUCCESS: (HttpClientConfig<*>) -> Unit = { it.expectSuccess = true }
     }
 }
 

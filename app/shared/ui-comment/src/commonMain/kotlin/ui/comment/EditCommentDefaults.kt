@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -11,60 +11,60 @@ package me.him188.ani.app.ui.comment
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.OutputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
-import androidx.compose.material.icons.outlined.FormatBold
-import androidx.compose.material.icons.outlined.FormatItalic
-import androidx.compose.material.icons.outlined.FormatStrikethrough
-import androidx.compose.material.icons.outlined.FormatUnderlined
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.Link
-import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.SentimentSatisfied
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,19 +75,12 @@ import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.theme.looming
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_add_emoji
-import me.him188.ani.app.ui.lang.comment_bold
 import me.him188.ani.app.ui.lang.comment_edit
-import me.him188.ani.app.ui.lang.comment_image
-import me.him188.ani.app.ui.lang.comment_italic
-import me.him188.ani.app.ui.lang.comment_link
-import me.him188.ani.app.ui.lang.comment_mask
-import me.him188.ani.app.ui.lang.comment_more_editor_actions
 import me.him188.ani.app.ui.lang.comment_preview
 import me.him188.ani.app.ui.lang.comment_rendering
 import me.him188.ani.app.ui.lang.comment_send
 import me.him188.ani.app.ui.lang.comment_send_comment
-import me.him188.ani.app.ui.lang.comment_strikethrough
-import me.him188.ani.app.ui.lang.comment_underline
+import me.him188.ani.app.ui.lang.comment_upload_image
 import me.him188.ani.app.ui.richtext.RichText
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -118,13 +111,28 @@ object EditCommentDefaults {
         Text(text = stringResource(Lang.comment_send_comment), modifier, softWrap = false)
     }
 
+    /**
+     * 评论编辑框, 外观与 Material3 `OutlinedTextField` 相同.
+     *
+     * 用 [BasicTextField] 加 [OutlinedTextFieldDefaults.decorator] 组合而不是直接使用 `OutlinedTextField`, 是为了在内部文字区域上加
+     * [textAreaModifier]: 选区工具栏要知道文字区域的位置, 才能把 [onTextLayout] 给出的坐标换算到编辑框外; 图片标签的背景也画在这里.
+     *
+     * @param lineLimits 收起时为最多 3 行的 [TextFieldLineLimits.MultiLine], 展开时不限行数并由 [modifier] 填满高度.
+     * @param onTextLayout 见 [BasicTextField]. 布局结果的坐标以文字区域左上角为原点, 显示时再向上偏移 [scrollState] 的值.
+     * 有 [outputTransformation] 时布局的是转换后显示的文字.
+     * @param textAreaModifier 用于内部文字区域 (可滚动的视口) 的 [Modifier], 在其中绘制的内容位于文字下方.
+     */
     @Composable
     fun CommentTextField(
-        value: TextFieldValue,
-        onValueChange: (TextFieldValue) -> Unit,
-        enabled: Boolean = true,
-        maxLines: Int = Int.MAX_VALUE,
+        state: TextFieldState,
         modifier: Modifier = Modifier,
+        enabled: Boolean = true,
+        lineLimits: TextFieldLineLimits = TextFieldLineLimits.MultiLine(),
+        inputTransformation: InputTransformation? = null,
+        outputTransformation: OutputTransformation? = null,
+        onTextLayout: (Density.(getResult: () -> TextLayoutResult?) -> Unit)? = null,
+        textAreaModifier: Modifier = Modifier,
+        scrollState: ScrollState = rememberScrollState(),
         shape: Shape = MaterialTheme.shapes.medium,
         interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
         colors: TextFieldColors = OutlinedTextFieldDefaults.colors(
@@ -138,21 +146,55 @@ object EditCommentDefaults {
         ),
         placeholder: @Composable (() -> Unit)? = null
     ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = modifier,
-            textStyle = MaterialTheme.typography.bodyMedium.merge(
-                fontSize = 15.5.sp,
-                color = LocalContentColor.current.looming(),
-            ),
-            shape = shape,
+        val decorator = OutlinedTextFieldDefaults.decorator(
+            state = state,
             enabled = enabled,
-            maxLines = maxLines,
+            lineLimits = lineLimits,
+            outputTransformation = outputTransformation,
+            interactionSource = interactionSource,
             placeholder = placeholder,
             colors = colors,
-            interactionSource = interactionSource,
+            container = {
+                OutlinedTextFieldDefaults.Container(
+                    enabled = enabled,
+                    isError = false,
+                    interactionSource = interactionSource,
+                    colors = colors,
+                    shape = shape,
+                )
+            },
         )
+        CompositionLocalProvider(LocalTextSelectionColors provides colors.textSelectionColors) {
+            BasicTextField(
+                state = state,
+                modifier = modifier.defaultMinSize(
+                    minWidth = OutlinedTextFieldDefaults.MinWidth,
+                    minHeight = OutlinedTextFieldDefaults.MinHeight,
+                ),
+                enabled = enabled,
+                inputTransformation = inputTransformation,
+                outputTransformation = outputTransformation,
+                textStyle = MaterialTheme.typography.bodyMedium.merge(
+                    fontSize = 15.5.sp,
+                    color = LocalContentColor.current.looming(),
+                ),
+                lineLimits = lineLimits,
+                onTextLayout = onTextLayout,
+                interactionSource = interactionSource,
+                cursorBrush = SolidColor(colors.cursorColor),
+                scrollState = scrollState,
+                decorator = { innerTextField ->
+                    decorator.Decoration {
+                        Box(
+                            modifier = textAreaModifier,
+                            propagateMinConstraints = true,
+                        ) {
+                            innerTextField()
+                        }
+                    }
+                },
+            )
+        }
     }
 
     @Composable
@@ -195,62 +237,46 @@ object EditCommentDefaults {
         contentDescription: String? = null,
         enabled: Boolean = true,
         iconSize: Dp = 22.dp,
-        hasIndication: Boolean = true
     ) {
-        val icon = @Composable {
+        IconButton(
+            modifier = modifier,
+            enabled = enabled,
+            onClick = onClick,
+        ) {
             Icon(
                 imageVector = imageVector,
                 contentDescription = contentDescription,
                 modifier = Modifier.size(iconSize),
             )
         }
-        if (hasIndication) IconButton(
-            modifier = modifier,
-            enabled = enabled,
-            onClick = onClick,
-            content = icon,
-        ) else IconButton(
-            modifier = modifier,
-            enabled = enabled,
-            onClick = onClick,
-            content = icon,
-            indication = null,
-        )
     }
 
+    /**
+     * 编辑框下方的操作行: 表情、上传图片, 以及靠右的预览和发送. 宽度不够时换行, 预览和发送始终靠右.
+     *
+     * 加粗等格式操作在选中文字后由 [CommentFormattingToolbar] 提供. 上传中的图片在编辑框下方的 [CommentImageStrip] 中显示进度,
+     * 上传期间仍可以继续添加图片.
+     *
+     * @param uploadingImage 正在上传图片. 上传期间不能发送.
+     */
     @Composable
     fun ActionRow(
-        sendTarget: 
-        CommentContext?,
-        onClickBold: () -> Unit,
-        onClickItalic: () -> Unit,
-        onClickUnderlined: () -> Unit,
-        onClickStrikethrough: () -> Unit,
-        onClickMask: () -> Unit,
-        onClickImage: () -> Unit,
-        onClickUrl: () -> Unit,
+        sendTarget: CommentContext?,
         onClickEmoji: () -> Unit,
+        onClickUploadImage: () -> Unit,
         onSend: () -> Unit,
         onPreview: () -> Unit,
         modifier: Modifier = Modifier,
         previewing: Boolean = false,
         sending: Boolean = false,
+        uploadingImage: Boolean = false,
     ) {
         // maybe we can extract the layout
         val size = ActionButtonSize.dp
-        var actionRowExpanded by rememberSaveable { mutableStateOf(false) }
-        val expandableActionWidth by animateDpAsState(if (actionRowExpanded) size else 0.dp)
 
         val actionEnabled by derivedStateOf { !sending && !previewing }
         val addEmojiText = stringResource(Lang.comment_add_emoji)
-        val boldText = stringResource(Lang.comment_bold)
-        val italicText = stringResource(Lang.comment_italic)
-        val underlineText = stringResource(Lang.comment_underline)
-        val strikethroughText = stringResource(Lang.comment_strikethrough)
-        val maskText = stringResource(Lang.comment_mask)
-        val imageText = stringResource(Lang.comment_image)
-        val linkText = stringResource(Lang.comment_link)
-        val moreEditorActionsText = stringResource(Lang.comment_more_editor_actions)
+        val uploadImageText = stringResource(Lang.comment_upload_image)
         val editText = stringResource(Lang.comment_edit)
         val previewText = stringResource(Lang.comment_preview)
         val sendText = stringResource(Lang.comment_send)
@@ -337,67 +363,12 @@ object EditCommentDefaults {
                     modifier = Modifier.size(size),
                     enabled = actionEnabled,
                 )
-                if (actionRowExpanded) {
-                    ActionButton(
-                        imageVector = Icons.Outlined.FormatBold,
-                        contentDescription = boldText,
-                        onClick = onClickBold,
-                        modifier = Modifier.size(height = size, width = expandableActionWidth),
-                        enabled = actionEnabled,
-                    )
-                    ActionButton(
-                        imageVector = Icons.Outlined.FormatItalic,
-                        contentDescription = italicText,
-                        onClick = onClickItalic,
-                        modifier = Modifier.size(height = size, width = expandableActionWidth),
-                        enabled = actionEnabled,
-                    )
-                    ActionButton(
-                        imageVector = Icons.Outlined.FormatUnderlined,
-                        contentDescription = underlineText,
-                        onClick = onClickUnderlined,
-                        modifier = Modifier.size(height = size, width = expandableActionWidth),
-                        enabled = actionEnabled,
-                    )
-                    ActionButton(
-                        imageVector = Icons.Outlined.FormatStrikethrough,
-                        contentDescription = strikethroughText,
-                        onClick = onClickStrikethrough,
-                        modifier = Modifier.size(height = size, width = expandableActionWidth),
-                        enabled = actionEnabled,
-                    )
-                }
                 ActionButton(
-                    imageVector = Icons.Outlined.VisibilityOff,
-                    contentDescription = maskText,
-                    onClick = onClickMask,
+                    imageVector = Icons.Outlined.AddPhotoAlternate,
+                    contentDescription = uploadImageText,
+                    onClick = onClickUploadImage,
                     modifier = Modifier.size(size),
                     enabled = actionEnabled,
-                )
-                ActionButton(
-                    imageVector = Icons.Outlined.Image,
-                    contentDescription = imageText,
-                    onClick = onClickImage,
-                    modifier = Modifier.size(size),
-                    enabled = actionEnabled,
-                )
-                if (actionRowExpanded) {
-                    ActionButton(
-                        imageVector = Icons.Outlined.Link,
-                        contentDescription = linkText,
-                        onClick = onClickUrl,
-                        modifier = Modifier.size(height = size, width = expandableActionWidth),
-                        enabled = actionEnabled,
-                    )
-                }
-                // 最后一个按钮不要有 ripple effect，因为有动画，看起来比较奇怪
-                ActionButton(
-                    imageVector = Icons.Outlined.MoreHoriz,
-                    contentDescription = moreEditorActionsText,
-                    enabled = true,
-                    onClick = { actionRowExpanded = true },
-                    modifier = Modifier.size(height = size, width = size - expandableActionWidth),
-                    hasIndication = false,
                 )
 
                 Row(modifier = Modifier.layoutId(ActionRowPrimaryAction)) {
@@ -409,7 +380,7 @@ object EditCommentDefaults {
                     }
                     OutlinedButton(
                         onClick = onSend,
-                        enabled = !sending && sendTarget != null,
+                        enabled = !sending && !uploadingImage && sendTarget != null,
                         modifier = Modifier.padding(start = 8.dp).animateContentSize(),
                     ) {
                         Crossfade(targetState = sending) {
