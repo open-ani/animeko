@@ -85,7 +85,8 @@ class SearchPageSearchBarTest {
         waitForIdle()
     }
 
-    private fun AniComposeUiTest.candidate(text: String) = onNode(hasText(text) and !hasSetTextAction())
+    private fun AniComposeUiTest.candidate(text: String) =
+        onNode(hasText(text) and !hasSetTextAction(), useUnmergedTree = true)
 
     @Test
     fun `placeholder describes keyword id and url input`() = runAniComposeUiTest {
@@ -116,9 +117,14 @@ class SearchPageSearchBarTest {
         showSearchBar(fixture)
         enterQuery(url)
         candidate(ordinaryCandidates.first()).assertIsDisplayed()
-        onNodeWithText(candidates.first()).assertDoesNotExist()
+        onNodeWithText(candidates.first(), useUnmergedTree = true).assertDoesNotExist()
         onNodeWithTag("search-suggestions").performScrollToIndex(ordinaryCandidates.lastIndex)
         runOnIdle { resolved.complete(Unit) }
+        waitForIdle()
+        waitUntil(timeoutMillis = 5_000) {
+            onAllNodes(hasText(candidates.first()) and !hasSetTextAction(), useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         waitForIdle()
         val tops = candidates.map {
             candidate(it).assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
@@ -228,6 +234,11 @@ class SearchPageSearchBarTest {
         mainClock.advanceTimeBy(400)
         mainClock.autoAdvance = true
         waitForIdle()
+        waitUntil(timeoutMillis = 5_000) {
+            onAllNodes(hasText("最新候选") and !hasSetTextAction(), useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        waitForIdle()
 
         candidate("最新候选").assertIsDisplayed()
         runOnIdle {
@@ -235,8 +246,8 @@ class SearchPageSearchBarTest {
             oldResponse.complete(Unit)
         }
         waitForIdle()
-        onNodeWithText("过期候选").assertDoesNotExist()
-        onNodeWithText("普通候选").assertDoesNotExist()
+        onNodeWithText("过期候选", useUnmergedTree = true).assertDoesNotExist()
+        onNodeWithText("普通候选", useUnmergedTree = true).assertDoesNotExist()
         candidate("最新候选").assertIsDisplayed()
     }
 
