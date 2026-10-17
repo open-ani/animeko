@@ -10,24 +10,20 @@
 package me.him188.ani.app.videoplayer.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.cValue
+import me.him188.ani.app.platform.SwiftBridge
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.avkit.AVKitMediampPlayer
-import org.openani.mediamp.avkit.PlayerUIView
 import org.openani.mediamp.features.AspectRatioMode
 import org.openani.mediamp.features.VideoAspectRatio
-import platform.AVFoundation.AVLayerVideoGravityResize
-import platform.AVFoundation.AVLayerVideoGravityResizeAspect
-import platform.AVFoundation.AVLayerVideoGravityResizeAspectFill
 import platform.AVFoundation.AVPlayerLayer
-import platform.CoreGraphics.CGRect
-import platform.UIKit.UIColor
 
 /**
  * Displays a video player itself. There is no control bar or any other UI elements.
@@ -44,34 +40,37 @@ actual fun VideoPlayer(
     check(player is AVKitMediampPlayer) { "MediampPlayer in iOS must be AVKitMediampPlayer, but got $player" }
 
     val avPlayer = player.impl
-    val aspectRatioMode by produceState(AspectRatioMode.FIT) {
+    val enhancementMode by IosVideoLayerRegistry.enhancementMode(player).collectAsState()
+    val aspectRatioMode by produceState(AspectRatioMode.FIT, player) {
         val feature = player.features[VideoAspectRatio.Key] ?: return@produceState
         feature.mode.collect { value = it }
     }
 
-    UIKitView(
-        factory = {
-            val view = PlayerUIView(frame = cValue<CGRect>())
-            view.backgroundColor = UIColor.blackColor
-            view.player = avPlayer
-            IosVideoLayerRegistry.register(
-                player,
-                checkNotNull(view.layer as AVPlayerLayer) { "PlayerUIView.layer must be AVPlayerLayer" },
-            )
-            view
-        },
-        modifier = modifier,
-        update = { view ->
-            view.player = avPlayer
-            view.videoGravity = when (aspectRatioMode) {
-                AspectRatioMode.FIT -> AVLayerVideoGravityResizeAspect
-                AspectRatioMode.STRETCH -> AVLayerVideoGravityResize
-                AspectRatioMode.CROP -> AVLayerVideoGravityResizeAspectFill
-            }
-        },
-        onRelease = { view ->
-            IosVideoLayerRegistry.unregister(player)
-            view.player = null
-        },
-    )
+    key(player) {
+        UIKitView(
+            factory = {
+                val view = SwiftBridge.createEnhancedPlayerView(avPlayer) {
+                    IosVideoLayerRegistry.enhancementFailures(player).tryEmit(Unit)
+                }
+                IosVideoLayerRegistry.register(player, view.layer as AVPlayerLayer)
+                view
+            },
+            modifier = modifier,
+            update = { view ->
+                SwiftBridge.updateEnhancedPlayerView(
+                    view,
+                    enhancementMode.ordinal,
+                    when (aspectRatioMode) {
+                        AspectRatioMode.FIT -> 0
+                        AspectRatioMode.STRETCH -> 1
+                        AspectRatioMode.CROP -> 2
+                    },
+                )
+            },
+            onRelease = { view ->
+                IosVideoLayerRegistry.unregister(player)
+                SwiftBridge.releaseEnhancedPlayerView(view)
+            },
+        )
+    }
 }
