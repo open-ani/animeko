@@ -699,6 +699,7 @@ private fun EpisodeScreenSidebar(
                                 page.loadError?.let { vm.retryLoad(it) }
                             },
                             danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
+                            localVideoLibraryDirectory = vm.localVideoLibraryDirectory.collectAsStateWithLifecycle(null).value,
                             // Android 竖屏下播放器工具栏的选源入口只在全屏时出现, 详情页的数据源卡片是主入口.
                             onLocalFilePicked = if (LocalPlatform.current.isAndroid()) vm::playLocalFile else null,
                             onBeforeOpenMediaSelector = {
@@ -859,6 +860,7 @@ private fun EpisodeScreenPhoneDetails(
                     },
                     modifier = Modifier.fillMaxSize(),
                     danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
+                    localVideoLibraryDirectory = vm.localVideoLibraryDirectory.collectAsStateWithLifecycle(null).value,
                     onLocalFilePicked = if (LocalPlatform.current.isAndroid()) vm::playLocalFile else null,
                     onBeforeOpenMediaSelector = {
                         if (vm.mediaSelectorMode == null && !page.isLoading) {
@@ -1299,10 +1301,13 @@ private fun EpisodeVideo(
                                     vm.fullscreenSelectorVisible = true
                                 }
                             }
-                            val pickLocalFile = rememberLocalVideoFilePicker { file ->
-                                vm.playLocalFile(file)
-                                goBack()
-                            }
+                            val pickLocalFile = rememberLocalVideoFilePicker(
+                                onPicked = { file ->
+                                    vm.playLocalFile(file)
+                                    goBack()
+                                },
+                                initialDirectory = vm.localVideoLibraryDirectory.collectAsStateWithLifecycle(null).value,
+                            )
                             EpisodeVideoSideSheets.MediaSelectorSheet(
                                 page.mediaSelectorState,
                                 page.mediaSourceResultListPresentation,

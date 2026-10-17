@@ -402,6 +402,14 @@ open class EpisodeViewModel(
         )
     }
 
+    /**
+     * 本地视频库目录, 用作「使用本地视频文件」选择器的默认位置.
+     */
+    val localVideoLibraryDirectory: Flow<String?> =
+        settingsRepository.localVideoLibrarySettings.flow
+            .map { it.directory }
+            .distinctUntilChanged()
+
     @OptIn(UnsafeEpisodeSessionApi::class)
     protected val fetchPlayState = EpisodeFetchSelectPlayState(
         subjectId, initialEpisodeId, player, backgroundScope,

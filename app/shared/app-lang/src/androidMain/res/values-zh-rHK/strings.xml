@@ -433,6 +433,12 @@
     <string name="settings_storage_title">存儲設置</string>
     <string name="settings_storage_bt_cache_location">BT 影片緩存位置</string>
     <string name="settings_storage_bt_cache_location_description">修改後不會自動遷移數據，也不會自動刪除舊數據。\n如需刪除舊數據，請在修改之前點擊“打開 BT 緩存目錄”並刪除該目錄下的所有文件。\n\n重啟生效</string>
+    <string name="settings_storage_local_video_library_title">本機影片庫</string>
+    <string name="settings_storage_local_video_library_description">選擇本機影片所在資料夾。目前僅用作選擇本機影片檔案時的預設位置，後續將用於掃描本機影片。</string>
+    <string name="settings_storage_local_video_library_path">目錄</string>
+    <string name="settings_storage_local_video_library_not_set">未設定</string>
+    <string name="settings_storage_local_video_library_choose">選擇資料夾</string>
+    <string name="settings_storage_local_video_library_clear">清除路徑</string>
     <string name="settings_storage_choose_directory">選擇影片保存目錄</string>
     <string name="settings_storage_open_directory_chooser">打開目錄選擇</string>
     <string name="settings_storage_open_bt_cache_directory">打開 BT 緩存目錄</string>

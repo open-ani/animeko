@@ -433,6 +433,12 @@
     <string name="settings_storage_title">儲存設定</string>
     <string name="settings_storage_bt_cache_location">BT 視訊快取位置</string>
     <string name="settings_storage_bt_cache_location_description">修改後不會自動遷移資料，也不會自動刪除舊資料。\n如需刪除舊資料，請在修改之前點擊 "打開 BT 快取目錄" 並刪除該目錄下的所有檔案。\n\n重新啟動生效</string>
+    <string name="settings_storage_local_video_library_title">本機影片庫</string>
+    <string name="settings_storage_local_video_library_description">選擇本機影片所在資料夾。目前僅用作選擇本機影片檔案時的預設位置，後續將用於掃描本機影片。</string>
+    <string name="settings_storage_local_video_library_path">目錄</string>
+    <string name="settings_storage_local_video_library_not_set">未設定</string>
+    <string name="settings_storage_local_video_library_choose">選擇資料夾</string>
+    <string name="settings_storage_local_video_library_clear">清除路徑</string>
     <string name="settings_storage_choose_directory">選擇視訊儲存目錄</string>
     <string name="settings_storage_open_directory_chooser">打開目錄選擇</string>
     <string name="settings_storage_open_bt_cache_directory">打開 BT 快取目錄</string>

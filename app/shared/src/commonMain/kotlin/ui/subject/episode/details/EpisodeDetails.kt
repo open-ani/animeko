@@ -230,6 +230,10 @@ fun EpisodeDetails(
      */
     onLocalFilePicked: ((SystemPath) -> Unit)? = null,
     /**
+     * 本地视频库目录, 用作文件选择器的默认位置.
+     */
+    localVideoLibraryDirectory: String? = null,
+    /**
      * 入口按钮 (onClickManualSelect / onClickSwitchSource) 打开容器前调用一次; 宿主在这里锁存模式.
      */
     onBeforeOpenMediaSelector: () -> Unit = {},
@@ -551,10 +555,13 @@ fun EpisodeDetails(
         val closeSelector = { showMediaSelector = false }
         val closeSelectorText = stringResource(Lang.subject_episode_close_selector)
         val localFilePicker = if (onLocalFilePicked != null) {
-            rememberLocalVideoFilePicker { file ->
-                onLocalFilePicked(file)
-                closeSelector()
-            }
+            rememberLocalVideoFilePicker(
+                onPicked = { file ->
+                    onLocalFilePicked(file)
+                    closeSelector()
+                },
+                initialDirectory = localVideoLibraryDirectory,
+            )
         } else {
             null
         }
