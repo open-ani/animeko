@@ -47,6 +47,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.comment.CommentContext
+import me.him188.ani.app.domain.comment.CommentImageStatusResult
 import me.him188.ani.app.domain.comment.CommentImageUploadResult
 import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.domain.comment.UploadCommentImageUseCase
@@ -56,6 +57,7 @@ import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_add_emoji
 import me.him188.ani.app.ui.lang.comment_bold
+import me.him188.ani.app.ui.lang.comment_image_processing_failed
 import me.him188.ani.app.ui.lang.comment_image_upload_already_in_comment
 import me.him188.ani.app.ui.lang.comment_image_upload_forbidden
 import me.him188.ani.app.ui.lang.comment_image_upload_invalid_format
@@ -67,6 +69,7 @@ import me.him188.ani.app.ui.lang.comment_link
 import me.him188.ani.app.ui.lang.comment_mask
 import me.him188.ani.app.ui.lang.comment_send
 import me.him188.ani.app.ui.lang.comment_send_blocked_failed_images
+import me.him188.ani.app.ui.lang.comment_send_failed_image_processing
 import me.him188.ani.app.ui.lang.comment_send_failed_invalid_image
 import me.him188.ani.app.ui.lang.comment_strikethrough
 import me.him188.ani.app.ui.lang.comment_underline
@@ -92,7 +95,7 @@ class EditCommentTest {
 
     private fun ComposeUiTest.setEditor(
         topSpacing: Int = 160,
-        onUploadImage: suspend (ByteArray) -> CommentImageUploadResult = { CommentImageUploadResult.Ok(IMAGE_URL) },
+        onUploadImage: suspend (ByteArray) -> CommentImageUploadResult = { CommentImageUploadResult.Ready(IMAGE_URL) },
         onSend: suspend (CommentContext, String) -> CommentSendResult = { _, _ -> CommentSendResult.Ok },
     ): Editor {
         lateinit var editor: Editor
@@ -109,6 +112,7 @@ class EditCommentTest {
                             richTextRenderer = { UIRichText(emptyList()) },
                             onSend = onSend,
                             onUploadImage = onUploadImage,
+                            onCheckImageStatus = { CommentImageStatusResult.Unavailable },
                             backgroundScope = scope,
                         ).apply {
                             startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
@@ -370,7 +374,7 @@ class EditCommentTest {
         // 上传期间可以继续添加图片
         onNodeWithContentDescription(string(Lang.comment_upload_image)).assertIsEnabled()
 
-        response.complete(CommentImageUploadResult.Ok(IMAGE_URL))
+        response.complete(CommentImageUploadResult.Ready(IMAGE_URL))
         waitUntil(timeoutMillis = 5_000) { editor.state.text == "hi [img]$IMAGE_URL[/img]" }
         waitForIdle()
         onNodeWithText(string(Lang.comment_send)).assertIsEnabled()
@@ -386,6 +390,7 @@ class EditCommentTest {
             CommentImageUploadResult.NotLoggedIn to Lang.comment_image_upload_not_logged_in,
             CommentImageUploadResult.Forbidden to Lang.comment_image_upload_forbidden,
             CommentImageUploadResult.PendingLimit to Lang.comment_image_upload_pending_limit,
+            CommentImageUploadResult.ProcessingFailed to Lang.comment_image_processing_failed,
         )) {
             result = error
             runOnIdle { editor.state.addImages(listOf(pngImage())) }
@@ -420,6 +425,16 @@ class EditCommentTest {
         waitForIdle()
         onNodeWithText(string(Lang.comment_image_upload_already_in_comment)).assertIsDisplayed()
         onNodeWithText(string(Lang.comment_send_failed_invalid_image)).assertDoesNotExist()
+        assertEquals("look [img]$IMAGE_URL[/img]", editor.state.text)
+    }
+
+    @Test
+    fun `comment rejected for an image still processing shows the send error`() = runAniComposeUiTest {
+        val editor = setEditor(onSend = { _, _ -> CommentSendResult.ImageProcessing })
+        textField().performTextInput("look [img]$IMAGE_URL[/img]")
+        editor.scope.launch { editor.state.send(EmptyCoroutineContext) }
+        waitForIdle()
+        onNodeWithText(string(Lang.comment_send_failed_image_processing)).assertIsDisplayed()
         assertEquals("look [img]$IMAGE_URL[/img]", editor.state.text)
     }
 
@@ -463,6 +478,7 @@ class EditCommentTest {
                             attempts++
                             response.await()
                         },
+                        onCheckImageStatus = { CommentImageStatusResult.Unavailable },
                         backgroundScope = scope,
                     ).apply {
                         startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
@@ -481,7 +497,7 @@ class EditCommentTest {
         showEditor = false
         waitForIdle()
         textField().assertDoesNotExist()
-        response.complete(CommentImageUploadResult.Ok(IMAGE_URL))
+        response.complete(CommentImageUploadResult.Ready(IMAGE_URL))
         waitUntil(timeoutMillis = 5_000) { state.textFieldState.text.toString() == "[img]$IMAGE_URL[/img]" }
         assertEquals(1, attempts)
     }

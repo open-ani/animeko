@@ -30,15 +30,20 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.domain.comment.CommentContext
 import me.him188.ani.app.domain.comment.CommentImageFormat
+import me.him188.ani.app.domain.comment.CommentImageProcessingStatus
+import me.him188.ani.app.domain.comment.CommentImageStatusResult
 import me.him188.ani.app.domain.comment.CommentImageUploadResult
 import me.him188.ani.app.domain.comment.CommentSendResult
+import me.him188.ani.app.domain.comment.GetCommentImageStatusUseCase
 import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.comment.UploadCommentImageUseCase
 import me.him188.ani.app.tools.MonoTasker
@@ -48,15 +53,22 @@ import me.him188.ani.app.ui.foundation.transcodeImageToJpeg
 import org.jetbrains.compose.resources.DrawableResource
 import kotlin.coroutines.CoroutineContext
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 /**
  * @param onUploadImage 上传评论图片, 返回结果. 调用前已检查过文件大小不超过 [UploadCommentImageUseCase.MAX_IMAGE_SIZE_BYTES],
  * 且图片已是 [CommentImageFormat] 中的格式.
+ * @param onCheckImageStatus 查询上传后正在服务器上处理的图片 ([CommentImageUploadResult.Processing.id]) 的状态,
+ * 见 [GetCommentImageStatusUseCase]. 在 [imageUploadContext] 中调用.
  * @param backgroundScope 发送评论和处理图片的后台任务所在的作用域. 图片在其中上传, 编辑框关闭后仍继续, 直到这个作用域结束.
  * @param transcodeImage 把不是 [CommentImageFormat] 中格式的图片 (例如 HEIC 照片) 转成服务器接受的格式, 无法转换时返回 `null`.
  * 在 [imageUploadContext] 中调用.
  * @param uiContext 在 [backgroundScope] 中处理图片的协程所用的上下文. 上传完成后要修改编辑框的文本, 只能在主线程上进行.
- * @param imageUploadContext 读取、转码和上传图片所用的上下文.
+ * @param imageUploadContext 读取、转码和上传图片, 以及查询图片处理状态所用的上下文.
+ * @param timeSource 计算图片处理了多久所用的时间源.
  */
 @Stable
 class CommentEditorState(
@@ -67,6 +79,7 @@ class CommentEditorState(
     private val richTextRenderer: suspend (String) -> UIRichText,
     private val onSend: suspend (target: CommentContext, content: String) -> CommentSendResult,
     private val onUploadImage: suspend (image: ByteArray) -> CommentImageUploadResult,
+    private val onCheckImageStatus: suspend (ids: List<String>) -> CommentImageStatusResult,
     private val backgroundScope: CoroutineScope,
     private val transcodeImage: (image: ByteArray) -> ByteArray? = { image ->
         transcodeImageToJpeg(
@@ -77,6 +90,7 @@ class CommentEditorState(
     },
     private val uiContext: CoroutineContext = Dispatchers.Main,
     private val imageUploadContext: CoroutineContext = Dispatchers.Default,
+    private val timeSource: TimeSource = TimeSource.Monotonic,
 ) {
     /**
      * 编辑框的文本与选区. 工具栏、插入表情和图片等程序化修改都在一次 [TextFieldState.edit] 里完成, 每次是一个撤销步骤.
@@ -108,6 +122,11 @@ class CommentEditorState(
     private val imageUploadQueue: SnapshotStateList<String> = mutableStateListOf()
 
     /**
+     * 有图片开始在服务器上处理 ([CommentImageUpload.Processing]) 时发送, 让 [pollProcessingImages] 尽快查询它.
+     */
+    private val imageProcessingStarted = Channel<Unit>(Channel.CONFLATED)
+
+    /**
      * 处理图片的后台任务, 见 [runImageWorker]. 第一次添加图片或提示图片已达上限时启动.
      */
     private var imageWorker: Job? = null
@@ -119,7 +138,7 @@ class CommentEditorState(
     private var imageUploadFailureCount = 0
 
     /**
-     * 已上传成功、还没有改到文本中的图片, 等待输入法结束组合. 见 [completeImageUpload].
+     * 已可用、还没有改到文本中的图片, 等待输入法结束组合. 见 [completeImageUpload].
      */
     private val pendingImageEdits = mutableListOf<PendingImageEdit>()
 
@@ -143,10 +162,13 @@ class CommentEditorState(
     val sending get() = sendTasker.isRunning
 
     /**
-     * 评论中是否有正在上传或等待上传的图片. 上传期间不能发送评论.
+     * 评论中是否有正在上传、等待上传或正在服务器上处理的图片. 这期间不能发送评论, 图片都可用或被删除后才能发送.
      */
     val uploadingImages: Boolean by derivedStateOf {
-        imageChips.any { imageChipStatus(it) == CommentImageChipStatus.Uploading }
+        imageChips.any {
+            val status = imageChipStatus(it)
+            status == CommentImageChipStatus.Uploading || status == CommentImageChipStatus.Processing
+        }
     }
 
     /**
@@ -302,6 +324,7 @@ class CommentEditorState(
         val uploadId = chip.uploadId ?: return CommentImageChipStatus.Ready
         return when (imageUploads[uploadId]) {
             is CommentImageUpload.Queued -> CommentImageChipStatus.Uploading
+            is CommentImageUpload.Processing -> CommentImageChipStatus.Processing
             is CommentImageUpload.Uploaded -> CommentImageChipStatus.Ready
             is CommentImageUpload.Failed, null -> CommentImageChipStatus.Failed
         }
@@ -323,7 +346,7 @@ class CommentEditorState(
 
     /**
      * 添加用户选择的图片: 在光标处依次插入每张图片的占位标签 (见 [pendingImageTag]), 有选区时插入到选区末尾, 光标移到插入的标签之后.
-     * 图片在 [backgroundScope] 中按顺序上传 (见 [runImageWorker]), 上传成功后占位标签替换为图片地址.
+     * 图片在 [backgroundScope] 中按顺序上传 (见 [runImageWorker]), 服务器处理完成后占位标签替换为图片地址.
      *
      * - 超过 [remainingImageSlots] 的图片不添加, 并提示已达上限 ([showImageLimitMessage]).
      * - 超过 [UploadCommentImageUseCase.MAX_IMAGE_SIZE_BYTES] 的图片不读取, 直接标记为上传失败 ([CommentImageUploadResult.TooLarge]).
@@ -386,9 +409,10 @@ class CommentEditorState(
     /**
      * 处理图片的后台任务. 在 [backgroundScope] 中以 [uiContext] 运行, 不依赖编辑框是否显示:
      * - 依次上传排队的图片, 见 [uploadQueuedImages];
+     * - 查询正在服务器上处理的图片的状态, 见 [pollProcessingImages];
      * - 释放占位标签已不在文本中的图片在内存中保存的内容, 见 [CommentImageUpload.Failed.prepared];
      * - 图片数少于上限时取消上限提示;
-     * - 输入法结束组合时把已上传成功的图片改到文本中, 见 [completeImageUpload].
+     * - 输入法结束组合时把已可用的图片改到文本中, 见 [completeImageUpload].
      */
     private suspend fun runImageWorker(): Nothing = coroutineScope {
         launch {
@@ -402,6 +426,7 @@ class CommentEditorState(
             snapshotFlow { textFieldState.composition == null }
                 .collect { notComposing -> if (notComposing) applyPendingImageEdits() }
         }
+        launch { pollProcessingImages() }
         uploadQueuedImages()
     }
 
@@ -409,7 +434,8 @@ class CommentEditorState(
      * 按选择的顺序上传占位标签在文本中的图片, 一次一张. 占位标签被删除或剪切的图片留在队列中, 标签因撤销或粘贴重新出现时再上传.
      *
      * 每张图片的读取、转码和上传在 [imageUploadContext] 中进行. 不是服务器接受的格式时先用 `transcodeImage` 转码,
-     * 无法转码时报告 [CommentImageUploadResult.InvalidFormat]. 上传成功后见 [completeImageUpload].
+     * 无法转码时报告 [CommentImageUploadResult.InvalidFormat]. 服务器已处理好时见 [completeImageUpload];
+     * 还在处理时变为 [CommentImageUpload.Processing], 由 [pollProcessingImages] 查询.
      * 上传失败时保留占位标签, 可以重试的失败在内存中保存已读取和转码的图片, 用于 [retryImageUpload].
      */
     private suspend fun uploadQueuedImages(): Nothing {
@@ -440,10 +466,19 @@ class CommentEditorState(
         if (generation != imageUploadGeneration) return
         imageUploadQueue.remove(uploadId)
         when (result) {
-            is CommentImageUploadResult.Ok -> completeImageUpload(uploadId, result.url)
+            is CommentImageUploadResult.Ready -> completeImageUpload(uploadId, result.url)
+            is CommentImageUploadResult.Processing -> {
+                imageUploads[uploadId] = CommentImageUpload.Processing(
+                    queued.image,
+                    id = result.id,
+                    url = result.url,
+                    since = timeSource.markNow(),
+                )
+                imageProcessingStarted.trySend(Unit)
+            }
+
             is CommentImageUploadResult.Error -> {
-                val retryable = result != CommentImageUploadResult.TooLarge &&
-                        result != CommentImageUploadResult.InvalidFormat
+                val retryable = result.isRetryable
                 val present = imageChips.any { it.uploadId == uploadId }
                 imageUploads[uploadId] = CommentImageUpload.Failed(
                     result,
@@ -486,6 +521,91 @@ class CommentEditorState(
     }
 
     /**
+     * 查询占位标签在文本中、正在服务器上处理 ([CommentImageUpload.Processing]) 的图片的状态, 直到它们可用或失败.
+     * 标签被删除或剪切的图片不查询, 标签因撤销或粘贴重新出现后继续.
+     *
+     * 每次用一次 `onCheckImageStatus` 查询所有这些图片. 查询间隔从 [ImageStatusPollMinInterval] 开始, 每次变为
+     * [ImageStatusPollBackoff] 倍, 最长 [ImageStatusPollMaxInterval]. 有图片开始处理时间隔恢复为最短,
+     * 从那时起等待 [ImageStatusPollMinInterval] 后查询. 查询失败 ([CommentImageStatusResult.Unavailable]) 时图片保持不变,
+     * 下次再查. 结果见 [applyImageStatus].
+     */
+    private suspend fun pollProcessingImages(): Nothing {
+        var interval = ImageStatusPollMinInterval
+        while (true) {
+            snapshotFlow { processingImagesInText().isNotEmpty() }.first { it }
+            if (withTimeoutOrNull(interval) { imageProcessingStarted.receive() } != null) {
+                interval = ImageStatusPollMinInterval
+                continue
+            }
+            val processing = processingImagesInText()
+            if (processing.isEmpty()) continue
+            val generation = imageUploadGeneration
+            val ids = processing.values.mapTo(LinkedHashSet()) { it.id }.toList()
+            val result = withContext(imageUploadContext) { checkImageStatus(ids) }
+            // 查询期间切换了评论对象或发送了评论, 这些图片已不在本次编辑中
+            if (generation != imageUploadGeneration) continue
+            applyImageStatus(processing, result)
+            interval = (interval * ImageStatusPollBackoff).coerceAtMost(ImageStatusPollMaxInterval)
+        }
+    }
+
+    /**
+     * 占位标签在文本中、正在服务器上处理的图片, 键为 [CommentImageChip.uploadId].
+     */
+    private fun processingImagesInText(): Map<String, CommentImageUpload.Processing> {
+        val result = LinkedHashMap<String, CommentImageUpload.Processing>()
+        for (chip in imageChips) {
+            val uploadId = chip.uploadId ?: continue
+            val upload = imageUploads[uploadId] as? CommentImageUpload.Processing ?: continue
+            result[uploadId] = upload
+        }
+        return result
+    }
+
+    private suspend fun checkImageStatus(ids: List<String>): CommentImageStatusResult = try {
+        onCheckImageStatus(ids)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        CommentImageStatusResult.Unavailable
+    }
+
+    /**
+     * 把一次查询的结果 [result] 应用到查询的图片 [polled] 上. 查询期间状态已经变化的图片不修改.
+     *
+     * - 处理完成的图片见 [completeImageUpload].
+     * - 处理失败的图片保留占位标签; 可以重试时 (见 [CommentImageUploadResult.Error.isRetryable]) 重试会重新读取并上传图片.
+     * - 开始处理超过 [ImageProcessingTimeout] 仍未完成的图片视为处理失败 ([CommentImageUploadResult.ProcessingFailed]).
+     *   重试时重新上传同一张图片, 服务器据此返回已处理好的图片, 继续处理, 或重新开始处理.
+     */
+    private suspend fun applyImageStatus(
+        polled: Map<String, CommentImageUpload.Processing>,
+        result: CommentImageStatusResult,
+    ) {
+        val statuses = (result as? CommentImageStatusResult.Ok)?.statuses.orEmpty()
+        for ((uploadId, processing) in polled) {
+            if (imageUploads[uploadId] !== processing) continue
+            when (val status = statuses[processing.id]) {
+                is CommentImageProcessingStatus.Ready -> completeImageUpload(uploadId, status.url)
+                is CommentImageProcessingStatus.Failed -> imageUploads[uploadId] = processing.toFailed(status.error)
+                CommentImageProcessingStatus.Processing, null -> {
+                    if (processing.since.elapsedNow() >= ImageProcessingTimeout) {
+                        imageUploads[uploadId] = processing.toFailed(CommentImageUploadResult.ProcessingFailed)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun CommentImageUpload.Processing.toFailed(error: CommentImageUploadResult.Error) =
+        CommentImageUpload.Failed(
+            error,
+            image = image.takeIf { error.isRetryable },
+            prepared = null,
+            order = ++imageUploadFailureCount,
+        )
+
+    /**
      * 占位标签已不在文本中 ([present] 之外) 的图片不在内存中保存图片内容. 标签因撤销或粘贴重新出现后, 重试时重新读取图片.
      */
     private fun releaseRemovedImages(present: Set<String>) {
@@ -500,13 +620,13 @@ class CommentEditorState(
                     imageUploads[uploadId] = CommentImageUpload.Failed(upload.error, upload.image, null, upload.order)
                 }
 
-                is CommentImageUpload.Uploaded -> {}
+                is CommentImageUpload.Processing, is CommentImageUpload.Uploaded -> {}
             }
         }
     }
 
     /**
-     * 图片 [uploadId] 上传成功, 地址为 [url].
+     * 图片 [uploadId] 已上传并处理完成, 地址为 [url].
      *
      * 状态立即变为 [CommentImageUpload.Uploaded]: 图片标签显示为可用, 发送、预览和复制时占位标签替换为图片 (见 [resolvedText]).
      * 把文本中的占位标签替换为图片地址 (评论中已有这张图片时删除占位标签, 见 [uploadedImageAlreadyInComment]) 则等到输入法没有在组合文字时进行:
@@ -548,13 +668,13 @@ class CommentEditorState(
     }
 
     /**
-     * 发送和预览所用的文本: 上传成功的图片替换为图片地址, 包括还没有改到文本中的 (见 [completeImageUpload]).
+     * 发送和预览所用的文本: 已可用的图片替换为图片地址, 包括还没有改到文本中的 (见 [completeImageUpload]).
      */
     private fun resolvedText(): String =
         resolvePendingImages(currentText().withPendingImageEdits().text, ::uploadedImageUrl)
 
     /**
-     * 上传成功的待上传图片 [uploadId] 的地址, 还没有上传成功时为 `null`.
+     * 待上传图片 [uploadId] 可用时的地址, 还没有上传或处理完成时为 `null`.
      */
     private fun uploadedImageUrl(uploadId: String): String? =
         (imageUploads[uploadId] as? CommentImageUpload.Uploaded)?.url
@@ -570,7 +690,7 @@ class CommentEditorState(
     }
 
     /**
-     * 把编辑框显示的图片标签文字还原为图片标签原文 (见 [decodeImageChipLabels]), 其中已上传成功的占位标签替换为图片.
+     * 把编辑框显示的图片标签文字还原为图片标签原文 (见 [decodeImageChipLabels]), 其中已可用的占位标签替换为图片.
      * 用于写入剪贴板的文字, 以及粘贴或输入法提交的文字.
      */
     internal fun decodeImageChipLabels(text: String): String =
@@ -626,7 +746,7 @@ class CommentEditorState(
     }
 
     /**
-     * 渲染预览. 还没有上传成功的图片不显示.
+     * 渲染预览. 还不可用的图片不显示.
      *
      * 同时有多次渲染时 (例如进入预览后图片上传完成), 只采用最后开始的那次的结果.
      *
@@ -642,7 +762,7 @@ class CommentEditorState(
     }
 
     /**
-     * 发送评论. 评论中有正在上传或上传失败的图片时不发送, 有上传失败的图片时设置 [failedImagesBlockSend].
+     * 发送评论. 评论中有正在上传、正在处理或上传失败的图片时不发送, 有上传失败的图片时设置 [failedImagesBlockSend].
      *
      * @return `true` if comment was sent successfully
      */
@@ -737,14 +857,30 @@ internal sealed interface CommentImageUpload {
     ) : CommentImageUpload
 
     /**
-     * 上传成功. 占位标签随即被替换为图片地址, 撤销或粘贴让占位标签重新出现时, 它代表这个地址的图片.
+     * 已上传, 服务器正在处理. 处理完成后才能在评论中引用, 见 [CommentEditorState.pollProcessingImages].
+     * 不在内存中保存图片内容, 处理失败后重试时重新读取 [image].
+     *
+     * @property image 用户选择的图片.
+     * @property id 服务器上图片的标识, 用于查询处理状态.
+     * @property url 处理完成后图片的地址.
+     * @property since 开始处理的时间.
+     */
+    class Processing(
+        val image: CommentImageFile,
+        val id: String,
+        val url: String,
+        val since: TimeMark,
+    ) : CommentImageUpload
+
+    /**
+     * 已上传并处理完成. 占位标签随即被替换为图片地址, 撤销或粘贴让占位标签重新出现时, 它代表这个地址的图片.
      */
     class Uploaded(val url: String) : CommentImageUpload
 
     /**
-     * 上传失败.
+     * 上传或处理失败.
      *
-     * @property image 重试时上传的图片. 不能重试 (图片太大或格式不支持) 时为 `null`.
+     * @property image 重试时上传的图片. 不能重试 (见 [CommentImageUploadResult.Error.isRetryable]) 时为 `null`.
      * @property prepared 已读取和转码的图片内容, 重试时直接上传. 只在占位标签还在文本中时保存在内存中,
      * 标签被删除或剪切后释放, 之后重试时重新读取 [image].
      * @property order 失败的先后顺序, 越晚越大.
@@ -758,7 +894,7 @@ internal sealed interface CommentImageUpload {
 }
 
 /**
- * 上传成功后要对文本做的修改: 把待上传图片 [uploadId] 的占位标签替换为 [url] 的图片, [url] 为 `null` 时删除占位标签.
+ * 图片可用后要对文本做的修改: 把待上传图片 [uploadId] 的占位标签替换为 [url] 的图片, [url] 为 `null` 时删除占位标签.
  */
 private class PendingImageEdit(
     val uploadId: String,
@@ -770,3 +906,23 @@ data class EditCommentSticker(
     val id: Int,
     val drawableRes: DrawableResource?,
 )
+
+/**
+ * 查询图片处理状态的最短间隔, 也是图片开始处理后第一次查询前等待的时间.
+ */
+private val ImageStatusPollMinInterval = 1.seconds
+
+/**
+ * 查询图片处理状态的最长间隔.
+ */
+private val ImageStatusPollMaxInterval = 5.seconds
+
+/**
+ * 每次查询后间隔变为原来的倍数.
+ */
+private const val ImageStatusPollBackoff = 1.5
+
+/**
+ * 图片开始处理后最多等待的时间. 超过后视为处理失败, 可以重试.
+ */
+private val ImageProcessingTimeout = 5.minutes

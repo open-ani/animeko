@@ -17,10 +17,13 @@ import androidx.compose.ui.text.TextRange
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.domain.comment.CommentContext
+import me.him188.ani.app.domain.comment.CommentImageProcessingStatus
+import me.him188.ani.app.domain.comment.CommentImageStatusResult
 import me.him188.ani.app.domain.comment.CommentImageUploadResult
 import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.domain.comment.PostCommentUseCase
@@ -37,13 +40,18 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 class CommentEditorStateTest {
     private fun TestScope.createState(
         richTextRenderer: suspend (String) -> UIRichText = { UIRichText(emptyList()) },
         onSend: suspend (CommentContext, String) -> CommentSendResult = { _, _ -> CommentSendResult.Ok },
         transcodeImage: (ByteArray) -> ByteArray? = { null },
-        onUploadImage: suspend (ByteArray) -> CommentImageUploadResult = { CommentImageUploadResult.Ok(IMAGE_URL) },
+        onCheckImageStatus: suspend (List<String>) -> CommentImageStatusResult = { CommentImageStatusResult.Unavailable },
+        onUploadImage: suspend (ByteArray) -> CommentImageUploadResult = { CommentImageUploadResult.Ready(IMAGE_URL) },
     ) = CommentEditorState(
         showExpandEditCommentButton = false,
         initialEditExpanded = false,
@@ -52,11 +60,14 @@ class CommentEditorStateTest {
         richTextRenderer = richTextRenderer,
         onSend = onSend,
         onUploadImage = onUploadImage,
+        onCheckImageStatus = onCheckImageStatus,
         backgroundScope = backgroundScope,
         transcodeImage = transcodeImage,
         // 处理图片的后台任务在测试的调度器上运行, 读取和上传图片不切换线程
         uiContext = EmptyCoroutineContext,
         imageUploadContext = EmptyCoroutineContext,
+        // 图片处理了多久按虚拟时间计算
+        timeSource = testScheduler.timeSource,
     )
 
     /**
@@ -66,6 +77,15 @@ class CommentEditorStateTest {
     private fun TestScope.settle() {
         Snapshot.sendApplyNotifications()
         runCurrent()
+    }
+
+    /**
+     * 先 [settle], 再让虚拟时间前进 [duration], 运行期间到时的协程 (包括 backgroundScope 中的).
+     */
+    private fun TestScope.advance(duration: Duration) {
+        settle()
+        advanceTimeBy(duration)
+        settle()
     }
 
     private fun image(
@@ -97,6 +117,34 @@ class CommentEditorStateTest {
         }
     }
 
+    /**
+     * 查询图片处理状态的函数. 记录每次查询的图片和虚拟时间, 按 [answer] 回答.
+     */
+    private class StatusChecks(private val now: () -> Long) {
+        val requests = mutableListOf<List<String>>()
+        val times = mutableListOf<Long>()
+
+        /**
+         * 每张图片的状态. 默认一直在处理.
+         */
+        var status: (id: String) -> CommentImageProcessingStatus = { CommentImageProcessingStatus.Processing }
+
+        /**
+         * 整次查询的结果, 默认由 [status] 得出.
+         */
+        var answer: (ids: List<String>) -> CommentImageStatusResult = { ids ->
+            CommentImageStatusResult.Ok(ids.associateWith { status(it) })
+        }
+
+        suspend fun check(ids: List<String>): CommentImageStatusResult {
+            requests += ids
+            times += now()
+            return answer(ids)
+        }
+    }
+
+    private fun TestScope.statusChecks() = StatusChecks { testScheduler.currentTime }
+
     @Test
     fun `added images are inserted at the cursor and uploaded one at a time in order`() = runTest {
         val uploads = ControlledUploads()
@@ -116,14 +164,14 @@ class CommentEditorStateTest {
         assertEquals(1, uploads.requests.size)
         assertContentEquals(PNG, uploads.requests[0])
 
-        uploads.complete(0, CommentImageUploadResult.Ok(IMAGE_URL))
+        uploads.complete(0, CommentImageUploadResult.Ready(IMAGE_URL))
         settle()
         assertEquals("a[img]$IMAGE_URL[/img]${pendingImageTag(ids[1])}b", state.text)
         assertEquals(listOf(CommentImageChipStatus.Ready, CommentImageChipStatus.Uploading), state.statuses)
         assertEquals(2, uploads.requests.size)
         assertContentEquals(PNG_2, uploads.requests[1])
 
-        uploads.complete(1, CommentImageUploadResult.Ok(IMAGE_URL_2))
+        uploads.complete(1, CommentImageUploadResult.Ready(IMAGE_URL_2))
         settle()
         assertEquals("a[img]$IMAGE_URL[/img][img]$IMAGE_URL_2[/img]b", state.text)
         assertFalse(state.uploadingImages)
@@ -140,7 +188,7 @@ class CommentEditorStateTest {
         settle()
         assertEquals(1, uploads.requests.size)
 
-        uploads.complete(0, CommentImageUploadResult.Ok(IMAGE_URL))
+        uploads.complete(0, CommentImageUploadResult.Ready(IMAGE_URL))
         settle()
         assertEquals(2, uploads.requests.size)
         assertContentEquals(PNG_2, uploads.requests[1])
@@ -170,7 +218,7 @@ class CommentEditorStateTest {
         settle()
         assertEquals(listOf(CommentImageChipStatus.Uploading, CommentImageChipStatus.Uploading), state.statuses)
 
-        uploads.complete(0, CommentImageUploadResult.Ok(IMAGE_URL))
+        uploads.complete(0, CommentImageUploadResult.Ready(IMAGE_URL))
         settle()
         assertEquals("[img]$IMAGE_URL[/img] x [img]$IMAGE_URL[/img]", state.text)
         assertEquals(1, uploads.requests.size)
@@ -195,7 +243,7 @@ class CommentEditorStateTest {
 
             state.removeImageChip(1)
             settle()
-            uploads.complete(0, CommentImageUploadResult.Ok(IMAGE_URL))
+            uploads.complete(0, CommentImageUploadResult.Ready(IMAGE_URL))
             settle()
             assertEquals("", state.text)
 
@@ -224,7 +272,7 @@ class CommentEditorStateTest {
         state.selectImageChip(2)
         state.cutSelection(clipboard)
         settle()
-        uploads.complete(0, CommentImageUploadResult.Ok(IMAGE_URL))
+        uploads.complete(0, CommentImageUploadResult.Ready(IMAGE_URL))
         settle()
         assertEquals("[img]$IMAGE_URL[/img]", state.text)
         // 标签不在文本中的图片不上传
@@ -238,7 +286,7 @@ class CommentEditorStateTest {
         assertEquals(2, uploads.requests.size)
         assertContentEquals(PNG_2, uploads.requests[1])
 
-        uploads.complete(1, CommentImageUploadResult.Ok(IMAGE_URL_2))
+        uploads.complete(1, CommentImageUploadResult.Ready(IMAGE_URL_2))
         settle()
         assertEquals("[img]$IMAGE_URL_2[/img][img]$IMAGE_URL[/img]", state.text)
     }
@@ -263,7 +311,7 @@ class CommentEditorStateTest {
         assertEquals(CommentImageUploadResult.NetworkError, state.imageThumbnails.single().error)
         assertFalse(state.uploadingImages)
 
-        result = CommentImageUploadResult.Ok(IMAGE_URL)
+        result = CommentImageUploadResult.Ready(IMAGE_URL)
         state.retryImageUpload(uploadId)
         settle()
         assertEquals(1, reads)
@@ -277,7 +325,7 @@ class CommentEditorStateTest {
     fun `too large image fails without reading it and cannot be retried`() = runTest {
         var read = false
         var uploaded = false
-        val state = createState { uploaded = true; CommentImageUploadResult.Ok(IMAGE_URL) }
+        val state = createState { uploaded = true; CommentImageUploadResult.Ready(IMAGE_URL) }
         state.addImages(
             listOf(image(size = UploadCommentImageUseCase.MAX_IMAGE_SIZE_BYTES + 1, read = { read = true; PNG })),
         )
@@ -298,7 +346,7 @@ class CommentEditorStateTest {
     @Test
     fun `image of unknown size is checked after reading`() = runTest {
         var uploaded = false
-        val state = createState { uploaded = true; CommentImageUploadResult.Ok(IMAGE_URL) }
+        val state = createState { uploaded = true; CommentImageUploadResult.Ready(IMAGE_URL) }
         val bytes = PNG.copyOf(UploadCommentImageUseCase.MAX_IMAGE_SIZE_BYTES.toInt() + 1)
         state.addImages(listOf(image(bytes, size = null)))
         settle()
@@ -321,7 +369,7 @@ class CommentEditorStateTest {
         var uploaded: ByteArray? = null
         val state = createState(transcodeImage = { error("must not transcode a supported image") }) {
             uploaded = it
-            CommentImageUploadResult.Ok(IMAGE_URL)
+            CommentImageUploadResult.Ready(IMAGE_URL)
         }
         state.addImages(listOf(image()))
         settle()
@@ -340,7 +388,7 @@ class CommentEditorStateTest {
             },
         ) {
             uploaded = it
-            CommentImageUploadResult.Ok(IMAGE_URL)
+            CommentImageUploadResult.Ready(IMAGE_URL)
         }
         state.addImages(listOf(image(HEIC)))
         settle()
@@ -356,7 +404,7 @@ class CommentEditorStateTest {
         val uploaded = mutableListOf<ByteArray>()
         val state = createState(transcodeImage = { transcodes++; JPEG }) {
             uploaded += it
-            if (uploaded.size == 1) CommentImageUploadResult.RateLimited else CommentImageUploadResult.Ok(IMAGE_URL)
+            if (uploaded.size == 1) CommentImageUploadResult.RateLimited else CommentImageUploadResult.Ready(IMAGE_URL)
         }
         state.addImages(listOf(image(HEIC)))
         settle()
@@ -372,7 +420,7 @@ class CommentEditorStateTest {
         var uploaded = false
         val state = createState(transcodeImage = { null }) {
             uploaded = true
-            CommentImageUploadResult.Ok(IMAGE_URL)
+            CommentImageUploadResult.Ready(IMAGE_URL)
         }
         state.addImages(listOf(image(HEIC)))
         settle()
@@ -469,7 +517,7 @@ class CommentEditorStateTest {
         assertNull(sent)
         assertFalse(state.failedImagesBlockSend)
 
-        uploads.complete(0, CommentImageUploadResult.Ok(IMAGE_URL))
+        uploads.complete(0, CommentImageUploadResult.Ready(IMAGE_URL))
         settle()
         assertTrue(state.send(EmptyCoroutineContext))
         assertEquals("hi [img]$IMAGE_URL[/img]", sent)
@@ -551,7 +599,7 @@ class CommentEditorStateTest {
         state.renderPreview()
         assertEquals(listOf("hi "), rendered)
 
-        uploads.complete(0, CommentImageUploadResult.Ok(IMAGE_URL))
+        uploads.complete(0, CommentImageUploadResult.Ready(IMAGE_URL))
         settle()
         assertEquals(listOf("hi ", "hi [img]$IMAGE_URL[/img]"), rendered)
         assertNotNull(state.previewContent)
@@ -665,7 +713,7 @@ class CommentEditorStateTest {
             settle()
             assertTrue(state.imageThumbnails.single().canRetry)
 
-            result = CommentImageUploadResult.Ok(IMAGE_URL)
+            result = CommentImageUploadResult.Ready(IMAGE_URL)
             state.retryImageUpload(state.uploadIds.single())
             settle()
             assertEquals(2, reads)
@@ -687,7 +735,7 @@ class CommentEditorStateTest {
         settle()
         state.removeImageChip(1)
         settle()
-        uploads.complete(1, CommentImageUploadResult.Ok(IMAGE_URL_2))
+        uploads.complete(1, CommentImageUploadResult.Ready(IMAGE_URL_2))
         settle()
         assertEquals(2, uploads.requests.size)
         assertEquals(1, reads)
@@ -698,7 +746,7 @@ class CommentEditorStateTest {
         assertEquals(3, uploads.requests.size)
         assertEquals(2, reads)
         assertContentEquals(PNG, uploads.requests[2])
-        uploads.complete(2, CommentImageUploadResult.Ok(IMAGE_URL))
+        uploads.complete(2, CommentImageUploadResult.Ready(IMAGE_URL))
         settle()
         assertEquals("[img]$IMAGE_URL[/img][img]$IMAGE_URL_2[/img]", state.text)
     }
@@ -723,7 +771,7 @@ class CommentEditorStateTest {
         state.retryImageUpload(state.uploadIds.single())
         settle()
         assertEquals(2, reads)
-        uploads.complete(1, CommentImageUploadResult.Ok(IMAGE_URL))
+        uploads.complete(1, CommentImageUploadResult.Ready(IMAGE_URL))
         settle()
         assertEquals("[img]$IMAGE_URL[/img]", state.text)
     }
@@ -789,7 +837,7 @@ class CommentEditorStateTest {
         runCurrent()
         assertSame(first, state.previewContent)
 
-        uploads.complete(0, CommentImageUploadResult.Ok(IMAGE_URL))
+        uploads.complete(0, CommentImageUploadResult.Ready(IMAGE_URL))
         settle()
         assertEquals(2, renders.size)
         assertSame(first, state.previewContent)
@@ -817,7 +865,7 @@ class CommentEditorStateTest {
         state.togglePreview()
         launch { state.renderPreview() }
         runCurrent()
-        uploads.complete(0, CommentImageUploadResult.Ok(IMAGE_URL))
+        uploads.complete(0, CommentImageUploadResult.Ready(IMAGE_URL))
         settle()
         assertEquals(listOf("hi ", "hi [img]$IMAGE_URL[/img]"), rendered)
 
@@ -858,7 +906,7 @@ class CommentEditorStateTest {
         settle()
 
         state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 3))
-        uploads.complete(0, CommentImageUploadResult.Ok(IMAGE_URL))
+        uploads.complete(0, CommentImageUploadResult.Ready(IMAGE_URL))
         settle()
         assertEquals("", state.text)
 
@@ -866,9 +914,302 @@ class CommentEditorStateTest {
         state.addImages(listOf(image(PNG_2)))
         settle()
         assertEquals(2, uploads.requests.size)
-        uploads.complete(1, CommentImageUploadResult.Ok(IMAGE_URL_2))
+        uploads.complete(1, CommentImageUploadResult.Ready(IMAGE_URL_2))
         settle()
         assertEquals("[img]$IMAGE_URL_2[/img]", state.text)
+    }
+
+    @Test
+    fun `processing image keeps its placeholder and blocks send until it is ready`() = runTest {
+        val checks = statusChecks()
+        var sent: String? = null
+        val state = createState(
+            onSend = { _, content ->
+                sent = content
+                CommentSendResult.Ok
+            },
+            onCheckImageStatus = checks::check,
+        ) { CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL) }
+        state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
+        state.textFieldState.setTextAndPlaceCursorAtEnd("hi ")
+        state.addImages(listOf(image()))
+        settle()
+        val uploadId = state.uploadIds.single()
+        assertEquals("hi ${pendingImageTag(uploadId)}", state.text)
+        assertEquals(listOf(CommentImageChipStatus.Processing), state.statuses)
+        assertTrue(state.uploadingImages)
+        val thumbnail = state.imageThumbnails.single()
+        assertEquals(CommentImageChipStatus.Processing, thumbnail.status)
+        assertNull(thumbnail.url)
+        assertFalse(thumbnail.canRetry)
+        assertNull(state.imageUploadError)
+
+        assertFalse(state.send(EmptyCoroutineContext))
+        assertNull(sent)
+        assertFalse(state.failedImagesBlockSend)
+
+        advance(1.seconds)
+        assertEquals(listOf(listOf(IMAGE_ID)), checks.requests)
+        assertEquals(listOf(CommentImageChipStatus.Processing), state.statuses)
+
+        checks.status = { CommentImageProcessingStatus.Ready(IMAGE_URL) }
+        advance(1.5.seconds)
+        assertEquals(2, checks.requests.size)
+        assertEquals("hi [img]$IMAGE_URL[/img]", state.text)
+        assertEquals(listOf(CommentImageChipStatus.Ready), state.statuses)
+        assertEquals(IMAGE_URL, state.imageThumbnails.single().url)
+        assertFalse(state.uploadingImages)
+        assertTrue(state.send(EmptyCoroutineContext))
+        assertEquals("hi [img]$IMAGE_URL[/img]", sent)
+
+        // 没有正在处理的图片后不再查询
+        advance(1.minutes)
+        assertEquals(2, checks.requests.size)
+    }
+
+    @Test
+    fun `status is checked one second after the upload and then with growing intervals up to five seconds`() =
+        runTest {
+            val checks = statusChecks()
+            val state = createState(onCheckImageStatus = checks::check) {
+                CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL)
+            }
+            state.addImages(listOf(image()))
+            settle()
+            val start = testScheduler.currentTime
+
+            advance(40.seconds)
+            val delays = (listOf(start) + checks.times).zipWithNext { a, b -> (b - a).milliseconds }
+            assertEquals(
+                listOf(1.seconds, 1.5.seconds, 2.25.seconds, 3.375.seconds, 5.seconds, 5.seconds, 5.seconds),
+                delays.take(7),
+            )
+            assertTrue(delays.all { it <= 5.seconds })
+            assertEquals(listOf(CommentImageChipStatus.Processing), state.statuses)
+        }
+
+    @Test
+    fun `an image starting to process checks again one second later`() = runTest {
+        val checks = statusChecks()
+        val ids = mutableListOf(IMAGE_ID, IMAGE_ID_2)
+        val state = createState(onCheckImageStatus = checks::check) {
+            CommentImageUploadResult.Processing(ids.removeFirst(), IMAGE_URL)
+        }
+        state.addImages(listOf(image()))
+        // 查询间隔已增长到最长
+        advance(13.125.seconds)
+        assertEquals(5, checks.requests.size)
+
+        advance(2.seconds)
+        state.addImages(listOf(image(PNG_2)))
+        settle()
+        val added = testScheduler.currentTime
+        advance(1.seconds)
+        assertEquals(6, checks.requests.size)
+        assertEquals(added + 1000, checks.times.last())
+        assertEquals(listOf(IMAGE_ID, IMAGE_ID_2), checks.requests.last())
+    }
+
+    @Test
+    fun `several processing images are checked in one call`() = runTest {
+        val checks = statusChecks()
+        val uploads = mutableListOf(
+            CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL),
+            CommentImageUploadResult.Processing(IMAGE_ID_2, IMAGE_URL_2),
+        )
+        val state = createState(onCheckImageStatus = checks::check) { uploads.removeFirst() }
+        state.addImages(listOf(image(PNG), image(PNG_2)))
+        settle()
+        val ids = state.uploadIds
+        assertEquals(listOf(CommentImageChipStatus.Processing, CommentImageChipStatus.Processing), state.statuses)
+
+        checks.status = { id ->
+            if (id == IMAGE_ID) CommentImageProcessingStatus.Ready(IMAGE_URL) else CommentImageProcessingStatus.Processing
+        }
+        advance(1.seconds)
+        assertEquals(listOf(listOf(IMAGE_ID, IMAGE_ID_2)), checks.requests)
+        assertEquals("[img]$IMAGE_URL[/img]${pendingImageTag(ids[1])}", state.text)
+        assertTrue(state.uploadingImages)
+
+        advance(1.5.seconds)
+        assertEquals(listOf(IMAGE_ID_2), checks.requests.last())
+    }
+
+    @Test
+    fun `internal failure while processing is retried by uploading the image again`() = runTest {
+        var reads = 0
+        val checks = statusChecks()
+        checks.status = { CommentImageProcessingStatus.Failed(CommentImageUploadResult.ProcessingFailed) }
+        val uploaded = mutableListOf<ByteArray>()
+        val state = createState(onCheckImageStatus = checks::check) {
+            uploaded += it
+            if (uploaded.size == 1) {
+                CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL)
+            } else {
+                CommentImageUploadResult.Ready(IMAGE_URL)
+            }
+        }
+        state.addImages(listOf(image(read = { reads++; PNG })))
+        advance(1.seconds)
+        assertEquals(listOf(CommentImageChipStatus.Failed), state.statuses)
+        assertEquals(CommentImageUploadResult.ProcessingFailed, state.imageUploadError)
+        assertTrue(state.imageThumbnails.single().canRetry)
+        assertFalse(state.uploadingImages)
+
+        state.retryImageUpload(state.uploadIds.single())
+        settle()
+        // 处理期间不保存图片内容, 重试时重新读取
+        assertEquals(2, reads)
+        assertEquals(2, uploaded.size)
+        assertContentEquals(PNG, uploaded[1])
+        assertEquals("[img]$IMAGE_URL[/img]", state.text)
+        assertNull(state.imageUploadError)
+    }
+
+    @Test
+    fun `unsupported image found while processing cannot be retried`() = runTest {
+        val checks = statusChecks()
+        checks.status = { CommentImageProcessingStatus.Failed(CommentImageUploadResult.InvalidFormat) }
+        var uploads = 0
+        val state = createState(onCheckImageStatus = checks::check) {
+            uploads++
+            CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL)
+        }
+        state.addImages(listOf(image()))
+        advance(1.seconds)
+        assertEquals(listOf(CommentImageChipStatus.Failed), state.statuses)
+        assertEquals(CommentImageUploadResult.InvalidFormat, state.imageUploadError)
+        assertFalse(state.imageThumbnails.single().canRetry)
+
+        state.retryImageUpload(state.uploadIds.single())
+        advance(10.seconds)
+        assertEquals(1, uploads)
+        assertEquals(1, checks.requests.size)
+    }
+
+    @Test
+    fun `image still processing after five minutes fails and can be retried`() = runTest {
+        val checks = statusChecks()
+        val uploads = mutableListOf<CommentImageUploadResult>(
+            CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL),
+            CommentImageUploadResult.Ready(IMAGE_URL),
+        )
+        val state = createState(onCheckImageStatus = checks::check) { uploads.removeFirst() }
+        state.addImages(listOf(image()))
+        settle()
+
+        advance(4.minutes + 59.seconds)
+        assertEquals(listOf(CommentImageChipStatus.Processing), state.statuses)
+        advance(5.seconds)
+        assertEquals(listOf(CommentImageChipStatus.Failed), state.statuses)
+        assertEquals(CommentImageUploadResult.ProcessingFailed, state.imageUploadError)
+        assertTrue(state.imageThumbnails.single().canRetry)
+        val checked = checks.requests.size
+        advance(1.minutes)
+        assertEquals(checked, checks.requests.size)
+
+        state.retryImageUpload(state.uploadIds.single())
+        settle()
+        assertEquals("[img]$IMAGE_URL[/img]", state.text)
+    }
+
+    @Test
+    fun `unavailable status keeps the image processing and polling goes on`() = runTest {
+        val checks = statusChecks()
+        checks.answer = { CommentImageStatusResult.Unavailable }
+        val state = createState(onCheckImageStatus = checks::check) {
+            CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL)
+        }
+        state.addImages(listOf(image()))
+        advance(20.seconds)
+        assertTrue(checks.requests.size >= 3)
+        assertEquals(listOf(CommentImageChipStatus.Processing), state.statuses)
+        assertNull(state.imageUploadError)
+
+        // 查询函数抛出异常时同样继续查询
+        checks.answer = { throw IllegalStateException("boom") }
+        val checked = checks.requests.size
+        advance(10.seconds)
+        assertTrue(checks.requests.size > checked)
+        assertEquals(listOf(CommentImageChipStatus.Processing), state.statuses)
+
+        checks.answer = { ids -> CommentImageStatusResult.Ok(ids.associateWith { CommentImageProcessingStatus.Ready(IMAGE_URL) }) }
+        advance(5.seconds)
+        assertEquals("[img]$IMAGE_URL[/img]", state.text)
+    }
+
+    @Test
+    fun `processing image whose placeholder was removed is not checked until undo restores it`() = runTest {
+        val checks = statusChecks()
+        val state = createState(onCheckImageStatus = checks::check) {
+            CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL)
+        }
+        state.addImages(listOf(image()))
+        advance(1.seconds)
+        assertEquals(1, checks.requests.size)
+
+        state.removeImageChip(1)
+        advance(1.minutes)
+        assertEquals(1, checks.requests.size)
+        assertFalse(state.uploadingImages)
+
+        state.textFieldState.undoState.undo()
+        settle()
+        assertEquals(listOf(CommentImageChipStatus.Processing), state.statuses)
+        checks.status = { CommentImageProcessingStatus.Ready(IMAGE_URL) }
+        advance(1.5.seconds)
+        assertEquals(2, checks.requests.size)
+        assertEquals("[img]$IMAGE_URL[/img]", state.text)
+    }
+
+    @Test
+    fun `only processing images whose placeholder is in the text are checked`() = runTest {
+        val checks = statusChecks()
+        val uploads = mutableListOf(
+            CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL),
+            CommentImageUploadResult.Processing(IMAGE_ID_2, IMAGE_URL_2),
+        )
+        val state = createState(onCheckImageStatus = checks::check) { uploads.removeFirst() }
+        state.addImages(listOf(image(PNG), image(PNG_2)))
+        settle()
+        state.removeImageChip(1)
+        advance(1.seconds)
+        assertEquals(listOf(listOf(IMAGE_ID_2)), checks.requests)
+
+        state.textFieldState.undoState.undo()
+        advance(1.5.seconds)
+        assertEquals(listOf(IMAGE_ID, IMAGE_ID_2), checks.requests.last())
+    }
+
+    @Test
+    fun `status check finishing after switching to another target is dropped`() = runTest {
+        val response = CompletableDeferred<CommentImageStatusResult>()
+        var checks = 0
+        val state = createState(
+            onCheckImageStatus = {
+                checks++
+                response.await()
+            },
+        ) { CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL) }
+        state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
+        state.addImages(listOf(image()))
+        advance(1.seconds)
+        assertEquals(1, checks)
+        val tag = pendingImageTag(state.uploadIds.single())
+
+        state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 3))
+        response.complete(
+            CommentImageStatusResult.Ok(mapOf(IMAGE_ID to CommentImageProcessingStatus.Ready(IMAGE_URL))),
+        )
+        settle()
+        assertEquals("", state.text)
+        // 结果没有用到上一个评论对象的图片上: 粘贴回它的占位标签, 标签不属于本次编辑
+        state.textFieldState.setTextAndPlaceCursorAtEnd(tag)
+        settle()
+        assertEquals(listOf(CommentImageChipStatus.Failed), state.statuses)
+        assertFalse(state.imageThumbnails.single().canRetry)
+        advance(1.minutes)
+        assertEquals(1, checks)
     }
 
     @Test
@@ -1034,7 +1375,7 @@ class CommentEditorStateTest {
         val label = encodeImageChipLabel("图片 1", state.imageChipRegistry.idOf(tag))
         assertEquals(tag, state.decodeImageChipLabels(label))
 
-        uploads.complete(0, CommentImageUploadResult.Ok(IMAGE_URL))
+        uploads.complete(0, CommentImageUploadResult.Ready(IMAGE_URL))
         settle()
         assertEquals("[img]$IMAGE_URL[/img]", state.decodeImageChipLabels(label))
         assertEquals("[img]$IMAGE_URL[/img]", state.decodeImageChipLabels(tag))
@@ -1054,6 +1395,8 @@ class CommentEditorStateTest {
     private companion object {
         const val IMAGE_URL = "https://img.myani.org/comments/1.webp"
         const val IMAGE_URL_2 = "https://img.myani.org/comments/2.webp"
+        const val IMAGE_ID = "1111111111111111111111111111111111111111111111111111111111111111"
+        const val IMAGE_ID_2 = "2222222222222222222222222222222222222222222222222222222222222222"
         val PNG = byteArrayOf(137.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 13, 10, 26, 10)
         val PNG_2 = PNG + byteArrayOf(2)
         val JPEG = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte())

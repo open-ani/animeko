@@ -71,6 +71,8 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.comment.CommentContext
+import me.him188.ani.app.domain.comment.CommentImageProcessingStatus
+import me.him188.ani.app.domain.comment.CommentImageStatusResult
 import me.him188.ani.app.domain.comment.CommentImageUploadResult
 import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -92,6 +94,7 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import java.awt.datatransfer.Clipboard as AwtClipboard
 import java.awt.datatransfer.StringSelection
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.test.Test
@@ -116,7 +119,8 @@ class EditCommentImageChipTest {
         clipboard: Clipboard? = null,
         platform: Platform? = null,
         textInputInterceptor: PlatformTextInputInterceptor? = null,
-        onUploadImage: suspend (ByteArray) -> CommentImageUploadResult = { CommentImageUploadResult.Ok(IMAGE_URL) },
+        onUploadImage: suspend (ByteArray) -> CommentImageUploadResult = { CommentImageUploadResult.Ready(IMAGE_URL) },
+        onCheckImageStatus: suspend (List<String>) -> CommentImageStatusResult = { CommentImageStatusResult.Unavailable },
     ): Editor {
         lateinit var editor: Editor
         setContent {
@@ -133,6 +137,7 @@ class EditCommentImageChipTest {
                             richTextRenderer = { UIRichText(emptyList()) },
                             onSend = { _, _ -> CommentSendResult.Ok },
                             onUploadImage = onUploadImage,
+                            onCheckImageStatus = onCheckImageStatus,
                             backgroundScope = scope,
                         ).apply {
                             startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
@@ -643,7 +648,7 @@ class EditCommentImageChipTest {
         var attempts = 0
         val editor = setEditor(
             onUploadImage = {
-                if (++attempts == 1) firstAttempt.await() else CommentImageUploadResult.Ok(IMAGE_URL)
+                if (++attempts == 1) firstAttempt.await() else CommentImageUploadResult.Ready(IMAGE_URL)
             },
         )
         runOnIdle { editor.state.addImages(listOf(CommentImageFile(PNG.size.toLong()) { PNG })) }
@@ -669,6 +674,45 @@ class EditCommentImageChipTest {
         runOnIdle { editor.state.retryImageUpload(uploadId) }
         waitUntil(timeoutMillis = 5_000) { editor.state.text == "[img]$IMAGE_URL[/img]" }
         waitForIdle()
+        assertColorClose(editor.chipStyle.ready.containerColor, chipBackground())
+    }
+
+    @Test
+    fun `processing chip has the pending color until the image is ready`() = runAniComposeUiTest {
+        val ready = AtomicBoolean(false)
+        val editor = setEditor(
+            onUploadImage = { CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL) },
+            onCheckImageStatus = { ids ->
+                val status = if (ready.get()) {
+                    CommentImageProcessingStatus.Ready(IMAGE_URL)
+                } else {
+                    CommentImageProcessingStatus.Processing
+                }
+                CommentImageStatusResult.Ok(ids.associateWith { status })
+            },
+        )
+        runOnIdle { editor.state.addImages(listOf(CommentImageFile(PNG.size.toLong()) { PNG })) }
+        waitUntil(timeoutMillis = 5_000) {
+            editor.state.imageChips.singleOrNull()?.let { editor.state.imageChipStatus(it) } ==
+                    CommentImageChipStatus.Processing
+        }
+        waitForIdle()
+        assertEquals(" ${chipLabel(1)} ", displayedText().visible())
+
+        fun chipBackground(): Color {
+            val layout = textLayoutResult()
+            val padding = layout.getBoundingBox(displayedText().firstLabelPadding())
+            return textField().captureToImage().toPixelMap()[
+                (ContentPaddingStartPx(density.density) + padding.center.x).roundToInt(),
+                (ContentPaddingTopPx(density.density) + padding.center.y).roundToInt(),
+            ]
+        }
+        assertColorClose(editor.chipStyle.processing.containerColor, chipBackground())
+
+        ready.set(true)
+        waitUntil(timeoutMillis = 10_000) { editor.state.text == "[img]$IMAGE_URL[/img]" }
+        waitForIdle()
+        assertEquals(" ${chipLabel(1)} ", displayedText().visible())
         assertColorClose(editor.chipStyle.ready.containerColor, chipBackground())
     }
 
@@ -845,7 +889,7 @@ class EditCommentImageChipTest {
         assertEquals(composing, editor.state.text)
         assertEquals(TextRange(composing.length - 2, composing.length), editor.state.textFieldState.composition)
 
-        response.complete(CommentImageUploadResult.Ok(IMAGE_URL))
+        response.complete(CommentImageUploadResult.Ready(IMAGE_URL))
         waitUntil(timeoutMillis = 5_000) { !editor.state.uploadingImages }
         waitForIdle()
         // 图片已可用, 文本等到组合结束才修改, 组合不被打断
@@ -884,6 +928,7 @@ class EditCommentImageChipTest {
 
     private companion object {
         const val IMAGE_URL = "https://img.myani.org/comments/1.webp"
+        const val IMAGE_ID = "1111111111111111111111111111111111111111111111111111111111111111"
         val PNG = byteArrayOf(137.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 13, 10, 26, 10)
         const val LABEL_MARK = '\u2063'
         const val ZERO_WIDTH_SPACE = '\u200B'

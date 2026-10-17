@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.domain.comment.CommentImageStatusResult
 import me.him188.ani.app.domain.comment.CommentImageUploadResult
 import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.ui.comment.CommentEditorState
@@ -77,7 +78,8 @@ private fun rememberPreviewCommentEditorState(initialText: String = ""): Comment
                     .toList(),
             ),
             onSend = { _, _ -> CommentSendResult.Ok },
-            onUploadImage = { CommentImageUploadResult.Ok("https://example.com/image.webp") },
+            onUploadImage = { CommentImageUploadResult.Ready("https://example.com/image.webp") },
+            onCheckImageStatus = { CommentImageStatusResult.Ok(emptyMap()) },
             richTextRenderer = {
                 withContext(Dispatchers.Default) {
                     with(CommentMapperContext) { parseBBCode(it) }

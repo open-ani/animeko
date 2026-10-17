@@ -17,13 +17,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasParent
+import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -34,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.comment.CommentContext
+import me.him188.ani.app.domain.comment.CommentImageProcessingStatus
+import me.him188.ani.app.domain.comment.CommentImageStatusResult
 import me.him188.ani.app.domain.comment.CommentImageUploadResult
 import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.domain.comment.PostCommentUseCase
@@ -43,6 +51,8 @@ import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_image_chip
 import me.him188.ani.app.ui.lang.comment_image_limit_reached
+import me.him188.ani.app.ui.lang.comment_image_processing
+import me.him188.ani.app.ui.lang.comment_image_processing_failed
 import me.him188.ani.app.ui.lang.comment_image_remove
 import me.him188.ani.app.ui.lang.comment_image_retry
 import me.him188.ani.app.ui.lang.comment_image_upload_failed_network
@@ -53,6 +63,8 @@ import me.him188.ani.app.ui.lang.comment_upload_image
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -64,8 +76,9 @@ import kotlin.test.assertTrue
 @OptIn(TestOnly::class)
 class EditCommentImageStripTest {
     private fun ComposeUiTest.setEditor(
-        onUploadImage: suspend (ByteArray) -> CommentImageUploadResult = { CommentImageUploadResult.Ok(IMAGE_URL) },
+        onUploadImage: suspend (ByteArray) -> CommentImageUploadResult = { CommentImageUploadResult.Ready(IMAGE_URL) },
         onSend: suspend (CommentContext, String) -> CommentSendResult = { _, _ -> CommentSendResult.Ok },
+        onCheckImageStatus: suspend (List<String>) -> CommentImageStatusResult = { CommentImageStatusResult.Unavailable },
     ): CommentEditorState {
         lateinit var state: CommentEditorState
         setContent {
@@ -80,6 +93,7 @@ class EditCommentImageStripTest {
                         richTextRenderer = { UIRichText(emptyList()) },
                         onSend = onSend,
                         onUploadImage = onUploadImage,
+                        onCheckImageStatus = onCheckImageStatus,
                         backgroundScope = scope,
                     ).apply {
                         startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
@@ -107,6 +121,13 @@ class EditCommentImageStripTest {
     private fun ComposeUiTest.thumbnail(number: Int) = onNodeWithContentDescription(chipLabel(number))
     private fun ComposeUiTest.removeButton(number: Int) =
         onNodeWithContentDescription(runBlocking { getString(Lang.comment_image_remove, number) })
+
+    /**
+     * 第 [number] 张缩略图中的进度指示. 进度指示自成一个语义节点, 不合并进缩略图.
+     */
+    private fun ComposeUiTest.progressOf(number: Int) = onNode(
+        hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate) and hasParent(hasContentDescription(chipLabel(number))),
+    )
 
     private fun chipLabel(number: Int) = runBlocking { getString(Lang.comment_image_chip, number) }
     private fun string(resource: StringResource) = runBlocking { getString(resource) }
@@ -235,7 +256,7 @@ class EditCommentImageStripTest {
         var attempts = 0
         val state = setEditor(
             onUploadImage = {
-                if (++attempts == 1) firstAttempt.await() else CommentImageUploadResult.Ok(IMAGE_URL)
+                if (++attempts == 1) firstAttempt.await() else CommentImageUploadResult.Ready(IMAGE_URL)
             },
         )
         textField().performTextInput("hi ")
@@ -258,6 +279,82 @@ class EditCommentImageStripTest {
         thumbnail(1).assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
         onNodeWithText(string(Lang.comment_image_upload_failed_network)).assertDoesNotExist()
     }
+
+    @Test
+    fun `processing image shows its own progress and send waits until it is ready`() = runAniComposeUiTest {
+        val ready = AtomicBoolean(false)
+        val checks = AtomicInteger(0)
+        val state = setEditor(
+            onUploadImage = { CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL) },
+            onCheckImageStatus = { ids ->
+                checks.incrementAndGet()
+                val status = if (ready.get()) {
+                    CommentImageProcessingStatus.Ready(IMAGE_URL)
+                } else {
+                    CommentImageProcessingStatus.Processing
+                }
+                CommentImageStatusResult.Ok(ids.associateWith { status })
+            },
+        )
+        textField().performTextInput("hi ")
+        runOnIdle { state.addImages(listOf(pngImage())) }
+        waitUntil(timeoutMillis = 5_000) { state.imageThumbnails.singleOrNull()?.status == CommentImageChipStatus.Processing }
+        waitForIdle()
+        thumbnail(1).assert(hasStateDescription(string(Lang.comment_image_processing)))
+        progressOf(1).assertExists()
+        thumbnail(1).assert(!hasRetry())
+        onNodeWithText(string(Lang.comment_send)).assertIsNotEnabled()
+
+        // 查询到仍在处理时保持不变
+        waitUntil(timeoutMillis = 5_000) { checks.get() >= 1 }
+        waitForIdle()
+        thumbnail(1).assert(hasStateDescription(string(Lang.comment_image_processing)))
+        onNodeWithText(string(Lang.comment_send)).assertIsNotEnabled()
+
+        ready.set(true)
+        waitUntil(timeoutMillis = 10_000) { state.text == "hi [img]$IMAGE_URL[/img]" }
+        waitForIdle()
+        thumbnail(1).assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
+        progressOf(1).assertDoesNotExist()
+        onNodeWithText(string(Lang.comment_send)).assertIsEnabled()
+    }
+
+    @Test
+    fun `failed processing shows its error and clicking the thumbnail uploads the image again`() =
+        runAniComposeUiTest {
+            val uploads = AtomicInteger(0)
+            val state = setEditor(
+                onUploadImage = {
+                    if (uploads.incrementAndGet() == 1) {
+                        CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL)
+                    } else {
+                        CommentImageUploadResult.Ready(IMAGE_URL)
+                    }
+                },
+                onCheckImageStatus = { ids ->
+                    CommentImageStatusResult.Ok(
+                        ids.associateWith {
+                            CommentImageProcessingStatus.Failed(CommentImageUploadResult.ProcessingFailed)
+                        },
+                    )
+                },
+            )
+            textField().performTextInput("hi ")
+            runOnIdle { state.addImages(listOf(pngImage())) }
+            waitUntil(timeoutMillis = 10_000) { state.imageUploadError == CommentImageUploadResult.ProcessingFailed }
+            waitForIdle()
+            val message = string(Lang.comment_image_processing_failed)
+            thumbnail(1).assert(hasRetry())
+            thumbnail(1).assert(hasStateDescription(message))
+            onNodeWithText(message).assertIsDisplayed()
+
+            thumbnail(1).performClick()
+            waitUntil(timeoutMillis = 5_000) { state.text == "hi [img]$IMAGE_URL[/img]" }
+            waitForIdle()
+            assertEquals(2, uploads.get())
+            onNodeWithText(message).assertDoesNotExist()
+            onNodeWithText(string(Lang.comment_send)).assertIsEnabled()
+        }
 
     @Test
     fun `send with a failed image shows a message instead of sending`() = runAniComposeUiTest {
@@ -310,6 +407,7 @@ class EditCommentImageStripTest {
 
     private companion object {
         const val IMAGE_URL = "https://img.myani.org/comments/1.webp"
+        const val IMAGE_ID = "1111111111111111111111111111111111111111111111111111111111111111"
         val PNG = byteArrayOf(137.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 13, 10, 26, 10)
     }
 }

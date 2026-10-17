@@ -81,6 +81,7 @@ import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
+import me.him188.ani.app.domain.comment.GetCommentImageStatusUseCase
 import me.him188.ani.app.domain.comment.UploadCommentImageUseCase
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.danmaku.DanmakuTextConversionSettings
@@ -333,6 +334,7 @@ open class EpisodeViewModel(
     private val setDanmakuEnabledUseCase: SetDanmakuEnabledUseCase by inject()
     private val postCommentUseCase: PostCommentUseCase by inject()
     private val uploadCommentImageUseCase: UploadCommentImageUseCase by inject()
+    private val getCommentImageStatusUseCase: GetCommentImageStatusUseCase by inject()
     private val autoSkipRepository: AutoSkipRepository by inject()
     private val getMediaSelectorSettings: GetMediaSelectorSettingsUseCase by inject()
     private val getMediaSourceInstances: GetMediaSourceInstancesUseCase by inject()
@@ -971,6 +973,7 @@ open class EpisodeViewModel(
         },
         onSend = { context, content -> postCommentUseCase(context, content) },
         onUploadImage = { uploadCommentImageUseCase(it) },
+        onCheckImageStatus = { getCommentImageStatusUseCase(it) },
         backgroundScope = backgroundScope,
     )
 

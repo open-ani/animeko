@@ -88,8 +88,10 @@ import me.him188.ani.app.ui.lang.comment_image_upload_not_logged_in
 import me.him188.ani.app.ui.lang.comment_image_upload_pending_limit
 import me.him188.ani.app.ui.lang.comment_image_upload_rate_limited
 import me.him188.ani.app.ui.lang.comment_image_limit_reached
+import me.him188.ani.app.ui.lang.comment_image_processing_failed
 import me.him188.ani.app.ui.lang.comment_image_upload_too_large
 import me.him188.ani.app.ui.lang.comment_send_blocked_failed_images
+import me.him188.ani.app.ui.lang.comment_send_failed_image_processing
 import me.him188.ani.app.ui.lang.comment_send_failed_invalid_image
 import me.him188.ani.app.ui.lang.comment_send_failed_network
 import me.him188.ani.app.ui.lang.comment_send_failed_too_many_images
@@ -414,7 +416,7 @@ private fun CommentFormattingToolbarHost(
  * 评论中有图片时在编辑框下方显示 [CommentImageStrip].
  *
  * - 点击缩略图选中编辑框中对应的图片标签 ([onSelectImage]), 选区工具栏随之出现, 可以剪切、复制这张图片;
- *   上传失败且可以重试的图片则重新上传.
+ *   上传或处理失败且可以重试的图片则重新上传.
  * - 点击删除按钮从评论中删除这一处图片.
  *
  * 单独作为一个可重组的作用域, 编辑文字时只有图片变化才重组这里.
@@ -475,6 +477,7 @@ private fun renderCommentSendError(result: CommentSendResult.Error): String {
         CommentSendResult.NetworkError -> stringResource(Lang.comment_send_failed_network)
         CommentSendResult.InvalidImage -> stringResource(Lang.comment_send_failed_invalid_image)
         CommentSendResult.TooManyImages -> stringResource(Lang.comment_send_failed_too_many_images)
+        CommentSendResult.ImageProcessing -> stringResource(Lang.comment_send_failed_image_processing)
         is CommentSendResult.UnknownError -> stringResource(Lang.comment_send_failed_unknown, result.message)
     }
 }
@@ -489,6 +492,7 @@ internal fun renderImageUploadError(error: CommentImageUploadResult.Error): Stri
         CommentImageUploadResult.RateLimited -> stringResource(Lang.comment_image_upload_rate_limited)
         CommentImageUploadResult.PendingLimit -> stringResource(Lang.comment_image_upload_pending_limit)
         CommentImageUploadResult.NetworkError -> stringResource(Lang.comment_image_upload_failed_network)
+        CommentImageUploadResult.ProcessingFailed -> stringResource(Lang.comment_image_processing_failed)
         is CommentImageUploadResult.UnknownError ->
             stringResource(Lang.comment_image_upload_failed_unknown, error.message)
     }

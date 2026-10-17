@@ -35,6 +35,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class UploadCommentImageUseCaseTest {
@@ -68,6 +69,9 @@ class UploadCommentImageUseCaseTest {
     private fun MockRequestHandleScope.text(body: String, status: HttpStatusCode): HttpResponseData =
         respond(body, status, headersOf("Content-Type", "text/plain"))
 
+    private fun MockRequestHandleScope.json(body: String, status: HttpStatusCode = HttpStatusCode.OK): HttpResponseData =
+        respond(body, status, headersOf("Content-Type", "application/json"))
+
     private suspend fun TestScope.upload(
         server: Server,
         image: ByteArray = PNG,
@@ -76,18 +80,14 @@ class UploadCommentImageUseCaseTest {
         UploadCommentImageUseCaseImpl(server.api, FakeSession(session), coroutineContext).invoke(image)
 
     @Test
-    fun `upload sends raw bytes and returns url`() = runTest {
+    fun `upload sends raw bytes and returns url of a ready image`() = runTest {
         val server = Server {
-            respond(
-                """{"url":"https://static.animeko.org/comment-images/u/abc","width":1,"height":1}""",
-                HttpStatusCode.OK,
-                headersOf("Content-Type", "application/json"),
-            )
+            json("""{"id":"$IMAGE_ID","status":"READY","url":"$IMAGE_URL","width":1,"height":1}""")
         }
 
         val result = upload(server)
 
-        assertEquals(CommentImageUploadResult.Ok("https://static.animeko.org/comment-images/u/abc"), result)
+        assertEquals(CommentImageUploadResult.Ready(IMAGE_URL), result)
         val request = server.requests.single()
         assertEquals(HttpMethod.Post, request.method)
         assertEquals("/v2/comments/images", request.url.encodedPath)
@@ -95,12 +95,45 @@ class UploadCommentImageUseCaseTest {
     }
 
     @Test
-    fun `accepts all supported formats`() = runTest {
+    fun `image still being converted returns its id and url`() = runTest {
         val server = Server {
-            respond("""{"url":"u","width":1,"height":1}""", HttpStatusCode.OK, headersOf("Content-Type", "application/json"))
+            json("""{"id":"$IMAGE_ID","status":"PROCESSING","url":"$IMAGE_URL"}""", HttpStatusCode.Accepted)
         }
+
+        assertEquals(CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL), upload(server))
+    }
+
+    @Test
+    fun `result follows the status in the body rather than the http status`() = runTest {
+        var body = """{"id":"$IMAGE_ID","status":"READY","url":"$IMAGE_URL","width":1,"height":1}"""
+        var status = HttpStatusCode.Accepted
+        val server = Server { json(body, status) }
+
+        assertEquals(CommentImageUploadResult.Ready(IMAGE_URL), upload(server))
+        body = """{"id":"$IMAGE_ID","status":"PROCESSING","url":"$IMAGE_URL"}"""
+        status = HttpStatusCode.OK
+        assertEquals(CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL), upload(server))
+    }
+
+    @Test
+    fun `failed body is mapped by its failure code`() = runTest {
+        var code = "UNSUPPORTED_IMAGE"
+        val server = Server {
+            json("""{"id":"$IMAGE_ID","status":"FAILED","url":"$IMAGE_URL","failureCode":"$code"}""")
+        }
+
+        assertEquals(CommentImageUploadResult.InvalidFormat, upload(server))
+        code = "TOO_LARGE"
+        assertEquals(CommentImageUploadResult.InvalidFormat, upload(server))
+        code = "INTERNAL"
+        assertEquals(CommentImageUploadResult.ProcessingFailed, upload(server))
+    }
+
+    @Test
+    fun `accepts all supported formats`() = runTest {
+        val server = Server { json("""{"id":"$IMAGE_ID","status":"READY","url":"u","width":1,"height":1}""") }
         for (image in listOf(PNG, JPEG, WEBP, GIF87A, GIF89A)) {
-            assertEquals(CommentImageUploadResult.Ok("u"), upload(server, image))
+            assertEquals(CommentImageUploadResult.Ready("u"), upload(server, image))
         }
         assertEquals(5, server.requests.size)
     }
@@ -197,6 +230,35 @@ class UploadCommentImageUseCaseTest {
     }
 
     @Test
+    fun `unavailable image service is a processing failure`() = runTest {
+        assertEquals(
+            CommentImageUploadResult.ProcessingFailed,
+            upload(Server { text("HTTP 503: COMMENT_IMAGE_UNAVAILABLE", HttpStatusCode.ServiceUnavailable) }),
+        )
+        assertEquals(
+            CommentImageUploadResult.ProcessingFailed,
+            upload(Server { text("Service Unavailable", HttpStatusCode.ServiceUnavailable) }),
+        )
+    }
+
+    @Test
+    fun `retryable errors are the ones not about the image itself`() {
+        assertFalse(CommentImageUploadResult.TooLarge.isRetryable)
+        assertFalse(CommentImageUploadResult.InvalidFormat.isRetryable)
+        for (error in listOf(
+            CommentImageUploadResult.NotLoggedIn,
+            CommentImageUploadResult.Forbidden,
+            CommentImageUploadResult.RateLimited,
+            CommentImageUploadResult.PendingLimit,
+            CommentImageUploadResult.NetworkError,
+            CommentImageUploadResult.ProcessingFailed,
+            CommentImageUploadResult.UnknownError("x"),
+        )) {
+            assertTrue(error.isRetryable, "$error")
+        }
+    }
+
+    @Test
     fun `server errors and IO errors are network errors`() = runTest {
         assertEquals(
             CommentImageUploadResult.NetworkError,
@@ -226,6 +288,8 @@ class UploadCommentImageUseCaseTest {
     }
 
     private companion object {
+        const val IMAGE_ID = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        const val IMAGE_URL = "https://usercontent.myani.org/comment-images/u/$IMAGE_ID"
         val PNG = byteArrayOf(137.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 13, 10, 26, 10, 0, 0)
         val JPEG = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte())
         val WEBP = "RIFF\u0000\u0000\u0000\u0000WEBPVP8 ".encodeToByteArray()

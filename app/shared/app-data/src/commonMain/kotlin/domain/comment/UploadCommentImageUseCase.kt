@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.comment
 
 import androidx.compose.runtime.Immutable
 import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
@@ -24,17 +25,21 @@ import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.client.apis.CommentsAniApi
+import me.him188.ani.client.models.AniCommentImageInfo
+import me.him188.ani.client.models.AniCommentImageStatus
 import me.him188.ani.utils.coroutines.runCatchingCancellable
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
 
 /**
  * 上传评论里插入的图片到 Ani 服务器.
  *
- * 服务器会校验图片的格式与大小, 并转为 WebP 保存. 评论正文只能以 `[img]<url>[/img]` 引用图片, 因此上传成功后得到的是可以直接写进
- * BBCode 的地址.
+ * 服务器校验图片的格式与大小后, 在后台把图片转为 WebP 保存. 评论正文只能以 `[img]<url>[/img]` 引用转换好的图片:
+ * 结果为 [CommentImageUploadResult.Ready] 时得到的地址可以直接写进 BBCode; 为 [CommentImageUploadResult.Processing] 时
+ * 用 [GetCommentImageStatusUseCase] 查询, 转换完成后才能引用.
  */
 interface UploadCommentImageUseCase : UseCase {
     /**
@@ -95,7 +100,7 @@ class UploadCommentImageUseCaseImpl(
                     ).body()
                 }
             }
-            CommentImageUploadResult.Ok(response.url)
+            response.toUploadResult()
         } catch (e: ClientRequestException) {
             val status = e.response.status
             // 服务器的错误响应是纯文本. 同一状态码有不同原因时, 正文中带有错误码
@@ -115,6 +120,15 @@ class UploadCommentImageUseCaseImpl(
                     logger.error(e) { "Failed to upload comment image, see exception" }
                     CommentImageUploadResult.UnknownError(body.ifBlank { status.toString() })
                 }
+            }
+        } catch (e: ServerResponseException) {
+            if (e.response.status == HttpStatusCode.ServiceUnavailable) {
+                // 服务器暂时不能处理图片 (响应正文为 COMMENT_IMAGE_UNAVAILABLE), 或服务器本身暂时不可用. 都可以稍后重新上传
+                logger.warn(e) { "Comment image service is unavailable" }
+                CommentImageUploadResult.ProcessingFailed
+            } else {
+                logger.error(e) { "Failed to upload comment image, see exception" }
+                CommentImageUploadResult.NetworkError
             }
         } catch (e: Exception) {
             val delegateEx = RepositoryException.wrapOrThrowCancellation(e)
@@ -145,16 +159,40 @@ class UploadCommentImageUseCaseImpl(
 }
 
 /**
+ * 客户端以响应中的状态为准, 不看 HTTP 状态码. 上传接口不会返回 [AniCommentImageStatus.FAILED], 万一返回时按失败的原因处理.
+ */
+private fun AniCommentImageInfo.toUploadResult(): CommentImageUploadResult = when (status) {
+    AniCommentImageStatus.READY -> CommentImageUploadResult.Ready(url)
+    AniCommentImageStatus.PROCESSING -> CommentImageUploadResult.Processing(id, url)
+    AniCommentImageStatus.FAILED -> failureCode.toCommentImageError()
+}
+
+/**
  * [UploadCommentImageUseCase] 的结果.
  */
 @Immutable
 sealed interface CommentImageUploadResult {
     /**
-     * @property url 上传后图片的地址, 用于 `[img]<url>[/img]`.
+     * 图片已经转换好, 可以在评论中引用.
+     *
+     * @property url 图片的地址, 用于 `[img]<url>[/img]`.
      */
-    data class Ok(val url: String) : CommentImageUploadResult
+    data class Ready(val url: String) : CommentImageUploadResult
 
-    sealed interface Error : CommentImageUploadResult
+    /**
+     * 服务器已收到图片, 正在后台转换. 用 [GetCommentImageStatusUseCase] 查询 [id] 的状态, 转换完成后才能在评论中引用.
+     *
+     * @property id 图片的标识, 用于查询状态.
+     * @property url 转换完成后图片的地址.
+     */
+    data class Processing(val id: String, val url: String) : CommentImageUploadResult
+
+    sealed interface Error : CommentImageUploadResult {
+        /**
+         * 重新上传同一张图片是否可能成功. 图片本身不被接受 (太大, 格式不支持或无法解码) 时不能重试.
+         */
+        val isRetryable: Boolean get() = this != TooLarge && this != InvalidFormat
+    }
 
     /**
      * 图片超过 [UploadCommentImageUseCase.MAX_IMAGE_SIZE_BYTES].
@@ -191,6 +229,11 @@ sealed interface CommentImageUploadResult {
      * 网络错误, 或服务器暂时无法处理. 稍后重试即可.
      */
     data object NetworkError : Error
+
+    /**
+     * 服务器暂时无法转换这张图片, 或转换没有完成. 重新上传同一张图片即可重试.
+     */
+    data object ProcessingFailed : Error
 
     data class UnknownError(val message: String) : Error
 }

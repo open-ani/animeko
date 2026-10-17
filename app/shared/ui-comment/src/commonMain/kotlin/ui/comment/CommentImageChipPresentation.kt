@@ -46,6 +46,11 @@ internal enum class CommentImageChipStatus {
     Uploading,
 
     /**
+     * 待上传的图片已上传, 服务器正在处理.
+     */
+    Processing,
+
+    /**
      * 待上传的图片上传失败, 或占位标签不属于本次编辑 (例如粘贴进来的).
      */
     Failed,
@@ -67,11 +72,13 @@ internal data class CommentImageChipColors(
 internal data class CommentImageChipStyle(
     val ready: CommentImageChipColors,
     val uploading: CommentImageChipColors,
+    val processing: CommentImageChipColors,
     val failed: CommentImageChipColors,
 ) {
     fun colors(status: CommentImageChipStatus): CommentImageChipColors = when (status) {
         CommentImageChipStatus.Ready -> ready
         CommentImageChipStatus.Uploading -> uploading
+        CommentImageChipStatus.Processing -> processing
         CommentImageChipStatus.Failed -> failed
     }
 
@@ -80,15 +87,18 @@ internal data class CommentImageChipStyle(
         fun default(): CommentImageChipStyle {
             val colorScheme = MaterialTheme.colorScheme
             return remember(colorScheme) {
+                // 正在上传和正在处理对用户来说都是 "还不能用", 标签颜色相同; 缩略图上的进度指示区分两者
+                val pending = CommentImageChipColors(
+                    containerColor = colorScheme.surfaceContainerHighest,
+                    contentColor = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
                 CommentImageChipStyle(
                     ready = CommentImageChipColors(
                         containerColor = colorScheme.secondaryContainer,
                         contentColor = colorScheme.onSecondaryContainer,
                     ),
-                    uploading = CommentImageChipColors(
-                        containerColor = colorScheme.surfaceContainerHighest,
-                        contentColor = colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    ),
+                    uploading = pending,
+                    processing = pending,
                     failed = CommentImageChipColors(
                         containerColor = colorScheme.errorContainer,
                         contentColor = colorScheme.onErrorContainer,

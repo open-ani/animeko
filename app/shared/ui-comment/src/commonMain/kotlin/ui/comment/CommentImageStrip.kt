@@ -52,6 +52,7 @@ import me.him188.ani.app.domain.comment.CommentImageUploadResult
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.comment_image_processing
 import me.him188.ani.app.ui.lang.comment_image_remove
 import me.him188.ani.app.ui.lang.comment_image_retry
 import me.him188.ani.app.ui.lang.comment_image_uploading
@@ -61,7 +62,7 @@ import org.jetbrains.compose.resources.stringResource
  * 编辑框下方的一张图片缩略图, 对应文本中的一个图片标签 ([CommentImageChip]).
  *
  * @property number 图片的序号, 与编辑框中 "图片 N" 标签的序号相同.
- * @property url 显示的图片地址. 正在上传和上传失败的图片为 `null`.
+ * @property url 显示的图片地址. 还不可用 (正在上传、正在处理或失败) 的图片为 `null`.
  * @property uploadId 待上传图片的本地标识, 见 [CommentImageChip.uploadId].
  * @property error 上传失败的原因. 不属于本次编辑的占位标签 (例如粘贴进来的) 没有原因, 为 `null`.
  * @property canRetry 上传失败且可以重试.
@@ -80,7 +81,8 @@ internal data class CommentImageThumbnail(
  * 评论中图片的缩略图, 按图片在评论中出现的顺序排成一行, 放不下时可以横向滚动.
  *
  * 每张缩略图左上角是序号, 颜色与编辑框中的图片标签相同 ([style]); 右上角是删除按钮.
- * 正在上传的显示进度, 上传失败的显示错误图标, 可以重试时显示重试图标.
+ * 正在上传和正在服务器上处理的显示进度 (两者颜色不同), 失败的显示错误图标, 可以重试时显示重试图标.
+ * 正在处理的图片不在本地解码显示预览: 原图可能非常大.
  *
  * @param onClick 点击缩略图 (删除按钮以外的部分).
  * @param onRemove 点击删除按钮.
@@ -126,6 +128,7 @@ private fun CommentImageThumbnailItem(
     val stateText = when (image.status) {
         CommentImageChipStatus.Ready -> null
         CommentImageChipStatus.Uploading -> stringResource(Lang.comment_image_uploading)
+        CommentImageChipStatus.Processing -> stringResource(Lang.comment_image_processing)
         CommentImageChipStatus.Failed -> image.error?.let { renderImageUploadError(it) }
     }
     Box(
@@ -174,6 +177,14 @@ private fun CommentImageThumbnailItem(
             CommentImageChipStatus.Uploading -> CircularProgressIndicator(
                 Modifier.align(Alignment.Center).size(24.dp),
                 strokeWidth = 2.dp,
+            )
+
+            // 与上传时的进度区分: 图片已经在服务器上, 换成次要颜色并显示轨道
+            CommentImageChipStatus.Processing -> CircularProgressIndicator(
+                Modifier.align(Alignment.Center).size(24.dp),
+                color = colorScheme.secondary,
+                strokeWidth = 2.dp,
+                trackColor = colorScheme.secondaryContainer,
             )
 
             CommentImageChipStatus.Failed -> Icon(
@@ -242,6 +253,7 @@ private fun PreviewCommentImageStrip() {
             images = listOf(
                 CommentImageThumbnail(1, CommentImageChipStatus.Ready, "https://example.com/1.webp", null, null, false),
                 CommentImageThumbnail(2, CommentImageChipStatus.Uploading, null, "a-2", null, false),
+                CommentImageThumbnail(5, CommentImageChipStatus.Processing, null, "a-5", null, false),
                 CommentImageThumbnail(
                     3, CommentImageChipStatus.Failed, null, "a-3",
                     CommentImageUploadResult.NetworkError, canRetry = true,

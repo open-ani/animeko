@@ -179,6 +179,17 @@ class PostCommentUseCaseTest {
     }
 
     @Test
+    fun `image processing error code is reported`() = runTest {
+        val sender = PostCommentUseCaseImpl(
+            episodeServiceResponding(HttpStatusCode.UnprocessableEntity, "HTTP 422: COMMENT_IMAGE_PROCESSING"),
+            createPersonCommentService(),
+            context = coroutineContext,
+        )
+
+        assertIs<CommentSendResult.ImageProcessing>(sender(CommentContext.Episode(1, 2L), COMMENT_CONTENT))
+    }
+
+    @Test
     fun `person comment image error codes are reported`() = runTest {
         var body = "HTTP 422: COMMENT_IMAGE_INVALID"
         val personsApi = PersonsAniApi(
@@ -198,6 +209,10 @@ class PostCommentUseCaseTest {
         body = "HTTP 422: COMMENT_IMAGE_TOO_MANY"
         assertIs<CommentSendResult.TooManyImages>(
             sender(CommentContext.PersonCommentReply(PersonCommentTarget.Person(7), "reply-target"), COMMENT_CONTENT),
+        )
+        body = "HTTP 422: COMMENT_IMAGE_PROCESSING"
+        assertIs<CommentSendResult.ImageProcessing>(
+            sender(CommentContext.PersonComment(PersonCommentTarget.Person(7)), COMMENT_CONTENT),
         )
     }
 

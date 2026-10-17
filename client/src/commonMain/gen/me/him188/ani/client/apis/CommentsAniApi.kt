@@ -16,8 +16,9 @@
 
 package me.him188.ani.client.apis
 
+import me.him188.ani.client.models.AniCommentImageInfo
 import me.him188.ani.client.models.AniCreateCommentReportRequest
-import me.him188.ani.client.models.AniUploadCommentImageResponse
+import me.him188.ani.client.models.AniGetCommentImagesResponse
 
 import me.him188.ani.client.infrastructure.*
 import io.ktor.client.HttpClient
@@ -78,13 +79,47 @@ open class CommentsAniApi : ApiClient {
 
 
     /**
-     * 上传评论图片
-     * 上传一张图片, 返回可以在评论中用 &#x60;[img]&#x60; 引用的地址. 请求体是图片文件的原始字节, 支持 JPEG, PNG, WebP, GIF, 最大 10MB. 图片统一转为 WebP 保存: 动图只保留第一帧, 并按 EXIF 方向摆正; 过大的图片等比缩小到短边不超过 2048 像素, 长边不超过 8192 像素. 每个用户每分钟最多上传 10 张, 每天最多 50 张. 图片要在 24 小时内发进自己的评论, 否则会被删除; 重新上传同一个文件会得到同一个地址并重新计时. 每个用户最多有 20 张没有被评论引用的图片: 还没发进评论的, 以及所在评论被删除、还没回收的.
-     * @param body 图片文件的原始字节
-     * @return AniUploadCommentImageResponse
+     * 查询评论图片的处理状态
+     * 查询上传的评论图片的处理状态, 一次最多 10 个 id. 不存在或已删除的图片返回 FAILED 和 NOT_FOUND.
+     * @param ids 上传接口返回的图片 id, 逗号分隔
+     * @return AniGetCommentImagesResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun uploadCommentImage(body: io.ktor.http.content.OutgoingContent): HttpResponse<AniUploadCommentImageResponse> {
+    open suspend fun getCommentImages(ids: kotlin.collections.List<kotlin.String>): HttpResponse<AniGetCommentImagesResponse> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        ids?.apply { localVariableQuery["ids"] = toMultiValue(this, "csv") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/comments/images",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * 上传评论图片
+     * 上传一张图片. 请求体是图片文件的原始字节, 支持 JPEG, PNG, WebP, GIF, 最大 10MB, 不超过 2 亿像素. 图片在后台统一转为 WebP: 动图只保留第一帧, 按 EXIF 方向摆正, 转为 sRGB 并去掉 EXIF 等元数据; 过大的图片等比缩小到短边不超过 2048 像素, 长边不超过 8192 像素. 返回图片的 id 和地址: 状态为 PROCESSING (202) 时用 getCommentImages 查询, 变为 READY 后才能在评论中用 &#x60;[img]&#x60; 引用; 同一个文件已经转换好时直接返回 READY (200). 重新上传同一个文件会得到同一个 id 和地址. 一直没有发进评论的图片会被删除.
+     * @param body 图片文件的原始字节
+     * @return AniCommentImageInfo
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun uploadCommentImage(body: io.ktor.http.content.OutgoingContent): HttpResponse<AniCommentImageInfo> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 

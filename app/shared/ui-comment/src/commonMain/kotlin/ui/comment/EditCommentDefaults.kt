@@ -257,7 +257,7 @@ object EditCommentDefaults {
      * 加粗等格式操作在选中文字后由 [CommentFormattingToolbar] 提供. 上传中的图片在编辑框下方的 [CommentImageStrip] 中显示进度,
      * 上传期间仍可以继续添加图片.
      *
-     * @param uploadingImage 正在上传图片. 上传期间不能发送.
+     * @param uploadingImage 正在上传图片, 或上传的图片正在服务器上处理. 这期间不能发送.
      */
     @Composable
     fun ActionRow(

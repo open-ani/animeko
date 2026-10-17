@@ -29,6 +29,7 @@ import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.person.PersonCommentRepository
 import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
+import me.him188.ani.app.domain.comment.GetCommentImageStatusUseCase
 import me.him188.ani.app.domain.comment.UploadCommentImageUseCase
 import me.him188.ani.app.ui.comment.BangumiCommentSticker
 import me.him188.ani.app.ui.comment.CommentEditorState
@@ -63,6 +64,7 @@ abstract class PeopleDetailsViewModel(
     private val commentReportService: AniCommentReportService by inject()
     private val postCommentUseCase: PostCommentUseCase by inject()
     private val uploadCommentImageUseCase: UploadCommentImageUseCase by inject()
+    private val getCommentImageStatusUseCase: GetCommentImageStatusUseCase by inject()
 
     /** 详情 (含评论数) 的重启器: 发送评论后重新拉一次, 让评论数与列表一致. */
     protected val detailsRestarter = FlowRestarter()
@@ -143,6 +145,7 @@ abstract class PeopleDetailsViewModel(
             },
             onSend = { context, content -> postCommentUseCase(context, content) },
             onUploadImage = { uploadCommentImageUseCase(it) },
+            onCheckImageStatus = { getCommentImageStatusUseCase(it) },
             backgroundScope = backgroundScope,
         )
 

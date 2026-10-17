@@ -340,7 +340,9 @@ data class ServerListFeatureHandler(
             lastCall = thisCall
 
             val status = thisCall.response.status
-            if (status.value in 100..399 || status in FINAL_ERROR_STATUSES) {
+            if (status.value in 100..399 || status in FINAL_ERROR_STATUSES ||
+                thisCall.response.headers.contains(ERROR_CODE_HEADER)
+            ) {
                 // the server is reachable: remember the index for next time
                 selectionState.value = SelectionState(signature, index)
                 return thisCall
@@ -373,6 +375,12 @@ data class ServerListFeatureHandler(
             HttpStatusCode.UnprocessableEntity,
             HttpStatusCode.TooManyRequests,
         )
+
+        /**
+         * Ani 服务器在业务错误的响应上带的错误码. 带这个头的响应来自后端本身而不是某个地址前面的代理, 无论状态码是什么都直接返回,
+         * 例如图片处理服务暂时不可用时的 503.
+         */
+        internal const val ERROR_CODE_HEADER = "X-Ani-Error-Code"
 
         // for testing
         internal fun replaceUrl(urlBuilder: URLBuilder, newServerUrl: Url) {

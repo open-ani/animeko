@@ -16,6 +16,8 @@
 
 package me.him188.ani.client.models
 
+import me.him188.ani.client.models.AniCommentImageFailureCode
+import me.him188.ani.client.models.AniCommentImageStatus
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -24,19 +26,28 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
+ * @param id
+ * @param status
  * @param url
  * @param width
  * @param height
+ * @param failureCode
  */
 @Serializable
 
-data class AniUploadCommentImageResponse (
+data class AniCommentImageInfo (
+
+    @SerialName(value = "id") @Required val id: kotlin.String,
+
+    @SerialName(value = "status") @Required val status: AniCommentImageStatus,
 
     @SerialName(value = "url") @Required val url: kotlin.String,
 
-    @SerialName(value = "width") @Required val width: kotlin.Int,
+    @SerialName(value = "width") val width: kotlin.Int? = null,
 
-    @SerialName(value = "height") @Required val height: kotlin.Int
+    @SerialName(value = "height") val height: kotlin.Int? = null,
+
+    @SerialName(value = "failureCode") val failureCode: AniCommentImageFailureCode? = null
 
 ) {
 

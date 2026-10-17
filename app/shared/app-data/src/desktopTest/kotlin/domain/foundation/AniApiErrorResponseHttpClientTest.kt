@@ -42,7 +42,12 @@ import kotlin.test.assertEquals
 class AniApiErrorResponseHttpClientTest {
     private class Request(val server: Int, val path: String, val authorization: String?)
 
-    private class Response(val status: HttpStatusCode, val body: String, val contentType: String = "text/plain")
+    private class Response(
+        val status: HttpStatusCode,
+        val body: String,
+        val contentType: String = "text/plain",
+        val headers: Map<String, String> = emptyMap(),
+    )
 
     /**
      * [SERVER_COUNT] 个本地服务器, 依次作为 Ani 服务器的地址. [respond] 的参数是收到请求的服务器序号.
@@ -62,6 +67,7 @@ class AniApiErrorResponseHttpClientTest {
                     val response = respond(index)
                     val bytes = response.body.encodeToByteArray()
                     exchange.responseHeaders.add("Content-Type", response.contentType)
+                    response.headers.forEach { (name, value) -> exchange.responseHeaders.add(name, value) }
                     exchange.sendResponseHeaders(response.status.value, bytes.size.toLong())
                     exchange.responseBody.use { it.write(bytes) }
                 }
@@ -146,11 +152,30 @@ class AniApiErrorResponseHttpClientTest {
             if (server == 0) {
                 Response(HttpStatusCode.ServiceUnavailable, "HTTP 503: Service Unavailable")
             } else {
-                Response(HttpStatusCode.OK, """{"url":"$IMAGE_URL","width":1,"height":1}""", "application/json")
+                Response(
+                    HttpStatusCode.OK,
+                    """{"id":"$IMAGE_ID","status":"READY","url":"$IMAGE_URL","width":1,"height":1}""",
+                    "application/json",
+                )
             }
         }.use { servers ->
-            assertEquals(CommentImageUploadResult.Ok(IMAGE_URL), uploadImage(servers))
+            assertEquals(CommentImageUploadResult.Ready(IMAGE_URL), uploadImage(servers))
             assertEquals(listOf(0, 1), servers.requests.map { it.server })
+        }
+    }
+
+    @Test
+    fun `image service unavailable is sent once and reported as a processing failure`() {
+        // 每个地址都通向同一个后端: 换地址重发会把同一张图再传一遍, 每次都计入频率限制
+        LocalAniServers {
+            Response(
+                HttpStatusCode.ServiceUnavailable,
+                "HTTP 503: COMMENT_IMAGE_UNAVAILABLE",
+                headers = mapOf("X-Ani-Error-Code" to "COMMENT_IMAGE_UNAVAILABLE"),
+            )
+        }.use { servers ->
+            assertEquals(CommentImageUploadResult.ProcessingFailed, uploadImage(servers))
+            assertEquals(listOf(0), servers.requests.map { it.server })
         }
     }
 
@@ -165,7 +190,8 @@ class AniApiErrorResponseHttpClientTest {
     private companion object {
         const val SERVER_COUNT = 4
         const val TOKEN = "token"
-        const val IMAGE_URL = "https://static.myani.org/comment-images/u/abc"
+        const val IMAGE_ID = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        const val IMAGE_URL = "https://usercontent.myani.org/comment-images/u/$IMAGE_ID"
         val PNG = byteArrayOf(137.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 13, 10, 26, 10)
     }
 }

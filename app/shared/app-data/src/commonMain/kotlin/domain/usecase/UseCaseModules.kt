@@ -17,6 +17,8 @@ import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCase
 import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCaseImpl
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCaseImpl
+import me.him188.ani.app.domain.comment.GetCommentImageStatusUseCase
+import me.him188.ani.app.domain.comment.GetCommentImageStatusUseCaseImpl
 import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.comment.PostCommentUseCaseImpl
 import me.him188.ani.app.domain.comment.UploadCommentImageUseCase
@@ -104,6 +106,7 @@ fun KoinApplication.useCaseModules() = module {
     // 上游(人物评论服务)将 PostCommentUseCase 改为双依赖,保留上游版本
     single<PostCommentUseCase> { PostCommentUseCaseImpl(get(), get()) }
     single<UploadCommentImageUseCase> { UploadCommentImageUseCaseImpl(get<AniApiProvider>().commentsApi, get()) }
+    single<GetCommentImageStatusUseCase> { GetCommentImageStatusUseCaseImpl(get<AniApiProvider>().commentsApi) }
     single<GetPreferredMediaSourceSortingUseCase> { GetPreferredMediaSourceSortingUseCaseImpl(get()) }
     single<GetMediaSelectorSourceTiersUseCase> { GetMediaSelectorSourceTiersUseCaseImpl(get()) }
     single<GetEpisodeTypeFiltersUseCase> { GetEpisodeTypeFiltersUseCaseImpl(get()) }

@@ -1453,6 +1453,7 @@
     <string name="comment_send_failed_unknown">發送失敗，請附帶日誌反饋此問題\n%1$s</string>
     <string name="comment_send_failed_invalid_image">評論中的圖片已失效，請重新上傳</string>
     <string name="comment_send_failed_too_many_images">一條評論最多只能包含 10 張圖片</string>
+    <string name="comment_send_failed_image_processing">有圖片仍在處理中，請稍後再發送</string>
     <string name="comment_ani_only_notice">評論將發送到 Ani，Bangumi 評論為唯讀</string>
     <string name="comment_send_comment">發送評論</string>
     <string name="comment_rendering">渲染中...</string>
@@ -1496,8 +1497,9 @@
     <string name="comment_send">發送</string>
     <string name="comment_upload_image">上傳圖片</string>
     <string name="comment_image_uploading">正在上傳圖片...</string>
+    <string name="comment_image_processing">正在處理圖片...</string>
     <string name="comment_image_upload_too_large">圖片不能超過 10MB</string>
-    <string name="comment_image_upload_invalid_format">無法使用這張圖片：僅支援 JPEG、PNG、WebP 和 GIF，且不超過 3200 萬像素</string>
+    <string name="comment_image_upload_invalid_format">無法使用這張圖片：僅支援 JPEG、PNG、WebP 和 GIF，且不超過 2 億像素</string>
     <string name="comment_image_upload_not_logged_in">請先登入再上傳圖片</string>
     <string name="comment_image_upload_forbidden">目前帳號暫時無法上傳圖片</string>
     <string name="comment_image_upload_rate_limited">上傳過於頻繁，請稍後再試</string>
@@ -1505,6 +1507,7 @@
     <string name="comment_image_upload_already_in_comment">評論中已有這張圖片，已重新上傳</string>
     <string name="comment_image_upload_failed_network">圖片上傳失敗：網路錯誤</string>
     <string name="comment_image_upload_failed_unknown">圖片上傳失敗，請附帶日誌反饋此問題\n%1$s</string>
+    <string name="comment_image_processing_failed">圖片處理失敗，請重試</string>
     <string name="comment_image_remove">刪除圖片 %1$d</string>
     <string name="comment_image_retry">重試</string>
     <string name="comment_image_limit_reached">最多只能添加 %1$d 張圖片</string>

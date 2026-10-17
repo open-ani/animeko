@@ -119,10 +119,10 @@ val fixGeneratedOpenApi = tasks.register("fixGeneratedOpenApi") {
                 """.trimIndent(),
             ).replace(
                 """
-                    open suspend fun uploadCommentImage(body: me.him188.ani.client.infrastructure.OctetByteArray): HttpResponse<AniUploadCommentImageResponse> {
+                    open suspend fun uploadCommentImage(body: me.him188.ani.client.infrastructure.OctetByteArray): HttpResponse<AniCommentImageInfo> {
                 """.trimIndent(),
                 """
-                    open suspend fun uploadCommentImage(body: io.ktor.http.content.OutgoingContent): HttpResponse<AniUploadCommentImageResponse> {
+                    open suspend fun uploadCommentImage(body: io.ktor.http.content.OutgoingContent): HttpResponse<AniCommentImageInfo> {
                 """.trimIndent(),
             )
 

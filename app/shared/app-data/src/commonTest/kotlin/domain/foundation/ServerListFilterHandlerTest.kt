@@ -40,15 +40,20 @@ class ServerListFeatureHandlerTest {
     private fun buildTestClient(
         aniServerUrlsFlow: MutableStateFlow<List<Url>>,
         featureConfig: ServerListFeatureConfig,
+        errorCode: (url: Url) -> String? = { null },
         respondBlock: suspend (url: Url) -> Pair<HttpStatusCode, String>
     ): HttpClient {
         val mockEngine = MockEngine { request ->
             // We'll look at request.url to decide how to respond.
             val (status, body) = respondBlock(request.url)
+            val headers = HeadersBuilder().apply {
+                append(HttpHeaders.ContentType, "text/plain")
+                errorCode(request.url)?.let { append(ServerListFeatureHandler.ERROR_CODE_HEADER, it) }
+            }.build()
             respond(
                 content = body,
                 status = status,
-                headers = headersOf(HttpHeaders.ContentType, "text/plain"),
+                headers = headers,
             )
         }
 
@@ -194,6 +199,33 @@ class ServerListFeatureHandlerTest {
             assertEquals("COMMENT_IMAGE_PENDING_LIMIT", response.bodyAsText())
             assertEquals(listOf("server1.com"), attempts, "$status must not be sent to another server")
         }
+    }
+
+    @Test
+    fun `server error with an error code is returned without trying other servers`() = runTest {
+        val aniServerUrls = MutableStateFlow(
+            listOf(
+                Url("https://server1.com"),
+                Url("https://server2.com"),
+            ),
+        )
+        val attempts = mutableListOf<String>()
+        val client = buildTestClient(
+            aniServerUrls,
+            defaultConfig(),
+            errorCode = { url -> "COMMENT_IMAGE_UNAVAILABLE".takeIf { url.host == "server1.com" } },
+        ) { url ->
+            attempts += url.host
+            when (url.host) {
+                "server1.com" -> HttpStatusCode.ServiceUnavailable to "HTTP 503: COMMENT_IMAGE_UNAVAILABLE"
+                else -> HttpStatusCode.OK to "should not be reached"
+            }
+        }
+
+        val response = client.post("https://${ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST}/v2/comments/images")
+        assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
+        assertEquals("HTTP 503: COMMENT_IMAGE_UNAVAILABLE", response.bodyAsText())
+        assertEquals(listOf("server1.com"), attempts)
     }
 
     @Test

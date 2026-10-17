@@ -89,6 +89,7 @@ class PostCommentUseCaseImpl(
         return when {
             ERROR_IMAGE_TOO_MANY in body -> CommentSendResult.TooManyImages
             ERROR_IMAGE_INVALID in body -> CommentSendResult.InvalidImage
+            ERROR_IMAGE_PROCESSING in body -> CommentSendResult.ImageProcessing
             else -> null
         }
     }
@@ -96,6 +97,7 @@ class PostCommentUseCaseImpl(
     private companion object {
         const val ERROR_IMAGE_INVALID = "COMMENT_IMAGE_INVALID"
         const val ERROR_IMAGE_TOO_MANY = "COMMENT_IMAGE_TOO_MANY"
+        const val ERROR_IMAGE_PROCESSING = "COMMENT_IMAGE_PROCESSING"
     }
 }
 
@@ -116,6 +118,11 @@ sealed interface CommentSendResult {
      * 评论引用的图片超过服务器允许的数量 ([PostCommentUseCase.MAX_IMAGES]).
      */
     data object TooManyImages : Error()
+
+    /**
+     * 评论引用的图片还在服务器上转换. 转换完成后再发送即可.
+     */
+    data object ImageProcessing : Error()
     
     class UnknownError(val message: String) : Error()
 
