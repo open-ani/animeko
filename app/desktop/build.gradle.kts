@@ -355,8 +355,10 @@ afterEvaluate {
             reconstructLinuxSolink()
             isolateLinuxBundledLibraries()
             restoreLinuxRuntimeExecutables()
-            // 必须最后执行: 上面的步骤会重打包 jar.
+            // 上面的步骤会重打包 jar.
             normalizeJarsForReproducibility()
+            // 必须最后执行: 前面的步骤 (包括另一个 afterEvaluate 里复制 CEF) 都会改动已签名的 .app.
+            signMacAppBundleAdHoc()
         }
     }
 }
