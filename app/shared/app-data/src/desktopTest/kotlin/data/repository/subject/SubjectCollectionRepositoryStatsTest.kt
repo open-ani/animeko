@@ -49,6 +49,8 @@ import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.ktor.ApiInvoker
+import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -57,6 +59,12 @@ import kotlin.test.assertEquals
  * 修改收藏类型或评分后, 服务端返回的全站统计与修改一起写入本地缓存.
  */
 class SubjectCollectionRepositoryStatsTest {
+    @OptIn(UnsafeScopedHttpClientApi::class)
+    private object UnusedBangumiClient : ScopedHttpClient() {
+        override fun borrow(): Ticket = error("Bangumi client not expected in tests")
+        override fun returnClient(ticket: Ticket) = error("Bangumi client not expected in tests")
+    }
+
     private class FakeSubjectService : SubjectService {
         val patches = mutableListOf<Pair<Int, AniUpdateSubjectCollectionRequest>>()
         var stats = AniSubjectStats(
@@ -129,7 +137,7 @@ class SubjectCollectionRepositoryStatsTest {
         val database = createTestAniDatabase()
         try {
             val service = FakeSubjectService()
-            val episodeService = EpisodeServiceImpl(UnusedSubjectsApi)
+            val episodeService = EpisodeServiceImpl(UnusedSubjectsApi, UnusedBangumiClient)
             val animeScheduleRepository = AnimeScheduleRepository(AnimeScheduleService(UnusedScheduleApi))
             val getEpisodeTypeFiltersUseCase = GetEpisodeTypeFiltersUseCase { flowOf(EpisodeType.entries) }
             lateinit var repository: SubjectCollectionRepositoryImpl
