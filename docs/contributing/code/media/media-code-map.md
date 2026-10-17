@@ -128,19 +128,20 @@
 
 文件选择器的实现：
 
-- 桌面端：`LocalVideoFilePicker.desktop.kt`，基于 FileKit，直接回调选中的文件路径。
+- 桌面端：`LocalVideoFilePicker.desktop.kt`，基于 FileKit，回调 `LocalVideoFile.File`（文件路径）。
 - Android：`LocalVideoFilePicker.android.kt`，用 `ActivityResultContracts.OpenDocument` 选择 `video/*`。
-  选择器返回 `content://` Uri，而播放器按文件路径读取，因此先把内容复制到 `cacheDir/local-video/`，
-  再回调缓存文件路径。复制期间显示「正在导入」提示，读取失败时提示无法读取；缓存文件在下次选择时清理
-  超过 7 天的副本。
+  选择器返回的 `content://` Uri 以 `LocalVideoFile.Document` 回调，播放器通过 ContentResolver 直接读取，
+  不复制文件到应用缓存。
 - iOS：`LocalVideoFilePicker.ios.kt` 返回 `null`，自动匹配页不显示按钮。
 
-两个入口得到文件路径后走同一条路：
+两个入口得到 `LocalVideoFile` 后走同一条路：
 
-1. `EpisodeViewModel.playLocalFile` 用 `LocalFileMedia.create(...)` 构造一个
+1. `EpisodeViewModel.playLocalVideoFile` 把文件路径或 `content://` URI 转换为
    `download = ResourceLocation.LocalFile` 的 `Media`，并调用 `MediaSelector.selectTemporarily(...)`。
+   路径由 `LocalFileMedia.create(...)` 构造，`content://` URI 由 `LocalFileMedia.createFromContentUri(...)` 构造。
 2. 之后与上面的第 8、9 步相同：`LoadMediaOnSelectExtension` 监听到 `selected` 变化，
-   由 `LocalFileMediaResolver` 解析并播放。
+   由 `LocalFileMediaResolver` 解析并播放。`SystemFileMediaDataProvider` 按路径读取文件；
+   `content://` URI 使用 `LocalFileUriMediaDataProvider`，由 ExoPlayer 的 ContentResolver 数据源读取。
 
 注意：
 

@@ -701,7 +701,7 @@ private fun EpisodeScreenSidebar(
                             danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
                             localVideoLibraryDirectory = vm.localVideoLibraryDirectory.collectAsStateWithLifecycle(null).value,
                             // Android 竖屏下播放器工具栏的选源入口只在全屏时出现, 详情页的数据源卡片是主入口.
-                            onLocalFilePicked = if (LocalPlatform.current.isAndroid()) vm::playLocalFile else null,
+                            onLocalFilePicked = if (LocalPlatform.current.isAndroid()) vm::playLocalVideoFile else null,
                             onBeforeOpenMediaSelector = {
                                 if (vm.mediaSelectorMode == null && !page.isLoading) {
                                     vm.mediaSelectorMode = page.initialMediaSelectorMode
@@ -861,7 +861,7 @@ private fun EpisodeScreenPhoneDetails(
                     modifier = Modifier.fillMaxSize(),
                     danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
                     localVideoLibraryDirectory = vm.localVideoLibraryDirectory.collectAsStateWithLifecycle(null).value,
-                    onLocalFilePicked = if (LocalPlatform.current.isAndroid()) vm::playLocalFile else null,
+                    onLocalFilePicked = if (LocalPlatform.current.isAndroid()) vm::playLocalVideoFile else null,
                     onBeforeOpenMediaSelector = {
                         if (vm.mediaSelectorMode == null && !page.isLoading) {
                             vm.mediaSelectorMode = page.initialMediaSelectorMode
@@ -1303,7 +1303,7 @@ private fun EpisodeVideo(
                             }
                             val pickLocalFile = rememberLocalVideoFilePicker(
                                 onPicked = { file ->
-                                    vm.playLocalFile(file)
+                                    vm.playLocalVideoFile(file)
                                     goBack()
                                 },
                                 initialDirectory = vm.localVideoLibraryDirectory.collectAsStateWithLifecycle(null).value,

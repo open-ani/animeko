@@ -13,6 +13,26 @@ import androidx.compose.runtime.Composable
 import me.him188.ani.utils.io.SystemPath
 
 /**
+ * 用户在播放页选择的本地视频文件.
+ */
+sealed interface LocalVideoFile {
+    /**
+     * 可以直接按路径读取的本地文件, 例如桌面端文件选择器或拖入窗口的文件.
+     */
+    data class File(val path: SystemPath) : LocalVideoFile
+
+    /**
+     * Android SAF 返回的文档 URI (`content://`). 播放器通过 ContentResolver 读取, 不需要复制文件.
+     *
+     * @param displayName 系统文件选择器提供的文件名, 仅用于展示; null 时从 URI 推断.
+     */
+    data class Document(
+        val uri: String,
+        val displayName: String? = null,
+    ) : LocalVideoFile
+}
+
+/**
  * 「使用本地视频文件」的文件选择器. 返回的函数用于打开系统文件选择器; 当前平台没有可用的选择器时返回 `null`.
  *
  * 用户选择的视频文件通过 [onPicked] 回调.
@@ -22,6 +42,6 @@ import me.him188.ani.utils.io.SystemPath
  */
 @Composable
 expect fun rememberLocalVideoFilePicker(
-    onPicked: (SystemPath) -> Unit,
+    onPicked: (LocalVideoFile) -> Unit,
     initialDirectory: String? = null,
 ): (() -> Unit)?

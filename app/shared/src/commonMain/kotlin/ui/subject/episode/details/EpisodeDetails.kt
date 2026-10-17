@@ -150,6 +150,7 @@ import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsLoader
 import me.him188.ani.app.ui.subject.episode.EpisodePageLoadError
+import me.him188.ani.app.ui.subject.episode.LocalVideoFile
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuMatchInfoGrid
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceCard
 import me.him188.ani.app.ui.subject.episode.details.components.FavoriteIconButton
@@ -170,7 +171,6 @@ import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectRecommendationClick
 import me.him188.ani.utils.analytics.recordEvent
-import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.stringResource
 
@@ -228,7 +228,7 @@ fun EpisodeDetails(
     /**
      * 选中本地视频文件后的回调. 为 null 时不显示「使用本地视频文件」按钮.
      */
-    onLocalFilePicked: ((SystemPath) -> Unit)? = null,
+    onLocalFilePicked: ((LocalVideoFile) -> Unit)? = null,
     /**
      * 本地视频库目录, 用作文件选择器的默认位置.
      */
