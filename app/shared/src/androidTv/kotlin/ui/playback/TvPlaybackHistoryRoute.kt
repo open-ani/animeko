@@ -1,0 +1,41 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
+package me.him188.ani.tv.ui.playback
+
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.tv.ui.foundation.TvNavigationEffect
+import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+
+@Composable
+fun TvPlaybackHistoryRoute(
+    viewModel: TvPlaybackHistoryViewModel,
+    onNavigate: (TvNavigationEvent) -> Unit,
+    modifier: Modifier = Modifier,
+    navigationRailInsets: PaddingValues = PaddingValues(0.dp),
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val toaster = LocalToaster.current
+    LaunchedEffect(viewModel, toaster) {
+        viewModel.syncErrors.collect { toaster.showLoadError(it) }
+    }
+    LaunchedEffect(viewModel) {
+        viewModel.onIntent(TvPlaybackHistoryIntent.Sync)
+    }
+    TvNavigationEffect(viewModel.navigationEvents, onNavigate)
+    TvPlaybackHistoryScreen(state, viewModel::onIntent, modifier, navigationRailInsets)
+}

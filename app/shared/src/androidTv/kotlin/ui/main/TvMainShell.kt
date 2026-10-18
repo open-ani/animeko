@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Star
@@ -60,6 +61,7 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_search
 import me.him188.ani.app.ui.lang.main_screen_page_collection
 import me.him188.ani.app.ui.lang.main_screen_page_exploration
+import me.him188.ani.app.ui.lang.playback_history_title
 import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.lang.tv_nav_schedule
 import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
@@ -81,7 +83,7 @@ import me.him188.ani.tv.ui.foundation.widgets.TvNavigationSideRail
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
 import org.jetbrains.compose.resources.stringResource
 
-enum class TvShellContent { Search, Exploration, Schedule, Collection, Login }
+enum class TvShellContent { Search, Exploration, Schedule, Collection, PlaybackHistory, Login }
 
 /** 主壳焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvShellFocus : TvFocusKey {
@@ -269,6 +271,10 @@ fun TvMainShell(
                         Icons.Rounded.Star, stringResource(Lang.main_screen_page_collection),
                         selected = content == TvShellContent.Collection,
                     ) { onContentChange(TvShellContent.Collection) },
+                    TvNavRailItem(
+                        Icons.Rounded.History, stringResource(Lang.playback_history_title),
+                        selected = content == TvShellContent.PlaybackHistory,
+                    ) { onContentChange(TvShellContent.PlaybackHistory) },
                     TvNavRailItem(
                         Icons.Rounded.Settings, stringResource(Lang.settings),
                         focusRequester = settingsFocus,
