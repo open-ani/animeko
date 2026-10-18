@@ -26,7 +26,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -42,6 +43,8 @@ import org.openani.mediamp.source.MediaExtraFiles
 import org.openani.mediamp.source.UriMediaData
 import java.awt.Dimension
 import java.io.File
+import java.util.concurrent.Executors
+import javax.swing.SwingUtilities
 import kotlin.coroutines.coroutineContext
 
 /**
@@ -83,17 +86,38 @@ class MpvVideoAnalyzer {
                 emptyList(),
             )
         }
-        // 播放器命令必须在它的 mainDispatcher (默认 Dispatchers.Main, 即 Swing EDT) 上调用
-        return withContext(Dispatchers.Main) {
-            analyzeWithPlayer(input)
+        // 播放器命令必须始终在同一个线程上调用. 不能直接用 `Dispatchers.Main` (Swing EDT):
+        // 无窗口路径里 skiko/Compose 初始化可能会替换掉 AWT 的 EventQueue, 机器线程随之变化;
+        // mediamp 的 machine-thread 校验比较的是 Thread 身份, 于是对远程 HLS (打开较慢,
+        // 校验发生在替换之后) 会误报 "must be called on the player's main-dispatcher thread".
+        // 专属单线程 dispatcher 既满足"播放器单线程调用", 又作为播放器的 mainDispatcher,
+        // 保证机器与命令永远在同一个线程上.
+        val executor = Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "mpv-video-analyzer").apply { isDaemon = true }
+        }
+        val dispatcher = executor.asCoroutineDispatcher()
+        return try {
+            withContext(dispatcher) {
+                analyzeWithPlayer(input, dispatcher)
+            }
+        } finally {
+            dispatcher.close()
         }
     }
 
-    private suspend fun analyzeWithPlayer(input: ProbeVideoInput): Output {
+    private suspend fun analyzeWithPlayer(
+        input: ProbeVideoInput,
+        mainDispatcher: CoroutineDispatcher,
+    ): Output {
         val errors = mutableListOf<String>()
         val frames = mutableListOf<CapturedFrame>()
         // 测试只关心画面与播放时钟. 无头环境的音频设备可能接收数据却从不消费, 让播放卡在首帧, 所以不输出音频.
-        val player = MpvMediampPlayer(Any(), coroutineContext, configureOptions = { it.option("ao", "null") })
+        val player = MpvMediampPlayer(
+            Any(),
+            coroutineContext,
+            mainDispatcher,
+            configureOptions = { it.option("ao", "null") },
+        )
         val handle = player.impl as MPVHandle
         val window = if (input.showWindow) createWindow(player, input.videoUrl) else null
         if (window == null && !createHeadlessRenderContext(player)) {
@@ -162,7 +186,7 @@ class MpvVideoAnalyzer {
             )
         } finally {
             runCatching { player.close() }
-            window?.dispose()
+            window?.let { w -> SwingUtilities.invokeLater { w.dispose() } }
         }
     }
 
@@ -379,14 +403,20 @@ class MpvVideoAnalyzer {
         return runCatching { method.invoke(player) as Boolean }.getOrDefault(false)
     }
 
-    private fun createWindow(player: MpvMediampPlayer, videoUrl: String): ComposeWindow =
-        ComposeWindow().apply {
-            title = "Animeko 数据源测试 - probe_video (mpv)"
-            size = Dimension(960, 600)
-            setLocationRelativeTo(null)
-            setContent { ProbeWindowContent(player, videoUrl) }
-            isVisible = true
+    private fun createWindow(player: MpvMediampPlayer, videoUrl: String): ComposeWindow {
+        // Compose 窗口必须在 AWT 事件线程上创建; analyzeWithPlayer 现在跑在专属线程上.
+        lateinit var window: ComposeWindow
+        SwingUtilities.invokeAndWait {
+            window = ComposeWindow().apply {
+                title = "Animeko 数据源测试 - probe_video (mpv)"
+                size = Dimension(960, 600)
+                setLocationRelativeTo(null)
+                setContent { ProbeWindowContent(player, videoUrl) }
+                isVisible = true
+            }
         }
+        return window
+    }
 }
 
 @Composable
