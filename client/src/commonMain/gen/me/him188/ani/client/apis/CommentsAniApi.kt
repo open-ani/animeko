@@ -114,7 +114,7 @@ open class CommentsAniApi : ApiClient {
 
     /**
      * 上传评论图片
-     * 上传一张图片. 请求体是图片文件的原始字节, 支持 JPEG, PNG, WebP, GIF, 最大 10MB, 不超过 2 亿像素. 图片在后台统一转为 WebP: 动图只保留第一帧, 按 EXIF 方向摆正, 转为 sRGB 并去掉 EXIF 等元数据; 过大的图片等比缩小到短边不超过 2048 像素, 长边不超过 8192 像素. 返回图片的 id 和地址: 状态为 PROCESSING (202) 时用 getCommentImages 查询, 变为 READY 后才能在评论中用 &#x60;[img]&#x60; 引用; 同一个文件已经转换好时直接返回 READY (200). 重新上传同一个文件会得到同一个 id 和地址. 一直没有发进评论的图片会被删除.
+     * 上传一张图片. 请求体是图片文件的原始字节, 支持 JPEG, PNG, WebP, GIF, 最大 10MB, 不超过 1 亿像素. 图片在后台统一转为 WebP: 动图只保留第一帧, 按 EXIF 方向摆正, 转为 sRGB 并去掉 EXIF 等元数据; 过大的图片等比缩小到短边不超过 2048 像素, 长边不超过 8192 像素. 返回图片的 id 和地址: 状态为 PROCESSING (202) 时用 getCommentImages 查询, 变为 READY 后才能在评论中用 &#x60;[img]&#x60; 引用; 同一个文件已经转换好时直接返回 READY (200). 重新上传同一个文件会得到同一个 id 和地址. 一直没有发进评论的图片会被删除.
      * @param body 图片文件的原始字节
      * @return AniCommentImageInfo
      */

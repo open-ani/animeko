@@ -1506,7 +1506,7 @@
     <string name="comment_image_uploading">Uploading image...</string>
     <string name="comment_image_processing">Processing image...</string>
     <string name="comment_image_upload_too_large">Image must be 10MB or smaller</string>
-    <string name="comment_image_upload_invalid_format">Cannot use this image. Supported formats: JPEG, PNG, WebP and GIF, up to 200 megapixels</string>
+    <string name="comment_image_upload_invalid_format">Cannot use this image. Supported formats: JPEG, PNG, WebP and GIF, up to 100 megapixels</string>
     <string name="comment_image_upload_not_logged_in">Please log in to upload images</string>
     <string name="comment_image_upload_forbidden">This account cannot upload images right now</string>
     <string name="comment_image_upload_rate_limited">Uploading too frequently. Please try again later</string>

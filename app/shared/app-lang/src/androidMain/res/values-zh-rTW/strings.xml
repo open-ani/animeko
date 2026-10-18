@@ -1499,7 +1499,7 @@
     <string name="comment_image_uploading">正在上傳圖片...</string>
     <string name="comment_image_processing">正在處理圖片...</string>
     <string name="comment_image_upload_too_large">圖片不能超過 10MB</string>
-    <string name="comment_image_upload_invalid_format">無法使用這張圖片：僅支援 JPEG、PNG、WebP 和 GIF，且不超過 2 億像素</string>
+    <string name="comment_image_upload_invalid_format">無法使用這張圖片：僅支援 JPEG、PNG、WebP 和 GIF，且不超過 1 億像素</string>
     <string name="comment_image_upload_not_logged_in">請先登入再上傳圖片</string>
     <string name="comment_image_upload_forbidden">目前帳號暫時無法上傳圖片</string>
     <string name="comment_image_upload_rate_limited">上傳過於頻繁，請稍後再試</string>

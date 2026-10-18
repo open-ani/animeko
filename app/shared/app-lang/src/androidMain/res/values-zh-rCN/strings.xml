@@ -1546,7 +1546,7 @@
     <string name="comment_image_uploading">正在上传图片...</string>
     <string name="comment_image_processing">正在处理图片...</string>
     <string name="comment_image_upload_too_large">图片不能超过 10MB</string>
-    <string name="comment_image_upload_invalid_format">无法使用这张图片：仅支持 JPEG、PNG、WebP 和 GIF，且不超过 2 亿像素</string>
+    <string name="comment_image_upload_invalid_format">无法使用这张图片：仅支持 JPEG、PNG、WebP 和 GIF，且不超过 1 亿像素</string>
     <string name="comment_image_upload_not_logged_in">请先登录再上传图片</string>
     <string name="comment_image_upload_forbidden">当前账号暂时无法上传图片</string>
     <string name="comment_image_upload_rate_limited">上传过于频繁，请稍后再试</string>
