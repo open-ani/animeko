@@ -26,6 +26,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import me.him188.ani.app.tools.update.downloadToFile
 import me.him188.ani.utils.io.SystemPath
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 /**
  * 查询 GitHub 仓库的 commits, PR, Build workflow 的运行记录和上传的 artifacts, 以及下载 artifact 和安装包.
@@ -44,6 +47,7 @@ class GitHubDevBuildApi(
     private val branch: String = DEFAULT_BRANCH,
     private val workflowFileName: String = DEFAULT_WORKFLOW_FILE_NAME,
     private val apiBaseUrl: String = "https://api.github.com",
+    private val timeSource: TimeSource = TimeSource.Monotonic,
 ) {
     /**
      * [branch] 上最新的 commits, 新的在前.
@@ -138,6 +142,22 @@ class GitHubDevBuildApi(
     }
 
     /**
+     * 返回取 artifact 直链的函数, 供多次请求同一个 artifact 时使用, 例如按 Range 分段读取.
+     * 上次取得的直链超过 [ARTIFACT_URL_REUSE_DURATION] 后重新取. 返回的函数不能并发调用.
+     */
+    fun artifactDownloadUrlProvider(token: String, archiveDownloadUrl: String): suspend () -> String {
+        var url: String? = null
+        var resolvedAt: TimeMark? = null
+        return {
+            val reusable = url?.takeIf { resolvedAt!!.elapsedNow() < ARTIFACT_URL_REUSE_DURATION }
+            reusable ?: resolveArtifactDownloadUrl(token, archiveDownloadUrl).also {
+                url = it
+                resolvedAt = timeSource.markNow()
+            }
+        }
+    }
+
+    /**
      * 下载 [url] 到 [target], 不附带 token. 见 [downloadToFile].
      */
     suspend fun downloadFile(
@@ -192,6 +212,11 @@ class GitHubDevBuildApi(
         const val DEFAULT_REPOSITORY = "open-ani/animeko"
         const val DEFAULT_BRANCH = "main"
         const val DEFAULT_WORKFLOW_FILE_NAME = "build.yml"
+
+        /**
+         * GitHub 文档说 artifact 直链 1 分钟后过期 (实测签名的有效期更长), 按文档留出余量.
+         */
+        val ARTIFACT_URL_REUSE_DURATION = 50.seconds
 
         private val json = Json {
             ignoreUnknownKeys = true

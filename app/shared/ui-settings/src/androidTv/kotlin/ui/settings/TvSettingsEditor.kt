@@ -90,6 +90,10 @@ internal fun TvSettingsEditor(
         TvSettingsRegexEditor(dialog, focus, onIntent, onClose)
         return
     }
+    if (dialog is TvSettingsDialog.Proxy) {
+        TvSettingsProxyEditor(dialog, focus, onIntent) { onClose(false) }
+        return
+    }
     val close = { onClose(false) }
     LaunchedEffect(dialog) {
         focus.request(editorKey(if (dialog is TvSettingsDialog.Choice && dialog.values.any { it.id == dialog.selected }) {
@@ -160,7 +164,7 @@ internal fun TvSettingsEditor(
                     )
                 }
             }
-            is TvSettingsDialog.Order, is TvSettingsDialog.Regex -> Unit
+            is TvSettingsDialog.Order, is TvSettingsDialog.Regex, is TvSettingsDialog.Proxy -> Unit
             is TvSettingsDialog.Link -> TvSettingsLinkEditor(dialog, focus, onOpenUrl)
             is TvSettingsDialog.Info -> InfoEditor(dialog, focus, onOpenUrl)
             is TvSettingsDialog.Import -> TvOptionModal(

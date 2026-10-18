@@ -26,9 +26,12 @@
 
 - [Kotlin 多平台](kmp.md)
 - [条目系统](code/subjects.md)
+- [外部链接与 URI schemes](../uri-schemes.md)
+- [Android 应用语言](code/app-language.md)
 - [站内通知](code/notifications.md)
 - [Android TV 导航焦点](code/android-tv-focus.md)
 - [Android TV 加载占位](code/android-tv-loading.md)
+- [播放器键盘与焦点](code/player-keyboard.md)
 - [播放器截图](code/player-screenshot.md)
 - [播放器键盘快捷键](code/player-keyboard-shortcuts.md)
 - [Media Framework](code/media-framework.md)

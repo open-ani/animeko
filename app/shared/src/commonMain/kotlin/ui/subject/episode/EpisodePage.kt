@@ -174,8 +174,8 @@ import me.him188.ani.app.videoplayer.screenshot.playerScreenshotFileName
 import me.him188.ani.app.videoplayer.ui.LocalVideoScaffoldSheetWindowInsets
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
-import me.him188.ani.app.videoplayer.ui.PlayerFocusState
 import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
+import me.him188.ani.app.videoplayer.ui.PlayerKeyboardScope
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
@@ -216,7 +216,8 @@ fun EpisodeScreen(
     AniTheme(
         darkModeOverride = if (themeSettings.alwaysDarkInEpisodePage) DarkMode.DARK else null,
     ) {
-        Column(modifier.fillMaxSize()) {
+        // 页面内非输入状态的快捷键作用于视频, 焦点被清空 (例如关闭评论编辑框) 时交回播放器
+        PlayerKeyboardScope(viewModel.playerControllerState, modifier.fillMaxSize()) {
             Scaffold(
                 contentWindowInsets = WindowInsets(0.dp),
             ) {
@@ -680,6 +681,9 @@ private fun EpisodeScreenSidebar(
                             onAdjustDanmakuSourceShift = { serviceId, shiftMillis ->
                                 vm.setDanmakuSourceShiftMillis(serviceId, shiftMillis)
                             },
+                            onSetDanmakuTextConversion = vm::setDanmakuTextConversionOverride,
+                            onSetDanmakuTextConversionGlobal = vm::setDanmakuTextConversionGlobal,
+                            onResetDanmakuTextConversionOverrides = vm::resetDanmakuTextConversionOverrides,
                             onClickLogin = { navigator.navigateBangumiAuthorize() },
                             onClickTag = { navigator.navigateSubjectSearch(it.name) },
                             onManualMatchDanmaku = vm::startMatchingDanmakuForService,
@@ -834,6 +838,9 @@ private fun EpisodeScreenPhoneDetails(
                     onAdjustDanmakuSourceShift = { serviceId, shiftMillis ->
                         vm.setDanmakuSourceShiftMillis(serviceId, shiftMillis)
                     },
+                    onSetDanmakuTextConversion = vm::setDanmakuTextConversionOverride,
+                    onSetDanmakuTextConversionGlobal = vm::setDanmakuTextConversionGlobal,
+                    onResetDanmakuTextConversionOverrides = vm::resetDanmakuTextConversionOverrides,
                     onClickLogin = { navigator.navigateBangumiAuthorize() },
                     onClickTag = { navigator.navigateSubjectSearch(it.name) },
                     onManualMatchDanmaku = vm::startMatchingDanmakuForService,
@@ -901,7 +908,6 @@ private fun EpisodeScreenPhoneDetails(
                     }
                 },
                 focusRequester,
-                vm.playerControllerState.focusState,
                 onDismiss = dismiss,
                 modifier = Modifier.imePadding(),
             )
@@ -917,7 +923,6 @@ private fun DetachedDanmakuEditorLayout(
     danmakuEditorState: DanmakuEditorState,
     onSend: (text: String) -> Unit,
     focusRequester: FocusRequester,
-    playerFocusState: PlayerFocusState,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -934,7 +939,6 @@ private fun DetachedDanmakuEditorLayout(
             isSending = { isSending.value },
             placeholderText = rememberRandomDanmakuPlaceholder(),
             onSend = onSend,
-            playerFocusState = playerFocusState,
             modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             onEscape = onDismiss,
             colors = OutlinedTextFieldDefaults.colors(),
@@ -1241,17 +1245,24 @@ private fun EpisodeVideo(
                     sheetsController,
                     playerControllerState,
                     playerSettingsPage = {
+                        // 转换设置的按来源列表与实际拉取到的来源一致, 因此和来源设置读同一份状态
+                        val sourceState by vm.danmakuListState.collectAsStateWithLifecycle()
                         EpisodeVideoSideSheets.DanmakuSettingsNavigatorSheet(
                             expanded = expanded,
                             state = vm.danmakuRegexFilterState,
+                            danmakuServiceIds = sourceState.sourceItems.map { it.serviceId },
                             sources = {
-                                val sourceState by vm.danmakuListState.collectAsStateWithLifecycle()
                                 DanmakuSourceSettings(
                                     sourceItems = sourceState.sourceItems,
                                     isLoading = sourceState.isLoading,
                                     onSetEnabled = vm::setDanmakuSourceEnabled,
                                     onManualMatch = vm::startMatchingDanmakuForService,
                                     onAdjustShift = vm::setDanmakuSourceShiftMillis,
+                                    globalTextConversion = sourceState.globalTextConversion,
+                                    textConversionOverrides = sourceState.textConversionOverrides,
+                                    onSetTextConversionGlobal = vm::setDanmakuTextConversionGlobal,
+                                    onSetTextConversion = vm::setDanmakuTextConversionOverride,
+                                    onResetTextConversionOverrides = vm::resetDanmakuTextConversionOverrides,
                                 )
                             },
                             onDismissRequest = { goBack() },
@@ -1329,12 +1340,14 @@ private fun EpisodeVideo(
 
 /**
  * 侧边栏太矮时播放器的手动查找 / BT 资源容器, 与侧边栏并列放在 [VideoScaffold][me.him188.ani.app.videoplayer.ui.VideoScaffold] 的 rhsSheet 槽里.
- * 可见性与模式都在 VM 上 ([EpisodeViewModel.fullscreenSelectorVisible] / [EpisodeViewModel.mediaSelectorMode]), 侧边栏页面被 closeSideSheet 销毁后仍然保留.
+ * 可见性与模式都在 VM 上 ([EpisodeViewModel.fullscreenSelectorVisible] / [EpisodeViewModel.mediaSelectorMode]),
+ * 侧边栏页面被 closeSideSheet 销毁后仍然保留.
  *
  * 全屏时 rhsSheet 槽就是整屏, 直接铺 [MediaSelectorDialogLayout] 并自己接返回键: Android 的 Dialog 是独立 window, 会把已隐藏的系统栏拉回来.
  * 非全屏 (宽屏布局: 手机横屏、平板) 视频区不是整窗, 用窗口级 [MediaSelectorDialog].
  *
- * 全屏容器可见期间像侧边栏 ([EpisodeVideoDefaults.SideSheets]) 一样向 [playerControllerState] 请求 alwaysOn: 容器不是 NavDisplay 页面, `anySideSheetVisible` 为 false,
+ * 全屏容器可见期间像侧边栏 ([EpisodeVideoDefaults.SideSheets]) 一样向 [playerControllerState] 请求 alwaysOn:
+ * 容器不是 NavDisplay 页面, `anySideSheetVisible` 为 false,
  * 而 scrim 又拦下了指针事件, 控制器会照常自动隐藏并把桌面端光标一起藏掉; 保持控制器可见即保持光标可见.
  *
  * `page.isLoading` 期间容器关闭且不显示: 此时 `page.mediaSelectorState` 是含假资源的占位 state, 与详情页 `mediaSelectorAvailable` 的守卫对称.

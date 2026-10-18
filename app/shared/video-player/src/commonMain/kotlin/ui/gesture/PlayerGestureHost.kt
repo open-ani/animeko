@@ -69,6 +69,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.platform.testTag
@@ -81,6 +83,7 @@ import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.foundation.effects.ComposeKey
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import me.him188.ani.app.ui.foundation.ifNotNullThen
 import me.him188.ani.app.ui.foundation.ifThen
@@ -623,56 +626,66 @@ fun PlayerGestureHost(
         val useMediaAudioController = LocalPlatform.current.isDesktop()
         val playerFocusState = controllerState.focusState
 
+        val keyboardHandler = rememberPlayerKeyboardShortcuts(
+            shortcuts = shortcuts,
+            seekerState = seekerState,
+            fastSkipState = fastSkipState,
+            currentPlaybackSpeed = playbackSpeedControllerState?.currentSpeed,
+            playbackSpeedRange = playbackSpeedControllerState?.speedRange
+                ?: PlaybackSpeedControllerState.DEFAULT_SPEED_RANGE,
+            onPlaybackSpeedChanged = {
+                playbackSpeedControllerState?.commitSpeed(it)
+                indicatorTasker.launch { indicatorState.showPlaybackSpeed(it) }
+            },
+            volumeEnabled = !useMediaAudioController || audioLevelController != null,
+            onVolumeUp = { fineAdjustment ->
+                if (useMediaAudioController) {
+                    checkNotNull(audioLevelController)
+                    if (fineAdjustment) audioLevelController.volumeUp(0.01f) else audioLevelController.volumeUp()
+                    audioLevelController.setMute(false)
+                    indicatorTasker.launch {
+                        indicatorState.showVolumeRange(
+                            audioLevelController.volume.value / audioLevelController.maxVolume,
+                        )
+                    }
+                } else {
+                    audioController.increaseLevel(if (fineAdjustment) audioController.levelStep else 0.10f)
+                    indicatorTasker.launch {
+                        indicatorState.showVolumeRange(audioController.level)
+                    }
+                }
+            },
+            onVolumeDown = { fineAdjustment ->
+                if (useMediaAudioController) {
+                    checkNotNull(audioLevelController)
+                    if (fineAdjustment) audioLevelController.volumeDown(0.01f) else audioLevelController.volumeDown()
+                    audioLevelController.setMute(false)
+                    indicatorTasker.launch {
+                        indicatorState.showVolumeRange(
+                            audioLevelController.volume.value / audioLevelController.maxVolume,
+                        )
+                    }
+                } else {
+                    audioController.decreaseLevel(if (fineAdjustment) audioController.levelStep else 0.10f)
+                    indicatorTasker.launch {
+                        indicatorState.showVolumeRange(audioController.level)
+                    }
+                }
+            },
+            onTogglePauseResume = onTogglePauseResumeState,
+            onToggleFullscreen = remember(fullscreenState) { { fullscreenState.toggle() } },
+            onToggleDanmaku = onToggleDanmaku,
+            onTogglePlayerStats = onTogglePlayerStats,
+        )
+        DisposableEffect(controllerState, keyboardHandler) {
+            controllerState.keyboard.register(keyboardHandler)
+            onDispose { controllerState.keyboard.unregister(keyboardHandler) }
+        }
         val keyboardModifier = modifier
             .testTag("VideoGestureHost")
-            .playerKeyboardShortcuts(
-                shortcuts = shortcuts,
-                seekerState = seekerState,
-                fastSkipState = fastSkipState,
-                currentPlaybackSpeed = playbackSpeedControllerState?.currentSpeed,
-                playbackSpeedRange = playbackSpeedControllerState?.speedRange
-                    ?: PlaybackSpeedControllerState.DEFAULT_SPEED_RANGE,
-                onPlaybackSpeedChanged = {
-                    playbackSpeedControllerState?.commitSpeed(it)
-                    indicatorTasker.launch { indicatorState.showPlaybackSpeed(it) }
-                },
-                volumeEnabled = !useMediaAudioController || audioLevelController != null,
-                onVolumeUp = { fineAdjustment ->
-                    if (useMediaAudioController) {
-                        checkNotNull(audioLevelController)
-                        if (fineAdjustment) audioLevelController.volumeUp(0.01f) else audioLevelController.volumeUp()
-                        audioLevelController.setMute(false)
-                        indicatorTasker.launch {
-                            indicatorState.showVolumeRange(audioLevelController.volume.value / audioLevelController.maxVolume)
-                        }
-                    } else {
-                        audioController.increaseLevel(if (fineAdjustment) audioController.levelStep else 0.10f)
-                        indicatorTasker.launch {
-                            indicatorState.showVolumeRange(audioController.level)
-                        }
-                    }
-                },
-                onVolumeDown = { fineAdjustment ->
-                    if (useMediaAudioController) {
-                        checkNotNull(audioLevelController)
-                        if (fineAdjustment) audioLevelController.volumeDown(0.01f) else audioLevelController.volumeDown()
-                        audioLevelController.setMute(false)
-                        indicatorTasker.launch {
-                            indicatorState.showVolumeRange(audioLevelController.volume.value / audioLevelController.maxVolume)
-                        }
-                    } else {
-                        audioController.decreaseLevel(if (fineAdjustment) audioController.levelStep else 0.10f)
-                        indicatorTasker.launch {
-                            indicatorState.showVolumeRange(audioController.level)
-                        }
-                    }
-                },
-                onTogglePauseResume = onTogglePauseResumeState,
-                onToggleFullscreen = remember(fullscreenState) { { fullscreenState.toggle() } },
-                onToggleDanmaku = onToggleDanmaku,
-                onTogglePlayerStats = onTogglePlayerStats,
-            )
-            .playerFocusHost(playerFocusState, isFullscreen)
+            // Enter belongs to focused controls; the player's combinedClickable must not activate it.
+            .onPreviewKeyEvent { it.key == ComposeKey.Enter || it.key == ComposeKey.NumPadEnter }
+            .playerFocusHost(playerFocusState)
 
         if (family.autoHideController) {
             LaunchedEffect(controllerState.visibility, controllerState.alwaysOn) {
@@ -716,7 +729,8 @@ fun PlayerGestureHost(
                             if (tapFamily.clickToToggleController) {
                                 controllerState.toggleFullVisible()
                             }
-                            playerFocusState.requestPlayerFocus()
+                            // 触摸点击不会让 clickable 获得焦点; 点击视频时统一由播放器取得焦点
+                            playerFocusState.requester.requestFocus()
                         }
                     },
                     onDoubleClick = remember(family, fullscreenState, playerFocusState, inputSourceState) {
@@ -728,7 +742,7 @@ fun PlayerGestureHost(
                             if (tapFamily.doubleClickToPauseResume) {
                                 onTogglePauseResumeState()
                             }
-                            playerFocusState.requestPlayerFocus()
+                            playerFocusState.requester.requestFocus()
                         }
                     },
                 )
@@ -761,11 +775,6 @@ fun PlayerGestureHost(
                         swipeSeekInteraction.updatePreview()
                     }
                 }
-                .onPointerEventMultiplatform(PointerEventType.Move) { event ->
-                    if (event.changes.firstOrNull()?.type == PointerType.Mouse) {
-                        playerFocusState.requestPlayerFocus()
-                    }
-                }
                 // 始终挂载, 再按本次事件过滤. 否则触摸后的第一次 Mouse Move 只会切换 family,
                 // 要等第二次 Move 才能显示控制器.
                 .onPointerEventMultiplatform(PointerEventType.Move) { event ->
@@ -787,7 +796,9 @@ fun PlayerGestureHost(
                             else if (this > 0) audioLevelController.volumeDown()
 
                             indicatorTasker.launch {
-                                indicatorState.showVolumeRange(audioLevelController.volume.value / audioLevelController.maxVolume)
+                                indicatorState.showVolumeRange(
+                                    audioLevelController.volume.value / audioLevelController.maxVolume,
+                                )
                             }
                         }
                     }

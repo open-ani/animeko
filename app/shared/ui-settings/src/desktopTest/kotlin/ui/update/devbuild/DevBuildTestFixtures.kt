@@ -171,27 +171,27 @@ internal fun gitHubMockClient(
 
 /**
  * 模拟完整的 GitHub 交互: 列表和单项查询接口返回 [COMMITS_JSON], [RUNS_JSON] 和 [artifactsJson] 中的固定数据,
- * PR 42 的 head 是 [SHA_A]; artifact 10 的下载重定向到 [downloadUrl], 该地址返回 [archive].
+ * PR 42 的 head 是 [SHA_A]; artifact 10 的下载重定向到 [downloadUrl], 该地址返回 [content].
  */
 internal fun fullGitHubMockClient(
     artifactName: String,
-    archive: ByteArray,
+    content: ByteArray,
     expectedToken: String = "token",
-    downloadUrl: String = "https://blob.example.com/artifact.zip",
-): HttpClient = gitHubMockClient(fullGitHubMockHandler(artifactName, archive, expectedToken, downloadUrl))
+    downloadUrl: String = "https://blob.example.com/artifact",
+): HttpClient = gitHubMockClient(fullGitHubMockHandler(artifactName, content, expectedToken, downloadUrl))
 
 internal fun fullGitHubMockHandler(
     artifactName: String,
-    archive: ByteArray,
+    content: ByteArray,
     expectedToken: String = "token",
-    downloadUrl: String = "https://blob.example.com/artifact.zip",
+    downloadUrl: String = "https://blob.example.com/artifact",
 ): suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData = { request ->
     val url = request.url
     val path = url.encodedPath
     when {
         url.host == "blob.example.com" -> {
             check(request.headers[HttpHeaders.Authorization] == null) { "download URL must not carry Authorization" }
-            respond(archive, HttpStatusCode.OK, headersOf(HttpHeaders.ContentLength, archive.size.toString()))
+            respond(content, HttpStatusCode.OK, headersOf(HttpHeaders.ContentLength, content.size.toString()))
         }
 
         path.endsWith("/artifacts/10/zip") -> {

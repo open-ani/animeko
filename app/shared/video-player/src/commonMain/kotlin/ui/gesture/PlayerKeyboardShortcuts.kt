@@ -9,14 +9,13 @@
 
 package me.him188.ani.app.videoplayer.ui.gesture
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -25,17 +24,18 @@ import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
-import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.PlayerShortcut
 import me.him188.ani.app.data.models.preference.PlayerShortcutAction
 import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
-import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.input.matches
+import me.him188.ani.app.videoplayer.ui.PlayerKeyboardHandler
 import me.him188.ani.app.videoplayer.ui.nextPlaybackSpeed
 
 /**
@@ -103,15 +103,32 @@ class PlayerShortcutResolver(config: PlayerShortcutConfig) {
 }
 
 /**
- * Installs the player keyboard commands on a single focus target.
- *
- * The caller owns focus policy. Commands are active only while the modified node owns focus, so a text field or
- * another player control can temporarily take keyboard input without triggering playback commands.
+ * 当前生效的回调和可用性. 每次按键时重新读取, 所以回调变化不需要重建处理器.
+ */
+private class PlayerShortcutCallbacks(
+    val currentPlaybackSpeed: Float?,
+    val playbackSpeedRange: ClosedFloatingPointRange<Float>,
+    val onPlaybackSpeedChanged: (Float) -> Unit,
+    val volumeEnabled: Boolean,
+    val onVolumeUp: (fineAdjustment: Boolean) -> Unit,
+    val onVolumeDown: (fineAdjustment: Boolean) -> Unit,
+    val onSeekBackward: () -> Unit,
+    val onSeekForward: () -> Unit,
+    val onTogglePauseResume: () -> Unit,
+    val onToggleFullscreen: () -> Unit,
+    val onToggleDanmaku: () -> Unit,
+    val onTogglePlayerStats: () -> Unit,
+)
+
+/**
+ * The player keyboard handler driven by [shortcuts]. Register it on `PlayerControllerState.keyboard`; the
+ * [PlayerKeyboardScope][me.him188.ani.app.videoplayer.ui.PlayerKeyboardScope] delivers key events to it.
  *
  * Toggle-style commands fire on key up. Volume fires on every key down so that holding the key keeps adjusting.
  * Seek forward fires on key up unless the key was held long enough to start fast skipping.
  */
-internal fun Modifier.playerKeyboardShortcuts(
+@Composable
+internal fun rememberPlayerKeyboardShortcuts(
     shortcuts: PlayerShortcutConfig,
     seekerState: SwipeSeekerState,
     fastSkipState: FastSkipState?,
@@ -125,148 +142,140 @@ internal fun Modifier.playerKeyboardShortcuts(
     onToggleFullscreen: () -> Unit,
     onToggleDanmaku: () -> Unit,
     onTogglePlayerStats: () -> Unit,
-): Modifier = composed(
-    inspectorInfo = {
-        name = "playerKeyboardShortcuts"
-    },
-) {
+): PlayerKeyboardHandler {
     val layoutDirection = LocalLayoutDirection.current
     val resolver = remember(shortcuts) { PlayerShortcutResolver(shortcuts) }
-
-    val currentPlaybackSpeedState by rememberUpdatedState(currentPlaybackSpeed)
-    val playbackSpeedRangeState by rememberUpdatedState(playbackSpeedRange)
-    val onPlaybackSpeedChangedState by rememberUpdatedState(onPlaybackSpeedChanged)
-    val volumeEnabledState by rememberUpdatedState(volumeEnabled)
-    val onVolumeUpState by rememberUpdatedState(onVolumeUp)
-    val onVolumeDownState by rememberUpdatedState(onVolumeDown)
-    val onTogglePauseResumeState by rememberUpdatedState(onTogglePauseResume)
-    val onToggleFullscreenState by rememberUpdatedState(onToggleFullscreen)
-    val onToggleDanmakuState by rememberUpdatedState(onToggleDanmaku)
-    val onTogglePlayerStatsState by rememberUpdatedState(onTogglePlayerStats)
-    val fastSkipStateState by rememberUpdatedState(fastSkipState)
-
-    val fastSkipTasker = rememberUiMonoTasker()
-    var fastSkipTicket by remember { mutableStateOf<Int?>(null) }
-
-    fun changePlaybackSpeed(compute: (current: Float) -> Float): Boolean {
-        val current = currentPlaybackSpeedState ?: return false
-        onPlaybackSpeedChangedState(compute(current).coerceIn(playbackSpeedRangeState))
-        return true
+    val callbacks by rememberUpdatedState(
+        PlayerShortcutCallbacks(
+            currentPlaybackSpeed = currentPlaybackSpeed,
+            playbackSpeedRange = playbackSpeedRange,
+            onPlaybackSpeedChanged = onPlaybackSpeedChanged,
+            volumeEnabled = volumeEnabled,
+            onVolumeUp = onVolumeUp,
+            onVolumeDown = onVolumeDown,
+            onSeekBackward = { seekerState.onSeek(-5) },
+            onSeekForward = { seekerState.onSeek(5) },
+            onTogglePauseResume = onTogglePauseResume,
+            onToggleFullscreen = onToggleFullscreen,
+            onToggleDanmaku = onToggleDanmaku,
+            onTogglePlayerStats = onTogglePlayerStats,
+        ),
+    )
+    val scope = rememberCoroutineScope()
+    val handler = remember(resolver, layoutDirection, fastSkipState, scope) {
+        PlayerShortcutHandler(scope, layoutDirection, resolver, fastSkipState) { callbacks }
     }
-
-    /**
-     * 松开时触发的操作. 返回 `false` 表示该操作当前不可用, 按键交还给页面.
-     */
-    fun performOnKeyUp(action: PlayerShortcutAction): Boolean = when (action) {
-        PlayerShortcutAction.TOGGLE_PAUSE_RESUME -> {
-            onTogglePauseResumeState(); true
-        }
-
-        PlayerShortcutAction.TOGGLE_FULLSCREEN -> {
-            onToggleFullscreenState(); true
-        }
-
-        PlayerShortcutAction.TOGGLE_DANMAKU -> {
-            onToggleDanmakuState(); true
-        }
-
-        PlayerShortcutAction.TOGGLE_PLAYER_STATS -> {
-            onTogglePlayerStatsState(); true
-        }
-
-        PlayerShortcutAction.SEEK_BACKWARD -> {
-            seekerState.onSeek(-5); true
-        }
-
-        PlayerShortcutAction.PLAYBACK_SPEED_DOWN -> changePlaybackSpeed {
-            nextPlaybackSpeed(it, playbackSpeedRangeState, -1)
-        }
-
-        PlayerShortcutAction.PLAYBACK_SPEED_UP -> changePlaybackSpeed {
-            nextPlaybackSpeed(it, playbackSpeedRangeState, 1)
-        }
-
-        PlayerShortcutAction.PLAYBACK_SPEED_RESET, PlayerShortcutAction.PLAYBACK_SPEED_1X -> changePlaybackSpeed { 1f }
-        PlayerShortcutAction.PLAYBACK_SPEED_2X -> changePlaybackSpeed { 2f }
-        PlayerShortcutAction.PLAYBACK_SPEED_3X -> changePlaybackSpeed { 3f }
-
-        PlayerShortcutAction.SEEK_FORWARD, PlayerShortcutAction.VOLUME_UP, PlayerShortcutAction.VOLUME_DOWN ->
-            error("$action is handled on key down")
+    DisposableEffect(handler) {
+        onDispose { handler.cancel() }
     }
+    return handler
+}
 
-    fun isAvailable(action: PlayerShortcutAction): Boolean = when (action) {
-        PlayerShortcutAction.VOLUME_UP, PlayerShortcutAction.VOLUME_DOWN -> volumeEnabledState
+private class PlayerShortcutHandler(
+    private val scope: CoroutineScope,
+    private val layoutDirection: LayoutDirection,
+    private val resolver: PlayerShortcutResolver,
+    private val fastSkipState: FastSkipState?,
+    private val callbacks: () -> PlayerShortcutCallbacks,
+) : PlayerKeyboardHandler {
+    private var forwardPressed = false
+    private var forwardJob: Job? = null
+    private var fastSkipTicket: Int? = null
 
-        PlayerShortcutAction.PLAYBACK_SPEED_DOWN, PlayerShortcutAction.PLAYBACK_SPEED_UP,
-        PlayerShortcutAction.PLAYBACK_SPEED_RESET, PlayerShortcutAction.PLAYBACK_SPEED_1X,
-        PlayerShortcutAction.PLAYBACK_SPEED_2X, PlayerShortcutAction.PLAYBACK_SPEED_3X -> currentPlaybackSpeedState != null
+    override fun invoke(event: KeyEvent): Boolean {
+        val resolved = resolver.resolve(event, layoutDirection) ?: return false
+        val callbacks = callbacks()
+        if (!callbacks.isAvailable(resolved.action)) return false
 
-        else -> true
-    }
-
-    onPreviewKeyEvent { event ->
-        // The same node carries combinedClickable, which treats Enter as a click when focused.
-        // Enter is not a player shortcut, so swallow it; DPad center is left for clickable so that
-        // remote/DPad activation still works like a tap.
-        if (event.key == Key.Enter || event.key == Key.NumPadEnter) return@onPreviewKeyEvent true
-
-        val resolved = resolver.resolve(event, layoutDirection) ?: return@onPreviewKeyEvent false
-        if (!isAvailable(resolved.action)) return@onPreviewKeyEvent false
-
-        when (resolved.action) {
+        return when (resolved.action) {
             PlayerShortcutAction.SEEK_FORWARD -> {
                 when (event.type) {
                     KeyEventType.KeyDown -> {
-                        if (!fastSkipTasker.isRunning.value) {
-                            fastSkipTasker.launch {
-                                try {
-                                    delay(200)
-                                    fastSkipStateState?.let {
-                                        fastSkipTicket = it.startSkipping(SkipDirection.FORWARD)
-                                    }
-                                    awaitCancellation()
-                                } finally {
-                                    fastSkipTicket?.let {
-                                        fastSkipStateState?.stopSkipping(it)
-                                    }
-                                    fastSkipTicket = null
-                                }
+                        if (!forwardPressed) {
+                            forwardPressed = true
+                            forwardJob = scope.launch {
+                                delay(200)
+                                fastSkipTicket = fastSkipState?.startSkipping(SkipDirection.FORWARD)
                             }
                         }
+                        true
                     }
 
                     KeyEventType.KeyUp -> {
-                        val isSkipping = fastSkipTicket != null
-                        fastSkipTasker.cancel()
-                        if (!isSkipping) {
-                            seekerState.onSeek(5)
-                        }
+                        if (!forwardPressed) return false
+                        val wasSkipping = fastSkipTicket != null
+                        cancelForward()
+                        if (!wasSkipping) callbacks.onSeekForward()
+                        true
                     }
+
+                    else -> false
                 }
-                true
             }
 
-            PlayerShortcutAction.VOLUME_UP -> {
+            PlayerShortcutAction.VOLUME_UP, PlayerShortcutAction.VOLUME_DOWN -> {
                 if (event.type == KeyEventType.KeyDown) {
-                    onVolumeUpState(PlayerShortcutResolver.isFineAdjustment(resolved, event))
-                }
-                true
-            }
-
-            PlayerShortcutAction.VOLUME_DOWN -> {
-                if (event.type == KeyEventType.KeyDown) {
-                    onVolumeDownState(PlayerShortcutResolver.isFineAdjustment(resolved, event))
+                    val fine = PlayerShortcutResolver.isFineAdjustment(resolved, event)
+                    if (resolved.action == PlayerShortcutAction.VOLUME_UP) {
+                        callbacks.onVolumeUp(fine)
+                    } else {
+                        callbacks.onVolumeDown(fine)
+                    }
                 }
                 true
             }
 
             else -> {
-                when (event.type) {
-                    KeyEventType.KeyDown -> true // consume so the page does not see a half shortcut
-                    KeyEventType.KeyUp -> performOnKeyUp(resolved.action)
-                    else -> false
-                }
+                if (event.type == KeyEventType.KeyUp) callbacks.perform(resolved.action)
+                true
             }
         }
+    }
+
+    private fun cancelForward() {
+        forwardJob?.cancel()
+        forwardJob = null
+        fastSkipTicket?.let { fastSkipState?.stopSkipping(it) }
+        fastSkipTicket = null
+        forwardPressed = false
+    }
+
+    override fun cancel() {
+        cancelForward()
+    }
+
+    private fun PlayerShortcutCallbacks.isAvailable(action: PlayerShortcutAction): Boolean = when (action) {
+        PlayerShortcutAction.VOLUME_UP, PlayerShortcutAction.VOLUME_DOWN -> volumeEnabled
+
+        PlayerShortcutAction.PLAYBACK_SPEED_DOWN, PlayerShortcutAction.PLAYBACK_SPEED_UP,
+        PlayerShortcutAction.PLAYBACK_SPEED_RESET, PlayerShortcutAction.PLAYBACK_SPEED_1X,
+        PlayerShortcutAction.PLAYBACK_SPEED_2X, PlayerShortcutAction.PLAYBACK_SPEED_3X -> currentPlaybackSpeed != null
+
+        else -> true
+    }
+
+    /**
+     * 松开时触发的操作. 调用前已经通过 [isAvailable].
+     */
+    private fun PlayerShortcutCallbacks.perform(action: PlayerShortcutAction) {
+        when (action) {
+            PlayerShortcutAction.TOGGLE_PAUSE_RESUME -> onTogglePauseResume()
+            PlayerShortcutAction.TOGGLE_FULLSCREEN -> onToggleFullscreen()
+            PlayerShortcutAction.TOGGLE_DANMAKU -> onToggleDanmaku()
+            PlayerShortcutAction.TOGGLE_PLAYER_STATS -> onTogglePlayerStats()
+            PlayerShortcutAction.SEEK_BACKWARD -> onSeekBackward()
+            PlayerShortcutAction.PLAYBACK_SPEED_DOWN -> changeSpeed { nextPlaybackSpeed(it, playbackSpeedRange, -1) }
+            PlayerShortcutAction.PLAYBACK_SPEED_UP -> changeSpeed { nextPlaybackSpeed(it, playbackSpeedRange, 1) }
+            PlayerShortcutAction.PLAYBACK_SPEED_RESET, PlayerShortcutAction.PLAYBACK_SPEED_1X -> changeSpeed { 1f }
+            PlayerShortcutAction.PLAYBACK_SPEED_2X -> changeSpeed { 2f }
+            PlayerShortcutAction.PLAYBACK_SPEED_3X -> changeSpeed { 3f }
+            PlayerShortcutAction.SEEK_FORWARD, PlayerShortcutAction.VOLUME_UP, PlayerShortcutAction.VOLUME_DOWN ->
+                error("$action is handled on key down")
+        }
+    }
+
+    private fun PlayerShortcutCallbacks.changeSpeed(compute: (current: Float) -> Float) {
+        val current = currentPlaybackSpeed ?: return
+        onPlaybackSpeedChanged(compute(current).coerceIn(playbackSpeedRange))
     }
 }

@@ -10,6 +10,8 @@
 package me.him188.ani.android.tv
 
 import android.app.Application
+import com.generalk1ng.sokkuri.Sokkuri
+import com.generalk1ng.sokkuri.init
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.android.getCommonAndroidModules
@@ -46,6 +48,9 @@ class TvAniApplication : Application() {
         AndroidLoggingConfigurator.configure(logsDir)
         AppStartupTasks.printVersions()
         startupTimeMonitor.mark(StepName.Logging)
+
+        // 弹幕简繁转换 (sokkuri) 需要从 assets 加载词典
+        Sokkuri.init(this)
 
         val defaultUEH = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->

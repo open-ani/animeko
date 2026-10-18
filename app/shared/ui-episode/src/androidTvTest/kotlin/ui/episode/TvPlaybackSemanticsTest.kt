@@ -20,6 +20,7 @@ import me.him188.ani.client.models.AniWatchTogetherMember
 import me.him188.ani.client.models.AniWatchTogetherMemberState
 import me.him188.ani.client.models.AniWatchTogetherWatchingInfo
 import me.him188.ani.danmaku.ui.DanmakuConfig
+import me.him188.ani.danmaku.ui.DanmakuTextConversion
 import me.him188.ani.tv.ui.episode.danmaku.TvDanmakuProperty
 import me.him188.ani.tv.ui.episode.danmaku.adjustForTv
 import me.him188.ani.tv.ui.episode.source.TvSourceGroup
@@ -79,6 +80,37 @@ class TvPlaybackSemanticsTest {
         }
         assertEquals(9f, config.style.fontSize.value, .001f)
         assertEquals(17.6f, config.speed, .001f)
+    }
+
+    @Test
+    fun danmakuTextConversionStepsThroughEveryTargetAndStopsAtBothEnds() {
+        var config = DanmakuConfig.Default
+        assertEquals(DanmakuTextConversion.ORIGINAL, config.textConversion)
+
+        // 从默认值一路向右, 逐个经过全部目标文字后停在最后一个, 不会绕回开头
+        val seen = buildList {
+            repeat(DanmakuTextConversion.entries.size - 1) {
+                config = config.adjustForTv(TvDanmakuProperty.TextConversion, 1)
+                add(config.textConversion)
+            }
+        }
+        assertEquals(DanmakuTextConversion.entries.drop(1), seen)
+        assertEquals(
+            DanmakuTextConversion.entries.last(),
+            config.adjustForTv(TvDanmakuProperty.TextConversion, 1).textConversion,
+        )
+
+        assertEquals(
+            DanmakuTextConversion.entries[DanmakuTextConversion.entries.size - 2],
+            config.adjustForTv(TvDanmakuProperty.TextConversion, -1).textConversion,
+        )
+        // 反向一步按多次同样停在开头
+        var atStart = DanmakuConfig.Default
+        repeat(5) { atStart = atStart.adjustForTv(TvDanmakuProperty.TextConversion, -1) }
+        assertEquals(DanmakuTextConversion.ORIGINAL, atStart.textConversion)
+        // 只动目标文字, 不碰其他参数
+        assertEquals(DanmakuConfig.Default.style, config.style)
+        assertEquals(DanmakuConfig.Default.speed, config.speed)
     }
 
     @Test

@@ -13,28 +13,41 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performKeyPress
 import androidx.compose.ui.test.pressKey
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.PlayerShortcut
 import me.him188.ani.app.data.models.preference.PlayerShortcutAction
 import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
+import me.him188.ani.app.videoplayer.ui.PlayerKeyboardState
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
+/**
+ * Drives [rememberPlayerKeyboardShortcuts] through [PlayerKeyboardState.dispatch], the same path the
+ * player page uses, so custom bindings are verified together with the scope's modifier handling.
+ */
+@OptIn(InternalComposeUiApi::class)
 class PlayerKeyboardShortcutsTest {
     private class Fixture {
+        val keyboard = PlayerKeyboardState()
         val seeks = mutableListOf<Int>()
         val speeds = mutableListOf<Float>()
         val volumeUps = mutableListOf<Boolean>()
@@ -43,6 +56,9 @@ class PlayerKeyboardShortcutsTest {
         var fullscreenToggles = 0
         var danmakuToggles = 0
         var statsToggles = 0
+        var skipStarts = 0
+        var skipStops = 0
+        val fastSkip = FastSkipState({ skipStarts++ }, { skipStops++ })
         val config = mutableStateOf(PlayerShortcutConfig.Default)
         val currentSpeed = mutableStateOf<Float?>(1f)
         val volumeEnabled = mutableStateOf(true)
@@ -53,31 +69,29 @@ class PlayerKeyboardShortcutsTest {
         val focusRequester = FocusRequester()
         setContent {
             MaterialTheme {
-                val seekerState = remember {
-                    SwipeSeekerState(
-                        screenWidthPx = 1000,
-                        swipeSeekerConfig = SwipeSeekerConfig(),
-                        density = Density(1f),
-                        onSeek = fixture.seeks::add,
-                    )
+                val seekerState = rememberSwipeSeekerState(320, onSeek = { fixture.seeks += it })
+                val handler = rememberPlayerKeyboardShortcuts(
+                    shortcuts = fixture.config.value,
+                    seekerState = seekerState,
+                    fastSkipState = fixture.fastSkip,
+                    currentPlaybackSpeed = fixture.currentSpeed.value,
+                    playbackSpeedRange = 0.5f..3f,
+                    onPlaybackSpeedChanged = fixture.speeds::add,
+                    volumeEnabled = fixture.volumeEnabled.value,
+                    onVolumeUp = fixture.volumeUps::add,
+                    onVolumeDown = fixture.volumeDowns::add,
+                    onTogglePauseResume = { fixture.pauseToggles++ },
+                    onToggleFullscreen = { fixture.fullscreenToggles++ },
+                    onToggleDanmaku = { fixture.danmakuToggles++ },
+                    onTogglePlayerStats = { fixture.statsToggles++ },
+                )
+                DisposableEffect(handler) {
+                    fixture.keyboard.register(handler)
+                    onDispose { fixture.keyboard.unregister(handler) }
                 }
                 Box(
                     Modifier.size(320.dp, 160.dp).testTag("target")
-                        .playerKeyboardShortcuts(
-                            shortcuts = fixture.config.value,
-                            seekerState = seekerState,
-                            fastSkipState = null,
-                            currentPlaybackSpeed = fixture.currentSpeed.value,
-                            playbackSpeedRange = 0.5f..3f,
-                            onPlaybackSpeedChanged = fixture.speeds::add,
-                            volumeEnabled = fixture.volumeEnabled.value,
-                            onVolumeUp = fixture.volumeUps::add,
-                            onVolumeDown = fixture.volumeDowns::add,
-                            onTogglePauseResume = { fixture.pauseToggles++ },
-                            onToggleFullscreen = { fixture.fullscreenToggles++ },
-                            onToggleDanmaku = { fixture.danmakuToggles++ },
-                            onTogglePlayerStats = { fixture.statsToggles++ },
-                        )
+                        .onPreviewKeyEvent { fixture.keyboard.dispatch(it) }
                         .focusRequester(focusRequester)
                         .focusable(),
                 )
@@ -126,19 +140,40 @@ class PlayerKeyboardShortcutsTest {
                 .withShortcuts(PlayerShortcutAction.TOGGLE_FULLSCREEN, listOf(PlayerShortcut("F", ctrl = true)))
         }
         waitForIdle()
-        onNodeWithTag("target").performKeyInput {
+        val target = onNodeWithTag("target")
+        target.performKeyInput {
             pressKey(Key.Spacebar) // no longer bound
             pressKey(Key.K)
-            pressKey(Key.F) // needs Ctrl now
-            keyDown(Key.CtrlLeft)
-            pressKey(Key.F)
-            keyUp(Key.CtrlLeft)
         }
+        // plain F is unbound now and passes through to the page
+        assertFalse(target.performKeyPress(KeyEvent(Key.F, KeyEventType.KeyDown)))
+        assertFalse(target.performKeyPress(KeyEvent(Key.F, KeyEventType.KeyUp)))
+        // Ctrl+F is a real binding: consumed, and repeats while held do not cancel it
+        assertTrue(target.performKeyPress(KeyEvent(Key.F, KeyEventType.KeyDown, isCtrlPressed = true)))
+        assertTrue(target.performKeyPress(KeyEvent(Key.F, KeyEventType.KeyDown, isCtrlPressed = true)))
+        assertTrue(target.performKeyPress(KeyEvent(Key.F, KeyEventType.KeyUp, isCtrlPressed = true)))
         waitForIdle()
         runOnIdle {
             assertEquals(1, fixture.pauseToggles)
             assertEquals(1, fixture.fullscreenToggles)
         }
+    }
+
+    @Test
+    fun `unmatched modified press passes through and cancels a held shortcut`() = runShortcutTest { fixture ->
+        mainClock.autoAdvance = false
+        val target = onNodeWithTag("target")
+        target.performKeyInput { keyDown(Key.DirectionRight) }
+        mainClock.advanceTimeBy(300)
+        assertEquals(1, fixture.skipStarts)
+        assertFalse(target.performKeyPress(KeyEvent(Key.DirectionRight, KeyEventType.KeyDown, isCtrlPressed = true)))
+        assertEquals(1, fixture.skipStops)
+        target.performKeyInput { keyUp(Key.DirectionRight) }
+        assertTrue(fixture.seeks.isEmpty())
+        // Ctrl+Space never reaches the plain Space binding
+        assertFalse(target.performKeyPress(KeyEvent(Key.Spacebar, KeyEventType.KeyDown, isCtrlPressed = true)))
+        assertFalse(target.performKeyPress(KeyEvent(Key.Spacebar, KeyEventType.KeyUp, isCtrlPressed = true)))
+        assertEquals(0, fixture.pauseToggles)
     }
 
     @Test
@@ -163,11 +198,9 @@ class PlayerKeyboardShortcutsTest {
             fixture.volumeEnabled.value = false
         }
         waitForIdle()
-        onNodeWithTag("target").performKeyInput {
-            pressKey(Key.D)
-            pressKey(Key.DirectionUp)
-        }
-        waitForIdle()
+        val target = onNodeWithTag("target")
+        assertFalse(target.performKeyPress(KeyEvent(Key.D, KeyEventType.KeyDown)))
+        assertFalse(target.performKeyPress(KeyEvent(Key.DirectionUp, KeyEventType.KeyDown)))
         runOnIdle {
             assertEquals(emptyList(), fixture.speeds)
             assertEquals(emptyList(), fixture.volumeUps)

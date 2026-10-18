@@ -60,7 +60,7 @@ class AniNotificationServiceTest {
                     createdAtMillis = 1000,
                     read = false,
                     display = NotificationDisplay(
-                        title = "你举报的评论已处理",
+                        title = "你举报的评论已被处理",
                         body = "葬送的芙莉莲 第 12 话",
                         icon = NotificationIcon.REPORT,
                         target = NotificationTarget(subjectId = 400602, episodeId = 1227087),
@@ -119,7 +119,7 @@ class AniNotificationServiceTest {
                     createdAtMillis = 997,
                     read = false,
                     display = NotificationDisplay(
-                        title = "你举报的评论已处理",
+                        title = "你举报的评论已被处理",
                         body = "芙莉莲",
                         icon = NotificationIcon.REPORT,
                         target = NotificationTarget(characterId = 8),
@@ -467,7 +467,7 @@ class AniNotificationServiceTest {
         val KNOWN_PAGE = """
             {"items":[
               {"id":"n1","type":"report_result","category":"notice","createdAtMillis":1000,"read":false,
-               "title":"你举报的评论已处理","body":"葬送的芙莉莲 第 12 话","icon":"report",
+               "title":"你举报的评论已被处理","body":"葬送的芙莉莲 第 12 话","icon":"report",
                "target":{"subjectId":400602,"episodeId":1227087},
                "reportResult":{"targetType":"episode_comment","reason":"spoiler","reportedAtMillis":900,
                "handledAtMillis":950,"contentRemoved":true,"contentSnapshot":"小明：剧透","contentCreatedAtMillis":880,
@@ -479,7 +479,7 @@ class AniNotificationServiceTest {
               {"id":"n3","type":"system","category":"notice","createdAtMillis":998,"read":false,
                "title":"维护通知","body":"第一行\n第二行","icon":"info","target":{"url":"https://example.com"},"system":{}},
               {"id":"n4","type":"report_result","category":"notice","createdAtMillis":997,"read":false,
-               "title":"你举报的评论已处理","body":"芙莉莲","icon":"report","target":{"characterId":8},
+               "title":"你举报的评论已被处理","body":"芙莉莲","icon":"report","target":{"characterId":8},
                "reportResult":{"targetType":"character_comment","reason":"harassment","reportedAtMillis":1,
                "handledAtMillis":2,"contentRemoved":false,"characterId":8,"targetName":"芙莉莲"}}
             ],"nextCursor":"998:n3"}

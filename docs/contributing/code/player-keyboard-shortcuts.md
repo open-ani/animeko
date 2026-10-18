@@ -25,14 +25,15 @@ Enter / Escape / Tab / DPad 中键留给页面导航和输入框，修饰键只�
 
 ## 播放器分发 (`video-player`)
 
-`Modifier.playerKeyboardShortcuts(shortcuts, ...)` 挂在 `PlayerGestureHost` 的焦点节点上，
-用 `PlayerShortcutResolver` 把每个按键事件解析成操作，再按操作类型分发:
+`rememberPlayerKeyboardShortcuts(shortcuts, ...)` 返回注册到 `PlayerControllerState.keyboard` 的 `PlayerKeyboardHandler`
+（分发链路见 [播放器键盘与焦点](player-keyboard.md)），用 `PlayerShortcutResolver` 把每个按键事件解析成操作，再按操作类型分发:
 
 - 开关类操作和后退在 KeyUp 触发，KeyDown 只消费事件。
 - 音量在每次 KeyDown 触发，按住不放持续调节。绑定本身不含 Shift 时，按住 Shift 命中同一操作并作为微调；
   精确匹配优先，所以把 Shift+↑ 绑定给别的操作后它不再属于音量。
 - 前进在 KeyDown 启动 200ms 计时进入倍速快进，提前松开则前进 5 秒。
-- 修饰键必须正好匹配：Ctrl+Space 不会触发只绑定了 Space 的操作。
+- 修饰键必须正好匹配：Ctrl+Space 不会触发只绑定了 Space 的操作。`PlayerKeyboardState.dispatch` 会把带 Ctrl / Alt / Meta 的按下交给处理器，
+  没有绑定命中时才按「交给页面控件」处理，所以 Ctrl+F 这类自定义组合可以生效，而页面上的其他快捷键不受影响。
 - 倍速操作在播放器不支持倍速时、音量操作在没有音量控制器时不消费事件，交还给页面。
 - RTL 布局下左右方向键在解析前互换。
 

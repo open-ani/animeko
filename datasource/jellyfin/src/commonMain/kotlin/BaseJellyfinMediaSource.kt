@@ -731,7 +731,20 @@ private fun Item.seriesSubjectIdMatch(query: MediaFetchRequest): ProviderIdMatch
 
 private fun Item.episodeIdMatch(query: MediaFetchRequest): ProviderIdMatch {
     if (Type != TYPE_EPISODE) return ProviderIdMatch.UNKNOWN
-    return compareProviderId(providerId(PROVIDER_ID_BANGUMI), query.episodeId)
+    val actual = providerId(PROVIDER_ID_BANGUMI) ?: return ProviderIdMatch.UNKNOWN
+    if (query.episodes.isNotEmpty()) {
+        return if (query.episodes.any { it.episodeId.trim() == actual }) {
+            ProviderIdMatch.MATCH
+        } else {
+            ProviderIdMatch.CONFLICT
+        }
+    }
+    // Without the subject's episode list, a different id may belong to a sibling episode.
+    return if (compareProviderId(actual, query.episodeId) == ProviderIdMatch.MATCH) {
+        ProviderIdMatch.MATCH
+    } else {
+        ProviderIdMatch.UNKNOWN
+    }
 }
 
 private fun Item.bangumiMatchConfidence(
@@ -753,11 +766,7 @@ private fun Item.bangumiMatchConfidence(
     }
     if (subjectMatch == ProviderIdMatch.CONFLICT) return null
 
-    val episodeMatch = if (Type == TYPE_EPISODE) {
-        compareProviderId(providerId(PROVIDER_ID_BANGUMI), query.episodeId)
-    } else {
-        ProviderIdMatch.UNKNOWN
-    }
+    val episodeMatch = episodeIdMatch(query)
     if (episodeMatch == ProviderIdMatch.CONFLICT) return null
 
     return when {

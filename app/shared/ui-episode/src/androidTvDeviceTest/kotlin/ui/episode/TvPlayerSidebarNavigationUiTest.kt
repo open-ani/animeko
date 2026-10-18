@@ -132,6 +132,44 @@ class TvPlayerSidebarNavigationUiTest {
     }
 
     @Test
+    fun danmakuTextConversionShowsASampleOnlyWhileAdjusting() = runAniComposeUiTest {
+        val fixture = Fixture()
+        showPlayer(fixture)
+        openPanel(TvPlayerPanel.DanmakuSettings)
+
+        // 「弹幕文字」是 FontSize 之后的第 8 行
+        repeat(TvDanmakuProperty.entries.indexOf(TvDanmakuProperty.TextConversion)) { key(Key.DirectionDown) }
+        onNodeWithTag("tv-danmaku-property-TextConversion").assertIsFocused()
+        // 不调节时不占版面
+        onNodeWithTag("tv-danmaku-text-conversion-sample").assertDoesNotExist()
+
+        key(Key.DirectionCenter)
+        onNodeWithTag("tv-danmaku-property-TextConversion").assertIsFocused().assert(
+            SemanticsMatcher.expectValue(
+                SemanticsProperties.StateDescription,
+                playerTestString(Lang.tv_player_adjusting),
+            ),
+        )
+        onNodeWithTag("tv-danmaku-text-conversion-sample").assertExists()
+
+        key(Key.DirectionRight)
+        key(Key.DirectionRight)
+        assertEquals(
+            listOf(1, 1),
+            fixture.intents.filterIsInstance<TvEpisodeIntent.AdjustDanmaku>()
+                .filter { it.property == TvDanmakuProperty.TextConversion }
+                .map { it.direction },
+        )
+
+        // 退出调节后示例收起, 焦点仍在原行上, 左键此时才是退出面板
+        key(Key.DirectionCenter)
+        onNodeWithTag("tv-danmaku-text-conversion-sample").assertDoesNotExist()
+        onNodeWithTag("tv-danmaku-property-TextConversion").assertIsFocused()
+        key(Key.DirectionLeft)
+        assertPanelClosed(TvPlayerPanel.DanmakuSettings)
+    }
+
+    @Test
     fun timingAdjustmentStillAppliesImmediatelyAndCanReset() = runAniComposeUiTest {
         val origin = TvDanmakuOrigin(
             DanmakuServiceId("test"), DanmakuProviderId("test"), DanmakuMatchMethod.NoMatch, 0, true, 0, false,

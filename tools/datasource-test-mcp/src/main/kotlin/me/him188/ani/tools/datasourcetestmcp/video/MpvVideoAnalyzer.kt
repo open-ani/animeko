@@ -26,7 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -42,16 +42,14 @@ import org.openani.mediamp.source.MediaExtraFiles
 import org.openani.mediamp.source.UriMediaData
 import java.awt.Dimension
 import java.io.File
-import java.util.concurrent.Executors
-import javax.swing.SwingUtilities
 import kotlin.coroutines.coroutineContext
 
 /**
  * 视频能力: 用与 Animeko 桌面端完全相同的播放器 (mediamp-mpv, hwdec=videotoolbox) 真实播放视频,
  * 验证可播放性并读取真实媒体信息 (分辨率/时长/编码/帧率/码率).
  *
- * 默认会弹出一个 Compose 测试窗口实时显示播放画面 (showWindow=false 可关;
- * 无窗口时依赖 mpv 模块的 frame-drain, 播放进度照常推进).
+ * 默认会弹出一个 Compose 测试窗口实时显示播放画面 (showWindow=false 可关, 此时使用无窗口渲染上下文;
+ * Linux 上 mpv 没有无窗口渲染, 不开窗口时无法播放).
  *
  * 原生库来源 (dev): `-Dani.mpv.native.dir=<dir>` 或默认的 mediamp worktree dev-native 构建.
  */
@@ -85,25 +83,22 @@ class MpvVideoAnalyzer {
                 emptyList(),
             )
         }
-        // 播放器要求单线程调用
-        val executor = Executors.newSingleThreadExecutor { runnable ->
-            Thread(runnable, "mpv-video-analyzer").apply { isDaemon = true }
-        }
-        return try {
-            withContext(executor.asCoroutineDispatcher()) {
-                analyzeWithPlayer(input)
-            }
-        } finally {
-            executor.shutdown()
+        // 播放器命令必须在它的 mainDispatcher (默认 Dispatchers.Main, 即 Swing EDT) 上调用
+        return withContext(Dispatchers.Main) {
+            analyzeWithPlayer(input)
         }
     }
 
     private suspend fun analyzeWithPlayer(input: ProbeVideoInput): Output {
         val errors = mutableListOf<String>()
         val frames = mutableListOf<CapturedFrame>()
-        val player = MpvMediampPlayer(Any(), coroutineContext)
+        // 测试只关心画面与播放时钟. 无头环境的音频设备可能接收数据却从不消费, 让播放卡在首帧, 所以不输出音频.
+        val player = MpvMediampPlayer(Any(), coroutineContext, configureOptions = { it.option("ao", "null") })
         val handle = player.impl as MPVHandle
         val window = if (input.showWindow) createWindow(player, input.videoUrl) else null
+        if (window == null && !createHeadlessRenderContext(player)) {
+            errors += "无法创建无窗口渲染上下文, 打开媒体会一直等待"
+        }
         return try {
             val playbackTest = runPlaybackTest(player, handle, input, errors, frames)
             // 轨道参数要等 demux/解码就绪才可用, 轮询等待
@@ -167,7 +162,7 @@ class MpvVideoAnalyzer {
             )
         } finally {
             runCatching { player.close() }
-            window?.let { w -> SwingUtilities.invokeLater { w.dispose() } }
+            window?.dispose()
         }
     }
 
@@ -192,7 +187,20 @@ class MpvVideoAnalyzer {
         }
         val openStart = System.currentTimeMillis()
         try {
-            player.setMediaData(UriMediaData(input.videoUrl, input.headers, MediaExtraFiles()))
+            val opened = withTimeoutOrNull(input.playTimeoutMillis) {
+                player.setMediaData(UriMediaData(input.videoUrl, input.headers, MediaExtraFiles()))
+            }
+            if (opened == null) {
+                errors += "打开媒体超时 (${input.playTimeoutMillis}ms)"
+                return PlaybackTestResult(
+                    ran = true,
+                    ok = false,
+                    requestedSeconds = input.playSeconds,
+                    finalState = player.getCurrentPlaybackState().toString(),
+                    errors = errors.toList(),
+                    openMillis = System.currentTimeMillis() - openStart,
+                )
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -341,7 +349,9 @@ class MpvVideoAnalyzer {
         positionMillis: Long,
     ): CapturedFrame? {
         val file = dir.resolve("$label.png")
-        player.features[Screenshots.Key]?.takeScreenshot(file.absolutePath) ?: return null
+        val screenshots = player.features[Screenshots.Key] ?: return null
+        // 不使用返回值: mediamp 0.5.2 的 mpv 实现把内部的 Boolean 结果当作 Unit 返回, 取值会 ClassCastException
+        screenshots.takeScreenshot(file.absolutePath)
         repeat(25) {
             if (file.isFile && file.length() > 0) {
                 return CapturedFrame(
@@ -355,19 +365,28 @@ class MpvVideoAnalyzer {
         return null
     }
 
-    private fun createWindow(player: MpvMediampPlayer, videoUrl: String): ComposeWindow {
-        lateinit var window: ComposeWindow
-        SwingUtilities.invokeAndWait {
-            window = ComposeWindow().apply {
-                title = "Animeko 数据源测试 - probe_video (mpv)"
-                size = Dimension(960, 600)
-                setLocationRelativeTo(null)
-                setContent { ProbeWindowContent(player, videoUrl) }
-                isVisible = true
-            }
-        }
-        return window
+    /**
+     * Windows 上 mpv 要等渲染上下文就绪才会打开媒体, 渲染上下文通常在播放窗口首次绘制时创建;
+     * 没有窗口时显式创建一个无窗口的. macOS 构造播放器时就已创建, 再调用是幂等的.
+     *
+     * mediamp 0.5.2 的 `MpvMediampPlayer.createRenderContext()` 是 internal 的, 编译后的方法名带模块后缀,
+     * 所以通过反射调用, 两种方法名都认.
+     */
+    private fun createHeadlessRenderContext(player: MpvMediampPlayer): Boolean {
+        val method = MpvMediampPlayer::class.java.methods.firstOrNull {
+            it.parameterCount == 0 && (it.name == "createRenderContext" || it.name == "createRenderContext\$mediamp_mpv")
+        } ?: return false
+        return runCatching { method.invoke(player) as Boolean }.getOrDefault(false)
     }
+
+    private fun createWindow(player: MpvMediampPlayer, videoUrl: String): ComposeWindow =
+        ComposeWindow().apply {
+            title = "Animeko 数据源测试 - probe_video (mpv)"
+            size = Dimension(960, 600)
+            setLocationRelativeTo(null)
+            setContent { ProbeWindowContent(player, videoUrl) }
+            isVisible = true
+        }
 }
 
 @Composable
