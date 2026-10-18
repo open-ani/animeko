@@ -154,8 +154,23 @@ fun PlayerShortcut.matches(
 /**
  * 展示用文本, 如 `Ctrl + Shift + F`. macOS 使用系统符号 `⌃⌥⇧⌘F`.
  */
-fun PlayerShortcut.displayText(isMacOs: Boolean): String {
-    val keyLabel = PlayerShortcutKeys.findById(key)?.label ?: key
+fun PlayerShortcut.displayText(isMacOs: Boolean): String =
+    shortcutDisplayText(ctrl, alt, shift, meta, keyLabel = PlayerShortcutKeys.findById(key)?.label ?: key, isMacOs = isMacOs)
+
+/**
+ * 把修饰键状态和按键名拼成展示文本. 修饰键顺序固定为 Ctrl, Alt, Shift, Meta;
+ * macOS 使用系统符号并省略分隔符, 其他平台用 ` + ` 连接.
+ *
+ * [keyLabel] 可以是占位符 (如 `…`), 用于只按住了修饰键时的实时预览.
+ */
+fun shortcutDisplayText(
+    ctrl: Boolean,
+    alt: Boolean,
+    shift: Boolean,
+    meta: Boolean,
+    keyLabel: String,
+    isMacOs: Boolean,
+): String {
     if (isMacOs) {
         return buildString {
             if (ctrl) append('⌃')

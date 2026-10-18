@@ -66,6 +66,7 @@ import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.input.PlayerShortcutKeys
 import me.him188.ani.app.ui.foundation.input.displayText
+import me.him188.ani.app.ui.foundation.input.shortcutDisplayText
 import me.him188.ani.app.ui.foundation.input.toPlayerShortcut
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_player_shortcut_seek_backward
@@ -492,22 +493,7 @@ private fun heldModifiersText(event: KeyEvent, isMacOs: Boolean): String {
     val shift = event.isShiftPressed && !(releasing && (event.key == Key.ShiftLeft || event.key == Key.ShiftRight))
     val meta = event.isMetaPressed && !(releasing && (event.key == Key.MetaLeft || event.key == Key.MetaRight))
     if (!ctrl && !alt && !shift && !meta) return ""
-    if (isMacOs) {
-        return buildString {
-            if (ctrl) append('⌃')
-            if (alt) append('⌥')
-            if (shift) append('⇧')
-            if (meta) append('⌘')
-            append('…')
-        }
-    }
-    return buildList {
-        if (ctrl) add("Ctrl")
-        if (alt) add("Alt")
-        if (shift) add("Shift")
-        if (meta) add("Meta")
-        add("…")
-    }.joinToString(" + ")
+    return shortcutDisplayText(ctrl, alt, shift, meta, keyLabel = "…", isMacOs = isMacOs)
 }
 
 @Composable
