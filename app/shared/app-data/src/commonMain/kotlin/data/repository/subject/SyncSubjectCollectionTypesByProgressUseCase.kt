@@ -18,6 +18,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.isCompleted
+import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.logging.info
@@ -31,6 +32,7 @@ interface SyncSubjectCollectionTypesByProgressUseCase {
 class SyncSubjectCollectionTypesByProgressUseCaseImpl(
     private val subjectCollectionRepository: SubjectCollectionRepository,
     private val setSubjectCollectionTypeOrDeleteUseCase: SetSubjectCollectionTypeOrDeleteUseCase,
+    private val episodeCollectionRepository: EpisodeCollectionRepository,
     private val autoAdvanceEnabled: Flow<Boolean>,
     private val backgroundScope: CoroutineScope,
 ) : SyncSubjectCollectionTypesByProgressUseCase {
@@ -67,6 +69,10 @@ class SyncSubjectCollectionTypesByProgressUseCaseImpl(
             return
         }
         setSubjectCollectionTypeOrDeleteUseCase(subjectId, targetType)
+        if (collection.collectionType == UnifiedCollectionType.NOT_COLLECTED) {
+            // 收藏建立前的剧集同步可能被服务端拒绝. 重新入队本地仍为看过的剧集, 保留用户后续的状态修改.
+            episodeCollectionRepository.requeueWatchedEpisodes(subjectId)
+        }
         logger.info {
             "Automatically advanced subject $subjectId from ${collection.collectionType} to $targetType"
         }
@@ -89,6 +95,12 @@ internal fun SubjectCollectionInfo.syncedCollectionTypeByEpisodeProgress(): Unif
         mainStoryEpisodes.last().collectionType == UnifiedCollectionType.DONE
 
     return when (collectionType) {
+        UnifiedCollectionType.NOT_COLLECTED -> when {
+            mainStoryEpisodes.size == 1 && hasFinishedMainStory -> UnifiedCollectionType.DONE
+            hasWatchedMainStory -> UnifiedCollectionType.DOING
+            else -> null
+        }
+
         UnifiedCollectionType.WISH -> when {
             hasFinishedMainStory -> UnifiedCollectionType.DONE
             hasWatchedMainStory -> UnifiedCollectionType.DOING

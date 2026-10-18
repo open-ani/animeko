@@ -23,6 +23,7 @@ import me.him188.ani.app.data.repository.subject.SyncSubjectCollectionTypesByPro
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.comment.PostCommentUseCaseImpl
+import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCaseImpl
 import me.him188.ani.app.domain.episode.CreateMediaFetchSelectBundleFlowUseCase
@@ -42,7 +43,6 @@ import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCaseImpl
 import me.him188.ani.app.domain.episode.ResolveEpisodeLinkUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCaseImpl
-import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCaseImpl
 import me.him188.ani.app.domain.media.cache.GetMediaCacheUseCase
@@ -101,17 +101,17 @@ fun KoinApplication.useCaseModules(backgroundScope: CoroutineScope) = module {
     single<SetSubjectCollectionTypeOrDeleteUseCase> { SetSubjectCollectionTypeOrDeleteUseCaseImpl(get(), get(), get()) }
     single<SyncSubjectCollectionTypesByProgressUseCase> {
         SyncSubjectCollectionTypesByProgressUseCaseImpl(
-            get(),
-            get(),
-            get<SettingsRepository>().uiSettings.flow.map { it.myCollections.autoAdvanceCollectionType },
-            backgroundScope,
+            subjectCollectionRepository = get(),
+            setSubjectCollectionTypeOrDeleteUseCase = get(),
+            episodeCollectionRepository = get(),
+            autoAdvanceEnabled = get<SettingsRepository>().uiSettings.flow.map { it.myCollections.autoAdvanceCollectionType },
+            backgroundScope = backgroundScope,
         )
     }
     single<SetEpisodeCollectionTypeUseCase> { SetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetEpisodeCollectionTypeUseCase> { GetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetAnimeScheduleFlowUseCase> { GetAnimeScheduleFlowUseCaseImpl(get()) }
     single<GetAnimeSeasonIdsFlowUseCase> { GetAnimeSeasonIdsFlowUseCaseImpl(get()) }
-    // 上游(人物评论服务)将 PostCommentUseCase 改为双依赖,保留上游版本
     single<PostCommentUseCase> { PostCommentUseCaseImpl(get(), get()) }
     single<GetPreferredMediaSourceSortingUseCase> { GetPreferredMediaSourceSortingUseCaseImpl(get()) }
     single<GetMediaSelectorSourceTiersUseCase> { GetMediaSelectorSourceTiersUseCaseImpl(get()) }

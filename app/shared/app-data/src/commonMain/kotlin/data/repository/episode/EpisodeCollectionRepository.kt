@@ -205,7 +205,7 @@ class EpisodeCollectionRepository(
     ) = withContext(defaultDispatcher) {
         // 只看本地缓存, 不能为了一个警告去拉网络. 服务端会在同步时拒绝没收藏的条目, syncer 那边丢弃.
         if (subjectDao.findById(subjectId).first()?.collectionType == UnifiedCollectionType.NOT_COLLECTED) {
-            logger.warn { "User has not yet collected subject $subjectId when we want to setEpisodeCollectionType, ignoring." }
+            logger.warn { "Subject $subjectId is not collected yet; queueing episode $episodeId locally for sync" }
         }
         episodeCollectionDao.updateSelfCollectionType(subjectId, episodeId, collectionType)
         pendingOpDao.replacePendingOps(
@@ -218,6 +218,15 @@ class EpisodeCollectionRepository(
                 ),
             ),
         )
+        onDirtyChanged()
+    }
+
+    /**
+     * 收藏建立后重新入队本地已看剧集, 使收藏建立前被拒绝的操作可以再次同步.
+     * 读取当前状态并入队在同一条 SQL 中完成, 不覆盖用户后续取消看过的操作.
+     */
+    suspend fun requeueWatchedEpisodes(subjectId: Int) = withContext(defaultDispatcher) {
+        pendingOpDao.requeueWatchedEpisodes(subjectId, nowMillis())
         onDirtyChanged()
     }
 
