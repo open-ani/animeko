@@ -60,6 +60,9 @@ class TvPlayerPresentationStateTest {
 
         fun key(key: TvRemoteKey, down: Boolean = true, repeats: Int = 0, time: Long = 1_000) =
             machine.onAction(TvPlayerAction.RemoteKey(key, down, repeats, time, true, false, false))
+
+        /** 模拟 VM: 播放位置追上已提交的 seek 目标后清除预览点. */
+        fun playerSettled() = interaction.setPreview(null)
     }
 
     @Test
@@ -152,17 +155,71 @@ class TvPlayerPresentationStateTest {
     }
 
     @Test
-    fun `arrows only preview and confirm commits once`() {
+    fun `arrows preview while held and commit on release once`() {
         val f = Fixture()
         f.key(TvRemoteKey.Right, time = 100) // Includes events near boot; no phantom previous press.
         assertTrue(f.commands.isEmpty())
         assertEquals(25_000L, f.state.scrubMillis)
-        f.key(TvRemoteKey.Right, time = 500)
+        f.key(TvRemoteKey.Right, repeats = 1, time = 500) // 按住连发继续移动预览点.
         assertEquals(30_000L, f.state.scrubMillis)
         assertTrue(f.commands.isEmpty())
-        f.key(TvRemoteKey.Confirm)
-        assertEquals(TvPlaybackCommand.SeekTo(30_000), f.commands.last())
+        f.key(TvRemoteKey.Right, down = false, time = 600)
+        assertEquals(listOf<TvPlaybackCommand>(TvPlaybackCommand.SeekTo(30_000)), f.commands)
+        // 预览保留到播放位置追上目标, 期间指示器不回跳.
+        assertEquals(30_000L, f.state.scrubMillis)
+        f.playerSettled()
         assertNull(f.state.scrubMillis)
+    }
+
+    @Test
+    fun `held arrows advance the preview on a fixed cadence`() {
+        val f = Fixture()
+        f.key(TvRemoteKey.Right, time = 1_000)
+        assertEquals(25_000L, f.state.scrubMillis)
+        // 节流窗口内的连发被丢弃, 时间数字不会以系统连发频率闪烁.
+        f.key(TvRemoteKey.Right, repeats = 1, time = 1_050)
+        assertEquals(25_000L, f.state.scrubMillis)
+        f.key(TvRemoteKey.Right, repeats = 2, time = 1_100)
+        assertEquals(25_000L, f.state.scrubMillis)
+        f.key(TvRemoteKey.Right, repeats = 3, time = 1_200)
+        assertEquals(30_000L, f.state.scrubMillis)
+        f.key(TvRemoteKey.Right, repeats = 4, time = 1_250)
+        assertEquals(30_000L, f.state.scrubMillis)
+        f.key(TvRemoteKey.Right, repeats = 5, time = 1_400)
+        assertEquals(35_000L, f.state.scrubMillis)
+    }
+
+    @Test
+    fun `held arrows advance with a growing step`() {
+        val f = Fixture()
+        f.playback = TvPlaybackSnapshot(PlayerState(MediaStatus.Ready, true, false), positionMillis = 0, durationMillis = 3_600_000)
+        f.key(TvRemoteKey.Right, time = 1_000)
+        assertEquals(5_000L, f.state.scrubMillis)
+        f.key(TvRemoteKey.Right, repeats = 1, time = 1_200)
+        assertEquals(10_000L, f.state.scrubMillis)
+        f.key(TvRemoteKey.Right, repeats = 2, time = 1_800)
+        assertEquals(15_000L, f.state.scrubMillis) // 按住第 1 秒内仍是 5s 步长.
+        f.key(TvRemoteKey.Right, repeats = 3, time = 2_000)
+        assertEquals(25_000L, f.state.scrubMillis) // 超过 1s 进入 10s 档.
+        f.key(TvRemoteKey.Right, repeats = 4, time = 2_400)
+        assertEquals(35_000L, f.state.scrubMillis)
+        f.key(TvRemoteKey.Right, repeats = 5, time = 4_000)
+        assertEquals(65_000L, f.state.scrubMillis) // 超过 3s 进入 30s 档.
+        f.key(TvRemoteKey.Right, repeats = 6, time = 7_000)
+        assertEquals(125_000L, f.state.scrubMillis) // 超过 6s 进入 60s 档.
+    }
+
+    @Test
+    fun `reversing direction restarts acceleration from the base step`() {
+        val f = Fixture()
+        f.playback = TvPlaybackSnapshot(PlayerState(MediaStatus.Ready, true, false), positionMillis = 0, durationMillis = 3_600_000)
+        f.key(TvRemoteKey.Right, time = 1_000)
+        f.key(TvRemoteKey.Right, repeats = 1, time = 4_000)
+        assertEquals(35_000L, f.state.scrubMillis)
+        f.key(TvRemoteKey.Left, time = 4_200)
+        assertEquals(30_000L, f.state.scrubMillis)
+        f.key(TvRemoteKey.Left, repeats = 1, time = 4_400)
+        assertEquals(25_000L, f.state.scrubMillis)
     }
 
     @Test
@@ -377,6 +434,7 @@ class TvPlayerPresentationStateTest {
         f.playback = f.playback.copy(durationMillis = 0)
         f.key(TvRemoteKey.Right)
         assertNull(f.state.scrubMillis)
+        f.key(TvRemoteKey.Right, down = false)
         assertTrue(f.commands.isEmpty())
     }
 
@@ -393,14 +451,94 @@ class TvPlayerPresentationStateTest {
     }
 
     @Test
-    fun `hidden controller arrows also preview without seeking`() {
+    fun `hidden controller arrows adjust in the timeline only overlay`() {
         val f = Fixture()
         f.machine.onAction(TvPlayerAction.Back)
+        assertFalse(f.state.controlsVisible)
         f.key(TvRemoteKey.Left)
         assertEquals(15_000L, f.state.scrubMillis)
         assertTrue(f.state.controlsVisible)
+        assertTrue(f.state.timelineOnly)
+        f.key(TvRemoteKey.Left, down = false)
+        assertEquals(listOf<TvPlaybackCommand>(TvPlaybackCommand.SeekTo(15_000)), f.commands)
+        // 预览保留到播放位置追上目标, 期间不自动隐藏.
+        assertEquals(15_000L, f.state.scrubMillis)
+        assertFalse(f.state.canAutoHide)
+        f.machine.autoHide()
+        assertTrue(f.state.controlsVisible)
+        // 位置追上目标后清除预览, 时间轴由自动隐藏收起, 收起时保留形态供退出动画渲染.
+        f.playerSettled()
+        assertTrue(f.state.timelineOnly)
+        assertTrue(f.state.canAutoHide)
+        f.machine.autoHide()
+        assertFalse(f.state.controlsVisible)
+        assertTrue(f.state.timelineOnly)
+    }
+
+    @Test
+    fun `timeline auto hide waits for the gesture to end`() {
+        val f = Fixture()
         f.machine.onAction(TvPlayerAction.Back)
+        f.key(TvRemoteKey.Right)
+        f.machine.autoHideTimeline()
+        assertTrue(f.state.controlsVisible)
+        f.key(TvRemoteKey.Right, down = false)
+        f.machine.autoHideTimeline()
+        assertTrue(f.state.controlsVisible)
+        f.playerSettled()
+        f.machine.autoHideTimeline()
+        assertFalse(f.state.controlsVisible)
+    }
+
+    @Test
+    fun `timeline auto hide leaves the full controller alone`() {
+        val f = Fixture()
+        assertTrue(f.state.controlsVisible)
+        f.machine.autoHideTimeline()
+        assertTrue(f.state.controlsVisible)
+    }
+
+    @Test
+    fun `back cancels the timeline only overlay without seeking`() {
+        val f = Fixture()
+        f.machine.onAction(TvPlayerAction.Back)
+        f.key(TvRemoteKey.Right)
+        assertTrue(f.state.timelineOnly)
+        f.machine.onAction(TvPlayerAction.Back)
+        assertNull(f.state.scrubMillis)
+        assertFalse(f.state.controlsVisible)
+        // 收起时保留形态, 退出动画不会闪回完整控制层.
+        assertTrue(f.state.timelineOnly)
         assertTrue(f.commands.isEmpty())
+    }
+
+    @Test
+    fun `up from the timeline only overlay reveals the full controller`() {
+        val f = Fixture()
+        f.machine.onAction(TvPlayerAction.Back)
+        f.key(TvRemoteKey.Right)
+        assertTrue(f.state.timelineOnly)
+        f.key(TvRemoteKey.Up)
+        assertNull(f.state.scrubMillis)
+        assertTrue(f.state.controlsVisible)
+        assertFalse(f.state.timelineOnly)
+        f.key(TvRemoteKey.Right, time = 2_000)
+        assertTrue(f.state.controlsVisible)
+        assertFalse(f.state.timelineOnly)
+        f.key(TvRemoteKey.Right, down = false, time = 2_100)
+        assertFalse(f.state.timelineOnly)
+    }
+
+    @Test
+    fun `confirm while adjusting pauses without committing`() {
+        val f = Fixture()
+        f.machine.onAction(TvPlayerAction.Back)
+        f.key(TvRemoteKey.Right)
+        assertEquals(25_000L, f.state.scrubMillis)
+        f.key(TvRemoteKey.Confirm)
+        assertTrue(f.commands.contains(TvPlaybackCommand.TogglePause))
+        assertTrue(f.commands.none { it is TvPlaybackCommand.SeekTo })
+        assertEquals(25_000L, f.state.scrubMillis)
     }
 
     @Test

@@ -102,7 +102,7 @@ import kotlin.test.assertTrue
 @OptIn(InternalMediampApi::class)
 class TvPlaybackSemanticsUiTest {
     @Test
-    fun sharedProgressKeepsRemoteFocusAndOnlySeeksOnConfirmation() = runAniComposeUiTest {
+    fun seekAdjustsWhileHeldAndCommitsOnRelease() = runAniComposeUiTest {
         val interaction = TvPlaybackInteractionState()
         var state by mutableStateOf(TvEpisodeUiState(
             playerState = PlayerState(MediaStatus.Ready, false, false),
@@ -130,28 +130,90 @@ class TvPlaybackSemanticsUiTest {
                 is TvEpisodeIntent.SeekTo -> {
                     seeks += intent.positionMillis
                     state = state.copy(positionMillis = intent.positionMillis)
+                    interaction.setPreview(null) // 模拟 VM: 播放位置追上目标后清除预览点.
                 }
                 else -> Unit
             }
             true
         }) { state }
         onNodeWithTag("tv-player-seekbar").assertIsFocused()
-        key(Key.DirectionRight)
+        downKey(Key.DirectionRight)
         val target = checkNotNull(interaction.scrubMillis)
         assertTrue(target > 20_000)
         assertTrue(seeks.isEmpty())
         onNodeWithTag("tv-player-seekbar").assertIsFocused()
-        key(Key.DirectionCenter)
+        upKey(Key.DirectionRight)
         assertEquals(listOf(target), seeks)
         assertNull(interaction.scrubMillis)
         onNodeWithTag("tv-player-seekbar").assertIsFocused()
-        key(Key.DirectionLeft)
+        downKey(Key.DirectionLeft)
         assertTrue(checkNotNull(interaction.scrubMillis) < target)
         runOnUiThread { backDispatcher.onBackPressed() }
         waitForIdle()
         assertNull(interaction.scrubMillis)
         assertEquals(listOf(target), seeks)
         onNodeWithTag("tv-player-seekbar").assertIsFocused()
+    }
+
+    @Test
+    fun hiddenControlsAdjustSeekInTimelineOnlyOverlay() = runAniComposeUiTest {
+        val interaction = TvPlaybackInteractionState()
+        var state by mutableStateOf(TvEpisodeUiState(
+            playerState = PlayerState(MediaStatus.Ready, true, false),
+            loadingState = VideoLoadingState.Succeed(null),
+            durationMillis = 120_000,
+            positionMillis = 20_000,
+            interaction = interaction,
+        ))
+        val seeks = mutableListOf<Long>()
+        lateinit var backDispatcher: OnBackPressedDispatcher
+        showPlayer(onBackDispatcher = { backDispatcher = it }, onIntent = { intent ->
+            when (intent) {
+                is TvEpisodeIntent.PreviewBy -> interaction.setPreview(
+                    ((interaction.scrubMillis ?: state.positionMillis) + intent.deltaMillis)
+                        .coerceIn(0, state.durationMillis),
+                )
+                is TvEpisodeIntent.PreviewSeek -> interaction.setPreview(intent.positionMillis)
+                is TvEpisodeIntent.SeekTo -> {
+                    seeks += intent.positionMillis
+                    state = state.copy(positionMillis = intent.positionMillis)
+                    interaction.setPreview(null) // 模拟 VM: 播放位置追上目标后清除预览点.
+                }
+                else -> Unit
+            }
+            true
+        }) { state }
+        // 收起完整控制层
+        runOnUiThread { backDispatcher.onBackPressed() }
+        waitForIdle()
+        onNodeWithTag("tv-player-seekbar").assertDoesNotExist()
+        // ←/→ 只唤出精简时间轴
+        downKey(Key.DirectionRight)
+        waitUntil(timeoutMillis = 5_000) {
+            onAllNodes(hasTestTag("tv-player-seekbar") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+        }
+        onNodeWithTag("tv-player-chips").assertDoesNotExist()
+        onNodeWithTag("tv-player-icon-row").assertDoesNotExist()
+        onNodeWithTag("tv-player-title-bar").assertDoesNotExist()
+        val target = checkNotNull(interaction.scrubMillis)
+        assertTrue(target > 20_000)
+        assertTrue(seeks.isEmpty())
+        // 松键提交
+        upKey(Key.DirectionRight)
+        assertEquals(listOf(target), seeks)
+        assertNull(interaction.scrubMillis)
+        // 手势结束后精简时间轴短暂停留并自动收起
+        waitUntil(timeoutMillis = 5_000) {
+            onAllNodes(hasTestTag("tv-player-seekbar")).fetchSemanticsNodes().isEmpty()
+        }
+        onNodeWithTag("tv-player-chips").assertDoesNotExist()
+        onNodeWithTag("tv-player-title-bar").assertDoesNotExist()
+        // ↑ 唤出完整控制层
+        key(Key.DirectionUp)
+        onNodeWithTag("tv-player-seekbar").assertIsFocused()
+        onNodeWithTag("tv-player-chips").assertIsDisplayed()
+        onNodeWithTag("tv-player-icon-row").assertIsDisplayed()
+        onNodeWithTag("tv-player-title-bar").assertIsDisplayed()
     }
 
     @Test
@@ -452,6 +514,16 @@ class TvPlaybackSemanticsUiTest {
 
     private fun AniComposeUiTest.key(key: Key) {
         onRoot().performKeyInput { pressKey(key) }
+        waitForIdle()
+    }
+
+    private fun AniComposeUiTest.downKey(key: Key) {
+        onRoot().performKeyInput { keyDown(key) }
+        waitForIdle()
+    }
+
+    private fun AniComposeUiTest.upKey(key: Key) {
+        onRoot().performKeyInput { keyUp(key) }
         waitForIdle()
     }
 
