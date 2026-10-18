@@ -34,7 +34,6 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.SentimentSatisfied
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,7 +51,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -385,17 +383,7 @@ object EditCommentDefaults {
                     ) {
                         Crossfade(targetState = sending) {
                             if (!it) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    Text(text = sendText, textAlign = TextAlign.Center)
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Rounded.Send,
-                                        modifier = Modifier.size(24.dp),
-                                        contentDescription = null,
-                                    )
-                                }
+                                Text(text = sendText, textAlign = TextAlign.Center)
                             } else {
                                 CircularProgressIndicator(
                                     Modifier.size(20.dp),

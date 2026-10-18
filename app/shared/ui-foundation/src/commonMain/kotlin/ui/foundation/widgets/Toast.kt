@@ -9,14 +9,16 @@
 
 package me.him188.ani.app.ui.foundation.widgets
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -26,12 +28,19 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -42,7 +51,6 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_load_error_network
 import me.him188.ani.app.ui.lang.foundation_load_error_no_results
@@ -55,8 +63,6 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.getString
-import kotlin.math.max
-import kotlin.math.min
 
 @Stable
 val LocalToaster: ProvidableCompositionLocal<Toaster> = staticCompositionLocalOf {
@@ -134,49 +140,71 @@ class ToastViewModel : AbstractViewModel() {
     }
 }
 
+/**
+ * 窗口底部居中显示的 toast. 放在 [Popup] 中, 这样它在同样以 Popup 实现的底部面板、菜单等之上; 放在普通布局中时会被它们盖住.
+ * Popup 不获取焦点, toast 出现时不打断正在进行的输入. 淡出结束后才撤掉 Popup.
+ */
 @Composable
 fun Toast(
     showing: () -> Boolean,
     content: @Composable () -> Unit
-) = BoxWithConstraints(Modifier.fillMaxSize()) box@{
-    val px640dp = with(LocalDensity.current) { 640.dp.roundToPx() }
-    val px100dp = with(LocalDensity.current) { 100.dp.roundToPx() }
-
-    val minToastWidth = with(LocalDensity.current) { px100dp + 60.dp.roundToPx() * 2 }
-    val maxToastWidth = max(minToastWidth, min(constraints.maxWidth, px640dp))
+) {
+    val visibleState = remember { MutableTransitionState(false) }
+    visibleState.targetState = showing()
+    if (!visibleState.currentState && !visibleState.targetState) return
 
     val currentContent by rememberUpdatedState(content)
-
-    AniAnimatedVisibility(
-        visible = showing(),
-        enter = fadeIn(tween(350, easing = LinearEasing)),
-        exit = fadeOut(tween(350, easing = LinearEasing)),
-        modifier = Modifier.layout { measurable, constraints ->
-            val rawWidth = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Int.MAX_VALUE)).width
-
-            val placeable = measurable.measure(
-                constraints.copy(minWidth = min(rawWidth, minToastWidth), maxWidth = maxToastWidth, minHeight = 0),
-            )
-
-            val x = max(this@box.constraints.maxWidth - placeable.width, 0) / 2
-            val y = constraints.maxHeight - placeable.height - px100dp
-
-            layout(placeable.width, placeable.height) {
-                placeable.place(x, y, 100f)
-            }
-        },
+    val density = LocalDensity.current
+    val positionProvider = remember(density) {
+        ToastPositionProvider(bottomMargin = with(density) { ToastBottomMargin.roundToPx() })
+    }
+    Popup(
+        popupPositionProvider = positionProvider,
+        properties = PopupProperties(focusable = false),
     ) {
-        Surface(
-            modifier = Modifier.padding(horizontal = 60.dp),
-            shape = RoundedCornerShape(15.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shadowElevation = 4.dp,
-        ) {
-            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
-                Row(modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
-                    currentContent()
+        BoxWithConstraints {
+            // 窄窗口中 toast 可以比下限窄, 宽窗口中不超过 640.dp
+            val maxToastWidth = maxOf(ToastMinWidth, minOf(maxWidth, ToastMaxWidth))
+            AnimatedVisibility(
+                visibleState = visibleState,
+                enter = fadeIn(tween(350, easing = LinearEasing)),
+                exit = fadeOut(tween(350, easing = LinearEasing)),
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .widthIn(max = maxToastWidth)
+                        .padding(horizontal = ToastHorizontalMargin),
+                    shape = RoundedCornerShape(15.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shadowElevation = 4.dp,
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                        Row(modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
+                            currentContent()
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+private val ToastBottomMargin = 100.dp
+private val ToastHorizontalMargin = 60.dp
+private val ToastMaxWidth = 640.dp
+private val ToastMinWidth = 100.dp + ToastHorizontalMargin * 2
+
+/**
+ * 把 toast 放在窗口底部居中, 距底边 [bottomMargin] 像素.
+ */
+private class ToastPositionProvider(private val bottomMargin: Int) : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize,
+    ): IntOffset = IntOffset(
+        x = ((windowSize.width - popupContentSize.width) / 2).coerceAtLeast(0),
+        y = (windowSize.height - popupContentSize.height - bottomMargin).coerceAtLeast(0),
+    )
 }

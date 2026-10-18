@@ -33,7 +33,11 @@ internal class ImageChipRegistry {
 }
 
 /**
- * 图片标签在编辑框中显示的文字: [label] (例如 "图片 1"), 两侧各有一个不换行空格作为标签背景的边距, 末尾隐藏着编号 [id].
+ * 图片标签在编辑框中显示的文字: 开头是为图标留出的空位, 然后是 [label] (例如 "图片 1"), 两端各有 [IMAGE_CHIP_LABEL_PADDING] 个
+ * 不换行空格作为标签背景的边距, 末尾隐藏着编号 [id].
+ *
+ * 图标的空位是 [IMAGE_CHIP_ICON_SLOT] 个不换行空格, 之后再有一个作为图标与文字的间距. 图标由 [drawImageChipBackgrounds]
+ * 画在空位占据的范围 ([ImageChipIconRange]) 内. 空位的宽度随字体变化, 图标按空位缩放.
  *
  * 标签内部不会换行: 空格换成不换行空格, 两个字符之间可能换行时 (如中文) 插入 U+2060 WORD JOINER.
  * 标签之前总是可以换行: 最前面是一个 U+200B ZERO WIDTH SPACE, 它之前不能换行, 之后总能换行, 所以换行处落在它与标签之间,
@@ -50,7 +54,7 @@ internal class ImageChipRegistry {
 internal fun encodeImageChipLabel(label: String, id: Int): String = buildString {
     append(ZERO_WIDTH_SPACE)
     append(LABEL_MARK)
-    append(NBSP)
+    repeat(IMAGE_CHIP_LABEL_PADDING + IMAGE_CHIP_ICON_SLOT + 1) { append(NBSP) }
     val visible = label.replace(' ', NBSP)
     for ((index, char) in visible.withIndex()) {
         if (index > 0) {
@@ -61,12 +65,28 @@ internal fun encodeImageChipLabel(label: String, id: Int): String = buildString 
         }
         append(char)
     }
-    append(NBSP)
+    repeat(IMAGE_CHIP_LABEL_PADDING) { append(NBSP) }
     for (bit in id.toString(2)) {
         append(if (bit == '1') BIT_ONE else BIT_ZERO)
     }
     append(LABEL_MARK)
 }
+
+/**
+ * 标签文字两端各有几个不换行空格作为背景的边距.
+ */
+internal const val IMAGE_CHIP_LABEL_PADDING = 2
+
+/**
+ * 标签文字开头的边距之后为图标留出的不换行空格数.
+ */
+internal const val IMAGE_CHIP_ICON_SLOT = 4
+
+/**
+ * [encodeImageChipLabel] 生成的标签文字中图标空位的范围, 相对于标签文字的开头 (ZERO WIDTH SPACE 和开头标记之后).
+ */
+internal val ImageChipIconRange: TextRange =
+    TextRange(2 + IMAGE_CHIP_LABEL_PADDING, 2 + IMAGE_CHIP_LABEL_PADDING + IMAGE_CHIP_ICON_SLOT)
 
 /**
  * [encodeImageChipLabel] 生成的标签文字中连续的不可见字符的范围.

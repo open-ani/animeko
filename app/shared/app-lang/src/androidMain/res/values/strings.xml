@@ -1461,7 +1461,6 @@
     <string name="comment_send_failed_invalid_image">An image in this comment is no longer available. Please upload it again</string>
     <string name="comment_send_failed_too_many_images">A comment can contain at most 10 images</string>
     <string name="comment_send_failed_image_processing">Some images are still being processed. Please try again shortly</string>
-    <string name="comment_ani_only_notice">Comments are posted to Ani. Bangumi comments are read-only</string>
     <string name="comment_send_comment">Write a comment</string>
     <string name="comment_rendering">Rendering...</string>
     <string name="comment_reply">Reply to comment</string>

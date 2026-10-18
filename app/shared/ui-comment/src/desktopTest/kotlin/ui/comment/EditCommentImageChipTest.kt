@@ -62,7 +62,6 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
@@ -185,9 +184,9 @@ class EditCommentImageChipTest {
         textField().fetchSemanticsNode().config[SemanticsProperties.EditableText].text
 
     /**
-     * 去掉隐藏字符, 不换行空格换成空格, 即用户看到的文字.
+     * 去掉隐藏字符, 连续的不换行空格 (边距和图标空位) 并成一个空格, 即用户看到的文字.
      */
-    private fun String.visible(): String = filterNot { it in HiddenChars }.replace('\u00A0', ' ')
+    private fun String.visible(): String = filterNot { it in HiddenChars }.replace(Regex("\u00A0+"), " ")
 
     private fun ComposeUiTest.textLayoutResult(): TextLayoutResult {
         val results = mutableListOf<TextLayoutResult>()
@@ -206,9 +205,10 @@ class EditCommentImageChipTest {
     }
 
     /**
-     * 显示的文字中第一个图片标签开头的不换行空格 (背景的边距) 的位置.
+     * 显示的文字中第一个图片标签里图标空位与文字之间的不换行空格的位置. 这里没有字形也没有图标, 只有背景.
      */
-    private fun String.firstLabelPadding(): Int = indexOf('\u00A0', firstLabelRange().start)
+    private fun String.firstLabelGap(): Int =
+        indexOf('\u00A0', firstLabelRange().start) + IMAGE_CHIP_LABEL_PADDING + IMAGE_CHIP_ICON_SLOT
 
     /**
      * 显示的文字中第一个图片标签可见的部分在文字布局中的范围. 标签只占一行.
@@ -581,7 +581,7 @@ class EditCommentImageChipTest {
         fun width(text: String): Float {
             val annotated = buildAnnotatedString {
                 append(text)
-                addStyle(SpanStyle(fontWeight = FontWeight.Medium), 0, text.length)
+                addStyle(ImageChipLabelSpanStyle, 0, text.length)
                 for (hidden in imageChipHiddenRanges(text)) {
                     addStyle(ImageChipHiddenCharStyle, hidden.start, hidden.end)
                 }
@@ -590,7 +590,9 @@ class EditCommentImageChipTest {
                 .getPathForRange(0, text.length).getBounds().width
         }
 
-        val plainLabel = "\u00A0" + chipLabel(1).replace(' ', '\u00A0') + "\u00A0"
+        val plainLabel = "\u00A0".repeat(IMAGE_CHIP_LABEL_PADDING + IMAGE_CHIP_ICON_SLOT + 1) +
+                chipLabel(1).replace(' ', '\u00A0') +
+                "\u00A0".repeat(IMAGE_CHIP_LABEL_PADDING)
         assertEquals(width(plainLabel), chipWidth, absoluteTolerance = 0.5f)
         assertEquals(width(plainLabel), width(displayed.substring(label.start, label.end)), absoluteTolerance = 0.5f)
         assertEquals(width(plainLabel), width(encodeImageChipLabel(chipLabel(1), 123456)), absoluteTolerance = 0.5f)
@@ -632,12 +634,11 @@ class EditCommentImageChipTest {
         waitForIdle()
 
         val layout = textLayoutResult()
-        // 标签开头的不换行空格处没有字形, 只有背景
-        val padding = layout.getBoundingBox(displayedText().firstLabelPadding())
+        val gap = layout.getBoundingBox(displayedText().firstLabelGap())
         val image = textField().captureToImage().toPixelMap()
         val pixel = image[
-            (ContentPaddingStartPx(density.density) + padding.center.x).roundToInt(),
-            (ContentPaddingTopPx(density.density) + padding.center.y).roundToInt(),
+            (ContentPaddingStartPx(density.density) + gap.center.x).roundToInt(),
+            (ContentPaddingTopPx(density.density) + gap.center.y).roundToInt(),
         ]
         assertColorClose(editor.chipStyle.ready.containerColor, pixel)
     }
@@ -658,16 +659,16 @@ class EditCommentImageChipTest {
 
         fun chipBackground(): Color {
             val layout = textLayoutResult()
-            val padding = layout.getBoundingBox(displayedText().firstLabelPadding())
+            val gap = layout.getBoundingBox(displayedText().firstLabelGap())
             return textField().captureToImage().toPixelMap()[
-                (ContentPaddingStartPx(density.density) + padding.center.x).roundToInt(),
-                (ContentPaddingTopPx(density.density) + padding.center.y).roundToInt(),
+                (ContentPaddingStartPx(density.density) + gap.center.x).roundToInt(),
+                (ContentPaddingTopPx(density.density) + gap.center.y).roundToInt(),
             ]
         }
         assertColorClose(editor.chipStyle.uploading.containerColor, chipBackground())
 
         firstAttempt.complete(CommentImageUploadResult.NetworkError)
-        waitUntil(timeoutMillis = 5_000) { editor.state.imageUploadError != null }
+        waitUntil(timeoutMillis = 5_000) { editor.state.imageThumbnails.any { it.error != null } }
         waitForIdle()
         assertColorClose(editor.chipStyle.failed.containerColor, chipBackground())
 
@@ -701,10 +702,10 @@ class EditCommentImageChipTest {
 
         fun chipBackground(): Color {
             val layout = textLayoutResult()
-            val padding = layout.getBoundingBox(displayedText().firstLabelPadding())
+            val gap = layout.getBoundingBox(displayedText().firstLabelGap())
             return textField().captureToImage().toPixelMap()[
-                (ContentPaddingStartPx(density.density) + padding.center.x).roundToInt(),
-                (ContentPaddingTopPx(density.density) + padding.center.y).roundToInt(),
+                (ContentPaddingStartPx(density.density) + gap.center.x).roundToInt(),
+                (ContentPaddingTopPx(density.density) + gap.center.y).roundToInt(),
             ]
         }
         assertColorClose(editor.chipStyle.processing.containerColor, chipBackground())

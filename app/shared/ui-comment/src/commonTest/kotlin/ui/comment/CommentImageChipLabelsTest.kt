@@ -32,18 +32,21 @@ class CommentImageChipLabelsTest {
     }
 
     @Test
-    fun `label has padding a hidden id and a line break opportunity only before it`() {
+    fun `label has an icon slot padding a hidden id and a line break opportunity only before it`() {
+        // 边距 2 个、图标空位 4 个、间距 1 个不换行空格
+        val leading = "\u00A0".repeat(7)
         assertEquals(
-            "\u200B\u2063\u00A0图\u2060片\u00A01\u00A0\u2064\u2062\u2064\u2063",
+            "\u200B\u2063${leading}图\u2060片\u00A01\u00A0\u00A0\u2064\u2062\u2064\u2063",
             encodeImageChipLabel("图片 1", 5),
         )
-        assertEquals("\u200B\u2063\u00A0Image\u00A012\u00A0\u2062\u2063", encodeImageChipLabel("Image 12", 0))
+        assertEquals("\u200B\u2063${leading}Image\u00A012\u00A0\u00A0\u2062\u2063", encodeImageChipLabel("Image 12", 0))
+        assertEquals(TextRange(4, 8), ImageChipIconRange)
     }
 
     @Test
     fun `hidden ranges cover the leading zero width space the marks the id and word joiners`() {
         assertEquals(
-            listOf(TextRange(0, 2), TextRange(4, 5), TextRange(9, 13)),
+            listOf(TextRange(0, 2), TextRange(10, 11), TextRange(16, 20)),
             imageChipHiddenRanges(encodeImageChipLabel("图片 1", 5)),
         )
         assertEquals(emptyList(), imageChipHiddenRanges("\u00A0Image\u00A01\u00A0"))
@@ -87,10 +90,10 @@ class CommentImageChipLabelsTest {
     @Test
     fun `hidden characters of a partial label never remain`() {
         val label = encodeImageChipLabel("图片 1", 5)
-        // 只剩开头: ZERO WIDTH SPACE, 开头标记和边距去掉, 可见的文字保留, 其中的 WORD JOINER 去掉
-        assertEquals("a图片", decodeImageChipLabels("a" + label.substring(0, 6)) { "SRC" })
+        // 只剩开头: ZERO WIDTH SPACE, 开头标记, 边距和图标空位去掉, 可见的文字保留, 其中的 WORD JOINER 去掉
+        assertEquals("a图片", decodeImageChipLabels("a" + label.substring(0, label.indexOf('片') + 1)) { "SRC" })
         // 只剩结尾: 边距、编号和结尾标记都去掉
-        assertEquals("1b", decodeImageChipLabels(label.substring(7) + "b") { "SRC" })
+        assertEquals("1b", decodeImageChipLabels(label.substring(label.indexOf('1')) + "b") { "SRC" })
         // 用户自己的 ZERO WIDTH SPACE 和不换行空格不在标签旁边时保留
         assertEquals("\u200Bx\u00A0y", decodeImageChipLabels("\u200Bx\u00A0y\u2063") { null })
     }
@@ -102,7 +105,8 @@ class CommentImageChipLabelsTest {
         assertEquals("\u2064\u2062\u2064\u2063", tail)
         assertEquals(tail.length, imageChipLabelTailLength(tail + "abc"))
         // 从可见的文字中间开始, 或缺少开头标记
-        assertEquals(label.length - 5, imageChipLabelTailLength(label.substring(5) + "abc"))
+        val inside = label.indexOf('片')
+        assertEquals(label.length - inside, imageChipLabelTailLength(label.substring(inside) + "abc"))
         assertEquals(label.length - 2, imageChipLabelTailLength(label.substring(2) + "abc"))
         // 完整的标签和普通文字不是残片
         assertEquals(0, imageChipLabelTailLength(label + "abc"))
@@ -114,13 +118,14 @@ class CommentImageChipLabelsTest {
     @Test
     fun `label head at the end of the text is found`() {
         val label = encodeImageChipLabel("图片 1", 5)
+        val visibleEnd = label.indexOf('片') + 1
         // 从开头的 ZERO WIDTH SPACE 算起
         assertEquals(3, imageChipLabelHeadStart("abc" + label.substring(0, 2)))
-        assertEquals(3, imageChipLabelHeadStart("abc" + label.substring(0, 6)))
-        assertEquals(3, imageChipLabelHeadStart("abc" + label.substring(1, 6)))
+        assertEquals(3, imageChipLabelHeadStart("abc" + label.substring(0, visibleEnd)))
+        assertEquals(3, imageChipLabelHeadStart("abc" + label.substring(1, visibleEnd)))
         // 完整的标签, 带有编号的残片, 以及结尾标记都不是开头的残片
         assertEquals(-1, imageChipLabelHeadStart("abc$label"))
-        assertEquals(-1, imageChipLabelHeadStart("abc" + label.substring(0, 10)))
+        assertEquals(-1, imageChipLabelHeadStart("abc" + label.substring(0, label.indexOf('⁤') + 1)))
         assertEquals(-1, imageChipLabelHeadStart("x\u2063y"))
         assertEquals(-1, imageChipLabelHeadStart("abc"))
     }

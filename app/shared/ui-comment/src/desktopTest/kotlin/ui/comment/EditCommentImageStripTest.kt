@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -47,6 +48,8 @@ import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_image_chip
@@ -67,7 +70,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -75,12 +77,22 @@ import kotlin.test.assertTrue
  */
 @OptIn(TestOnly::class)
 class EditCommentImageStripTest {
+    /**
+     * 编辑器显示过的 toast, 按先后顺序.
+     */
+    private val toasts = mutableListOf<String>()
+
     private fun ComposeUiTest.setEditor(
         onUploadImage: suspend (ByteArray) -> CommentImageUploadResult = { CommentImageUploadResult.Ready(IMAGE_URL) },
         onSend: suspend (CommentContext, String) -> CommentSendResult = { _, _ -> CommentSendResult.Ok },
         onCheckImageStatus: suspend (List<String>) -> CommentImageStatusResult = { CommentImageStatusResult.Unavailable },
     ): CommentEditorState {
         lateinit var state: CommentEditorState
+        val toaster = object : Toaster {
+            override fun toast(text: String) {
+                toasts += text
+            }
+        }
         setContent {
             ProvideCompositionLocalsForPreview {
                 val scope = rememberCoroutineScope()
@@ -99,10 +111,12 @@ class EditCommentImageStripTest {
                         startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
                     }
                 }
-                Box(Modifier.size(width = 480.dp, height = 720.dp)) {
-                    Column {
-                        Spacer(Modifier.height(160.dp))
-                        EditComment(state = state)
+                CompositionLocalProvider(LocalToaster provides toaster) {
+                    Box(Modifier.size(width = 480.dp, height = 720.dp)) {
+                        Column {
+                            Spacer(Modifier.height(160.dp))
+                            EditComment(state = state)
+                        }
                     }
                 }
             }
@@ -110,6 +124,19 @@ class EditCommentImageStripTest {
         waitForIdle()
         return state
     }
+
+    /**
+     * 等待编辑器显示 [text] 的 toast. 提示的文字在协程中加载, [waitForIdle] 不等待它.
+     */
+    private fun ComposeUiTest.waitForToast(text: String) {
+        waitUntil("toast \"$text\" in $toasts", timeoutMillis = 5_000) { text in toasts }
+    }
+
+    /**
+     * 评论中是否有上传失败的图片.
+     */
+    private val CommentEditorState.hasFailedImage: Boolean
+        get() = imageThumbnails.any { it.status == CommentImageChipStatus.Failed }
 
     private fun ComposeUiTest.textField() = onNodeWithTag(EditCommentTestTags.TextField)
     private fun ComposeUiTest.strip() = onNodeWithTag(EditCommentTestTags.ImageStrip)
@@ -194,7 +221,7 @@ class EditCommentImageStripTest {
         val state = setEditor(onUploadImage = { CommentImageUploadResult.NetworkError })
         textField().performTextInput("[img]$IMAGE_URL[/img] ")
         runOnIdle { state.addImages(listOf(pngImage())) }
-        waitUntil(timeoutMillis = 5_000) { state.imageUploadError != null }
+        waitUntil(timeoutMillis = 5_000) { state.hasFailedImage }
         waitForIdle()
         thumbnail(1).assert(!hasRetry())
         thumbnail(2).assert(hasRetry())
@@ -265,11 +292,11 @@ class EditCommentImageStripTest {
         thumbnail(1).assert(hasStateDescription(string(Lang.comment_image_uploading)))
 
         firstAttempt.complete(CommentImageUploadResult.NetworkError)
-        waitUntil(timeoutMillis = 5_000) { state.imageUploadError != null }
+        waitUntil(timeoutMillis = 5_000) { state.hasFailedImage }
         waitForIdle()
         thumbnail(1).assert(hasRetry())
         thumbnail(1).assert(hasStateDescription(string(Lang.comment_image_upload_failed_network)))
-        onNodeWithText(string(Lang.comment_image_upload_failed_network)).assertIsDisplayed()
+        waitForToast(string(Lang.comment_image_upload_failed_network))
 
         thumbnail(1).performClick()
         waitUntil(timeoutMillis = 5_000) { state.text == "hi [img]$IMAGE_URL[/img]" }
@@ -277,7 +304,7 @@ class EditCommentImageStripTest {
         assertEquals(2, attempts)
         thumbnail(1).assert(!hasRetry())
         thumbnail(1).assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
-        onNodeWithText(string(Lang.comment_image_upload_failed_network)).assertDoesNotExist()
+        assertEquals(listOf(string(Lang.comment_image_upload_failed_network)), toasts)
     }
 
     @Test
@@ -341,23 +368,23 @@ class EditCommentImageStripTest {
             )
             textField().performTextInput("hi ")
             runOnIdle { state.addImages(listOf(pngImage())) }
-            waitUntil(timeoutMillis = 10_000) { state.imageUploadError == CommentImageUploadResult.ProcessingFailed }
+            waitUntil(timeoutMillis = 10_000) { state.imageThumbnails.any { it.error == CommentImageUploadResult.ProcessingFailed } }
             waitForIdle()
             val message = string(Lang.comment_image_processing_failed)
             thumbnail(1).assert(hasRetry())
             thumbnail(1).assert(hasStateDescription(message))
-            onNodeWithText(message).assertIsDisplayed()
+            waitForToast(message)
 
             thumbnail(1).performClick()
             waitUntil(timeoutMillis = 5_000) { state.text == "hi [img]$IMAGE_URL[/img]" }
             waitForIdle()
             assertEquals(2, uploads.get())
-            onNodeWithText(message).assertDoesNotExist()
+            assertEquals(listOf(message), toasts)
             onNodeWithText(string(Lang.comment_send)).assertIsEnabled()
         }
 
     @Test
-    fun `send with a failed image shows a message instead of sending`() = runAniComposeUiTest {
+    fun `send with a failed image toasts instead of sending`() = runAniComposeUiTest {
         var sent: String? = null
         val state = setEditor(
             onUploadImage = { CommentImageUploadResult.NetworkError },
@@ -368,22 +395,23 @@ class EditCommentImageStripTest {
         )
         textField().performTextInput("hi ")
         runOnIdle { state.addImages(listOf(pngImage())) }
-        waitUntil(timeoutMillis = 5_000) { state.imageUploadError != null }
+        waitUntil(timeoutMillis = 5_000) { state.hasFailedImage }
         waitForIdle()
 
         onNodeWithText(string(Lang.comment_send)).performClick()
-        waitForIdle()
-        onNodeWithText(string(Lang.comment_send_blocked_failed_images)).assertIsDisplayed()
+        waitForToast(string(Lang.comment_send_blocked_failed_images))
         assertEquals(null, sent)
 
         removeButton(1).performClick()
         waitForIdle()
         assertEquals("hi ", state.text)
-        onNodeWithText(string(Lang.comment_send_blocked_failed_images)).assertDoesNotExist()
         onNodeWithText(string(Lang.comment_send)).performClick()
         waitUntil(timeoutMillis = 5_000) { sent != null }
         assertEquals("hi ", sent)
-        assertFalse(state.failedImagesBlockSend)
+        assertEquals(
+            listOf(string(Lang.comment_image_upload_failed_network), string(Lang.comment_send_blocked_failed_images)),
+            toasts,
+        )
     }
 
     @Test
@@ -393,16 +421,15 @@ class EditCommentImageStripTest {
         waitForIdle()
         assertEquals(0, state.remainingImageSlots)
         val message = runBlocking { getString(Lang.comment_image_limit_reached, PostCommentUseCase.MAX_IMAGES) }
-        onNodeWithText(message).assertDoesNotExist()
+        assertTrue(toasts.isEmpty())
 
         onNodeWithContentDescription(string(Lang.comment_upload_image)).performClick()
-        waitForIdle()
-        onNodeWithText(message).assertIsDisplayed()
+        waitForToast(message)
 
         removeButton(1).performClick()
         waitForIdle()
-        onNodeWithText(message).assertDoesNotExist()
         assertEquals(PostCommentUseCase.MAX_IMAGES - 1, state.imageChips.size)
+        assertEquals(listOf(message), toasts)
     }
 
     private companion object {

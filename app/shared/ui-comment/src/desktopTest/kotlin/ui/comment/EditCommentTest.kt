@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -53,6 +55,8 @@ import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.domain.comment.UploadCommentImageUseCase
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_add_emoji
@@ -88,9 +92,13 @@ import kotlin.test.assertTrue
  */
 @OptIn(TestOnly::class)
 class EditCommentTest {
+    /**
+     * @property toasts 编辑器显示过的 toast, 按先后顺序.
+     */
     private class Editor(
         val state: CommentEditorState,
         val scope: CoroutineScope,
+        val toasts: List<String>,
     )
 
     private fun ComposeUiTest.setEditor(
@@ -99,6 +107,12 @@ class EditCommentTest {
         onSend: suspend (CommentContext, String) -> CommentSendResult = { _, _ -> CommentSendResult.Ok },
     ): Editor {
         lateinit var editor: Editor
+        val toasts = mutableListOf<String>()
+        val toaster = object : Toaster {
+            override fun toast(text: String) {
+                toasts += text
+            }
+        }
         setContent {
             ProvideCompositionLocalsForPreview {
                 val scope = rememberCoroutineScope()
@@ -118,19 +132,29 @@ class EditCommentTest {
                             startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
                         },
                         scope,
+                        toasts,
                     )
                 }
-                Box(Modifier.size(width = 480.dp, height = 720.dp)) {
-                    Column {
-                        // 留出选区上方的空间, 桌面端工具栏放在选区上方
-                        Spacer(Modifier.height(topSpacing.dp))
-                        EditComment(state = editor.state)
+                CompositionLocalProvider(LocalToaster provides toaster) {
+                    Box(Modifier.size(width = 480.dp, height = 720.dp)) {
+                        Column {
+                            // 留出选区上方的空间, 桌面端工具栏放在选区上方
+                            Spacer(Modifier.height(topSpacing.dp))
+                            EditComment(state = editor.state)
+                        }
                     }
                 }
             }
         }
         waitForIdle()
         return editor
+    }
+
+    /**
+     * 等待编辑器显示 [text] 的 toast. 提示的文字在协程中加载, [waitForIdle] 不等待它.
+     */
+    private fun ComposeUiTest.waitForToast(editor: Editor, text: String) {
+        waitUntil("toast \"$text\" in ${editor.toasts}", timeoutMillis = 5_000) { text in editor.toasts }
     }
 
     private fun string(resource: StringResource) = runBlocking { getString(resource) }
@@ -381,22 +405,23 @@ class EditCommentTest {
     }
 
     @Test
-    fun `upload errors are shown below the text field`() = runAniComposeUiTest {
+    fun `upload errors are shown as toasts`() = runAniComposeUiTest {
         var result: CommentImageUploadResult = CommentImageUploadResult.InvalidFormat
         val editor = setEditor(onUploadImage = { result })
 
-        for ((error, message) in listOf(
+        val errors = listOf(
             CommentImageUploadResult.InvalidFormat to Lang.comment_image_upload_invalid_format,
             CommentImageUploadResult.NotLoggedIn to Lang.comment_image_upload_not_logged_in,
             CommentImageUploadResult.Forbidden to Lang.comment_image_upload_forbidden,
             CommentImageUploadResult.PendingLimit to Lang.comment_image_upload_pending_limit,
             CommentImageUploadResult.ProcessingFailed to Lang.comment_image_processing_failed,
-        )) {
+        )
+        for ((index, entry) in errors.withIndex()) {
+            val (error, message) = entry
             result = error
             runOnIdle { editor.state.addImages(listOf(pngImage())) }
-            waitUntil(timeoutMillis = 5_000) { editor.state.imageUploadError == error }
-            waitForIdle()
-            onNodeWithText(string(message)).assertIsDisplayed()
+            waitUntil(timeoutMillis = 5_000) { editor.toasts.size == index + 1 }
+            assertEquals(string(message), editor.toasts.last())
         }
 
         runOnIdle {
@@ -408,38 +433,39 @@ class EditCommentTest {
                 ),
             )
         }
-        waitForIdle()
-        onNodeWithText(string(Lang.comment_image_upload_too_large)).assertIsDisplayed()
+        waitForToast(editor, string(Lang.comment_image_upload_too_large))
+        assertEquals(errors.size + 1, editor.toasts.size)
+        // 提示不常驻在编辑器中
+        onAllNodesWithText(string(Lang.comment_image_upload_too_large)).assertCountEquals(0)
     }
 
     @Test
-    fun `uploading the expired image again replaces the send error with a notice`() = runAniComposeUiTest {
+    fun `send failure and the re-uploaded expired image are toasted`() = runAniComposeUiTest {
         val editor = setEditor(onSend = { _, _ -> CommentSendResult.InvalidImage })
         textField().performTextInput("look [img]$IMAGE_URL[/img]")
         editor.scope.launch { editor.state.send(EmptyCoroutineContext) }
-        waitForIdle()
-        onNodeWithText(string(Lang.comment_send_failed_invalid_image)).assertIsDisplayed()
+        waitForToast(editor, string(Lang.comment_send_failed_invalid_image))
 
         runOnIdle { editor.state.addImages(listOf(pngImage())) }
-        waitUntil(timeoutMillis = 5_000) { editor.state.uploadedImageAlreadyInComment }
-        waitForIdle()
-        onNodeWithText(string(Lang.comment_image_upload_already_in_comment)).assertIsDisplayed()
-        onNodeWithText(string(Lang.comment_send_failed_invalid_image)).assertDoesNotExist()
+        waitForToast(editor, string(Lang.comment_image_upload_already_in_comment))
+        assertEquals(
+            listOf(string(Lang.comment_send_failed_invalid_image), string(Lang.comment_image_upload_already_in_comment)),
+            editor.toasts,
+        )
         assertEquals("look [img]$IMAGE_URL[/img]", editor.state.text)
     }
 
     @Test
-    fun `comment rejected for an image still processing shows the send error`() = runAniComposeUiTest {
+    fun `comment rejected for an image still processing toasts the send error`() = runAniComposeUiTest {
         val editor = setEditor(onSend = { _, _ -> CommentSendResult.ImageProcessing })
         textField().performTextInput("look [img]$IMAGE_URL[/img]")
         editor.scope.launch { editor.state.send(EmptyCoroutineContext) }
-        waitForIdle()
-        onNodeWithText(string(Lang.comment_send_failed_image_processing)).assertIsDisplayed()
+        waitForToast(editor, string(Lang.comment_send_failed_image_processing))
         assertEquals("look [img]$IMAGE_URL[/img]", editor.state.text)
     }
 
     @Test
-    fun `send blocked by a failed image shows the message in the expanded preview`() = runAniComposeUiTest {
+    fun `send blocked by a failed image is toasted`() = runAniComposeUiTest {
         var sent = false
         val editor = setEditor(onSend = { _, _ -> sent = true; CommentSendResult.Ok })
         // 不属于本次编辑的占位标签, 视为上传失败
@@ -451,9 +477,7 @@ class EditCommentTest {
         waitForIdle()
 
         onNodeWithText(string(Lang.comment_send)).performClick()
-        waitForIdle()
-        assertTrue(editor.state.failedImagesBlockSend)
-        onNodeWithText(string(Lang.comment_send_blocked_failed_images)).assertIsDisplayed()
+        waitForToast(editor, string(Lang.comment_send_blocked_failed_images))
         assertFalse(sent)
     }
 

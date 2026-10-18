@@ -129,7 +129,7 @@ private fun CommentImageThumbnailItem(
         CommentImageChipStatus.Ready -> null
         CommentImageChipStatus.Uploading -> stringResource(Lang.comment_image_uploading)
         CommentImageChipStatus.Processing -> stringResource(Lang.comment_image_processing)
-        CommentImageChipStatus.Failed -> image.error?.let { renderImageUploadError(it) }
+        CommentImageChipStatus.Failed -> image.error?.text()?.resolve()
     }
     Box(
         Modifier

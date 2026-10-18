@@ -1454,7 +1454,6 @@
     <string name="comment_send_failed_invalid_image">評論中的圖片已失效，請重新上傳</string>
     <string name="comment_send_failed_too_many_images">一條評論最多只能包含 10 張圖片</string>
     <string name="comment_send_failed_image_processing">有圖片仍在處理中，請稍後再發送</string>
-    <string name="comment_ani_only_notice">評論將發送到 Ani，Bangumi 評論為唯讀</string>
     <string name="comment_send_comment">發送評論</string>
     <string name="comment_rendering">渲染中...</string>
     <string name="comment_reply">回覆評論</string>

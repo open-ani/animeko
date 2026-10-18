@@ -1501,7 +1501,6 @@
     <string name="comment_send_failed_invalid_image">评论中的图片已失效，请重新上传</string>
     <string name="comment_send_failed_too_many_images">一条评论最多只能包含 10 张图片</string>
     <string name="comment_send_failed_image_processing">有图片仍在处理中，请稍后再发送</string>
-    <string name="comment_ani_only_notice">评论将发送到 Ani，Bangumi 评论为只读</string>
     <string name="comment_send_comment">发送评论</string>
     <string name="comment_rendering">渲染中...</string>
     <string name="comment_reply">回复评论</string>

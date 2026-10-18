@@ -15,6 +15,8 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.text.TextRange
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -99,6 +101,22 @@ class CommentEditorStateTest {
     private val CommentEditorState.statuses get() = imageChips.map { imageChipStatus(it) }
 
     /**
+     * 评论中第一张上传失败的图片的失败原因.
+     */
+    private val CommentEditorState.uploadError: CommentImageUploadResult.Error?
+        get() = imageThumbnails.firstNotNullOfOrNull { it.error }
+
+    /**
+     * 开始收集 [CommentEditorState.notices]. 返回的列表随之后的 [settle] 更新.
+     */
+    private fun TestScope.noticesOf(state: CommentEditorState): List<CommentEditorNotice> {
+        val notices = mutableListOf<CommentEditorNotice>()
+        state.notices.onEach { notices += it }.launchIn(backgroundScope)
+        runCurrent()
+        return notices
+    }
+
+    /**
      * 每次上传都等待测试给出结果的上传函数.
      */
     private class ControlledUploads {
@@ -175,7 +193,7 @@ class CommentEditorStateTest {
         settle()
         assertEquals("a[img]$IMAGE_URL[/img][img]$IMAGE_URL_2[/img]b", state.text)
         assertFalse(state.uploadingImages)
-        assertNull(state.imageUploadError)
+        assertNull(state.uploadError)
     }
 
     @Test
@@ -306,7 +324,7 @@ class CommentEditorStateTest {
         val uploadId = state.uploadIds.single()
         assertEquals("hi ${pendingImageTag(uploadId)}", state.text)
         assertEquals(listOf(CommentImageChipStatus.Failed), state.statuses)
-        assertEquals(CommentImageUploadResult.NetworkError, state.imageUploadError)
+        assertEquals(CommentImageUploadResult.NetworkError, state.uploadError)
         assertTrue(state.imageThumbnails.single().canRetry)
         assertEquals(CommentImageUploadResult.NetworkError, state.imageThumbnails.single().error)
         assertFalse(state.uploadingImages)
@@ -318,29 +336,32 @@ class CommentEditorStateTest {
         assertEquals(2, uploaded.size)
         assertContentEquals(PNG, uploaded[1])
         assertEquals("hi [img]$IMAGE_URL[/img]", state.text)
-        assertNull(state.imageUploadError)
+        assertNull(state.uploadError)
     }
 
     @Test
-    fun `too large image fails without reading it and cannot be retried`() = runTest {
+    fun `too large images fail without reading them and cannot be retried`() = runTest {
         var read = false
         var uploaded = false
         val state = createState { uploaded = true; CommentImageUploadResult.Ready(IMAGE_URL) }
-        state.addImages(
-            listOf(image(size = UploadCommentImageUseCase.MAX_IMAGE_SIZE_BYTES + 1, read = { read = true; PNG })),
-        )
+        val notices = noticesOf(state)
+        val tooLarge = image(size = UploadCommentImageUseCase.MAX_IMAGE_SIZE_BYTES + 1, read = { read = true; PNG })
+        state.addImages(listOf(tooLarge, tooLarge))
         settle()
         assertFalse(read)
         assertFalse(uploaded)
         assertFalse(state.uploadingImages)
-        assertEquals(listOf(CommentImageChipStatus.Failed), state.statuses)
-        assertEquals(CommentImageUploadResult.TooLarge, state.imageUploadError)
-        assertFalse(state.imageThumbnails.single().canRetry)
+        assertEquals(listOf(CommentImageChipStatus.Failed, CommentImageChipStatus.Failed), state.statuses)
+        assertEquals(CommentImageUploadResult.TooLarge, state.uploadError)
+        assertFalse(state.imageThumbnails.first().canRetry)
+        // 一次选择的多张过大的图片只提示一次
+        assertEquals(listOf(CommentEditorNotice.ImageUploadFailed(CommentImageUploadResult.TooLarge)), notices)
 
-        state.retryImageUpload(state.uploadIds.single())
+        state.retryImageUpload(state.uploadIds.first())
         settle()
         assertFalse(read)
-        assertEquals(listOf(CommentImageChipStatus.Failed), state.statuses)
+        assertEquals(listOf(CommentImageChipStatus.Failed, CommentImageChipStatus.Failed), state.statuses)
+        assertEquals(1, notices.size)
     }
 
     @Test
@@ -351,7 +372,7 @@ class CommentEditorStateTest {
         state.addImages(listOf(image(bytes, size = null)))
         settle()
         assertFalse(uploaded)
-        assertEquals(CommentImageUploadResult.TooLarge, state.imageUploadError)
+        assertEquals(CommentImageUploadResult.TooLarge, state.uploadError)
         assertFalse(state.imageThumbnails.single().canRetry)
     }
 
@@ -360,7 +381,7 @@ class CommentEditorStateTest {
         val state = createState()
         state.addImages(listOf(image(size = UploadCommentImageUseCase.MAX_IMAGE_SIZE_BYTES)))
         settle()
-        assertNull(state.imageUploadError)
+        assertNull(state.uploadError)
         assertEquals("[img]$IMAGE_URL[/img]", state.text)
     }
 
@@ -374,7 +395,7 @@ class CommentEditorStateTest {
         state.addImages(listOf(image()))
         settle()
         assertContentEquals(PNG, uploaded)
-        assertNull(state.imageUploadError)
+        assertNull(state.uploadError)
     }
 
     @Test
@@ -394,7 +415,7 @@ class CommentEditorStateTest {
         settle()
         assertContentEquals(HEIC, transcoded)
         assertContentEquals(JPEG, uploaded)
-        assertNull(state.imageUploadError)
+        assertNull(state.uploadError)
         assertEquals("[img]$IMAGE_URL[/img]", state.text)
     }
 
@@ -426,7 +447,7 @@ class CommentEditorStateTest {
         settle()
         assertFalse(uploaded)
         assertFalse(state.uploadingImages)
-        assertEquals(CommentImageUploadResult.InvalidFormat, state.imageUploadError)
+        assertEquals(CommentImageUploadResult.InvalidFormat, state.uploadError)
         assertFalse(state.imageThumbnails.single().canRetry)
     }
 
@@ -436,7 +457,7 @@ class CommentEditorStateTest {
         val state = createState()
         state.addImages(listOf(image(read = { if (++reads == 1) throw IllegalStateException("boom") else PNG })))
         settle()
-        assertTrue(state.imageUploadError is CommentImageUploadResult.UnknownError)
+        assertTrue(state.uploadError is CommentImageUploadResult.UnknownError)
         assertTrue(state.imageThumbnails.single().canRetry)
 
         // 第一次没有读到内容, 重试时重新读取文件
@@ -447,53 +468,67 @@ class CommentEditorStateTest {
     }
 
     @Test
-    fun `upload error shows the latest failure among the images still in the comment`() = runTest {
+    fun `each failed upload is reported once`() = runTest {
         val results = mutableListOf<CommentImageUploadResult>(
             CommentImageUploadResult.RateLimited,
             CommentImageUploadResult.NetworkError,
         )
         val state = createState { results.removeFirst() }
+        val notices = noticesOf(state)
         state.addImages(listOf(image(PNG), image(PNG_2)))
         settle()
-        assertEquals(CommentImageUploadResult.NetworkError, state.imageUploadError)
+        assertEquals(
+            listOf(
+                CommentEditorNotice.ImageUploadFailed(CommentImageUploadResult.RateLimited),
+                CommentEditorNotice.ImageUploadFailed(CommentImageUploadResult.NetworkError),
+            ),
+            notices,
+        )
 
+        // 删除失败的图片不再提示
         state.removeImageChip(2)
-        assertEquals(CommentImageUploadResult.RateLimited, state.imageUploadError)
         state.removeImageChip(1)
-        assertNull(state.imageUploadError)
+        settle()
+        assertNull(state.uploadError)
+        assertEquals(2, notices.size)
     }
 
     @Test
-    fun `images beyond the limit are not added and the limit is shown`() = runTest {
-        val state = createState()
+    fun `images beyond the limit are not added and the limit is reported`() = runTest {
+        var uploaded = 0
+        val state = createState { CommentImageUploadResult.Ready("https://img.myani.org/comments/${++uploaded}.webp") }
+        val notices = noticesOf(state)
         val existing = (1..8).joinToString(" ") { "[img]https://a.com/$it.png[/img]" }
         state.textFieldState.setTextAndPlaceCursorAtEnd(existing)
         assertEquals(2, state.remainingImageSlots)
-        assertFalse(state.showImageLimitMessage)
 
         state.addImages(listOf(image(), image(), image()))
+        settle()
+        assertEquals(2, uploaded)
         assertEquals(PostCommentUseCase.MAX_IMAGES, state.imageChips.size)
         assertEquals(0, state.remainingImageSlots)
-        assertTrue(state.showImageLimitMessage)
+        assertEquals(listOf(CommentEditorNotice.ImageLimitReached), notices)
 
-        // 删除一张后图片数少于上限, 不提示
         state.removeImageChip(1)
-        assertFalse(state.showImageLimitMessage)
+        settle()
         assertEquals(1, state.remainingImageSlots)
+        assertEquals(1, notices.size)
     }
 
     @Test
-    fun `limit message is shown only when the comment is full`() = runTest {
+    fun `limit is reported on request only when the comment is full`() = runTest {
         val state = createState()
-        state.requestImageLimitMessage()
-        assertFalse(state.showImageLimitMessage)
+        val notices = noticesOf(state)
+        state.notifyImageLimitReached()
+        settle()
+        assertTrue(notices.isEmpty())
 
         val full = "[img]https://a.com/x.png[/img]".repeat(PostCommentUseCase.MAX_IMAGES)
         state.textFieldState.setTextAndPlaceCursorAtEnd(full)
-        state.requestImageLimitMessage()
-        assertTrue(state.showImageLimitMessage)
-        state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 3))
-        assertFalse(state.showImageLimitMessage)
+        state.notifyImageLimitReached()
+        state.notifyImageLimitReached()
+        settle()
+        assertEquals(listOf(CommentEditorNotice.ImageLimitReached, CommentEditorNotice.ImageLimitReached), notices)
     }
 
     @Test
@@ -507,6 +542,7 @@ class CommentEditorStateTest {
             },
             onUploadImage = uploads::upload,
         )
+        val notices = noticesOf(state)
         state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
         state.textFieldState.setTextAndPlaceCursorAtEnd("hi ")
         state.addImages(listOf(image()))
@@ -515,7 +551,9 @@ class CommentEditorStateTest {
         assertTrue(state.uploadingImages)
         assertFalse(state.send(EmptyCoroutineContext))
         assertNull(sent)
-        assertFalse(state.failedImagesBlockSend)
+        // 还在上传的图片不算失败, 不提示
+        settle()
+        assertTrue(notices.isEmpty())
 
         uploads.complete(0, CommentImageUploadResult.Ready(IMAGE_URL))
         settle()
@@ -533,37 +571,43 @@ class CommentEditorStateTest {
             },
             onUploadImage = { CommentImageUploadResult.NetworkError },
         )
+        val notices = noticesOf(state)
         state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
         state.textFieldState.setTextAndPlaceCursorAtEnd("hi ")
         state.addImages(listOf(image()))
         settle()
-        assertFalse(state.failedImagesBlockSend)
+        assertEquals(listOf(CommentEditorNotice.ImageUploadFailed(CommentImageUploadResult.NetworkError)), notices)
 
         assertFalse(state.send(EmptyCoroutineContext))
         assertNull(sent)
-        assertTrue(state.failedImagesBlockSend)
-        assertNull(state.sendResult)
+        settle()
+        assertEquals(CommentEditorNotice.SendBlockedByFailedImages, notices.last())
+        assertEquals(2, notices.size)
 
         state.removeImageChip(1)
-        assertFalse(state.failedImagesBlockSend)
         assertTrue(state.send(EmptyCoroutineContext))
         assertEquals("hi ", sent)
+        settle()
+        assertEquals(2, notices.size)
     }
 
     @Test
     fun `pending tag from another editing session is a failed image`() = runTest {
         var sent = false
         val state = createState(onSend = { _, _ -> sent = true; CommentSendResult.Ok })
+        val notices = noticesOf(state)
         state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
         state.textFieldState.setTextAndPlaceCursorAtEnd("a ${pendingImageTag("elsewhere-1")}")
         settle()
         assertEquals(listOf(CommentImageChipStatus.Failed), state.statuses)
         assertFalse(state.imageThumbnails.single().canRetry)
-        assertNull(state.imageUploadError)
+        assertNull(state.uploadError)
 
         assertFalse(state.send(EmptyCoroutineContext))
         assertFalse(sent)
-        assertTrue(state.failedImagesBlockSend)
+        settle()
+        // 不是本次编辑上传的图片, 没有上传失败的提示, 只有发送被阻止的提示
+        assertEquals(listOf(CommentEditorNotice.SendBlockedByFailedImages), notices)
     }
 
     @Test
@@ -621,81 +665,53 @@ class CommentEditorStateTest {
     }
 
     @Test
-    fun `uploading an image already in the comment removes its pending tag`() = runTest {
+    fun `uploading an image already in the comment removes its pending tag and says so`() = runTest {
         val state = createState()
+        val notices = noticesOf(state)
         state.textFieldState.setTextAndPlaceCursorAtEnd("a [img]$IMAGE_URL[/img] b ")
         state.addImages(listOf(image()))
         settle()
         assertEquals("a [img]$IMAGE_URL[/img] b ", state.text)
-        assertTrue(state.uploadedImageAlreadyInComment)
-        assertNull(state.imageUploadError)
+        assertEquals(listOf(CommentEditorNotice.ImageAlreadyInComment), notices)
+        assertNull(state.uploadError)
 
-        // 选择新的图片时清除提示
+        // 评论中没有这张图片时正常插入, 不提示
         state.textFieldState.setTextAndPlaceCursorAtEnd("")
         state.addImages(listOf(image()))
-        assertFalse(state.uploadedImageAlreadyInComment)
         settle()
         assertEquals("[img]$IMAGE_URL[/img]", state.text)
-        assertFalse(state.uploadedImageAlreadyInComment)
+        assertEquals(1, notices.size)
     }
 
     @Test
     fun `image whose address is only in a link is inserted`() = runTest {
         val state = createState()
+        val notices = noticesOf(state)
         state.textFieldState.setTextAndPlaceCursorAtEnd("[url]$IMAGE_URL[/url] ")
         state.addImages(listOf(image()))
         settle()
         assertEquals("[url]$IMAGE_URL[/url] [img]$IMAGE_URL[/img]", state.text)
-        assertFalse(state.uploadedImageAlreadyInComment)
+        assertTrue(notices.isEmpty())
     }
 
     @Test
-    fun `uploading the expired image again clears the invalid image error`() = runTest {
-        val state = createState(onSend = { _, _ -> CommentSendResult.InvalidImage })
-        state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
-        state.textFieldState.setTextAndPlaceCursorAtEnd("look [img]$IMAGE_URL[/img]")
-        assertFalse(state.send(EmptyCoroutineContext))
-        assertEquals(CommentSendResult.InvalidImage, state.sendResult)
+    fun `send failure is reported and re-uploading the expired image reports it is already in the comment`() =
+        runTest {
+            val state = createState(onSend = { _, _ -> CommentSendResult.InvalidImage })
+            val notices = noticesOf(state)
+            state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
+            state.textFieldState.setTextAndPlaceCursorAtEnd("look [img]$IMAGE_URL[/img]")
+            assertFalse(state.send(EmptyCoroutineContext))
+            settle()
+            assertEquals(listOf(CommentEditorNotice.SendFailed(CommentSendResult.InvalidImage)), notices)
 
-        state.addImages(listOf(image()))
-        settle()
-        assertEquals("look [img]$IMAGE_URL[/img]", state.text)
-        assertEquals(1, state.imageChips.size)
-        assertNull(state.sendResult)
-        assertTrue(state.uploadedImageAlreadyInComment)
-    }
-
-    @Test
-    fun `uploading an image already in the comment keeps other send errors`() = runTest {
-        val state = createState(onSend = { _, _ -> CommentSendResult.TooManyImages })
-        state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
-        state.textFieldState.setTextAndPlaceCursorAtEnd("[img]$IMAGE_URL[/img]")
-        assertFalse(state.send(EmptyCoroutineContext))
-
-        state.addImages(listOf(image()))
-        settle()
-        assertEquals(CommentSendResult.TooManyImages, state.sendResult)
-        assertTrue(state.uploadedImageAlreadyInComment)
-    }
-
-    @Test
-    fun `image already in the comment notice is cleared by a successful send and a new target`() = runTest {
-        val state = createState()
-        state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
-        state.textFieldState.setTextAndPlaceCursorAtEnd("[img]$IMAGE_URL[/img]")
-        state.addImages(listOf(image()))
-        settle()
-        assertTrue(state.uploadedImageAlreadyInComment)
-        assertTrue(state.send(EmptyCoroutineContext))
-        assertFalse(state.uploadedImageAlreadyInComment)
-
-        state.textFieldState.setTextAndPlaceCursorAtEnd("[img]$IMAGE_URL[/img]")
-        state.addImages(listOf(image()))
-        settle()
-        assertTrue(state.uploadedImageAlreadyInComment)
-        state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 3))
-        assertFalse(state.uploadedImageAlreadyInComment)
-    }
+            state.addImages(listOf(image()))
+            settle()
+            assertEquals("look [img]$IMAGE_URL[/img]", state.text)
+            assertEquals(1, state.imageChips.size)
+            assertEquals(CommentEditorNotice.ImageAlreadyInComment, notices.last())
+            assertEquals(2, notices.size)
+        }
 
     @Test
     fun `bytes of a failed image are released when its chip is removed and the file is read again on retry`() =
@@ -752,10 +768,11 @@ class CommentEditorStateTest {
     }
 
     @Test
-    fun `upload failing after its chip was removed keeps no bytes`() = runTest {
+    fun `upload failing after its chip was removed keeps no bytes and is not reported`() = runTest {
         var reads = 0
         val uploads = ControlledUploads()
         val state = createState(onUploadImage = uploads::upload)
+        val notices = noticesOf(state)
         state.addImages(listOf(image(read = { reads++; PNG })))
         settle()
         val tag = pendingImageTag(state.uploadIds.single())
@@ -763,6 +780,7 @@ class CommentEditorStateTest {
         settle()
         uploads.complete(0, CommentImageUploadResult.NetworkError)
         settle()
+        assertTrue(notices.isEmpty())
 
         state.textFieldState.edit { replace(0, length, tag) }
         settle()
@@ -777,44 +795,30 @@ class CommentEditorStateTest {
     }
 
     @Test
-    fun `failed images message is only about the images that blocked the send`() = runTest {
+    fun `send blocked by failed images is reported each time`() = runTest {
         val state = createState { CommentImageUploadResult.NetworkError }
+        val notices = noticesOf(state)
         state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
         state.addImages(listOf(image()))
         settle()
         assertFalse(state.send(EmptyCoroutineContext))
-        assertTrue(state.failedImagesBlockSend)
+        settle()
+        assertEquals(
+            listOf(
+                CommentEditorNotice.ImageUploadFailed(CommentImageUploadResult.NetworkError),
+                CommentEditorNotice.SendBlockedByFailedImages,
+            ),
+            notices,
+        )
 
         state.removeImageChip(1)
-        assertFalse(state.failedImagesBlockSend)
-        // 之后添加的图片上传失败时不显示, 再次发送时才显示
         state.addImages(listOf(image()))
         settle()
         assertEquals(listOf(CommentImageChipStatus.Failed), state.statuses)
-        assertFalse(state.failedImagesBlockSend)
         assertFalse(state.send(EmptyCoroutineContext))
-        assertTrue(state.failedImagesBlockSend)
-    }
-
-    @Test
-    fun `limit message does not come back when the comment is full again`() = runTest {
-        val state = createState()
-        val full = "[img]https://a.com/x.png[/img]".repeat(PostCommentUseCase.MAX_IMAGES)
-        state.textFieldState.setTextAndPlaceCursorAtEnd(full)
-        state.requestImageLimitMessage()
         settle()
-        assertTrue(state.showImageLimitMessage)
-
-        state.removeImageChip(1)
-        settle()
-        assertFalse(state.showImageLimitMessage)
-        state.textFieldState.setTextAndPlaceCursorAtEnd(full)
-        settle()
-        assertFalse(state.showImageLimitMessage)
-
-        state.requestImageLimitMessage()
-        settle()
-        assertTrue(state.showImageLimitMessage)
+        assertEquals(4, notices.size)
+        assertEquals(CommentEditorNotice.SendBlockedByFailedImages, notices.last())
     }
 
     @Test
@@ -884,7 +888,7 @@ class CommentEditorStateTest {
         state.textFieldState.setTextAndPlaceCursorAtEnd("hello")
         state.addImages(listOf(image()))
         settle()
-        assertEquals(CommentImageUploadResult.InvalidFormat, state.imageUploadError)
+        assertEquals(CommentImageUploadResult.InvalidFormat, state.uploadError)
         val tag = pendingImageTag(state.uploadIds.single())
         state.removeImageChip(1)
 
@@ -892,7 +896,7 @@ class CommentEditorStateTest {
         assertEquals("", state.text)
         // 上传状态已清空, 这个占位标签不属于本次编辑
         state.textFieldState.setTextAndPlaceCursorAtEnd(tag)
-        assertNull(state.imageUploadError)
+        assertNull(state.uploadError)
         assertEquals(listOf(CommentImageChipStatus.Failed), state.statuses)
         assertFalse(state.imageThumbnails.single().canRetry)
     }
@@ -930,6 +934,7 @@ class CommentEditorStateTest {
             },
             onCheckImageStatus = checks::check,
         ) { CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL) }
+        val notices = noticesOf(state)
         state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
         state.textFieldState.setTextAndPlaceCursorAtEnd("hi ")
         state.addImages(listOf(image()))
@@ -942,11 +947,13 @@ class CommentEditorStateTest {
         assertEquals(CommentImageChipStatus.Processing, thumbnail.status)
         assertNull(thumbnail.url)
         assertFalse(thumbnail.canRetry)
-        assertNull(state.imageUploadError)
+        assertNull(state.uploadError)
 
         assertFalse(state.send(EmptyCoroutineContext))
         assertNull(sent)
-        assertFalse(state.failedImagesBlockSend)
+        // 正在处理的图片不算失败, 不提示
+        settle()
+        assertTrue(notices.isEmpty())
 
         advance(1.seconds)
         assertEquals(listOf(listOf(IMAGE_ID)), checks.requests)
@@ -1052,7 +1059,7 @@ class CommentEditorStateTest {
         state.addImages(listOf(image(read = { reads++; PNG })))
         advance(1.seconds)
         assertEquals(listOf(CommentImageChipStatus.Failed), state.statuses)
-        assertEquals(CommentImageUploadResult.ProcessingFailed, state.imageUploadError)
+        assertEquals(CommentImageUploadResult.ProcessingFailed, state.uploadError)
         assertTrue(state.imageThumbnails.single().canRetry)
         assertFalse(state.uploadingImages)
 
@@ -1063,7 +1070,7 @@ class CommentEditorStateTest {
         assertEquals(2, uploaded.size)
         assertContentEquals(PNG, uploaded[1])
         assertEquals("[img]$IMAGE_URL[/img]", state.text)
-        assertNull(state.imageUploadError)
+        assertNull(state.uploadError)
     }
 
     @Test
@@ -1078,7 +1085,7 @@ class CommentEditorStateTest {
         state.addImages(listOf(image()))
         advance(1.seconds)
         assertEquals(listOf(CommentImageChipStatus.Failed), state.statuses)
-        assertEquals(CommentImageUploadResult.InvalidFormat, state.imageUploadError)
+        assertEquals(CommentImageUploadResult.InvalidFormat, state.uploadError)
         assertFalse(state.imageThumbnails.single().canRetry)
 
         state.retryImageUpload(state.uploadIds.single())
@@ -1102,7 +1109,7 @@ class CommentEditorStateTest {
         assertEquals(listOf(CommentImageChipStatus.Processing), state.statuses)
         advance(5.seconds)
         assertEquals(listOf(CommentImageChipStatus.Failed), state.statuses)
-        assertEquals(CommentImageUploadResult.ProcessingFailed, state.imageUploadError)
+        assertEquals(CommentImageUploadResult.ProcessingFailed, state.uploadError)
         assertTrue(state.imageThumbnails.single().canRetry)
         val checked = checks.requests.size
         advance(1.minutes)
@@ -1124,7 +1131,7 @@ class CommentEditorStateTest {
         advance(20.seconds)
         assertTrue(checks.requests.size >= 3)
         assertEquals(listOf(CommentImageChipStatus.Processing), state.statuses)
-        assertNull(state.imageUploadError)
+        assertNull(state.uploadError)
 
         // 查询函数抛出异常时同样继续查询
         checks.answer = { throw IllegalStateException("boom") }
@@ -1311,10 +1318,10 @@ class CommentEditorStateTest {
         state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 2))
         state.addImages(listOf(image()))
         settle()
-        assertEquals(CommentImageUploadResult.NetworkError, state.imageUploadError)
+        assertEquals(CommentImageUploadResult.NetworkError, state.uploadError)
         state.startEdit(CommentContext.Episode(subjectId = 1, episodeId = 3))
         assertEquals("", state.text)
-        assertNull(state.imageUploadError)
+        assertNull(state.uploadError)
     }
 
     @Test

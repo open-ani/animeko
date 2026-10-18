@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.CloseFullscreen
 import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -68,37 +67,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.domain.comment.CommentImageUploadResult
-import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.isImeVisible
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.transformTextOnWrite
-import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.comment_ani_only_notice
-import me.him188.ani.app.ui.lang.comment_image_upload_already_in_comment
-import me.him188.ani.app.ui.lang.comment_image_upload_failed_network
-import me.him188.ani.app.ui.lang.comment_image_upload_failed_unknown
-import me.him188.ani.app.ui.lang.comment_image_upload_forbidden
-import me.him188.ani.app.ui.lang.comment_image_upload_invalid_format
-import me.him188.ani.app.ui.lang.comment_image_upload_not_logged_in
-import me.him188.ani.app.ui.lang.comment_image_upload_pending_limit
-import me.him188.ani.app.ui.lang.comment_image_upload_rate_limited
-import me.him188.ani.app.ui.lang.comment_image_limit_reached
-import me.him188.ani.app.ui.lang.comment_image_processing_failed
-import me.him188.ani.app.ui.lang.comment_image_upload_too_large
-import me.him188.ani.app.ui.lang.comment_send_blocked_failed_images
-import me.him188.ani.app.ui.lang.comment_send_failed_image_processing
-import me.him188.ani.app.ui.lang.comment_send_failed_invalid_image
-import me.him188.ani.app.ui.lang.comment_send_failed_network
-import me.him188.ani.app.ui.lang.comment_send_failed_too_many_images
-import me.him188.ani.app.ui.lang.comment_send_failed_unknown
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isMobile
-import org.jetbrains.compose.resources.stringResource
 
 /**
  * 评论编辑.
@@ -119,6 +96,12 @@ fun EditComment(
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     val sendingComment by state.sending.collectAsStateWithLifecycle(false)
+
+    // 上传失败、发送失败等提示用 toast, 不占编辑器的位置
+    val toaster = LocalToaster.current
+    LaunchedEffect(state, toaster) {
+        state.notices.collect { toaster.toast(it.text().load()) }
+    }
 
     val imeVisible = isImeVisible()
     var previousImeVisible by remember { mutableStateOf(false) }
@@ -177,7 +160,7 @@ fun EditComment(
                     if (state.showStickerPanel) keyboard?.hide()
                 },
                 onClickUploadImage = {
-                    if (state.remainingImageSlots > 0) imagePicker.launch() else state.requestImageLimitMessage()
+                    if (state.remainingImageSlots > 0) imagePicker.launch() else state.notifyImageLimitReached()
                 },
                 onPreview = {
                     keyboard?.hide()
@@ -216,7 +199,7 @@ fun EditComment(
                         content = state.previewContent,
                         modifier = Modifier
                             .fillMaxWidth()
-                            // 展开时占满下方提示以外的高度. 发送被阻止时提示是唯一的反馈, 不能被挤出去
+                            // 展开时占满高度
                             .ifThen(state.editExpanded) { weight(1f) }
                             .animateContentSize(),
                         contentPadding = OutlinedTextFieldDefaults.contentPadding(),
@@ -229,6 +212,7 @@ fun EditComment(
 
                     val chipLabel = rememberImageChipLabel()
                     val chipStyle = CommentImageChipStyle.default()
+                    val chipIcons = CommentImageChipIcons.default()
                     val chipDisplay by remember(state, chipLabel) {
                         derivedStateOf {
                             buildImageChipDisplay(state.textFieldState.text, state.imageChipRegistry, chipLabel)
@@ -270,7 +254,7 @@ fun EditComment(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            // 展开时占满图片缩略图和提示以外的高度
+                            // 展开时占满图片缩略图以外的高度
                             .ifThen(state.editExpanded) { weight(1f) }
                             .animateContentSize()
                             .onGloballyPositioned { textFieldLayout.onHostPositioned(it) },
@@ -294,9 +278,9 @@ fun EditComment(
                                     .onGloballyPositioned { textFieldLayout.onTextPositioned(it) }
                                     .drawBehind {
                                         val layout = textFieldLayout.textLayoutResult ?: return@drawBehind
-                                        drawImageChipBackgrounds(layout, chipDisplay, textScrollState.value) {
-                                            chipStyle.colors(state.imageChipStatus(it)).containerColor
-                                        }
+                                        drawImageChipBackgrounds(
+                                            layout, chipDisplay, textScrollState.value, chipStyle, chipIcons,
+                                        ) { state.imageChipStatus(it) }
                                     },
                                 scrollState = textScrollState,
                                 modifier = Modifier
@@ -349,27 +333,6 @@ fun EditComment(
                     LaunchedEffect(Unit) {
                         focusRequester.requestFocus()
                     }
-                }
-                CommentEditorMessage(visible = state.failedImagesBlockSend) {
-                    stringResource(Lang.comment_send_blocked_failed_images)
-                }
-                CommentEditorMessage(visible = state.sendResult is CommentSendResult.Error) {
-                    when (val sendResult = state.sendResult) {
-                        is CommentSendResult.Error -> renderCommentSendError(sendResult)
-                        else -> ""
-                    }
-                }
-                CommentEditorMessage(visible = state.imageUploadError != null) {
-                    state.imageUploadError?.let { renderImageUploadError(it) } ?: ""
-                }
-                CommentEditorMessage(visible = state.showImageLimitMessage) {
-                    stringResource(Lang.comment_image_limit_reached, PostCommentUseCase.MAX_IMAGES)
-                }
-                CommentEditorMessage(
-                    visible = state.uploadedImageAlreadyInComment,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                ) {
-                    stringResource(Lang.comment_image_upload_already_in_comment)
                 }
             }
         }
@@ -449,56 +412,6 @@ private fun CommentImageStripHost(
 }
 
 /**
- * 编辑框下方的提示, 默认以错误的颜色显示.
- */
-@Composable
-private fun CommentEditorMessage(
-    visible: Boolean,
-    color: Color = MaterialTheme.colorScheme.error,
-    text: @Composable () -> String,
-) {
-    AniAnimatedVisibility(
-        visible = visible,
-        modifier = Modifier
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .fillMaxWidth(),
-    ) {
-        Text(
-            text = text(),
-            color = color,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-    }
-}
-
-@Composable
-private fun renderCommentSendError(result: CommentSendResult.Error): String {
-    return when (result) {
-        CommentSendResult.NetworkError -> stringResource(Lang.comment_send_failed_network)
-        CommentSendResult.InvalidImage -> stringResource(Lang.comment_send_failed_invalid_image)
-        CommentSendResult.TooManyImages -> stringResource(Lang.comment_send_failed_too_many_images)
-        CommentSendResult.ImageProcessing -> stringResource(Lang.comment_send_failed_image_processing)
-        is CommentSendResult.UnknownError -> stringResource(Lang.comment_send_failed_unknown, result.message)
-    }
-}
-
-@Composable
-internal fun renderImageUploadError(error: CommentImageUploadResult.Error): String {
-    return when (error) {
-        CommentImageUploadResult.TooLarge -> stringResource(Lang.comment_image_upload_too_large)
-        CommentImageUploadResult.InvalidFormat -> stringResource(Lang.comment_image_upload_invalid_format)
-        CommentImageUploadResult.NotLoggedIn -> stringResource(Lang.comment_image_upload_not_logged_in)
-        CommentImageUploadResult.Forbidden -> stringResource(Lang.comment_image_upload_forbidden)
-        CommentImageUploadResult.RateLimited -> stringResource(Lang.comment_image_upload_rate_limited)
-        CommentImageUploadResult.PendingLimit -> stringResource(Lang.comment_image_upload_pending_limit)
-        CommentImageUploadResult.NetworkError -> stringResource(Lang.comment_image_upload_failed_network)
-        CommentImageUploadResult.ProcessingFailed -> stringResource(Lang.comment_image_processing_failed)
-        is CommentImageUploadResult.UnknownError ->
-            stringResource(Lang.comment_image_upload_failed_unknown, error.message)
-    }
-}
-
-/**
  * 桌面端选择图片时可选的扩展名, 即服务器接受的格式.
  */
 private val DesktopImageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif")
@@ -555,14 +468,6 @@ fun EditCommentScaffold(
                     onClick = onClickClose,
                 )
             }
-        }
-
-        Row(Modifier.padding(horizontal = 8.dp)) {
-            Text(
-                stringResource(Lang.comment_ani_only_notice),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.outline,
-            )
         }
 
         ProvideContentColor(contentColor) {
