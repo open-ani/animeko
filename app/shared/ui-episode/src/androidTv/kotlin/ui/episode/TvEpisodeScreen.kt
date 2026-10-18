@@ -152,15 +152,15 @@ import org.openani.mediamp.MediaStatus
  * TV 播放页.
  *
  * 覆盖层状态机 (§8.2, PR 语义 1:1):
- *   HIDDEN (纯视频) | CONTROLS (控制层)   正交子态: 选集条展开 · 拖拽预览 (scrub) ·
- *   按住倍速 · 数据源弹窗
+ *   HIDDEN (纯视频) | TIMELINE (精简时间轴) | CONTROLS (完整控制层)   正交子态: 选集条展开 ·
+ *   拖拽预览 (scrub) · 按住倍速 · 数据源弹窗
  *
  * 播放控制按键收敛在根部 onPreviewKeyEvent 路由 (§8.2); 纯 UI 导航由对应组件处理:
  * - HIDDEN: 确认短按=播↔停 (暂停时唤出控制层), 长按 (系统连发判定, 同 tvLongPressKey
- *   判据) = 配置的倍速, 松开还原; ←→ 总是进入画面预览, 确认才 seek; ↑↓ 唤出控制层.
- * - CONTROLS: 焦点在进度条时 ←→/确认沿用 seek/播停语义, 其余按键交给焦点系统;
+ *   判据) = 配置的倍速, 松开还原; ←→ 按住调整进度 (只显示时间轴, 按住越久步长越大), 松键跳转; ↑↓ 唤出控制层.
+ * - CONTROLS: 焦点在进度条时 ←→ 按住调整进度、松键跳转, 确认=播停, 其余按键交给焦点系统;
  *   选集按钮展开药丸上方的横向剧照条; 任意按键刷新 5s 自动隐藏 (暂停/拖拽/弹窗不隐藏).
- * - 拖拽预览: ←→ 移动预览点, 确认跳转, 返回取消.
+ * - 拖拽预览: ←→ 移动预览点 (按住越久步长越大), 松键跳转; 手势结束后精简时间轴停留 1s 收起, ↑↓ 取消并展开完整控制层.
  * - 全局: MediaPlayPause 播停 / MediaFastForward 下一集 / MediaRewind 上一集.
  * - 底部按钮按下进入推荐横排, 标题栏保持显示; 按上/返回恢复底部控制器并将焦点归还进度条.
  * - 返回逐层: 弹窗 → 推荐/拖拽 → 选集条 → 控制层 → 退出 (BackHandler 分层).
@@ -228,6 +228,14 @@ internal fun TvEpisodeScreen(
         if (state.canAutoHide && uiState.playerState.isPlaying) {
             delay(5_000)
             presentationState.autoHide()
+        }
+    }
+    // 精简时间轴是调整进度的即时反馈: 手势结束后短暂停留即收起 (对齐其它端的 seek 指示);
+    // 完整控制层仍按上面的 5s 自动隐藏.
+    LaunchedEffect(state.timelineOnly, state.scrubMillis, state.interactionGeneration) {
+        if (state.timelineOnly && state.scrubMillis == null) {
+            delay(1_000)
+            presentationState.autoHideTimeline()
         }
     }
     LaunchedEffect(presentationState.statsVisible) { dispatch(TvEpisodeIntent.ObserveStats(presentationState.statsVisible)) }
@@ -461,6 +469,7 @@ internal fun TvEpisodeScreen(
                             cacheProgress = cacheProgress,
                             hasNextEpisode = uiState.hasNextEpisode,
                             scrubMillis = state.scrubMillis,
+                            timelineOnly = state.timelineOnly,
                             speedLabel = formatSpeedLabel(playbackSpeed),
                             aspectLabel = renderAspectRatioMode(aspectRatioMode),
                             activePanel = state.activePanel,
@@ -552,8 +561,9 @@ internal fun TvEpisodeScreen(
         },
         title = {
             // Keep the header in its own layer, independent of recommendation transitions.
+            // 精简时间轴 (隐藏状态下的拖动预览) 只显示进度条, 标题栏不出现.
             AnimatedVisibility(
-                visible = state.controlsVisible,
+                visible = state.controlsVisible && !state.timelineOnly,
                 modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(),
                 enter = fadeIn(),
                 exit = fadeOut(),
