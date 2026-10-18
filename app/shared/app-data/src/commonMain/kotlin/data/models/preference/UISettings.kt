@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -126,6 +126,8 @@ enum class NsfwMode {
 data class SearchSettings(
     val ignoreDoneAndDroppedSubjects: Boolean = false,
     val nsfwMode: NsfwMode = NsfwMode.BLUR,
+    /** 桌面搜索侧栏已展开的标签分组标识, 空集合表示全部收起. */
+    val expandedFilterGroups: Set<String> = emptySet(),
 ) {
     companion object {
         @Stable

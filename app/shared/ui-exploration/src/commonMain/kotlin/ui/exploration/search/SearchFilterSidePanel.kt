@@ -57,11 +57,12 @@ internal val SearchFilterSidePanelWidth = 330.dp
 @Composable
 internal fun SearchFilterSidePanel(
     state: SearchFilterState,
-    collapsedGroupKeys: Collection<String>,
+    expandedGroupKeys: Collection<String>,
     onToggleGroup: (groupKey: String) -> Unit,
     onCheckedChange: (SearchFilterChipState, value: String) -> Unit,
     onClearGroup: (SearchFilterChipState) -> Unit,
     modifier: Modifier = Modifier,
+    leadingContent: @Composable (() -> Unit)? = null,
 ) {
     val listState = rememberLazyListState()
 
@@ -77,6 +78,11 @@ internal fun SearchFilterSidePanel(
                 contentPadding = PaddingValues(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (leadingContent != null) {
+                    item(key = "date-filters") {
+                        leadingContent()
+                    }
+                }
                 items(
                     count = state.chips.size,
                     key = { index -> state.chips[index].groupKey },
@@ -85,7 +91,7 @@ internal fun SearchFilterSidePanel(
                     val groupKey = chipState.groupKey
                     SearchFilterGroup(
                         state = chipState,
-                        expanded = groupKey !in collapsedGroupKeys,
+                        expanded = groupKey in expandedGroupKeys,
                         onToggleExpanded = { onToggleGroup(groupKey) },
                         onCheckedChange = { onCheckedChange(chipState, it) },
                         onClear = { onClearGroup(chipState) },

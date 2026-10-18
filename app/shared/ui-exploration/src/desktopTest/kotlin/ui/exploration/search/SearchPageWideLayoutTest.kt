@@ -19,11 +19,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SkikoComposeUiTest
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -55,8 +58,15 @@ class SearchPageWideLayoutTest {
             assertTrue(onNodeWithTag(SearchFilterSidePanelTestTags.Panel).exists())
             assertTrue(onNodeWithTag(SearchPageTestTags.LegacyFilterRow).doesNotExist())
             onNodeWithTag(SearchPageTestTags.DateFilterRow).assertIsDisplayed()
+                .assert(hasAnyAncestor(hasTestTag(SearchFilterSidePanelTestTags.Panel)))
             onNodeWithTag(SearchPageTestTags.YearFilter).assertIsDisplayed()
             onNodeWithTag(SearchPageTestTags.SeasonFilter).onChild().assertIsNotEnabled()
+            for (chip in createUiTestState().searchFilterState.chips) {
+                assertTrue(onNodeWithTag(SearchFilterSidePanelTestTags.group(chip.groupKey)).exists())
+                assertFalse(
+                    onNodeWithTag(SearchFilterSidePanelTestTags.value(chip.groupKey, chip.values.first())).exists(),
+                )
+            }
         }
     }
 
@@ -111,6 +121,46 @@ class SearchPageWideLayoutTest {
         ) {
             assertTrue(onNodeWithTag(SearchFilterSidePanelTestTags.Panel).doesNotExist())
             assertTrue(onNodeWithTag(SearchPageTestTags.LegacyFilterRow).doesNotExist())
+            assertTrue(onNodeWithTag(SearchPageTestTags.DateFilterRow).doesNotExist())
+        }
+    }
+
+    @Test
+    fun `returning to search restores remembered expanded groups`() {
+        val state = createUiTestState()
+        val expandedGroup = state.searchFilterState.chips[0]
+        val collapsedGroup = state.searchFilterState.chips[1]
+        var showPage by mutableStateOf(true)
+        runSearchPageTest(
+            widthDp = 1400,
+            state = state.copy(expandedFilterGroups = setOf(expandedGroup.groupKey)),
+            showPage = { showPage },
+        ) {
+            val expandedValue = onNodeWithTag(
+                SearchFilterSidePanelTestTags.value(expandedGroup.groupKey, expandedGroup.values.first()),
+            )
+            val collapsedValue = onNodeWithTag(
+                SearchFilterSidePanelTestTags.value(collapsedGroup.groupKey, collapsedGroup.values.first()),
+            )
+            assertTrue(expandedValue.exists())
+            assertFalse(collapsedValue.exists())
+            runOnIdle { showPage = false }
+            assertTrue(onNodeWithTag(SearchFilterSidePanelTestTags.Panel).doesNotExist())
+            runOnIdle { showPage = true }
+            assertTrue(expandedValue.exists())
+            assertFalse(collapsedValue.exists())
+        }
+    }
+
+    @Test
+    fun `wide desktop group headers report expansion intents`() {
+        val intents = mutableListOf<SearchPageIntent>()
+        runSearchPageTest(widthDp = 1400, onIntent = { intents += it }) {
+            val groupKey = createUiTestState().searchFilterState.chips.first().groupKey
+            onNodeWithTag(SearchFilterSidePanelTestTags.group(groupKey)).performClick()
+            runOnIdle {
+                assertEquals(listOf<SearchPageIntent>(SearchPageIntent.ToggleFilterGroup(groupKey)), intents)
+            }
         }
     }
 
@@ -120,7 +170,7 @@ class SearchPageWideLayoutTest {
         val selectedValue = genre.values.first()
         val unselectedValue = genre.values[1]
         var selectedTags by mutableStateOf(listOf(selectedValue))
-        var collapsedGroups by mutableStateOf(emptyList<String>())
+        var expandedGroups by mutableStateOf(emptySet<String>())
 
         setContent {
             ProvideCompositionLocalsForPreview {
@@ -128,12 +178,12 @@ class SearchPageWideLayoutTest {
                     val filterState = buildSearchFilterState(selectedTags)
                     SearchFilterSidePanel(
                         state = filterState,
-                        collapsedGroupKeys = collapsedGroups,
+                        expandedGroupKeys = expandedGroups,
                         onToggleGroup = { groupKey ->
-                            collapsedGroups = if (groupKey in collapsedGroups) {
-                                collapsedGroups - groupKey
+                            expandedGroups = if (groupKey in expandedGroups) {
+                                expandedGroups - groupKey
                             } else {
-                                collapsedGroups + groupKey
+                                expandedGroups + groupKey
                             }
                         },
                         onCheckedChange = { _, value ->
@@ -159,6 +209,8 @@ class SearchPageWideLayoutTest {
         val unselectedNode = onNodeWithTag(
             SearchFilterSidePanelTestTags.value(groupKey, unselectedValue),
         )
+        assertFalse(selectedNode.exists())
+        onNodeWithTag(SearchFilterSidePanelTestTags.group(groupKey)).performClick()
         selectedNode.assertIsSelected()
         unselectedNode.assertIsNotSelected()
 
@@ -177,6 +229,7 @@ class SearchPageWideLayoutTest {
         widthDp: Int,
         state: SearchPageState = createUiTestState(),
         onIntent: (SearchPageIntent) -> Unit = {},
+        showPage: () -> Boolean = { true },
         block: SkikoComposeUiTest.() -> Unit,
     ) {
         runSkikoComposeUiTest(
@@ -185,12 +238,14 @@ class SearchPageWideLayoutTest {
         ) {
             setContent {
                 ProvideCompositionLocalsForPreview {
-                    SearchPage(
-                        state = state,
-                        onIntent = onIntent,
-                        suggestionsPager = { MutableStateFlow(PagingData.empty()) },
-                        detailContent = { Surface(Modifier.fillMaxSize()) {} },
-                    )
+                    if (showPage()) {
+                        SearchPage(
+                            state = state,
+                            onIntent = onIntent,
+                            suggestionsPager = { MutableStateFlow(PagingData.empty()) },
+                            detailContent = { Surface(Modifier.fillMaxSize()) {} },
+                        )
+                    }
                 }
             }
             waitForIdle()
