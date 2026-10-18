@@ -166,6 +166,7 @@ class MediaSelectorProductionWiringTest {
                 override val themeSettings get() = error("not used")
                 override val updateSettings get() = error("not used")
                 override val videoScaffoldConfig get() = error("not used")
+                override val playerShortcutConfig get() = error("not used")
                 override val playerKernelConfig get() = error("not used")
                 override val videoResolverSettings get() = error("not used")
                 override val anitorrentConfig get() = error("not used")

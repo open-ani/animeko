@@ -46,6 +46,7 @@ import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
+import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.preference.WatchTogetherSettings
 import me.him188.ani.app.data.models.subject.SplitSeason
@@ -302,6 +303,7 @@ internal class FakeSettingsRepository : SettingsRepository {
     override val themeSettings: Settings<ThemeSettings> get() = error("Not used")
     override val updateSettings: Settings<UpdateSettings> get() = error("Not used")
     override val videoScaffoldConfig: Settings<VideoScaffoldConfig> get() = error("Not used")
+    override val playerShortcutConfig: Settings<PlayerShortcutConfig> get() = error("Not used")
     override val playerKernelConfig: Settings<PlayerKernelConfig> get() = error("Not used")
     override val videoResolverSettings: Settings<VideoResolverSettings> get() = error("Not used")
     override val anitorrentConfig: Settings<AnitorrentConfig> get() = error("Not used")

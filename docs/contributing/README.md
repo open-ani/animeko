@@ -30,6 +30,7 @@
 - [Android TV 导航焦点](code/android-tv-focus.md)
 - [Android TV 加载占位](code/android-tv-loading.md)
 - [播放器截图](code/player-screenshot.md)
+- [播放器键盘快捷键](code/player-keyboard-shortcuts.md)
 - [Media Framework](code/media-framework.md)
     - [MediaSource](code/media/media-source.md)
     - [MediaSelector](code/media/media-selector.md)

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -125,6 +127,8 @@ import me.him188.ani.app.ui.lang.settings_player_playback_speed_range_descriptio
 import me.him188.ani.app.ui.lang.settings_player_remember_playback_speed
 import me.him188.ani.app.ui.lang.settings_player_remember_playback_speed_description
 import me.him188.ani.app.ui.lang.settings_player_video_enhancement_default
+import me.him188.ani.app.ui.lang.settings_player_shortcuts
+import me.him188.ani.app.ui.lang.settings_player_shortcuts_description
 import me.him188.ani.app.ui.lang.settings_player_video_enhancement_default_description
 import me.him188.ani.app.ui.lang.video_player_off
 import me.him188.ani.app.ui.lang.video_player_performance
@@ -509,7 +513,11 @@ fun SettingsScope.PlayerGroup(
     playerKernelConfig: SettingsState<PlayerKernelConfig>,
     danmakuFilterConfig: SettingsState<DanmakuFilterConfig>,
     danmakuRegexFilterState: DanmakuRegexFilterState,
-    showDebug: Boolean
+    showDebug: Boolean,
+    /**
+     * 打开键盘快捷键页面. 为 `null` 时不显示入口. 桌面端总是显示; Android 只在接有实体键盘时显示.
+     */
+    onNavigateToShortcuts: (() -> Unit)? = null,
 ) {
     Group(title = { Text(stringResource(Lang.settings_player)) }) {
         val config by videoScaffoldConfig
@@ -715,6 +723,17 @@ fun SettingsScope.PlayerGroup(
             title = { Text(stringResource(Lang.settings_player_frame_preview)) },
             description = { Text(stringResource(Lang.settings_player_frame_preview_description)) },
         )
+        val hasPhysicalKeyboard = rememberHasPhysicalKeyboard()
+        if (onNavigateToShortcuts != null && hasPhysicalKeyboard) {
+            HorizontalDividerItem()
+            TextItem(
+                title = { Text(stringResource(Lang.settings_player_shortcuts)) },
+                description = { Text(stringResource(Lang.settings_player_shortcuts_description)) },
+                action = { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null) },
+                onClick = onNavigateToShortcuts,
+                modifier = Modifier.testTag(PlayerGroupTestTags.SHORTCUTS_ITEM),
+            )
+        }
         HorizontalDividerItem()
         PlaybackSpeedItems(config, videoScaffoldConfig)
         PlayerGroupPlatform(videoScaffoldConfig, playerKernelConfig)
@@ -898,6 +917,10 @@ private fun HlsAdFilteringMode.renderDescription(): String {
         HlsAdFilteringMode.SMART -> stringResource(Lang.settings_player_hls_ad_filter_smart_description)
         HlsAdFilteringMode.OFF -> stringResource(Lang.settings_player_hls_ad_filter_off_description)
     }
+}
+
+internal object PlayerGroupTestTags {
+    const val SHORTCUTS_ITEM = "player_group_shortcuts_item"
 }
 
 @Composable

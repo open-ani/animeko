@@ -412,6 +412,39 @@
     <string name="settings_player_mpv_options_count">已設定 %1$d 個選項</string>
     <string name="settings_player_mpv_options_placeholder">hwdec=auto\nprofile=fast</string>
 
+    <string name="settings_player_shortcuts">鍵盤快速鍵</string>
+    <string name="settings_player_shortcuts_description">自訂播放器使用的鍵盤快速鍵</string>
+    <string name="settings_player_shortcuts_group_playback">播放</string>
+    <string name="settings_player_shortcuts_group_seek">進度</string>
+    <string name="settings_player_shortcuts_group_volume">音量</string>
+    <string name="settings_player_shortcuts_group_speed">倍速</string>
+    <string name="settings_player_shortcut_toggle_pause_resume">暫停 / 繼續</string>
+    <string name="settings_player_shortcut_toggle_fullscreen">切換全螢幕</string>
+    <string name="settings_player_shortcut_toggle_danmaku">開關彈幕</string>
+    <string name="settings_player_shortcut_toggle_player_stats">顯示播放統計</string>
+    <string name="settings_player_shortcut_seek_backward">後退 5 秒</string>
+    <string name="settings_player_shortcut_seek_forward">前進 5 秒</string>
+    <string name="settings_player_shortcut_seek_forward_description">長按進入倍速快轉</string>
+    <string name="settings_player_shortcut_volume_up">增大音量</string>
+    <string name="settings_player_shortcut_volume_down">減小音量</string>
+    <string name="settings_player_shortcut_volume_description">按住 Shift 微調</string>
+    <string name="settings_player_shortcut_speed_down">降低倍速</string>
+    <string name="settings_player_shortcut_speed_up">提高倍速</string>
+    <string name="settings_player_shortcut_speed_reset">恢復 1x 倍速</string>
+    <string name="settings_player_shortcut_speed_preset">倍速 %1$sx</string>
+    <string name="settings_player_shortcuts_none">未設定</string>
+    <string name="settings_player_shortcuts_edit_hint">一個操作可以設定多個快速鍵，點擊已新增的快速鍵可將其移除</string>
+    <string name="settings_player_shortcuts_capture_idle">點擊此處，然後按下新的快速鍵</string>
+    <string name="settings_player_shortcuts_capture_active">請按下按鍵…</string>
+    <string name="settings_player_shortcuts_unsupported_key">此按鍵不能用作快速鍵</string>
+    <string name="settings_player_shortcuts_conflict">%1$s 目前用於「%2$s」，確認後將改為本操作</string>
+    <string name="settings_player_shortcuts_remove">移除</string>
+    <string name="settings_player_shortcuts_reset">恢復預設</string>
+    <string name="settings_player_shortcuts_reset_all">恢復全部預設</string>
+    <string name="settings_player_shortcuts_reset_all_confirm">要將播放器的所有快速鍵恢復為預設值嗎？</string>
+    <string name="settings_player_shortcuts_confirm">確認</string>
+    <string name="settings_player_shortcuts_cancel">取消</string>
+
     <!-- Storage Settings -->
     <string name="settings_storage_title">存儲設置</string>
     <string name="settings_storage_bt_cache_location">BT 影片緩存位置</string>
