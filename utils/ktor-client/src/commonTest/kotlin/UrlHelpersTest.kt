@@ -44,46 +44,46 @@ class UrlHelpersTest {
 
         // 同 host 的绝对 http 链接升级为 https
         case(
-            "https://www.agedm.io/detail/20230207",
-            "https://www.agedm.io/search?query=x", "http://www.agedm.io/detail/20230207",
+            "https://www.example.com/detail/20230207",
+            "https://www.example.com/search?query=x", "http://www.example.com/detail/20230207",
         )
 
         // www 前缀差异视为同 host
         case(
-            "https://agedm.io/detail/20230207",
-            "https://www.agedm.io/search?query=x", "http://agedm.io/detail/20230207",
+            "https://example.com/detail/20230207",
+            "https://www.example.com/search?query=x", "http://example.com/detail/20230207",
         )
         case(
-            "https://www.agedm.io/detail/20230207",
-            "https://agedm.io/search?query=x", "http://www.agedm.io/detail/20230207",
+            "https://www.example.com/detail/20230207",
+            "https://example.com/search?query=x", "http://www.example.com/detail/20230207",
         )
 
         // 跨 host / 非默认端口 / base 非 https: 原样返回
         case(
             "http://other.example.com/detail/1.html",
-            "https://www.agedm.io/search?query=x", "http://other.example.com/detail/1.html",
+            "https://www.example.com/search?query=x", "http://other.example.com/detail/1.html",
         )
         case(
-            "http://www.agedm.io:8080/detail/1.html",
-            "https://www.agedm.io/search", "http://www.agedm.io:8080/detail/1.html",
+            "http://www.example.com:8080/detail/1.html",
+            "https://www.example.com/search", "http://www.example.com:8080/detail/1.html",
         )
         case(
-            "http://www.agedm.io/detail/20230207",
-            "http://www.agedm.io/search?query=x", "http://www.agedm.io/detail/20230207",
+            "http://www.example.com/detail/20230207",
+            "http://www.example.com/search?query=x", "http://www.example.com/detail/20230207",
         )
 
         // 相对链接解析后已是 https; query/fragment 保留
         case(
-            "https://www.agedm.io/detail/1.html",
-            "https://www.agedm.io/search", "/detail/1.html",
+            "https://www.example.com/detail/1.html",
+            "https://www.example.com/search", "/detail/1.html",
         )
         case(
-            "https://www.agedm.io/detail/20230207?from=search#frag",
-            "https://www.agedm.io/search", "https://www.agedm.io/detail/20230207?from=search#frag",
+            "https://www.example.com/detail/20230207?from=search#frag",
+            "https://www.example.com/search", "https://www.example.com/detail/20230207?from=search#frag",
         )
         case(
-            "https://www.agedm.io/detail/1.html?from=search#frag",
-            "https://www.agedm.io/search", "http://www.agedm.io/detail/1.html?from=search#frag",
+            "https://www.example.com/detail/1.html?from=search#frag",
+            "https://www.example.com/search", "http://www.example.com/detail/1.html?from=search#frag",
         )
     }
 
