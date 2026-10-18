@@ -51,7 +51,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -59,6 +61,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -379,16 +382,24 @@ object EditCommentDefaults {
                     OutlinedButton(
                         onClick = onSend,
                         enabled = !sending && !uploadingImage && sendTarget != null,
-                        modifier = Modifier.padding(start = 8.dp).animateContentSize(),
+                        modifier = Modifier.padding(start = 8.dp),
                     ) {
-                        Crossfade(targetState = sending) {
-                            if (!it) {
-                                Text(text = sendText, textAlign = TextAlign.Center)
-                            } else {
-                                CircularProgressIndicator(
-                                    Modifier.size(20.dp),
-                                    color = LocalContentColor.current,
-                                )
+                        // 发送中显示进度圈. 文字始终参与布局, 按钮宽度不随状态变化
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = sendText,
+                                modifier = Modifier.alpha(0f).clearAndSetSemantics {},
+                                textAlign = TextAlign.Center,
+                            )
+                            Crossfade(targetState = sending) {
+                                if (!it) {
+                                    Text(text = sendText, textAlign = TextAlign.Center)
+                                } else {
+                                    CircularProgressIndicator(
+                                        Modifier.size(20.dp),
+                                        color = LocalContentColor.current,
+                                    )
+                                }
                             }
                         }
                     }

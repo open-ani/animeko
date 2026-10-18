@@ -41,15 +41,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_load_error_network
@@ -63,6 +65,8 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.getString
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 @Stable
 val LocalToaster: ProvidableCompositionLocal<Toaster> = staticCompositionLocalOf {
@@ -123,20 +127,50 @@ object NoOpToaster : Toaster {
     }
 }
 
-class ToastViewModel : AbstractViewModel() {
-    private val tasker = MonoTasker(backgroundScope)
+/**
+ * 依次显示 toast 的队列. [show] 把文字排到队尾; 每条显示 [ToastShowDuration], 淡出后再显示下一条, 同一时刻发出的多条提示都能看到.
+ * 一条显示期间排进队列的相同文字只显示一次.
+ */
+class ToastQueue(scope: CoroutineScope) {
+    private val queue = Channel<String>(Channel.UNLIMITED)
+    private val _showing = MutableStateFlow(false)
+    private val _content = MutableStateFlow("")
 
-    val showing = MutableStateFlow(false)
-    val content = MutableStateFlow("")
+    val showing: StateFlow<Boolean> = _showing.asStateFlow()
+    val content: StateFlow<String> = _content.asStateFlow()
+
+    init {
+        scope.launch { showQueued() }
+    }
 
     fun show(text: String) {
-        showing.update { true }
-        content.update { text }
+        queue.trySend(text)
+    }
 
-        tasker.launch {
-            delay(4000L)
-            showing.emit(false)
+    private suspend fun showQueued() {
+        var text = queue.receive()
+        while (true) {
+            _content.value = text
+            _showing.value = true
+            delay(ToastShowDuration)
+            _showing.value = false
+            delay(ToastFadeDuration)
+
+            var next = queue.tryReceive().getOrNull()
+            while (next == text) next = queue.tryReceive().getOrNull()
+            text = next ?: queue.receive()
         }
+    }
+}
+
+class ToastViewModel : AbstractViewModel() {
+    private val queue = ToastQueue(backgroundScope)
+
+    val showing: StateFlow<Boolean> get() = queue.showing
+    val content: StateFlow<String> get() = queue.content
+
+    fun show(text: String) {
+        queue.show(text)
     }
 }
 
@@ -167,8 +201,8 @@ fun Toast(
             val maxToastWidth = maxOf(ToastMinWidth, minOf(maxWidth, ToastMaxWidth))
             AnimatedVisibility(
                 visibleState = visibleState,
-                enter = fadeIn(tween(350, easing = LinearEasing)),
-                exit = fadeOut(tween(350, easing = LinearEasing)),
+                enter = fadeIn(tween(ToastFadeDuration.inWholeMilliseconds.toInt(), easing = LinearEasing)),
+                exit = fadeOut(tween(ToastFadeDuration.inWholeMilliseconds.toInt(), easing = LinearEasing)),
             ) {
                 Surface(
                     modifier = Modifier
@@ -188,6 +222,9 @@ fun Toast(
         }
     }
 }
+
+internal val ToastShowDuration = 4.seconds
+internal val ToastFadeDuration = 350.milliseconds
 
 private val ToastBottomMargin = 100.dp
 private val ToastHorizontalMargin = 60.dp

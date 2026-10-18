@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.assertCountEquals
@@ -33,6 +34,9 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -479,6 +483,27 @@ class EditCommentTest {
         onNodeWithText(string(Lang.comment_send)).performClick()
         waitForToast(editor, string(Lang.comment_send_blocked_failed_images))
         assertFalse(sent)
+    }
+
+    @Test
+    fun `send button keeps its size while sending`() = runAniComposeUiTest {
+        val response = CompletableDeferred<CommentSendResult>()
+        setEditor(onSend = { _, _ -> response.await() })
+        textField().performTextInput("hi")
+        val idle = onNodeWithText(string(Lang.comment_send)).fetchSemanticsNode().boundsInRoot
+
+        onNodeWithText(string(Lang.comment_send)).performClick()
+        // 发送中的状态来自另一个调度器上的状态流, 需要等待
+        val sending = hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate)
+        waitUntil(timeoutMillis = 5_000) { onAllNodes(sending).fetchSemanticsNodes().isNotEmpty() }
+        // 进度圈自己是一个合并节点, 按钮是它的祖先
+        val sendButton = onNode(hasClickAction() and hasAnyDescendant(sending))
+        sendButton.assertIsNotEnabled()
+        assertEquals(idle, sendButton.fetchSemanticsNode().boundsInRoot)
+
+        response.complete(CommentSendResult.Ok)
+        waitUntil(timeoutMillis = 5_000) { onAllNodes(sending).fetchSemanticsNodes().isEmpty() }
+        assertEquals(idle.size, onNodeWithText(string(Lang.comment_send)).fetchSemanticsNode().boundsInRoot.size)
     }
 
     @Test
