@@ -245,7 +245,7 @@ class PreferencesRepositoryImpl(
     override val playerKernelConfig: Settings<PlayerKernelConfig> = SerializablePreference(
         "playerKernelConfig",
         PlayerKernelConfig.serializer(),
-        default = { PlayerKernelConfig.Default },
+        default = { PlayerKernelConfig.forPlatform() },
     )
     override val videoResolverSettings: Settings<VideoResolverSettings> = SerializablePreference(
         "videoResolverSettings",
