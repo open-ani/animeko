@@ -61,7 +61,6 @@ kotlin {
 
         api(projects.datasource.datasourceApi)
         api(projects.datasource.datasourceCore)
-        api(projects.datasource.bangumi)
         api(projects.datasource.mikan)
         api(projects.datasource.jellyfin)
         api(projects.datasource.ikaros)
@@ -69,10 +68,12 @@ kotlin {
         api(projects.danmaku.dandanplay)
 
         api(libs.paging.common)
+        api(libs.androidx.collection)
 
         implementation(libs.koin.core)
         implementation(libs.atomicfu)
         implementation(libs.ktor.network) // HLS 本地代理 (iOS)
+        implementation(libs.sokkuri.runtime) // 弹幕简繁转换
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)

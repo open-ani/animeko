@@ -123,11 +123,12 @@ class ReplayBrowseMemoryUseCaseImpl(
             val channel = channels[channelIndex]
             val episodes = channel.episodes
 
-            val index = targetIndex(memory, episodeInfo.sort) ?: return ReplayResult.NOT_FOUND
+            val index = browseEpisodeIndex(memory.episodeIndex, memory.playedAsSort, episodeInfo.sort)
+                ?: return ReplayResult.NOT_FOUND
             val episode = episodes.getOrNull(index) ?: return ReplayResult.NOT_FOUND
             val media = source.createMedia(memory.subject, channel.name, episode, episodeInfo.sort)
             if (mediaSelector.selected.value != null) return ReplayResult.NOT_FOUND
-            mediaSelector.select(media)
+            mediaSelector.select(media, SelectOrigin.BROWSE_MEMORY)
             logger.info { "Replayed browse memory for subject $subjectId at index $index as ${episodeInfo.sort}: ${media.mediaId}" }
             updateMemory(subjectId, memory, channelIndex, channel, index, episodeInfo.sort)
             return ReplayResult.SELECTED
@@ -137,22 +138,6 @@ class ReplayBrowseMemoryUseCaseImpl(
             logger.warn(e) { "Failed to replay browse memory for subject $subjectId, falling back to auto select" }
             return ReplayResult.NOT_FOUND
         }
-    }
-
-    /**
-     * 目标集在线路里的下标 k + (t − p). 编号类型不同 (正片与 SP) 或差不是整数时算不出, 返回 null.
-     */
-    private fun targetIndex(memory: ManualBrowseMemory, target: EpisodeSort): Int? {
-        val played = memory.playedAsSort
-        val sameSeries = when (played) {
-            is EpisodeSort.Normal -> target is EpisodeSort.Normal
-            is EpisodeSort.Special -> target is EpisodeSort.Special && played.type == target.type
-            is EpisodeSort.Unknown -> false
-        }
-        if (!sameSeries) return null
-        val offset = (target.number ?: return null) - (played.number ?: return null)
-        if (offset % 1f != 0f) return null
-        return memory.episodeIndex + offset.toInt()
     }
 
     /**

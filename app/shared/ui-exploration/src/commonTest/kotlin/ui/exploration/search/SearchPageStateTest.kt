@@ -9,9 +9,13 @@
 
 package me.him188.ani.app.ui.exploration.search
 
+import me.him188.ani.app.data.models.preference.NsfwMode
+import me.him188.ani.app.data.models.subject.CanonicalTagKind
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SearchPageStateTest {
@@ -63,5 +67,37 @@ class SearchPageStateTest {
         )
 
         assertEquals(listOf("百合", value), updated.query.tags)
+    }
+
+    @Test
+    fun `hide mode does not show rating tag kind`() {
+        assertFalse(CanonicalTagKind.Rating in SearchFilterState.tagKinds(NsfwMode.HIDE))
+        assertTrue(CanonicalTagKind.Rating in SearchFilterState.tagKinds(NsfwMode.BLUR))
+        assertTrue(CanonicalTagKind.Rating in SearchFilterState.tagKinds(NsfwMode.DISPLAY))
+    }
+
+    @Test
+    fun `withTagKinds shows selected tags of removed kinds as custom chips`() {
+        val state = createTestSearchPageState(
+            query = SubjectSearchQuery("", tags = listOf("百合", "R18")),
+        )
+
+        val updated = state.withTagKinds(SearchFilterState.tagKinds(NsfwMode.HIDE))
+
+        assertEquals(listOf("百合", "R18"), updated.query.tags)
+        assertNull(updated.searchFilterState.chips.find { it.kind == CanonicalTagKind.Rating })
+        val custom = updated.searchFilterState.chips.single { it.kind == null }
+        assertEquals(listOf("R18"), custom.selected)
+    }
+
+    @Test
+    fun `withQuery keeps current tag kinds`() {
+        val state = createTestSearchPageState(hasActiveSearch = false)
+            .withTagKinds(SearchFilterState.tagKinds(NsfwMode.HIDE))
+
+        val updated = state.withQuery(state.query.copy(tags = listOf("百合")))
+
+        assertEquals(SearchFilterState.tagKinds(NsfwMode.HIDE), updated.searchFilterState.tagKinds)
+        assertTrue(updated.searchFilterState.chips.any { "百合" in it.selected })
     }
 }

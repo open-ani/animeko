@@ -23,7 +23,10 @@ import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +40,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,6 +59,8 @@ import me.him188.ani.app.ui.foundation.interaction.hoverable
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.notification_has_unread
+import me.him188.ani.app.ui.lang.notification_title
 import me.him188.ani.app.ui.lang.playback_history_title
 import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.lang.settings_account_popup_edit_profile
@@ -64,12 +72,22 @@ import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import org.jetbrains.compose.resources.stringResource
 
+internal object ProfilePopupTestTags {
+    const val NOTIFICATIONS = "profile-popup-notifications"
+    const val NOTIFICATIONS_UNREAD_DOT = "profile-popup-notifications-unread-dot"
+}
+
+/**
+ * @param showNotificationDot 是否在“通知”上显示未读红点, 与顶栏头像上的红点一致.
+ */
 @Composable
 internal fun ProfilePopupLayout(
     state: AccountSettingsState,
     onClickLogin: () -> Unit,
     onClickEditAvatar: () -> Unit,
     onClickEditProfile: () -> Unit,
+    showNotificationDot: Boolean,
+    onClickNotifications: () -> Unit,
     onClickPlaybackHistory: () -> Unit,
     onClickSettings: () -> Unit,
     onClickLogout: () -> Unit,
@@ -79,6 +97,8 @@ internal fun ProfilePopupLayout(
     val notLoggedInText = stringResource(Lang.settings_account_popup_not_logged_in)
     val editProfileText = stringResource(Lang.settings_account_popup_edit_profile)
     val loginRegisterText = stringResource(Lang.settings_account_popup_login_register)
+    val notificationsText = stringResource(Lang.notification_title)
+    val hasUnreadNotificationsText = stringResource(Lang.notification_has_unread)
     val playbackHistoryText = stringResource(Lang.playback_history_title)
     val settingsText = stringResource(Lang.settings)
     val logoutText = stringResource(Lang.settings_account_popup_logout)
@@ -153,6 +173,29 @@ internal fun ProfilePopupLayout(
                     ) {
                         Text(loginRegisterText)
                     }
+                }
+
+                // 游客也有这一项: 公告对所有人可见
+                TextItem(
+                    Modifier.testTag(ProfilePopupTestTags.NOTIFICATIONS),
+                    icon = {
+                        BadgedBox(
+                            badge = {
+                                if (showNotificationDot) {
+                                    Badge(
+                                        Modifier
+                                            .testTag(ProfilePopupTestTags.NOTIFICATIONS_UNREAD_DOT)
+                                            .semantics { contentDescription = hasUnreadNotificationsText },
+                                    )
+                                }
+                            },
+                        ) {
+                            Icon(Icons.Outlined.Notifications, contentDescription = notificationsText)
+                        }
+                    },
+                    onClick = onClickNotifications,
+                ) {
+                    Text(notificationsText)
                 }
 
                 TextItem(
@@ -249,12 +292,14 @@ private fun PreviewAccountSettingsPopupLayout() {
         Surface {
             ProfilePopupLayout(
                 TestAccountSettingsState,
-                { },
-                { },
-                { },
-                { },
-                { },
-                { },
+                onClickLogin = { },
+                onClickEditAvatar = { },
+                onClickEditProfile = { },
+                showNotificationDot = true,
+                onClickNotifications = { },
+                onClickPlaybackHistory = { },
+                onClickSettings = { },
+                onClickLogout = { },
                 modifier = Modifier.widthIn(max = 360.dp),
             )
         }

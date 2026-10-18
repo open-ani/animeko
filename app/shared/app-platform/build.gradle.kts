@@ -75,6 +75,8 @@ kotlin {
         api(projects.utils.buildConfig)
     }
     sourceSets.desktopMain.dependencies {
+        implementation(projects.utils.coroutines)
+        implementation(projects.utils.macosShare)
         api(libs.jna)
         api(libs.jna.platform)
     }
@@ -148,7 +150,7 @@ buildConfig {
         stringField("dandanplayAppSecret", dandanplayAppSecret)
         stringField("sentryDsn", sentryDsn)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
-        stringField("distroChannel", distroChannel)
+        expressionField("distroChannel", "me.him188.ani.buildconfig.AndroidBuildConfig.DISTRO_CHANNEL")
         gitFields()
 
         booleanField("analyticsEnabled", enableFirebase)

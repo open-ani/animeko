@@ -1,0 +1,7 @@
+# 静态链接 MSVC 运行库. 更新器从应用进程继承环境启动, 动态链接时会把 vcruntime140.dll 从应用的 runtime\bin 加载进来,
+# 之后逐文件替换和删除旧目录都会撞上自己占着的这个文件.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

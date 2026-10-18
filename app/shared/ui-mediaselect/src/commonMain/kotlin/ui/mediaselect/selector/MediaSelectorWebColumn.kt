@@ -102,7 +102,7 @@ data class WebSource(
  * 失败的源行帮不上忙, 放在按钮前会把按钮挤到最后; 源都失败时正是最需要救援的时候.
  * 验证码与限流的源不算失败, 仍在按钮前面: 用户处理后它们还会出结果.
  *
- * @param onRequestManualSearch 救援按钮的点击; null 时不显示按钮 (下载对话框).
+ * @param onRequestManualSearch 救援按钮的点击; null 时不显示按钮 (宿主没有手动查找).
  */
 @Composable
 fun MediaSelectorWebSourcesColumn(

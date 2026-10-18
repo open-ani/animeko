@@ -62,6 +62,12 @@ fun EpisodeListDialog(
 ) {
     val scrollState = rememberScrollState()
     val scrollbarEndPadding = if (scrollState.hasScrollableContent()) 16.dp else 0.dp
+    // 点击剧集会离开当前页面, 对话框必须先关掉. 调用方用 rememberSaveable 记住对话框是否打开,
+    // 不关掉的话播放页做预测性返回手势时, 下层页面预览会重新弹出这个对话框窗口, 系统随即取消手势. #3573
+    val dismissAndClickEpisode: (EpisodeListItem) -> Unit = {
+        onDismissRequest()
+        onEpisodeClick(it)
+    }
     Dialog(onDismissRequest, properties) {
         Card {
             Box {
@@ -92,7 +98,7 @@ fun EpisodeListDialog(
                         ) {
                             EpisodeListFlowRow(
                                 state.mainEpisodes,
-                                onEpisodeClick,
+                                dismissAndClickEpisode,
                                 onCollectionUpdate,
                             )
 
@@ -101,7 +107,7 @@ fun EpisodeListDialog(
 
                                 EpisodeListFlowRow(
                                     state.otherEpisodes,
-                                    onEpisodeClick,
+                                    dismissAndClickEpisode,
                                     onCollectionUpdate,
                                 )
                             }

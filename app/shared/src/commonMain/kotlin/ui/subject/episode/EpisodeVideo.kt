@@ -13,16 +13,18 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.DisplaySettings
 import androidx.compose.material.icons.rounded.Download
@@ -58,6 +60,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
@@ -90,6 +93,7 @@ import me.him188.ani.app.ui.foundation.icons.SubtitleGear
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.lang.Lang
@@ -103,6 +107,7 @@ import me.him188.ani.app.ui.lang.subject_episode_fast_forward_seconds
 import me.him188.ani.app.ui.lang.subject_episode_more_options
 import me.him188.ani.app.ui.lang.subject_episode_preview_mode
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
+import me.him188.ani.app.ui.lang.video_player_aspect_ratio
 import me.him188.ani.app.ui.lang.video_player_stats_title_hide
 import me.him188.ani.app.ui.lang.video_player_stats_title_show
 import me.him188.ani.app.ui.lang.video_player_video_enhancement
@@ -112,13 +117,13 @@ import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.details.components.ShareEpisodeDropdown
+import me.him188.ani.app.ui.subject.episode.details.components.VideoAspectRatioDropdown
 import me.him188.ani.app.ui.subject.episode.details.components.VideoEnhancementDropdown
 import me.him188.ani.app.ui.subject.episode.video.DEFAULT_OP_ED_SKIP_DURATION
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
-import me.him188.ani.app.ui.subject.episode.video.components.rememberStatusBarHeightAsState
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
@@ -136,6 +141,7 @@ import me.him188.ani.app.videoplayer.ui.PlayerStatsOverlay
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.VideoPlayer
 import me.him188.ani.app.videoplayer.ui.VideoScaffold
+import me.him188.ani.app.videoplayer.ui.VideoScaffoldLayout
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.gesture.GestureFamily
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState
@@ -156,9 +162,9 @@ import me.him188.ani.app.videoplayer.ui.progress.MediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressIndicatorText
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
+import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBarLayout
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.SpeedSwitcher
-import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.VideoAspectRatioSelector
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.ProgressSliderCenteredPreviewFrame
 import me.him188.ani.app.videoplayer.ui.progress.SubtitleSwitcher
@@ -168,6 +174,7 @@ import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberPlayerStatsState
 import me.him188.ani.app.videoplayer.ui.rememberVideoControllerState
 import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
+import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.app.videoplayer.ui.top.SystemTime
 import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementController
@@ -202,6 +209,8 @@ internal const val TAG_EPISODE_SELECTOR_SHEET = "EpisodeSelectorSheet"
  * 剧集详情页面顶部的视频控件.
  * @param title 仅在全屏时显示的标题
  * @param fullscreenState 全屏状态与全屏请求. 控制栏按钮、双击、F 键、上下滑手势全部走它
+ * @param onClickScreenshot 点击截图按钮. 为 null 时不显示截图按钮, 即当前平台或播放器不支持截图
+ * @param screenshotOverlay 截图反馈层, 见 [VideoScaffold] 的同名槽
  */
 @Composable
 internal fun EpisodeVideoImpl(
@@ -223,7 +232,8 @@ internal fun EpisodeVideoImpl(
     alwaysOnTop: Boolean = false,
     onToggleAlwaysOnTop: (() -> Unit)? = null,
     danmakuEditor: @Composable() (RowScope.() -> Unit),
-    onClickScreenshot: () -> Unit,
+    onClickScreenshot: (() -> Unit)?,
+    screenshotOverlay: @Composable BoxScope.(bottomControllerHeight: Dp) -> Unit = {},
     detachedProgressSlider: @Composable () -> Unit,
     sidebarVisible: Boolean,
     onToggleSidebar: (isCollapsed: Boolean) -> Unit,
@@ -246,6 +256,7 @@ internal fun EpisodeVideoImpl(
         LocalActiveInputSource.current.current,
         LocalPlatform.current.mouseFamily,
     ),
+    enableFoldableHoverMode: Boolean = true,
     fastForwardSpeed: Float = 3f,
     contentWindowInsets: WindowInsets = WindowInsets(0.dp),
     pictureInPictureController: PictureInPictureController = NoOpPictureInPictureController,
@@ -286,8 +297,38 @@ internal fun EpisodeVideoImpl(
 
     AniTheme(darkModeOverride = DarkMode.DARK) {
         val progressSliderColors = MediaProgressSliderDefaults.colors()
+        val scaffoldLayout = if (
+            enableFoldableHoverMode && expanded && currentWindowAdaptiveInfo1().windowPosture.isTabletop
+        ) {
+            VideoScaffoldLayout.VerticalSplit
+        } else {
+            VideoScaffoldLayout.Overlay
+        }
+        val verticalSplit = scaffoldLayout == VideoScaffoldLayout.VerticalSplit
+        val topBarActions: @Composable RowScope.() -> Unit = {
+            EpisodeVideoTopBarActions(
+                playerState = playerState,
+                expanded = expanded,
+                opEdSkipDuration = opEdSkipDuration,
+                onClickSkipOpEd = onClickSkipOpEd,
+                sheetsController = sheetsController,
+                shareData = shareData,
+                onClickCache = onClickCache,
+                onClickWatchTogether = watchTogetherPlayerController::toggle,
+                playerControllerState = playerControllerState,
+                videoEnhancement = videoEnhancement,
+                videoAspectRatioControllerState = videoAspectRatioControllerState,
+                sidebarVisible = sidebarVisible,
+                onToggleSidebar = onToggleSidebar,
+                playerStatsVisible = showPlayerStats,
+                onTogglePlayerStats = { showPlayerStats = !showPlayerStats },
+                alwaysOnTop = alwaysOnTop,
+                onToggleAlwaysOnTop = onToggleAlwaysOnTop,
+            )
+        }
         VideoScaffold(
             expanded = expanded,
+            layout = scaffoldLayout,
             modifier = modifier
                 .ifThen(videoOnly) { fillMaxSize() }
                 .hoverable(videoInteractionSource)
@@ -307,24 +348,9 @@ internal fun EpisodeVideoImpl(
                             null
                         },
                         actions = {
-                            EpisodeVideoTopBarActions(
-                                playerState = playerState,
-                                expanded = expanded,
-                                opEdSkipDuration = opEdSkipDuration,
-                                onClickSkipOpEd = onClickSkipOpEd,
-                                sheetsController = sheetsController,
-                                shareData = shareData,
-                                onClickCache = onClickCache,
-                                onClickWatchTogether = watchTogetherPlayerController::toggle,
-                                playerControllerState = playerControllerState,
-                                videoEnhancement = videoEnhancement,
-                                sidebarVisible = sidebarVisible,
-                                onToggleSidebar = onToggleSidebar,
-                                playerStatsVisible = showPlayerStats,
-                                onTogglePlayerStats = { showPlayerStats = !showPlayerStats },
-                                alwaysOnTop = alwaysOnTop,
-                                onToggleAlwaysOnTop = onToggleAlwaysOnTop,
-                            )
+                            if (!verticalSplit) {
+                                topBarActions()
+                            }
                         },
                         // VideoScaffold already applies top/horizontal insets around the top bar.
                         // Passing the same insets into TopAppBar duplicates the status-bar padding on iOS portrait.
@@ -341,15 +367,9 @@ internal fun EpisodeVideoImpl(
                 if (LocalIsPreviewing.current) {
                     Text(previewModeText)
                 } else {
-                    // Save the status bar height to offset the video player
-                    val statusBarHeight by rememberStatusBarHeightAsState()
-
                     VideoPlayer(
                         playerState,
                         Modifier
-                            .ifThen(statusBarHeight != 0.dp && !videoOnly) {
-                                offset(x = -statusBarHeight / 2, y = 0.dp)
-                            }
                             .onSizeChanged {
                                 videoEnhancement?.setViewportSize(it.width, it.height)
                             }
@@ -457,12 +477,13 @@ internal fun EpisodeVideoImpl(
                 }
             },
             rhsButtons = {
-                if (expanded && (LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid())) {
+                if (expanded && onClickScreenshot != null) {
                     ScreenshotButton(
                         onClick = onClickScreenshot,
                     )
                 }
             },
+            screenshotOverlay = screenshotOverlay,
             gestureLock = {
                 if (expanded) {
                     GestureLock(isLocked = isLocked, onClick = { isLocked = !isLocked })
@@ -473,20 +494,30 @@ internal fun EpisodeVideoImpl(
                     startActions = {
                         val playWhenReady by remember(playerState) { playerState.state.map { it.playWhenReady } }
                             .collectAsStateWithLifecycle(false)
+                        val primaryActionModifier = if (verticalSplit) {
+                            val nextActionOffset = if (hasNextEpisode && expanded) 36.dp else 0.dp
+                            Modifier.offset(x = nextActionOffset).size(56.dp)
+                        } else {
+                            Modifier
+                        }
                         PlayerControllerDefaults.PlaybackIcon(
                             isPlaying = { playWhenReady },
                             onClick = { playerState.togglePlayWhenReady() },
+                            modifier = primaryActionModifier,
                         )
 
                         if (hasNextEpisode && expanded) {
                             PlayerControllerDefaults.NextEpisodeIcon(
                                 onClick = onClickNextEpisode,
+                                modifier = primaryActionModifier,
                             )
                         }
-                        PlayerControllerDefaults.DanmakuIcon(
-                            danmakuEnabled,
-                            onClick = { onToggleDanmaku() },
-                        )
+                        if (!verticalSplit) {
+                            PlayerControllerDefaults.DanmakuIcon(
+                                danmakuEnabled,
+                                onClick = { onToggleDanmaku() },
+                            )
+                        }
 
                         val audioLevelController = audioController as? MediampAudioLevelController
                         // 用「有没有鼠标」而不是「此刻在用鼠标」: 后者会让这个常驻控件随输入方式反复显隐.
@@ -494,7 +525,7 @@ internal fun EpisodeVideoImpl(
                             LocalPlatform.current,
                             LocalActiveInputSource.current.hasSeenMouse,
                         )
-                        if (expanded && audioLevelController != null && hasMouse) {
+                        if (!verticalSplit && expanded && audioLevelController != null && hasMouse) {
                             val level by audioLevelController.levelFlow.collectAsState()
                             val isMute by audioLevelController.muteFlow.collectAsState()
 
@@ -528,7 +559,15 @@ internal fun EpisodeVideoImpl(
                             touchSeekState = touchSeekState,
                         )
                     },
-                    danmakuEditor = danmakuEditor,
+                    danmakuEditor = {
+                        if (verticalSplit) {
+                            PlayerControllerDefaults.DanmakuIcon(
+                                danmakuEnabled,
+                                onClick = { onToggleDanmaku() },
+                            )
+                        }
+                        danmakuEditor()
+                    },
                     endActions = {
                         // 仅 Android 显示小窗按钮: Android 小窗是整机窗口采集, 按钮是除系统手势外的
                         // 重要入口; iOS 小窗的主入口是系统手势 (上滑回桌面自动进入), 且按钮 enabled
@@ -560,18 +599,6 @@ internal fun EpisodeVideoImpl(
                                 PlayerControllerDefaults.SubtitleSwitcher(it)
                             }
 
-                            val videoAspectRatioAlwaysOnRequester =
-                                rememberAlwaysOnRequester(playerControllerState, "videoAspectRatioSelector")
-                            videoAspectRatioControllerState?.also { controller ->
-                                VideoAspectRatioSelector(controller) {
-                                    if (it) {
-                                        videoAspectRatioAlwaysOnRequester.request()
-                                    } else {
-                                        videoAspectRatioAlwaysOnRequester.cancelRequest()
-                                    }
-                                }
-                            }
-
                             val playbackSpeedAlwaysOnRequester =
                                 rememberAlwaysOnRequester(playerControllerState, "speedSwitcher")
                             playbackSpeedControllerState?.also { controller ->
@@ -587,6 +614,12 @@ internal fun EpisodeVideoImpl(
                         PlayerControllerDefaults.FullscreenIcon(fullscreenState)
                     },
                     expanded = expanded,
+                    topActions = topBarActions,
+                    layout = if (verticalSplit) {
+                        PlayerControllerBarLayout.VerticalSplit
+                    } else {
+                        PlayerControllerBarLayout.Standard
+                    },
                     sliderOnly = playerControllerState.visibility == ControllerVisibility.InlineSliderOnly,
                 )
             },
@@ -659,6 +692,7 @@ private fun EpisodeVideoTopBarActions(
     onClickWatchTogether: () -> Unit,
     playerControllerState: PlayerControllerState,
     videoEnhancement: VideoEnhancementController?,
+    videoAspectRatioControllerState: VideoAspectRatioControllerState?,
     sidebarVisible: Boolean,
     onToggleSidebar: (isCollapsed: Boolean) -> Unit,
     playerStatsVisible: Boolean,
@@ -669,9 +703,11 @@ private fun EpisodeVideoTopBarActions(
     var showShareDropdown by rememberSaveable { mutableStateOf(false) }
     var showMoreDropdown by rememberSaveable { mutableStateOf(false) }
     var showVideoEnhancementDropdown by rememberSaveable { mutableStateOf(false) }
+    var showAspectRatioDropdown by rememberSaveable { mutableStateOf(false) }
 
     val dropdownAlwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "topBarExternalActions")
-    val isExternalDropdownVisible = showShareDropdown || showMoreDropdown || showVideoEnhancementDropdown
+    val isExternalDropdownVisible =
+        showShareDropdown || showMoreDropdown || showVideoEnhancementDropdown || showAspectRatioDropdown
     val skipDurationSeconds = opEdSkipDuration.inWholeSeconds
 
     val fastForwardSecondsText = stringResource(Lang.subject_episode_fast_forward_seconds, skipDurationSeconds)
@@ -686,6 +722,7 @@ private fun EpisodeVideoTopBarActions(
     val collapseSidebarText = stringResource(Lang.subject_episode_collapse_sidebar)
     val expandSidebarText = stringResource(Lang.subject_episode_expand_sidebar)
     val videoEnhancementTitleText = stringResource(Lang.video_player_video_enhancement)
+    val aspectRatioTitleText = stringResource(Lang.video_player_aspect_ratio)
 
     DisposableEffect(dropdownAlwaysOnRequester, isExternalDropdownVisible) {
         if (isExternalDropdownVisible) {
@@ -798,6 +835,17 @@ private fun EpisodeVideoTopBarActions(
                     },
                 )
             }
+            if (videoAspectRatioControllerState != null) {
+                DropdownMenuItem(
+                    text = { Text(aspectRatioTitleText) },
+                    onClick = {
+                        showMoreDropdown = false
+                        showAspectRatioDropdown = true
+                    },
+                    leadingIcon = { Icon(Icons.Rounded.AspectRatio, null) },
+                    trailingIcon = { Text(renderAspectRatioMode(videoAspectRatioControllerState.currentMode)) },
+                )
+            }
             DropdownMenuItem(
                 text = { Text(danmakuSettingsTitleText) },
                 onClick = {
@@ -843,6 +891,13 @@ private fun EpisodeVideoTopBarActions(
                 videoEnhancement,
                 showVideoEnhancementDropdown,
                 onDismissRequest = { showVideoEnhancementDropdown = false },
+            )
+        }
+        if (videoAspectRatioControllerState != null) {
+            VideoAspectRatioDropdown(
+                videoAspectRatioControllerState,
+                showAspectRatioDropdown,
+                onDismissRequest = { showAspectRatioDropdown = false },
             )
         }
     }
@@ -966,10 +1021,7 @@ private fun PreviewVideoScaffoldImpl(
             VideoAspectRatioControllerState(NoOpVideoAspectRatio, scope)
         },
         leftBottomTips = {
-            PlayerControllerDefaults.LeftBottomTips(
-                onClick = {},
-                modifier = Modifier.padding(if (expanded) 16.dp else 8.dp),
-            )
+            PlayerControllerDefaults.LeftBottomTips(onClick = {})
         },
         fullscreenSwitchButton = {
             EpisodeVideoDefaults.FloatingFullscreenSwitchButton(

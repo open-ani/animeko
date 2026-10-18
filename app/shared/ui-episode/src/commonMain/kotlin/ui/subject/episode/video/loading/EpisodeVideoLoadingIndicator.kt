@@ -41,6 +41,7 @@ import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_no_matching
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_resolution_timed_out
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_unknown_error
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_unsupported_media
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_web_engine_unavailable
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_decoding_bt
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_decoding_cloud
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_decoding_data
@@ -109,6 +110,7 @@ fun EpisodeVideoLoadingIndicator(
         unknownError = stringResource(Lang.subject_episode_video_loading_cause_unknown_error),
         unsupportedMedia = stringResource(Lang.subject_episode_video_loading_cause_unsupported_media),
         noMatchingFile = stringResource(Lang.subject_episode_video_loading_cause_no_matching_file),
+        webEngineUnavailable = stringResource(Lang.subject_episode_video_loading_cause_web_engine_unavailable),
         cancelled = stringResource(Lang.subject_episode_video_loading_cause_cancelled),
         networkError = stringResource(Lang.subject_episode_video_loading_cause_network_error),
     )
@@ -203,6 +205,7 @@ private data class VideoLoadingCauseLabels(
     val unknownError: String,
     val unsupportedMedia: String,
     val noMatchingFile: String,
+    val webEngineUnavailable: String,
     val cancelled: String,
     val networkError: String,
 )
@@ -212,6 +215,7 @@ private fun renderCause(cause: VideoLoadingState.Failed, labels: VideoLoadingCau
     is VideoLoadingState.UnknownError -> labels.unknownError
     is VideoLoadingState.UnsupportedMedia -> labels.unsupportedMedia
     VideoLoadingState.NoMatchingFile -> labels.noMatchingFile
+    VideoLoadingState.WebEngineUnavailable -> labels.webEngineUnavailable
     VideoLoadingState.Cancelled -> labels.cancelled
     VideoLoadingState.NetworkError -> labels.networkError
 }

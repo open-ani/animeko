@@ -35,6 +35,7 @@ import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
@@ -299,9 +300,6 @@ internal class DownloadRequestFixture(
         override fun getSubjectDisplayInfoOffline(subjectId: Int): Flow<OfflineSubjectDisplayInfo?> =
             throw UnsupportedOperationException()
 
-        override suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>> =
-            throw UnsupportedOperationException()
-
         override suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>> =
             throw UnsupportedOperationException()
 
@@ -418,6 +416,7 @@ internal class DownloadRequestFixture(
             episode: EpisodeInfo,
             media: Media,
             metadata: MediaCacheMetadata,
+            splitSeason: SplitSeason?,
         ): MediaCache {
             val episodeId = episode.episodeId
             creationStarted += episodeId

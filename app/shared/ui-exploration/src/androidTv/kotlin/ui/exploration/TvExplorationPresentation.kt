@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.cos
 
-internal enum class TvExplorationArea { Featured, ContinueWatching, Recommendations }
+enum class TvExplorationArea { Featured, ContinueWatching, Recommendations }
 
 internal val ExplorationPanelEasing = Easing { ((1.0 - cos(PI * it)) / 2.0).toFloat() }
 internal val ExplorationFocusEasing = CubicBezierEasing(.2f, .1f, 0f, 1f)

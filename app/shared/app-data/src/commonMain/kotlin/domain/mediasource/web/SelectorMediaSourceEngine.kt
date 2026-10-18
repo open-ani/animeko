@@ -252,7 +252,7 @@ abstract class SelectorMediaSourceEngine {
         subjectName: String,
         parser: LabelFirstRawTitleParser = LabelFirstRawTitleParser(),
     ): DefaultMedia {
-        val subtitleLanguages = guessSubtitleLanguages(info, parser)
+        val subtitleLanguages = guessSubtitleLanguageIds(info.channel, info.name, parser)
         return DefaultMedia(
             mediaId = buildString {
                 append(mediaSourceId)
@@ -295,30 +295,6 @@ abstract class SelectorMediaSourceEngine {
         )
     }
 
-    /**
-     * 有的 channel 会叫 "简中" 和 "繁中"
-     */
-    private fun guessSubtitleLanguages(
-        info: WebSearchEpisodeInfo,
-        parser: LabelFirstRawTitleParser
-    ): List<String>? {
-        val languagesFromChannel = info.channel?.let { parser.parseSubtitleLanguages(it) } ?: emptyList()
-        val languagesFromName = info.name.let { parser.parseSubtitleLanguages(it) }
-
-        return when {
-            languagesFromChannel.isEmpty() && languagesFromName.isEmpty() -> null
-            else -> languagesFromChannel.asSequence()
-                .plus(languagesFromName)
-                .map {
-                    it.id
-                }
-                .toList()
-                .ifEmpty {
-                    null
-                }
-        }
-    }
-
     fun shouldLoadPage(url: String, config: SelectorSearchConfig.MatchVideoConfig): Boolean {
         if (config.enableNestedUrl) {
             config.matchNestedUrlRegex?.find(url)?.let {
@@ -328,7 +304,14 @@ abstract class SelectorMediaSourceEngine {
         return false
     }
 
-    fun matchWebVideo(url: String, searchConfig: SelectorSearchConfig.MatchVideoConfig): WebVideoMatcher.MatchResult {
+    /**
+     * @param userAgent 数据源配置的 UA ([SelectorSearchConfig.userAgentOrNull]), 播放器请求匹配到的视频时使用.
+     */
+    fun matchWebVideo(
+        url: String,
+        searchConfig: SelectorSearchConfig.MatchVideoConfig,
+        userAgent: String?,
+    ): WebVideoMatcher.MatchResult {
         if (shouldLoadPage(url, searchConfig)) {
             return WebVideoMatcher.MatchResult.LoadPage
         }
@@ -344,7 +327,8 @@ abstract class SelectorMediaSourceEngine {
             WebVideo(
                 videoUrl,
                 mapOf(
-                    "User-Agent" to searchConfig.addHeadersToVideo.userAgent,
+                    @Suppress("DEPRECATION")
+                    "User-Agent" to (userAgent ?: searchConfig.addHeadersToVideo.userAgent),
                     "Referer" to searchConfig.addHeadersToVideo.referer,
                     "Sec-Ch-Ua-Mobile" to "?0",
                     "Sec-Ch-Ua-Platform" to "macOS",
@@ -358,6 +342,28 @@ abstract class SelectorMediaSourceEngine {
 
     @Throws(RepositoryException::class, CancellationException::class)
     protected abstract suspend fun doHttpGet(uri: String): Document
+}
+
+/**
+ * 从线路名与剧集名猜测字幕语言: 有的线路会叫 "简中" 和 "繁中". 都猜不出时为 `null`, 由调用方用数据源的默认值.
+ * 在线站点类数据源 (Selector, JSON API) 共用.
+ */
+internal fun guessSubtitleLanguageIds(
+    channel: String?,
+    episodeName: String,
+    parser: LabelFirstRawTitleParser,
+): List<String>? {
+    val languagesFromChannel = channel?.let { parser.parseSubtitleLanguages(it) } ?: emptyList()
+    val languagesFromName = parser.parseSubtitleLanguages(episodeName)
+
+    return when {
+        languagesFromChannel.isEmpty() && languagesFromName.isEmpty() -> null
+        else -> languagesFromChannel.asSequence()
+            .plus(languagesFromName)
+            .map { it.id }
+            .toList()
+            .ifEmpty { null }
+    }
 }
 
 /**
@@ -430,14 +436,25 @@ fun SelectorSearchConfig.orderSubjectsForAutoMatch(subjects: List<WebSearchSubje
 }
 
 /**
- * If you change, you also need to change
+ * 自动匹配阶段实际要搜索的回退关键词: 去掉按本配置归一化 ([MediaSourceEngineHelpers.getSearchKeyword]) 后与 [primary] 或彼此相同的
+ * (取首词时「出包王女 第二季」与「出包王女」是同一个关键词), 保持原顺序.
  */
-internal fun SelectorSearchConfig.createFiltersForSubject(): List<MediaListFilter<MediaListFilterContext>> = buildList {
-//    if (filterBySubjectName) add(MediaListFilters.ContainsSubjectName)
+internal fun SelectorSearchConfig.distinctFallbackKeywords(primary: List<String>, fallback: List<String>): List<String> {
+    fun normalize(name: String) = MediaSourceEngineHelpers.getSearchKeyword(
+        name,
+        removeSpecial = autoMatch.searchRemoveSpecial,
+        useOnlyFirstWord = autoMatch.searchUseOnlyFirstWord,
+    ).trim().lowercase()
+
+    val seen = primary.mapTo(HashSet()) { normalize(it) }
+    return fallback.filter { name ->
+        val keyword = normalize(name)
+        keyword.isNotEmpty() && seen.add(keyword)
+    }
 }
 
 internal fun SelectorSearchConfig.createFiltersForEpisode(): List<MediaListFilter<MediaListFilterContext>> = buildList {
-    // 不使用 filterBySubjectName, 因为 web 的剧集名称通常为 "第x集", 不包含 subject
+    // 不按条目名过滤: web 的剧集名称通常为 "第x集", 不包含条目名. 条目名匹配由 MediaSelector 负责.
     if (autoMatch.filterByEpisodeSort) add(MediaListFilters.ContainsAnyEpisodeInfo)
 }
 

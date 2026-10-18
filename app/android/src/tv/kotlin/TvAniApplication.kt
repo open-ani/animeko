@@ -10,14 +10,23 @@
 package me.him188.ani.android.tv
 
 import android.app.Application
+import com.generalk1ng.sokkuri.Sokkuri
+import com.generalk1ng.sokkuri.init
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import me.him188.ani.android.getCommonAndroidModules
+import me.him188.ani.android.launchTelemetryInitialization
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.platform.AndroidLoggingConfigurator
+import me.him188.ani.app.platform.AppStartupTasks
+import me.him188.ani.app.platform.StartupTimeMonitor
+import me.him188.ani.app.platform.StepName
 import me.him188.ani.app.platform.createAppRootCoroutineScope
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
+import me.him188.ani.app.platform.trace.recordAppStart
 import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.koin.androidContext
@@ -28,15 +37,20 @@ import org.koin.core.context.startKoin
  *
  * 与手机 AniApplication 的差异 (flavor 门控):
  * - getCommonKoinModule(enableMediaCache = false): 缓存/BT 绑定为空引擎实现 (§1.2 裁剪), 其余装配与手机一致;
- * - 单进程, 无 torrent 服务连接管理;
- * - M0 不接入 Sentry/Firebase (tv classpath 已剔除 firebase, 见 build.gradle.kts).
+ * - 单进程, 无 torrent 服务连接管理.
  */
 class TvAniApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        val startupTimeMonitor = StartupTimeMonitor()
         val logsDir = filesDir.resolve("logs").absolutePath
         AndroidLoggingConfigurator.configure(logsDir)
+        AppStartupTasks.printVersions()
+        startupTimeMonitor.mark(StepName.Logging)
+
+        // 弹幕简繁转换 (sokkuri) 需要从 assets 加载词典
+        Sokkuri.init(this)
 
         val defaultUEH = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { t, e ->
@@ -44,6 +58,7 @@ class TvAniApplication : Application() {
             Thread.sleep(500)
             defaultUEH?.uncaughtException(t, e)
         }
+        startupTimeMonitor.mark(StepName.UncaughtExceptionHandler)
 
         val scope = createAppRootCoroutineScope()
 
@@ -54,6 +69,9 @@ class TvAniApplication : Application() {
             modules(getCommonAndroidModules(scope)) // src/main 交集 (无 torrent 绑定)
             modules(getTvAndroidModules()) // src/tv — Web 解析链 / BrowserNavigator 降级 / AppTerminator
         }.startCommonKoinModule(this@TvAniApplication, scope) // proxy/Session 后台任务; 缓存恢复段判空跳过
+        startupTimeMonitor.mark(StepName.Modules)
+
+        val telemetryInitializer = launchTelemetryInitialization(scope, applicationContext, koinApp.koin)
 
         scope.launch {
             // TV 固定偏好在线源 (§8.1): BT 已裁剪且无 torrent 引擎, 自动选源必须优先 WEB.
@@ -62,6 +80,13 @@ class TvAniApplication : Application() {
             settings.mediaSelectorSettings.update {
                 if (preferKind == MediaSourceKind.WEB) this else copy(preferKind = MediaSourceKind.WEB)
             }
+        }
+
+        runBlocking { telemetryInitializer.join() }
+        startupTimeMonitor.mark(StepName.Analytics)
+
+        scope.launch {
+            Analytics.recordAppStart(startupTimeMonitor)
         }
     }
 }

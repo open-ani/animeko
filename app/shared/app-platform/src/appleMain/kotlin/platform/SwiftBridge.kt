@@ -9,11 +9,18 @@
 
 package me.him188.ani.app.platform
 
+import platform.AVFoundation.AVPlayer
 import platform.UIKit.UINavigationController
+import platform.UIKit.UIView
 import platform.UIKit.UIViewController
 
 // This interface is implemented in Swift.
 interface ISwiftBridge {
+    fun createEnhancedPlayerView(player: AVPlayer, onUnavailable: () -> Unit): UIView
+    /** mode: off=0, performance=1, quality=2; aspect: fit=0, stretch=1, crop=2. */
+    fun updateEnhancedPlayerView(view: UIView, mode: Int, aspect: Int)
+    fun releaseEnhancedPlayerView(view: UIView)
+
     val UIViewController.navigationController: UINavigationController?
 
     fun setDeviceOrientation(

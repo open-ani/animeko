@@ -24,19 +24,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.tools.MonoTasker
+import me.him188.ani.app.tools.update.DeltaPackageAssembler
 import me.him188.ani.app.tools.update.InstallationResult
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.createDirectories
-import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.deleteRecursively
-import me.him188.ani.utils.io.moveTo
-import me.him188.ani.utils.io.name
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -45,10 +44,14 @@ import kotlin.coroutines.cancellation.CancellationException
  *
  * [refresh] 从 GitHub 拉取 main 分支最新的 commits, Build workflow 的运行结果, 以及当前平台的安装包 artifact, 合并为 [listState].
  * [lookup] 解析用户粘贴的 commit / PR / workflow 运行 / artifact 链接或安装包直链, 结果放入 [lookupState] 供用户确认后安装.
- * [install] 下载所选 commit 的 artifact, 取出安装包, 然后交给安装器; [installPackage] 直接下载安装包.
+ * [install] 下载所选 commit 的安装包 artifact, 然后交给安装器; [installPackage] 直接下载安装包.
  * 桌面端安装成功会退出当前进程并由外部更新程序重启, Android 会拉起系统安装器.
  * 不支持自动安装的平台 (Linux) 下载完成后进入 [DevBuildInstallState.ReadyForManualInstall].
  *
+ * 构建同时上传了 zip 发布包和清单 ([DevBuildPackageSpec.deltaPackageName]) 时, [install] 先用 [deltaAssembler]
+ * 以当前安装目录为基础增量拼包, 只下载有变化的文件; 不支持或失败时再整包下载 artifact.
+ *
+ * @param deltaAssembler 当前平台不支持增量拼包时为 `null`, 见 [UpdateInstaller.createDeltaPackageAssembler].
  * @param saveDir 专用于存放本功能下载的文件的目录, 每次安装前会清空.
  * @param getToken 读取用户配置的 GitHub token, 空字符串表示未设置.
  * @param installDispatcher 调用安装器的调度器. 桌面端安装器需要在主线程调用.
@@ -58,6 +61,7 @@ class DevBuildsState(
     private val api: GitHubDevBuildApi,
     val spec: DevBuildPackageSpec,
     private val installer: UpdateInstaller,
+    private val deltaAssembler: DeltaPackageAssembler?,
     private val saveDir: SystemPath,
     private val getToken: suspend () -> String,
     currentVersionName: String,
@@ -230,17 +234,63 @@ class DevBuildsState(
         launchInstall(DevBuildInstallTarget.of(commit), context) { target ->
             val token = getToken().trim()
             if (token.isEmpty()) throw TokenRequiredException()
+            prepareSaveDir()
+            assembleIncrementally(token, commit, artifact, target)?.let { return@launchInstall it }
+
             _installState.value = DevBuildInstallState.Downloading(target, 0, artifact.sizeInBytes)
             val downloadUrl = api.resolveArtifactDownloadUrl(token, artifact.archiveDownloadUrl)
-
-            prepareSaveDir()
-            val archive = saveDir.resolve("${artifact.name}-${commit.shortSha}.zip")
-            api.downloadFile(downloadUrl, archive) { downloaded, total ->
+            val file = saveDir.resolve(spec.packageFileName(commit.shortSha))
+            api.downloadFile(downloadUrl, file) { downloaded, total ->
                 _installState.value = DevBuildInstallState.Downloading(target, downloaded, total ?: artifact.sizeInBytes)
             }
+            if (spec.kind == DevBuildPackageKind.LINUX_APPIMAGE) {
+                markExecutable(file)
+            }
+            file
+        }
+    }
 
-            _installState.value = DevBuildInstallState.Extracting(target)
-            extractPackage(archive, saveDir.resolve(spec.packageFileName(commit.shortSha)))
+    /**
+     * 用 [artifact] 所在运行上传的 zip 发布包和清单, 以当前安装目录为基础增量拼出 [commit] 的安装包.
+     *
+     * 当前平台不支持、这次运行没有上传这两个 artifact (例如较早的构建), 或拼包失败时返回 `null`, 由调用方整包下载.
+     */
+    private suspend fun assembleIncrementally(
+        token: String,
+        commit: DevBuildCommit,
+        artifact: DevBuildArtifact,
+        target: DevBuildInstallTarget,
+    ): SystemPath? {
+        val assembler = deltaAssembler ?: return null
+        val packageName = spec.deltaPackageName ?: return null
+        val manifestName = spec.deltaManifestName ?: return null
+        _installState.value = DevBuildInstallState.DownloadingIncrementally(target, 0, null, null)
+        return try {
+            val artifacts = api.listRunArtifacts(token, artifact.runId).filterNot { it.expired }
+            val packageArtifact = artifacts.firstOrNull { it.name == packageName }
+            val manifestArtifact = artifacts.firstOrNull { it.name == manifestName }
+            if (packageArtifact == null || manifestArtifact == null) {
+                logger.info { "Run ${artifact.runId} has no delta package, downloading the full package" }
+                return null
+            }
+            assembler.assemble(
+                packageName = spec.deltaPackageFileName(commit.shortSha),
+                manifestUrl = api.resolveArtifactDownloadUrl(token, manifestArtifact.archiveDownloadUrl),
+                packageUrl = api.artifactDownloadUrlProvider(token, packageArtifact.archiveDownloadUrl),
+                saveDir = saveDir,
+            ) { progress ->
+                _installState.value = DevBuildInstallState.DownloadingIncrementally(
+                    target,
+                    progress.downloadedBytes,
+                    progress.totalDownloadBytes,
+                    progress.fraction,
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logger.warn(e) { "Failed to assemble dev build ${commit.shortSha} incrementally, downloading the full package" }
+            null
         }
     }
 
@@ -298,9 +348,6 @@ class DevBuildsState(
                 throw e
             } catch (e: TokenRequiredException) {
                 _installState.value = DevBuildInstallState.Failed(target, DevBuildInstallFailure.TokenRequired, null)
-            } catch (e: DevBuildPackageNotFoundException) {
-                logger.error(e) { "Dev build artifact does not contain a package" }
-                _installState.value = DevBuildInstallState.Failed(target, DevBuildInstallFailure.PackageNotFound, null)
             } catch (e: Throwable) {
                 logger.error(e) { "Failed to install dev build ${target.label}" }
                 _installState.value = DevBuildInstallState.Failed(target, DevBuildInstallFailure.Error(e), null)
@@ -313,26 +360,6 @@ class DevBuildsState(
             saveDir.deleteRecursively()
             saveDir.createDirectories()
         }
-    }
-
-    /**
-     * 从 artifact zip [archive] 得到可交给安装器的安装包 [target]. 成功后 [archive] 不再存在.
-     */
-    private suspend fun extractPackage(archive: SystemPath, target: SystemPath): SystemPath {
-        val kind = spec.kind
-        if (!kind.extractsFromArchive) {
-            withContext(Dispatchers.IO_) { archive.moveTo(target) }
-            return target
-        }
-        val found = extractZipEntryByExtension(archive, kind.packageExtension, target)
-        if (!found) {
-            throw DevBuildPackageNotFoundException(archive.name, kind.packageExtension)
-        }
-        withContext(Dispatchers.IO_) { archive.delete() }
-        if (kind == DevBuildPackageKind.LINUX_APPIMAGE) {
-            markExecutable(target)
-        }
-        return target
     }
 
     /**
@@ -482,7 +509,7 @@ sealed interface DevBuildInstallState {
     data object Idle : DevBuildInstallState
 
     /**
-     * 正在下载, 解压或安装, 可以取消.
+     * 正在下载或安装, 可以取消.
      */
     sealed interface Busy : DevBuildInstallState {
         val target: DevBuildInstallTarget
@@ -504,8 +531,20 @@ sealed interface DevBuildInstallState {
             get() = totalBytes?.takeIf { it > 0 }?.let { (downloadedBytes.toFloat() / it).coerceIn(0f, 1f) }
     }
 
+    /**
+     * 正在增量下载: 复用已安装的文件, 只下载有变化的部分.
+     *
+     * @param downloadedBytes 已下载的字节数.
+     * @param totalBytes 需要下载的字节数, 只计有变化的部分. `null` 表示还在比对已安装的文件.
+     * @param progress 整体进度 `[0, 1]`, 包括写入复用的本地文件. 比对期间为 `null`.
+     */
     @Immutable
-    data class Extracting(override val target: DevBuildInstallTarget) : Busy
+    data class DownloadingIncrementally(
+        override val target: DevBuildInstallTarget,
+        val downloadedBytes: Long,
+        val totalBytes: Long?,
+        val progress: Float?,
+    ) : Busy
 
     @Immutable
     data class Installing(override val target: DevBuildInstallTarget) : Busy
@@ -538,12 +577,6 @@ sealed interface DevBuildInstallFailure {
     @Immutable
     data object TokenRequired : DevBuildInstallFailure
 
-    /**
-     * artifact zip 里没有当前平台的安装包.
-     */
-    @Immutable
-    data object PackageNotFound : DevBuildInstallFailure
-
     @Immutable
     data class Installer(val result: InstallationResult.Failed) : DevBuildInstallFailure
 
@@ -551,7 +584,3 @@ sealed interface DevBuildInstallFailure {
     data class Error(val throwable: Throwable) : DevBuildInstallFailure
 }
 
-class DevBuildPackageNotFoundException(
-    archiveName: String,
-    extension: String,
-) : Exception("No .$extension file found in artifact archive $archiveName")

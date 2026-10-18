@@ -97,7 +97,7 @@ class EpisodePlayerTestSuite(
                     single<HlsPlaybackPreparer> {
                         NoopHlsPlaybackPreparer
                     }
-                    // 加载媒体前读取续播进度 (用作 HLS 预缓存的提示)
+                    // 加载媒体前读取续播进度作为起播位置
                     single<EpisodePlayHistoryRepository> {
                         EpisodePlayHistoryRepositoryImpl(
                             MemoryDataStore(EpisodeHistories.Empty),
@@ -151,6 +151,12 @@ private object NoopWebSearchSessionCacheDao : WebSearchSessionCacheDao {
         subjectName: String,
         now: Long,
     ): List<WebSearchSessionCacheEntity> = emptyList()
+
+    override suspend fun subjectNamesWithCache(
+        requesterSubjectId: Int?,
+        mediaSourceId: String,
+        now: Long,
+    ): List<String> = emptyList()
 
     override suspend fun deleteExpired(now: Long) {}
 

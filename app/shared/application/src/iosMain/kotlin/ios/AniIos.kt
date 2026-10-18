@@ -45,6 +45,7 @@ import me.him188.ani.app.domain.media.download.MediaDownloadManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.PlatformHlsPlaybackPreparer
+import me.him188.ani.app.domain.media.resolver.ApiVideoMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.IosWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileUriMediaResolver
@@ -231,18 +232,16 @@ fun startIosApp(): AniIosApplication {
     )
 }
 
-private val uncaughtExceptionLogger = logger("AniIos")
-
 /**
- * Kotlin/Native aborts the process on an uncaught exception without going through our logger,
- * so the file log would end right before the most useful line. Log it and flush first.
+ * Persists the original exception using the currently configured writers before delegating
+ * to the previous hook or terminating the process.
  */
 @OptIn(ExperimentalNativeApi::class)
-private fun installUnhandledExceptionHook() {
+internal fun installUnhandledExceptionHook() {
     val previous = getUnhandledExceptionHook()
     setUnhandledExceptionHook { throwable ->
         try {
-            uncaughtExceptionLogger.error(throwable) { "Uncaught Kotlin exception, terminating" }
+            logger("AniIos").error(throwable) { "Uncaught Kotlin exception, terminating" }
             IosLoggingConfigurator.flush()
         } catch (_: Throwable) {
             // Never let logging failures hide the original exception.
@@ -384,6 +383,7 @@ fun getIosModules(
             torrentMediaResolvers(get<TorrentManager>().engines, get())
                 .plus(LocalFileUriMediaResolver())
                 .plus(HttpStreamingMediaResolver())
+                .plus(ApiVideoMediaResolver(get<MediaSourceManager>().apiVideoResolverLoader))
                 .plus(
                     IosWebMediaResolver(
                         get<MediaSourceManager>().webVideoMatcherLoader,

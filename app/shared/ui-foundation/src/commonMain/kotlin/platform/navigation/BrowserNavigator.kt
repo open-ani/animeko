@@ -71,16 +71,6 @@ fun rememberAsyncBrowserNavigator(): BrowserNavigator {
                 return OpenBrowserResult.Success
             }
 
-            override fun openJoinGroup(context: Context): OpenBrowserResult {
-                scope.launch {
-                    val openResult = navigator.openJoinGroup(context)
-                    if (openResult is OpenBrowserResult.Failure) {
-                        failureAction(openResult)
-                    }
-                }
-                return OpenBrowserResult.Success
-            }
-
             override fun intentActionView(context: Context, url: String): OpenBrowserResult {
                 scope.launch {
                     val openResult = navigator.intentActionView(context, url)

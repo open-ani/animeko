@@ -17,8 +17,14 @@ sealed class Platform {
     abstract val name: String // don't change, it's actually an ID
     abstract val arch: Arch
 
-    val nameAndArch get() = "$name ${arch.displayName}"
-    final override fun toString(): String = nameAndArch
+    final override fun toString(): String {
+        return buildString {
+            append(name)
+            if (isAndroidTv()) append(" TV")
+            append(' ')
+            append(arch.displayName)
+        }
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     // mobile
@@ -28,6 +34,7 @@ sealed class Platform {
 
     data class Android(
         override val arch: Arch,
+        val isTv: Boolean = false,
     ) : Mobile() {
         override val name: String get() = "Android"
     }
@@ -138,6 +145,11 @@ inline fun Platform.isMobile(): Boolean {
 inline fun Platform.isAndroid(): Boolean {
     contract { returns(true) implies (this@isAndroid is Platform.Android) }
     return this is Platform.Android
+}
+
+inline fun Platform.isAndroidTv(): Boolean {
+    contract { returns(true) implies (this@isAndroidTv is Platform.Android) }
+    return this is Platform.Android && isTv
 }
 
 inline fun Platform.isLinux(): Boolean {

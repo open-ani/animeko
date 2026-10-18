@@ -20,8 +20,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,8 +44,8 @@ import me.him188.ani.app.ui.lang.settings_media_source_cancel
 import me.him188.ani.app.ui.lang.settings_media_source_delete_selected
 import me.him188.ani.app.ui.lang.settings_media_source_delete_selected_confirmation
 import me.him188.ani.app.ui.lang.settings_media_source_delete_selected_title
-import me.him188.ani.app.ui.lang.settings_media_source_disable_selected
-import me.him188.ani.app.ui.lang.settings_media_source_enable_selected
+import me.him188.ani.app.ui.lang.settings_media_source_disable
+import me.him188.ani.app.ui.lang.settings_media_source_enable
 import org.jetbrains.compose.resources.stringResource
 
 internal object MediaSourceSelectionToolbarTestTags {
@@ -124,11 +122,11 @@ internal fun MediaSourceSelectionActions(
             shadowElevation = 3.dp,
         ) {
             Row(
-                Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(
+                TextButton(
                     onClick = {
                         editState.setMediaSourcesEnabled(
                             selectedMediaSources.filterNot { it.isEnabled },
@@ -136,15 +134,11 @@ internal fun MediaSourceSelectionActions(
                         )
                     },
                     enabled = selectedMediaSources.any { !it.isEnabled },
-                    colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier.testTag(MediaSourceSelectionToolbarTestTags.ENABLE),
                 ) {
-                    Icon(
-                        Icons.Rounded.Visibility,
-                        stringResource(Lang.settings_media_source_enable_selected),
-                    )
+                    Text(stringResource(Lang.settings_media_source_enable))
                 }
-                IconButton(
+                TextButton(
                     onClick = {
                         editState.setMediaSourcesEnabled(
                             selectedMediaSources.filter { it.isEnabled },
@@ -152,13 +146,9 @@ internal fun MediaSourceSelectionActions(
                         )
                     },
                     enabled = selectedMediaSources.any { it.isEnabled },
-                    colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier.testTag(MediaSourceSelectionToolbarTestTags.DISABLE),
                 ) {
-                    Icon(
-                        Icons.Rounded.VisibilityOff,
-                        stringResource(Lang.settings_media_source_disable_selected),
-                    )
+                    Text(stringResource(Lang.settings_media_source_disable))
                 }
                 VerticalDivider(
                     Modifier.height(24.dp),

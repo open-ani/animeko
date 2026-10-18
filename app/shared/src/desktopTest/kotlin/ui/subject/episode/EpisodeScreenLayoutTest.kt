@@ -101,6 +101,28 @@ class EpisodeScreenLayoutTest {
     }
 
     @Test
+    fun `mobile fullscreen hides secondary content regardless of sidebar preference`() {
+        for (expanded in listOf(false, true)) {
+            for (sidebarVisible in listOf(false, true)) {
+                assertEquals(
+                    EpisodeScreenLayoutMode.VIDEO_ONLY,
+                    episodeScreenLayoutMode(true, expanded, sidebarVisible, isDesktop = false),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `compact desktop fullscreen only shows video`() {
+        for (sidebarVisible in listOf(false, true)) {
+            assertEquals(
+                EpisodeScreenLayoutMode.VIDEO_ONLY,
+                episodeScreenLayoutMode(true, false, sidebarVisible, isDesktop = true),
+            )
+        }
+    }
+
+    @Test
     fun `video only fills the layout without secondary`() = runAniComposeUiTest {
         mode = EpisodeScreenLayoutMode.VIDEO_ONLY
         setContent { Content() }

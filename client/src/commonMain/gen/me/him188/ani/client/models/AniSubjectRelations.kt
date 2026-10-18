@@ -16,6 +16,7 @@
 
 package me.him188.ani.client.models
 
+import me.him188.ani.client.models.AniSplitSeason
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -29,6 +30,7 @@ import kotlinx.serialization.encoding.*
  * @param seriesMainSubjectNames
  * @param sequelSubjects
  * @param sequelSubjectNames
+ * @param splitSeason
  */
 @Serializable
 
@@ -42,7 +44,9 @@ data class AniSubjectRelations (
 
     @SerialName(value = "sequelSubjects") @Required val sequelSubjects: kotlin.collections.List<kotlin.Int>,
 
-    @SerialName(value = "sequelSubjectNames") @Required val sequelSubjectNames: kotlin.collections.List<kotlin.String>
+    @SerialName(value = "sequelSubjectNames") @Required val sequelSubjectNames: kotlin.collections.List<kotlin.String>,
+
+    @SerialName(value = "splitSeason") val splitSeason: AniSplitSeason? = null
 
 ) {
 

@@ -29,13 +29,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.person.PersonSubjectSummary
-import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.search.SubjectSearchQuery
+import me.him188.ani.app.domain.search.withNsfwFilter
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.SubjectProgressState
@@ -46,6 +46,10 @@ import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.RatingEnter
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.recordEvent
 
 class TvSubjectDetailsViewModel(
     private val subjectId: Int,
@@ -89,7 +93,11 @@ class TvSubjectDetailsViewModel(
                     val episodeList = ui.episodeListUiState
                     val episodes = episodeList.mainEpisodes + episodeList.otherEpisodes
                     TvSubjectDetailsUiState(content = TvSubjectDetailsContentState(
-                        info = shared.info ?: SubjectInfo.Empty,
+                        // 全站统计取实时值, 自己收藏或评分后随之变化
+                        info = (shared.info ?: SubjectInfo.Empty).copy(
+                            ratingInfo = ui.rating.ratingInfo,
+                            collectionStats = ui.collectionStats,
+                        ),
                         episodes = episodes,
                         episodesLoading = ui.isPlaceholder || episodeList.isPlaceholder,
                         playTargetId = selectTvResumeEpisode(ui.progressInfo?.nextEpisodeIdToPlay, episodes),
@@ -159,7 +167,12 @@ class TvSubjectDetailsViewModel(
             TvSubjectDetailsIntent.Login -> navigation.emit(TvNavigationEvent.Login)
             TvSubjectDetailsIntent.Resume -> uiState.value.content?.playTargetId?.let(::playEpisode)
             is TvSubjectDetailsIntent.PlayEpisode -> playEpisode(intent.episodeId)
-            is TvSubjectDetailsIntent.OpenRelatedSubject -> navigation.emit(TvNavigationEvent.Subject(intent.subjectId))
+            is TvSubjectDetailsIntent.OpenRelatedSubject -> openSubject(intent.subjectId, "subject_related")
+            is TvSubjectDetailsIntent.OpenTagSubject -> openSubject(intent.subjectId, "subject_tag")
+            TvSubjectDetailsIntent.EnterRating -> Analytics.recordEvent(RatingEnter) {
+                put("has_existing_score", (uiState.value.content?.selfRating?.score ?: 0) > 0)
+                put("subject_id", subjectId)
+            }
             is TvSubjectDetailsIntent.SetCollection -> perform(intent.requestId) { shared ->
                 val error = shared.setSelfCollectionType(intent.type)
                 val offer = error == null && shared.shouldOfferMarkAllWatched
@@ -186,11 +199,8 @@ class TvSubjectDetailsViewModel(
             is TvSubjectDetailsIntent.SearchTag -> {
                 val pager = settingsRepository.uiSettings.flow.map { it.searchSettings }.flatMapLatest { settings ->
                     searchRepository.searchSubjects(
-                        SubjectSearchQuery(keywords = "", tags = listOf(intent.tag), nsfw = when {
-                            intent.tag == "R18" -> true
-                            settings.nsfwMode == NsfwMode.HIDE -> false
-                            else -> null
-                        }),
+                        SubjectSearchQuery(keywords = "", tags = listOf(intent.tag))
+                            .withNsfwFilter(settings.nsfwMode),
                         ignoreDoneAndDropped = { settings.ignoreDoneAndDroppedSubjects },
                     )
                 }
@@ -233,6 +243,14 @@ class TvSubjectDetailsViewModel(
             catch (e: Exception) { TvSubjectOperation(error = LoadError.fromException(e)) }
             operation.value = result.copy(requestId = requestId, completed = true)
         }
+    }
+
+    private fun openSubject(targetSubjectId: Int, source: String) {
+        Analytics.recordEvent(SubjectEnter) {
+            put("source", source)
+            put("subject_id", targetSubjectId)
+        }
+        navigation.emit(TvNavigationEvent.Subject(targetSubjectId))
     }
 
     private fun playEpisode(episodeId: Int) {

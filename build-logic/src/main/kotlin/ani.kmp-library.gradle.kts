@@ -54,6 +54,12 @@ configure<KotlinMultiplatformExtension> {
         minSdk = getIntProperty("android.min.sdk")
         androidResources.enable = true
 
+        localDependencySelection {
+            productFlavorDimension(AniAndroidFlavors.DIMENSION) {
+                selectFrom.set(listOf(AniAndroidFlavors.DEFAULT))
+            }
+        }
+
         withHostTestBuilder {
             sourceSetTreeName = KotlinSourceSetTree.test.name
         }

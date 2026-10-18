@@ -72,7 +72,7 @@ class DevBuildCommitTest {
                 artifact(1, SHA_A, "ani-android-universal-release"),
                 artifact(2, SHA_A, "ani-android-arm64-v8a-release"),
                 artifact(3, SHA_A, "ani-android-arm64-v8a-release", expired = true),
-                artifact(4, SHA_A, "ani-windows-portable"),
+                artifact(4, SHA_A, "ani-windows-x64.zip"),
                 artifact(5, SHA_B, "ani-android-arm64-v8a-release", expired = true),
             ),
             spec = spec,
@@ -86,7 +86,7 @@ class DevBuildCommitTest {
         assertEquals("aaaaaaaa", a.shortSha)
         assertEquals(Instant.parse("2026-09-18T05:04:36Z"), a.committedAt)
         assertEquals(DevBuildRun(200, DevBuildStatus.SUCCESS, "run/200"), a.build)
-        assertEquals(DevBuildArtifact(2, "ani-android-arm64-v8a-release", 100, "artifact/2/zip"), a.artifact)
+        assertEquals(DevBuildArtifact(2, "ani-android-arm64-v8a-release", 100, "artifact/2/zip", runId = 1), a.artifact)
 
         val b = result[1]
         assertEquals("Name", b.author)

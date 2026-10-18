@@ -10,6 +10,7 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 
 plugins {
     id("ani.kmp-compose")
@@ -89,6 +90,10 @@ kotlin {
                     "-F$onnxSearchPathValue", "-framework", "onnxruntime",
                     "-lc++", "-weak_framework", "CoreML",
                 )
+            }
+            // App 包内嵌 MediampFFmpegKit, 测试可执行文件没有 bundle, 需从解压目录加载这个动态 framework
+            target.binaries.withType<TestExecutable>().configureEach {
+                linkerOpts("-rpath", frameworkSearchPathValue)
             }
 
             tasks.matching { task ->

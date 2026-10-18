@@ -16,13 +16,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draganddrop.DragAndDropSourceModifierNode
@@ -69,7 +68,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.platform.window.MacTrackpadGestures
 import me.him188.ani.app.platform.window.rememberLayoutHitTestOwner
-import me.him188.ani.app.ui.foundation.LocalSketch
+import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.imageviewer.FileKitImageFileSaver
 import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerContent
 import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerExportedFile
@@ -213,6 +212,7 @@ private fun ImageViewerWindow(
         val window = this.window
         val saveDialogTitle = stringResource(Lang.image_viewer_save)
         val content: @Composable () -> Unit = {
+            OverrideCaptionButtonAppearance(true)
             ImageViewerContent(
                 model = model,
                 onClose = onClose,

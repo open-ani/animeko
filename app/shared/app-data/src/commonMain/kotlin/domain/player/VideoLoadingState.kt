@@ -60,6 +60,12 @@ sealed interface VideoLoadingState {
      */
     data object UnsupportedMedia : Failed()
     data object NoMatchingFile : Failed()
+
+    /**
+     * 负责加载网页的引擎未初始化或已不可用, 所有网页资源都无法解析.
+     * 自动换源对此无效, 见 [me.him188.ani.app.domain.player.extension.PlayerLoadErrorHandler].
+     */
+    data object WebEngineUnavailable : Failed()
     data class UnknownError(
         val cause: Throwable,
     ) : Failed()

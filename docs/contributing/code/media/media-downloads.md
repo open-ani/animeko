@@ -55,7 +55,8 @@ PikPak 恢复可用时，存储补回尚未恢复的记录，已有下载保留�
 2. `AwaitingSelection`：创建条目级查询会话与选源器，等待用户通过 `select` 选定资源。
    查询在此期间持续进行，与选源弹窗是否可见无关。
 3. `SelectingEpisodes`：选定资源后，取选源器 `subjectCandidates` 中与所选资源同一线路
-   （数据源 + 字幕组）的条目级候选，用 [planBatchDownload][planner] 为条目的每一集预览处置，
+   （数据源 + 字幕组）的条目级候选，连同 `select` 时一并给出的同线路资源（手动查找按位置为其他集生成的资源，
+   排在前面），用 [planBatchDownload][planner] 为条目的每一集预览处置，
    得到每集的可下载 / 已下载 / 未匹配状态与将使用的资源标题（`DownloadEpisodeOption`）。
    该线路只覆盖当前这一话时跳过此步。用户通过 `confirmEpisodes` 勾选要一并下载的集，
    或通过 `backToSelection` 回到选源；两者都不重新查询。
@@ -111,8 +112,9 @@ presenter 持有当前会话并把会话状态映射为页面状态：
   `SelectingEpisodes` 不算忙碌，行内仍显示下载按钮，点击可重新展示被隐藏的弹窗。
 - `AwaitingSelection` 与 `SelectingEpisodes` 共用同一个底部弹窗（`DownloadMediaPickerState` 以查询会话为准，
   两步之间保持同一实例），分别显示选源视图与选集视图（`DownloadEpisodePicker`）。
-  选源视图与播放页的[选源界面](media-selector-ui.md)共用页面，只有自动匹配与 BT 资源两种模式，没有手动查找；
-  会话里有 BT 源时默认 BT。底部弹窗的宽度不足以放表格，BT 列表与播放页 BT 资源页共用紧凑列表组件。
+  选源视图与播放页的[选源界面](media-selector-ui.md)共用页面，有自动匹配、手动查找与 BT 资源三种模式；
+  会话里有 BT 源时默认 BT。手动查找的状态由 presenter 随 `DownloadMediaPickerState` 一起创建，
+  点选的一集与自动匹配页点选的资源一样通过 `select` 交给会话，条目的其他集按线路里的位置生成的资源一起交给会话。底部弹窗的宽度不足以放表格，BT 列表与播放页 BT 资源页共用紧凑列表组件。
   选集视图列出条目的全部剧集，可下载的集可勾选，默认勾选本话及之后，并提供仅本话 / 本话及之后 / 全部的快捷选择；
   已下载与未匹配的集不可勾选。`Finished(error)` 对应添加失败的提示；取消或完成后不显示任何弹窗。
 - 正在等待其他剧集选源或选集时请求新的剧集，会取消当前会话并为新剧集开启会话；正在准备或持久化时忽略新的请求。

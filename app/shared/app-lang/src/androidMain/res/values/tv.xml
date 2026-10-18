@@ -128,6 +128,17 @@
     <string name="tv_login_qr_rejected">Declined on your phone</string>
     <string name="tv_login_qr_failed">Couldn’t load the QR code. Check your network</string>
     <string name="tv_login_qr_refresh">Refresh QR code</string>
+    <string name="tv_settings_network">Network</string>
+    <string name="tv_settings_proxy_address_invalid">Enter a valid HTTP(S) or SOCKS proxy address</string>
+    <string name="tv_update_download">Download update</string>
+    <string name="tv_update_install">Install</string>
+    <string name="tv_update_cancel_download">Cancel download</string>
+    <string name="tv_update_later">Later</string>
+    <string name="tv_update_downloading">Downloading… %1$s</string>
+    <string name="tv_update_download_failed">Download failed</string>
+    <string name="tv_update_install_hint">If the installer does not open, allow Animeko TV to install unknown apps in system settings, then select Install again.</string>
+    <string name="tv_update_expired_message">This version is no longer supported. Update to keep using Animeko. You can also download the latest version from https://myani.org</string>
+    <string name="tv_update_expired_message_with_latest">This version is no longer supported. Update to %1$s to keep using Animeko. You can also download it from https://myani.org</string>
 </resources>
 
 <!--@formatter:on-->

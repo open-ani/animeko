@@ -10,7 +10,6 @@
 package me.him188.ani.tv.ui.di
 
 import me.him188.ani.app.data.network.AutoSkipRepository
-import me.him188.ani.app.data.network.BangumiSummaryService
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
@@ -24,6 +23,7 @@ import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
+import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.repository.person.PersonCommentRepository
 import me.him188.ani.app.data.repository.person.PersonDetailsRepository
@@ -42,7 +42,6 @@ class TvAppDependencies(
     val koin: Koin,
     val userRepository: UserRepository,
     val subjectCollectionRepository: SubjectCollectionRepository,
-    val bangumiSummaryService: BangumiSummaryService,
     val danmakuRegexFilterRepository: DanmakuRegexFilterRepository,
     val mediaSourceManager: MediaSourceManager,
     val mediaSourceSubscriptionRepository: MediaSourceSubscriptionRepository,
@@ -65,6 +64,7 @@ class TvAppDependencies(
     val personDetailsRepository: PersonDetailsRepository,
     val personCommentRepository: PersonCommentRepository,
     val commentReportService: AniCommentReportService,
+    val versionExpiryService: VersionExpiryService,
 ) {
     companion object {
         fun fromKoin(koin: Koin): TvAppDependencies = TvAppDependencies(
@@ -74,7 +74,6 @@ class TvAppDependencies(
             danmakuRegexFilterRepository = koin.get(),
             mediaSourceManager = koin.get(),
             mediaSourceSubscriptionRepository = koin.get(),
-            bangumiSummaryService = koin.get(),
             subjectSearchRepository = koin.get(),
             settingsRepository = koin.get(),
             subjectDetailsStateFactory = koin.get(),
@@ -94,6 +93,7 @@ class TvAppDependencies(
             personDetailsRepository = koin.get(),
             personCommentRepository = koin.get(),
             commentReportService = koin.get(),
+            versionExpiryService = koin.get(),
         )
     }
 }

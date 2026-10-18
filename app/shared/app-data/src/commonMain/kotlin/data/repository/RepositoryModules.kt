@@ -33,6 +33,8 @@ import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.media.MikanIndexCacheRepository
 import me.him188.ani.app.data.repository.media.MikanIndexCacheRepositoryImpl
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
+import me.him188.ani.app.data.repository.notification.NotificationRepository
+import me.him188.ani.app.data.repository.notification.NotificationRepositoryImpl
 import me.him188.ani.app.data.repository.person.PersonCommentRepository
 import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
@@ -161,14 +163,12 @@ fun KoinApplication.repositoryModules(
     single<SubjectSearchRepository> {
         SubjectSearchRepository(
             aniSubjectSearchService = get(),
-            subjectCollectionRepository = get(),
         )
     }
 
     single<SubjectSearchCompletionRepository> {
         SubjectSearchCompletionRepository(
             aniSubjectSearchService = get(),
-            subjectCollectionRepository = get(),
             settingsRepository = get(),
         )
     }
@@ -231,6 +231,10 @@ fun KoinApplication.repositoryModules(
     single<EpisodeCommentRepository> { EpisodeCommentRepository(aniCommentService = get()) }
 
     single<PersonCommentRepository> { PersonCommentRepository(aniCommentService = get()) }
+
+    single<NotificationRepository> {
+        NotificationRepositoryImpl(notificationService = get(), announcementService = get())
+    }
 
     single<MediaSourceInstanceRepository> {
         MediaSourceInstanceRepositoryImpl(getContext().dataStores.mediaSourceSaveStore)

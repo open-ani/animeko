@@ -90,6 +90,14 @@ interface PlaybackHistoryDao {
     @Query("SELECT * FROM playback_history_record WHERE deletedAtMillis IS NULL")
     suspend fun getActiveRecords(): List<PlaybackHistoryRecordEntity>
 
+    /** 全部记录数, 包含已删除的墓碑. */
+    @Query("SELECT COUNT(*) FROM playback_history_record")
+    suspend fun countAllRecords(): Int
+
+    /** 最早的 [PlaybackHistoryRecordEntity.updatedAtMillis], 忽略没有时间的记录 (值为 0). 没有记录时为 `null`. */
+    @Query("SELECT MIN(updatedAtMillis) FROM playback_history_record WHERE updatedAtMillis > 0")
+    suspend fun getEarliestUpdatedAtMillis(): Long?
+
     @Upsert
     suspend fun upsertRecord(record: PlaybackHistoryRecordEntity)
 
@@ -252,6 +260,14 @@ fun createMemoryPlaybackHistoryDao(): PlaybackHistoryDao {
 
         override suspend fun getActiveRecords(): List<PlaybackHistoryRecordEntity> {
             return recordsStore.value.filter { it.deletedAtMillis == null }
+        }
+
+        override suspend fun countAllRecords(): Int {
+            return recordsStore.value.size
+        }
+
+        override suspend fun getEarliestUpdatedAtMillis(): Long? {
+            return recordsStore.value.map { it.updatedAtMillis }.filter { it > 0 }.minOrNull()
         }
 
         override suspend fun upsertRecord(record: PlaybackHistoryRecordEntity) {

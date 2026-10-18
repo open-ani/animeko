@@ -11,10 +11,35 @@ package me.him188.ani.app.domain.mediasource
 
 import io.ktor.http.URLBuilder
 import io.ktor.http.appendPathSegments
+import me.him188.ani.utils.logging.Logger
+import me.him188.ani.utils.logging.warn
+import me.him188.ani.utils.platform.Platform
+import me.him188.ani.utils.platform.currentPlatform
 
 object MediaSourceEngineHelpers {
     fun encodeUrlSegment(value: String) =
         URLBuilder().appendPathSegments(value).encodedPathSegments.first()
+
+    /**
+     * 配置声明了只支持某些播放器 ([onlySupportsPlayers], 值为 `mpv`, `vlc`, `exoplayer`, `avkit`) 时,
+     * 当前平台的播放器是否在其中. 为空表示不限制. 不在则记录日志, 自动匹配不发起任何请求.
+     */
+    fun isSupportedByPlatformPlayer(onlySupportsPlayers: List<String>, sourceName: String, logger: Logger): Boolean {
+        if (onlySupportsPlayers.isEmpty()) return true
+        val currentPlayerNames = when (currentPlatform()) {
+            // 桌面端已迁移至 mpv, 但许多现有订阅仍声明 "vlc", 暂时保持兼容
+            is Platform.Desktop -> listOf("mpv", "vlc")
+            is Platform.Android -> listOf("exoplayer")
+            Platform.Ios -> listOf("avkit")
+        }
+        if (currentPlayerNames.any { it in onlySupportsPlayers }) return true
+        logger.warn {
+            val supports = onlySupportsPlayers.joinToString(prefix = "[", postfix = "]")
+            "MediaSource '$sourceName' is not supported by the platform player. " +
+                    "Declared supported players: $supports, current players: $currentPlayerNames"
+        }
+        return false
+    }
 
     fun getSearchKeyword(subjectName: String, removeSpecial: Boolean, useOnlyFirstWord: Boolean): String {
         val finalName = if (removeSpecial) {

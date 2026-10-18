@@ -12,6 +12,9 @@ package me.him188.ani.tv.ui.schedule
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.recordEvent
 import org.koin.core.Koin
 
 sealed interface TvScheduleIntent {
@@ -26,7 +29,13 @@ class TvScheduleViewModel(koin: Koin) : ScheduleViewModel(koin) {
     fun onIntent(intent: TvScheduleIntent) {
         when (intent) {
             TvScheduleIntent.Refresh -> refresh()
-            is TvScheduleIntent.OpenSubject -> navigation.emit(TvNavigationEvent.Subject(intent.subjectId))
+            is TvScheduleIntent.OpenSubject -> {
+                Analytics.recordEvent(SubjectEnter) {
+                    put("source", "schedule")
+                    put("subject_id", intent.subjectId)
+                }
+                navigation.emit(TvNavigationEvent.Subject(intent.subjectId))
+            }
         }
     }
 }

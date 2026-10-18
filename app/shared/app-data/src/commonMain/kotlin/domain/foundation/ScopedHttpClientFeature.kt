@@ -18,6 +18,7 @@ import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.plugins.SendCountExceedException
 import io.ktor.client.plugins.Sender
+import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerTokens
 import io.ktor.client.plugins.auth.providers.bearer
@@ -202,6 +203,44 @@ val DistributionChannelFeature = ScopedHttpClientFeatureKey<DistributionChannelP
 
 class DistributionChannelFeatureHandler(defaultProvider: () -> String) :
     AbstractDistributionChannelHandler(DistributionChannelFeature, defaultProvider)
+
+// endregion
+
+// region AniInstallIdFeature
+/**
+ * 在发往 Ani 服务器的请求上附加本机安装 ID ([AniInstallIdFeatureHandler.HEADER_INSTALL_ID]).
+ * 只应对访问 Ani 服务器的 client 启用.
+ */
+val AniInstallIdFeature = ScopedHttpClientFeatureKey<Boolean>("AniInstallId")
+
+/**
+ * 实现 [AniInstallIdFeature]. 只给 host 为 [ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST] 的请求加 header,
+ * 即使启用了此特性的 client 被用来请求其他网站, 安装 ID 也不会发出去.
+ *
+ * @param installId 当前的安装 ID. 每个请求都会调用, 必须不阻塞; 返回 `null` 时不加 header.
+ */
+class AniInstallIdFeatureHandler(
+    private val installId: () -> String?,
+) : ScopedHttpClientFeatureHandler<Boolean>(AniInstallIdFeature) {
+    internal val plugin = createClientPlugin("AniInstallId") {
+        onRequest { request, _ ->
+            // ServerListFeature 在发送阶段才把 MAGIC_ANI_SERVER 替换成真实地址, 这里看到的还是 MAGIC host
+            if (!request.url.host.equals(ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST, ignoreCase = true)) {
+                return@onRequest
+            }
+            val id = installId() ?: return@onRequest
+            request.headers.appendIfNameAbsent(HEADER_INSTALL_ID, id)
+        }
+    }
+
+    override fun applyToConfig(config: HttpClientConfig<*>, value: Boolean) {
+        if (value) config.install(plugin)
+    }
+
+    companion object {
+        const val HEADER_INSTALL_ID = "X-Ani-Install-Id"
+    }
+}
 
 // endregion
 

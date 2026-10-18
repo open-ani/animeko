@@ -22,6 +22,12 @@
 #   5. A maintainer comments `@openanibot ...` on an issue -> the agent responds (answers, or
 #      implements + opens a PR), resuming the issue's Codex session when one exists.
 #      (Commit comments can't trigger: GitHub Actions no longer supports the commit_comment event.)
+#   6. A maintainer requests a review from openanibot on a PR -> the agent tests the PR as a QA
+#      engineer (module tests, Android emulator, packaged macOS desktop app) and submits the test
+#      report with screenshots as a PR review (approve / request changes / comment). It does not
+#      review code and never pushes. Re-requesting the review repeats the full test on the current
+#      head; a request made while a test is running cancels that test. GitHub cannot request a
+#      review from a PR's own author, so PRs opened by openanibot cannot use this.
 #
 # For implementation and iteration, the agent does its own git + gh work
 # (branch/commit/push/PR). The workflow sets up the environment, gates access, reacts 👀 to the
@@ -39,7 +45,9 @@
 # never add `ready-for-dev`. Full agent runs remain gated to write/maintain/admin members because
 # they need unrestricted system access for MCP and UI verification. PRs authored by users without
 # write access to this repository are pinned to the head commit captured when feedback triggers the
-# workflow; PRs from write/maintain/admin authors may use the latest head when the runner starts.
+# workflow; PRs from write/maintain/admin authors may use the latest head when the runner starts. The QA
+# run builds and launches the PR's code on the runner under the same gate and pinning: the maintainer's
+# explicit review request is the trust decision, exactly like an `@openanibot` comment on a fork PR.
 
 name: Codex Agent
 
@@ -48,6 +56,10 @@ on:
     types: [opened, labeled]
   pull_request_review:
     types: [submitted]
+  # Review requests come in on pull_request_target so the base branch's workflow runs with the bot
+  # token for fork PRs too; the qa job only ever reads the PR head.
+  pull_request_target:
+    types: [review_requested]
   issue_comment:
     types: [created]
 
@@ -356,6 +368,8 @@ jobs:
       ${{ github.event.sender.type != 'Bot' && github.event.sender.login != 'openanibot' && (
             (github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'ready-for-dev') ||
             (github.event_name == 'pull_request_review' && (github.event.review.state == 'changes_requested' || github.event.review.state == 'commented')) ||
+            (github.event_name == 'pull_request_target' && github.event.action == 'review_requested'
+             && github.event.requested_reviewer.login == 'openanibot') ||
             (github.event_name == 'issue_comment'
              && (contains(github.event.comment.body, '@openanibot') || github.event.issue.user.login == 'openanibot'))
           ) }}
@@ -373,7 +387,7 @@ jobs:
           BOT_TOKEN: ${{ secrets.OPENANI_BOT_TOKEN }}
           ACTOR: ${{ github.event.sender.login }}
           REPO: ${{ github.repository }}
-          IS_PR: ${{ github.event_name == 'pull_request_review' || (github.event_name == 'issue_comment' && github.event.issue.pull_request != null) }}
+          IS_PR: ${{ github.event_name == 'pull_request_review' || github.event_name == 'pull_request_target' || (github.event_name == 'issue_comment' && github.event.issue.pull_request != null) }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
           EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -810,6 +824,298 @@ jobs:
           NSID=$(basename "${SESS:-none}" .jsonl | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1 || true)
           [ -n "${NSID:-}" ] && echo "$NSID" > "$STORE/$KEY.session"
           exit "$CODEX_EXIT"
+
+  # ---------------------------------------------------------------------------
+  # Review requested from `openanibot` on a PR  ->  the agent tests the PR as a
+  # QA engineer and submits the test report as a PR review (approve / request
+  # changes / comment). Not a code review: it judges behaviour, not code, and it
+  # never pushes. Every request — a re-request included — is a fresh full test
+  # of the current head in a new Codex session, so each verdict rests only on
+  # evidence gathered in that run.
+  # ---------------------------------------------------------------------------
+  qa:
+    needs: authorize
+    if: >-
+      ${{ needs.authorize.outputs.authorized == 'true'
+          && github.event_name == 'pull_request_target'
+          && github.event.action == 'review_requested' }}
+    runs-on: [self-hosted, macOS, ARM64]
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    # A report on a superseded head is noise: a new request cancels the active test and starts
+    # over on the current head. Testing never pushes, so cancelling loses nothing.
+    concurrency:
+      group: codex-agent-qa-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    env:
+      GH_TOKEN: ${{ secrets.OPENANI_BOT_TOKEN }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
+      REQUESTER: ${{ github.event.sender.login }}
+      TRIGGER_HEAD_SHA: ${{ needs.authorize.outputs.trigger_head_sha }}
+      TRIGGER_PR_AUTHOR: ${{ needs.authorize.outputs.pr_author }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      # The agent pastes this verbatim at the end of the report; the last step looks for it to
+      # confirm that a review for this very run was submitted.
+      QA_MARKER: '<!-- openanibot:qa-report run=${{ github.run_id }}.${{ github.run_attempt }} -->'
+    steps:
+      - name: Set up tool PATH
+        run: |
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "/opt/homebrew/bin" >> "$GITHUB_PATH"
+          mkdir -p "$RUNNER_TEMP/ui-shots"
+          echo "ANI_UI_OUT_DIR=$RUNNER_TEMP/ui-shots" >> "$GITHUB_ENV"  # skills write screenshots here
+
+      - name: Preflight
+        run: |
+          set -euo pipefail
+          command -v codex >/dev/null || { echo "::error::codex not on PATH"; exit 1; }
+          command -v gh    >/dev/null || { echo "::error::gh not on PATH"; exit 1; }
+          command -v jq    >/dev/null || { echo "::error::jq not on PATH"; exit 1; }
+          test -f "${CODEX_HOME:-$HOME/.codex}/auth.json" || { echo "::error::codex not logged in"; exit 1; }
+          test -n "${GH_TOKEN:-}" || { echo "::error::OPENANI_BOT_TOKEN is not configured"; exit 1; }
+          BOT_LOGIN=$(gh api user --jq .login)
+          test "$(printf '%s' "$BOT_LOGIN" | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "$GIT_NAME" | tr '[:upper:]' '[:lower:]')" || {
+            echo "::error::OPENANI_BOT_TOKEN authenticates as $BOT_LOGIN, expected $GIT_NAME"
+            exit 1
+          }
+          echo "codex $(codex --version) | $(gh --version | head -1) | GitHub $BOT_LOGIN"
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.OPENANI_BOT_TOKEN }}
+          persist-credentials: false
+          submodules: false
+          fetch-depth: 0
+
+      - name: Configure git identity and disable pushes
+        run: |
+          set -euo pipefail
+          git config user.name  "$GIT_NAME"
+          git config user.email "$GIT_EMAIL"
+          # The self-hosted workspace is reused and checkout keeps extra remote config; drop what fork-PR runs leave.
+          git remote remove fork 2>/dev/null || true
+          # QA only reads the PR: nothing may be pushed anywhere, whatever the agent decides.
+          git remote set-url --push origin "no-push://qa-pr-$PR_NUMBER"
+
+      - name: Resolve & check out PR head
+        id: pr
+        run: |
+          set -euo pipefail
+          PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json author,headRefName,headRefOid,baseRefName)
+          PR_AUTHOR=$(jq -r '.author.login' <<< "$PR_JSON")
+          HEAD_REF=$(jq -r '.headRefName' <<< "$PR_JSON")
+          BASE_REF=$(jq -r '.baseRefName' <<< "$PR_JSON")
+          LIVE_HEAD_SHA=$(jq -r '.headRefOid' <<< "$PR_JSON")
+          test "$(printf '%s' "$PR_AUTHOR" | tr '[:upper:]' '[:lower:]')" = \
+               "$(printf '%s' "$TRIGGER_PR_AUTHOR" | tr '[:upper:]' '[:lower:]')" || {
+            echo "::error::PR author changed from $TRIGGER_PR_AUTHOR to $PR_AUTHOR"
+            exit 1
+          }
+          test -n "$HEAD_REF" && test "$HEAD_REF" != "null" || {
+            echo "::error::PR #$PR_NUMBER has no head branch"
+            exit 1
+          }
+          [[ "$LIVE_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::PR #$PR_NUMBER has invalid current head SHA: $LIVE_HEAD_SHA"
+            exit 1
+          }
+          [[ "$TRIGGER_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::PR #$PR_NUMBER has invalid trigger head SHA: $TRIGGER_HEAD_SHA"
+            exit 1
+          }
+
+          # Same policy as the iterate job: code from authors without write access runs only at the
+          # commit the maintainer saw when requesting the review.
+          AUTHOR_PERMISSION=$(gh api \
+            "repos/$REPO/collaborators/$PR_AUTHOR/permission" \
+            --jq '.permission' 2>/dev/null || echo none)
+          case "$AUTHOR_PERMISSION" in
+            admin|maintain|write)
+              HEAD_SHA="$LIVE_HEAD_SHA"
+              CHECKOUT_POLICY=latest
+              ;;
+            *)
+              HEAD_SHA="$TRIGGER_HEAD_SHA"
+              CHECKOUT_POLICY=pinned
+              ;;
+          esac
+          echo "PR author=$PR_AUTHOR permission=$AUTHOR_PERMISSION policy=$CHECKOUT_POLICY"
+          echo "trigger head=$TRIGGER_HEAD_SHA current head=$LIVE_HEAD_SHA checkout head=$HEAD_SHA"
+
+          gh auth setup-git
+          # Fork heads are reachable from the base repository through refs/pull/*, so fetching by SHA
+          # works for cross-repository PRs too. Detached HEAD: QA needs no branch and never pushes.
+          git fetch --no-tags origin "$HEAD_SHA"
+          git checkout --detach "$HEAD_SHA"
+          CHECKED_OUT_SHA=$(git rev-parse HEAD)
+          test "$CHECKED_OUT_SHA" = "$HEAD_SHA" || {
+            echo "::error::checked out $CHECKED_OUT_SHA, expected PR head $HEAD_SHA"
+            exit 1
+          }
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
+          {
+            echo "head_ref=$HEAD_REF"
+            echo "base_ref=$BASE_REF"
+            echo "head_sha=$HEAD_SHA"
+            echo "live_head_sha=$LIVE_HEAD_SHA"
+            echo "checkout_policy=$CHECKOUT_POLICY"
+            echo "pr_author=$PR_AUTHOR"
+            echo "author_permission=$AUTHOR_PERMISSION"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: React 👀 to the PR
+        run: |
+          gh api -X POST "repos/$REPO/issues/$PR_NUMBER/reactions" -f content=eyes >/dev/null || true
+
+      - name: Build prompt
+        env:
+          HEAD_REF: ${{ steps.pr.outputs.head_ref }}
+          BASE_REF: ${{ steps.pr.outputs.base_ref }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          LIVE_HEAD_SHA: ${{ steps.pr.outputs.live_head_sha }}
+          CHECKOUT_POLICY: ${{ steps.pr.outputs.checkout_policy }}
+          PR_AUTHOR: ${{ steps.pr.outputs.pr_author }}
+          AUTHOR_PERMISSION: ${{ steps.pr.outputs.author_permission }}
+        run: |
+          set -euo pipefail
+          {
+            echo "You are the QA engineer for this pull request in the Animeko repo (Kotlin Multiplatform / Compose Multiplatform)."
+            echo "@$REQUESTER requested your review. This is NOT a code review: you do not judge code style, naming, architecture,"
+            echo "or implementation choices, and you leave no inline comments on the diff. Treat the PR as a change delivered to QA:"
+            echo "learn what it claims to do, test that behaviour the way a user would, and report what you observed."
+            echo "  PR:          $PR_URL   (#$PR_NUMBER, $HEAD_REF -> $BASE_REF)"
+            echo "  Under test:  commit $HEAD_SHA, already checked out (detached HEAD) in the current directory."
+            if [ "$CHECKOUT_POLICY" = "pinned" ]; then
+              echo "The PR author $PR_AUTHOR does not have write access to $REPO, so the checkout is pinned to the commit the"
+              echo "maintainer saw when requesting the review. The current PR head is $LIVE_HEAD_SHA; do not fetch, check out,"
+              echo "or execute a newer commit during this run, and name the tested commit in the report."
+            else
+              echo "The PR author $PR_AUTHOR has $AUTHOR_PERMISSION access to $REPO; this is the latest PR head available when the runner started."
+            fi
+            echo
+            echo "Read the PR yourself: gh pr view $PR_NUMBER --repo $REPO --comments ; gh pr diff $PR_NUMBER --repo $REPO ;"
+            echo "gh issue view <n> --repo $REPO for linked issues. The PR description's own verification claims and screenshots"
+            echo "are claims to reproduce, not evidence. Honour testing instructions addressed to you in the PR description or"
+            echo "comments (areas to focus on, scenarios to cover)."
+            echo "Your earlier test reports on this PR are reviews by $GIT_NAME whose body contains '<!-- openanibot:qa-report'."
+            echo "If any exist this is a re-test: read them, re-verify every defect you reported, and still run the full plan"
+            echo "again. Never carry a conclusion over from an earlier run; every statement in the new report rests on evidence"
+            echo "gathered in this run."
+            echo
+            echo "IMPORTANT: Do every GitHub action (reads, the review) with the 'gh' CLI only."
+            echo "Do NOT use any GitHub connector / MCP integration — 'gh' authenticates as the CI bot, a connector would act under a personal account."
+            echo "GH_TOKEN is set from the OPENANI_BOT_TOKEN repository secret. Use it; do not run 'gh auth login' or replace it."
+            echo "You never modify the PR: no commits, no pushes (origin has no push URL), no branches, tags, or refs, no edits to the"
+            echo "PR title/body/labels, no closing or merging. Local, uncommitted edits that only serve testing (pointing the build at"
+            echo "a local server, a temporary log line) are fine; mention them in the report when they could affect a result."
+            echo
+            echo "How to test (follow AGENTS.md and the repo skills in .agents/skills — they are auto-loaded; actually run them):"
+            echo "1. Plan. From the title, body, diff, and linked issues write down: what the PR claims (features, fixes), the user"
+            echo "   journeys it touches, the platforms it affects, and the adjacent behaviour that could regress. Test the PR's own"
+            echo "   claims first, then regressions nearby. Do not test unrelated parts of the app."
+            echo "2. Build the affected targets. A build or compile failure caused by the PR is a defect; one caused by the runner"
+            echo "   environment is not — tell them apart and say which it was."
+            echo "3. Run the existing automated tests of the affected modules (unit tests, runAniComposeUiTest UI tests, Android"
+            echo "   device tests when relevant). Do not run the whole repository's test suite unless the change is cross-cutting."
+            echo "   Report what ran and the outcome."
+            echo "4. Test at runtime as a user. You are expected to launch the real app: android-ui-verify starts the emulator,"
+            echo "   installs the debug build, and taps/swipes/types; desktop-ui-verify builds the packaged macOS app and drives its"
+            echo "   window. Prefer runtime evidence over reading code. Cover the happy path the PR describes, the edge cases the"
+            echo "   change implies (empty states, errors, resize/rotation, restart persistence, repeated actions), and the"
+            echo "   neighbouring flows. Use screen recording + frame diff for transient glitches. Check logcat / app.log for"
+            echo "   exceptions during every scenario, not only when something looks wrong."
+            echo "   This runner offers the Android emulator and the macOS desktop app. Behaviour that only exists on other platforms"
+            echo "   (iOS, Windows, Linux, TV devices) or needs resources you lack (accounts, paid services) is reported as not"
+            echo "   tested with the reason — never guessed."
+            echo "5. For every defect: reproduce it, record exact steps, expected vs actual, a screenshot or recording frame, and the"
+            echo "   relevant log excerpt. When it is cheap, check whether the same thing happens on $BASE_REF so you can tell a"
+            echo "   regression from a pre-existing bug; otherwise say you did not check."
+            echo "Be thorough but finish: a complete report on the PR's core claims beats an unfinished exhaustive one."
+            echo
+            echo "Evidence: every verified scenario and every defect needs a screenshot (or an exported recording frame)."
+            echo "Upload them with the github-image-upload skill (the only allowed exception to the gh-only rule above) and embed the"
+            echo "returned https://github.com/user-attachments/... URLs next to the scenario or defect they prove. Never commit"
+            echo "screenshots or recordings, and never push branches or refs to host images. If the upload fails, embed no images,"
+            echo "describe the evidence in text, and say that the upload failed."
+            echo
+            echo "Report — the review body, written in the PR's primary language (the one its title and description use):"
+            echo "1. A title line and a one-paragraph verdict: tested commit (short SHA), platforms exercised, overall result."
+            echo "2. Scope: what the PR claims, which journeys and platforms you tested, and what you deliberately left out."
+            echo "3. Results table, one row per scenario: scenario | platform | result (✅ pass / ❌ fail / ⚠️ issue outside the PR's scope / ⏭️ not tested) | evidence."
+            echo "4. Defects, one numbered entry per ❌: steps, expected, actual, screenshot(s), log excerpt, regression vs pre-existing."
+            echo "5. Observations outside the PR's scope (⚠️), clearly separated so nobody mistakes them for blockers."
+            echo "6. Not tested and why; environment (emulator AVD and API level, macOS version, build variant, API server used)."
+            echo "7. The last line, verbatim, on its own line:"
+            echo "   $QA_MARKER"
+            echo
+            echo "Verdict:"
+            echo "  --approve          every in-scope scenario was tested with embedded screenshot evidence and no defect was found in the PR's scope."
+            echo "  --request-changes  you reproduced at least one defect within the PR's scope: a crash, wrong behaviour, a regression,"
+            echo "                     or a claim of the PR that does not hold. Speculation is not a defect."
+            echo "  --comment          anything else: you could not test enough (environment-caused build failure, platform not available,"
+            echo "                     screenshot upload failed), or you found only out-of-scope or pre-existing issues."
+            echo "Never approve from reading code, and never approve without embedded screenshots. Pre-existing bugs and out-of-scope"
+            echo "observations do not change the verdict; they belong in section 5."
+            echo
+            echo "Submit exactly one review and nothing else — no PR comments, no inline review comments, no reactions:"
+            echo "  gh pr review $PR_NUMBER --repo $REPO --approve|--request-changes|--comment --body-file <report.md>"
+            echo "Clean up afterwards (quit the desktop app; the emulator may stay up). Finish by printing a short summary."
+          } > "$RUNNER_TEMP/prompt.txt"
+
+      - name: Run Codex (fresh session)
+        run: |
+          set -uo pipefail
+          LOGDIR="$HOME/.codex-agent/logs"; mkdir -p "$LOGDIR"
+          LOG="$LOGDIR/qa-pr-${PR_NUMBER}-${GITHUB_RUN_ID:-0}-${GITHUB_RUN_ATTEMPT:-1}.log"
+          set +e
+          # A new session every time: the verdict must not inherit anything from the PR's implementation
+          # conversation or from an earlier test run. Codex output -> runner-local file, NOT the public
+          # Actions log (see implement job). No sandbox/approvals: required for MCP + driving the emulator.
+          codex exec \
+            --dangerously-bypass-approvals-and-sandbox \
+            --model gpt-6-astra \
+            -c 'model_reasoning_effort="high"' \
+            "$(cat "$RUNNER_TEMP/prompt.txt")" \
+            > "$LOG" 2>&1
+          CODEX_EXIT=$?
+          set -e
+          echo "codex finished (exit $CODEX_EXIT); output kept on the runner at $LOG"
+          exit "$CODEX_EXIT"
+
+      - name: Ensure the review was submitted
+        # Runs after a failed step too (a broken checkout or build must not leave the requester waiting
+        # in silence), but not after a cancel: a superseded run has nothing to report.
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          POSTED=$(gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/reviews?per_page=100" \
+            | jq -s 'add // []' \
+            | jq --arg bot "$GIT_NAME" --arg marker "$QA_MARKER" '
+                any(.[];
+                  ((.user.login | ascii_downcase) == ($bot | ascii_downcase))
+                  and .state != "PENDING"
+                  and ((.body // "") | contains($marker)))
+              ')
+          if [ "$POSTED" = "true" ]; then
+            echo "QA review for this run is on PR #$PR_NUMBER"
+            exit 0
+          fi
+          # A plain comment, not a review: the review request stays pending, so the PR keeps showing
+          # the test as outstanding, and re-requesting the review retries.
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file - <<EOF
+          QA 测试没有产出报告，这次运行已失败：$RUN_URL
+          请查看运行日志；修复后在 Reviewers 里重新请求 review 即可重新测试。
+
+          <!-- openanibot:qa-failed run=${GITHUB_RUN_ID}.${GITHUB_RUN_ATTEMPT} -->
+          EOF
+          echo "::error::Codex finished without submitting the QA review for this run"
+          exit 1
 
   # ---------------------------------------------------------------------------
   # `@openanibot` comment on a plain (non-PR) issue  ->  agent responds

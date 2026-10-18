@@ -11,8 +11,6 @@ package me.him188.ani.app.ui.download
 
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +23,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
+import me.him188.ani.app.data.models.danmaku.DanmakuTextConversionOverrides
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.player.EpisodeHistory
@@ -35,6 +34,7 @@ import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
@@ -47,11 +47,14 @@ import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.preference.WatchTogetherSettings
+import me.him188.ani.app.data.models.subject.SplitSeason
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.createTestSubjectCollection
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
+import me.him188.ani.app.data.repository.media.ManualBrowseMemory
+import me.him188.ani.app.data.repository.media.ManualBrowseMemoryRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.player.PlaybackHistoryPendingOp
 import me.him188.ani.app.data.repository.subject.CollectionsFilterQuery
@@ -99,6 +102,8 @@ import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 internal const val TEST_STORAGE_ID = "test-storage"
 
@@ -219,9 +224,6 @@ internal class FakeSubjectCollectionRepository : SubjectCollectionRepository() {
     override suspend fun setSubjectCollectionTypeOrDelete(subjectId: Int, type: UnifiedCollectionType?) =
         throw UnsupportedOperationException()
 
-    override suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>> =
-        throw UnsupportedOperationException()
-
     override suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>> =
         throw UnsupportedOperationException()
 
@@ -273,6 +275,8 @@ internal class FakeEpisodePlayHistoryRepository : EpisodePlayHistoryRepository {
 
     override suspend fun deletePendingOps(ids: Collection<Long>) = throw UnsupportedOperationException()
     override suspend fun getResumePositionMillisByEpisodeId(episodeId: Int): Long? = throw UnsupportedOperationException()
+    override suspend fun countAllRecords(): Int = throw UnsupportedOperationException()
+    override suspend fun getEarliestRecordTimeMillis(): Long? = throw UnsupportedOperationException()
 }
 
 /**
@@ -290,6 +294,7 @@ internal class FakeSettingsRepository : SettingsRepository {
     override val danmakuEnabled: Settings<Boolean> get() = error("Not used")
     override val danmakuConfig: Settings<DanmakuConfig> get() = error("Not used")
     override val danmakuFilterConfig: Settings<DanmakuFilterConfig> get() = error("Not used")
+    override val danmakuTextConversionOverrides: Settings<DanmakuTextConversionOverrides> get() = error("Not used")
     override val defaultMediaPreference: Settings<MediaPreference> get() = error("Not used")
     override val profileSettings: Settings<ProfileSettings> get() = error("Not used")
     override val proxySettings: Settings<ProxySettings> get() = error("Not used")
@@ -308,6 +313,7 @@ internal class FakeSettingsRepository : SettingsRepository {
     override val analyticsSettings: Settings<AnalyticsSettings> get() = error("Not used")
     override val debugSettings: Settings<DebugSettings> get() = error("Not used")
     override val watchTogetherSettings: Settings<WatchTogetherSettings> get() = error("Not used")
+    override val notificationSettings: Settings<NotificationSettings> get() = error("Not used")
 }
 
 /**
@@ -344,10 +350,11 @@ internal class FakeMediaFetcher : MediaFetcher {
 }
 
 /**
- * 只提供 [mediaFetcher] 的数据源管理器.
+ * 只提供 [mediaFetcher] 与 [instances] 的数据源管理器.
  */
 internal class FakeMediaSourceManager(val fetcher: FakeMediaFetcher = FakeMediaFetcher()) : MediaSourceManager {
-    override val allInstances: Flow<List<MediaSourceInstance>> = flowOf(emptyList())
+    val instances = MutableStateFlow<List<MediaSourceInstance>>(emptyList())
+    override val allInstances: Flow<List<MediaSourceInstance>> get() = instances
     override val allFactories: List<MediaSourceFactory> = emptyList()
     override val allFactoryIds: List<FactoryId> = emptyList()
     override val mediaFetcher: Flow<MediaFetcher> = flowOf(fetcher)
@@ -400,6 +407,20 @@ internal class FakeEpisodePreferencesRepository : EpisodePreferencesRepository {
 }
 
 /**
+ * 没有任何记忆的浏览记忆仓库; 下载不写浏览记忆, 写入即失败.
+ */
+internal class FakeManualBrowseMemoryRepository : ManualBrowseMemoryRepository {
+    override fun flow(subjectId: Int): Flow<ManualBrowseMemory?> = flowOf(null)
+    override suspend fun get(subjectId: Int): ManualBrowseMemory? = null
+    override suspend fun set(subjectId: Int, memory: ManualBrowseMemory) = error("Not used")
+    override suspend fun setIf(subjectId: Int, expected: ManualBrowseMemory, memory: ManualBrowseMemory): Boolean =
+        error("Not used")
+
+    override suspend fun remove(subjectId: Int) = error("Not used")
+    override suspend fun removeIf(subjectId: Int, expected: ManualBrowseMemory): Boolean = error("Not used")
+}
+
+/**
  * 把新下载直接放入 [storage]. [gate] 非空时先等待它完成; [failure] 非空时抛出它.
  */
 internal class FakeAddDownloadUseCase(private val storage: FakeDownloadStorage) : AddDownloadUseCase {
@@ -407,7 +428,13 @@ internal class FakeAddDownloadUseCase(private val storage: FakeDownloadStorage) 
     var gate: CompletableDeferred<Unit>? = null
     var failure: Throwable? = null
 
-    override suspend fun invoke(subject: SubjectInfo, episode: EpisodeInfo, media: Media, metadata: MediaCacheMetadata): MediaCache {
+    override suspend fun invoke(
+        subject: SubjectInfo,
+        episode: EpisodeInfo,
+        media: Media,
+        metadata: MediaCacheMetadata,
+        splitSeason: SplitSeason?,
+    ): MediaCache {
         gate?.await()
         failure?.let { throw it }
         val cache = testDownloadCache(episode.episodeId, subject.subjectId)

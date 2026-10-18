@@ -51,5 +51,6 @@ fun AnalyticsConfig.Companion.create(): AnalyticsConfig {
     return AnalyticsConfig(
         currentAniBuildConfig.versionName,
         currentAniBuildConfig.isDebug,
+        currentAniBuildConfig.distroChannel,
     )
 }
