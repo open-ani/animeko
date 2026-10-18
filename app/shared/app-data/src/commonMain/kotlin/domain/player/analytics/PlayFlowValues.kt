@@ -14,6 +14,7 @@ import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.selector.MatchMetadata.SubjectMatchKind
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.media.selector.SelectTrigger
+import me.him188.ani.app.domain.mediasource.web.normalizedSessionHost
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.isLocalCache
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -65,6 +66,38 @@ internal fun MediaSelectorSourceTiers.tierOf(media: Media): Long? {
  * 播放器错误在 `video_load_done.reason` 与 `play_error.reason` 里的取值, 如 `player_io`.
  */
 internal fun PlaybackException.toPlayFlowReason(): String = "player_" + code.name.lowercase()
+
+/**
+ * 数据源网址的主机名 (同 [normalizedSessionHost]: 小写, 去掉 `www.`), 作为 `source_failed.sources_*` 里的源标识;
+ * 没有网址或解析不出主机名时为 `null`.
+ */
+internal fun playFlowHost(websiteUrl: String?): String? {
+    if (websiteUrl.isNullOrBlank()) return null
+    // 没有协议的网址会被解析成相对路径 (主机名为 localhost)
+    val withScheme = if ("://" in websiteUrl) websiteUrl else "https://$websiteUrl"
+    return normalizedSessionHost(withScheme)?.takeIf { it != "localhost" }
+}
+
+/**
+ * 把 [tokens] 用逗号连接, 切成每段不超过 [maxLength] 字符的若干段. 单个超长的记号独占一段并被截断.
+ */
+internal fun packPlayFlowTokens(
+    tokens: List<String>,
+    maxLength: Int = PlayFlowRecorder.MAX_STRING_LENGTH,
+): List<String> {
+    val chunks = ArrayList<String>()
+    val current = StringBuilder()
+    for (token in tokens) {
+        if (current.isNotEmpty() && current.length + 1 + token.length > maxLength) {
+            chunks += current.toString()
+            current.clear()
+        }
+        if (current.isNotEmpty()) current.append(',')
+        current.append(token.take(maxLength))
+    }
+    if (current.isNotEmpty()) chunks += current.toString()
+    return chunks
+}
 
 /**
  * `video_load_done.engine` 取值: 由解析器类名与种子引擎推断.

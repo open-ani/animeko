@@ -124,7 +124,7 @@ class EpisodeFetchSelectPlayState(
     /**
      * 观察条目级查询会话, 记录每轮查询的逐源结果.
      */
-    private val fetchObserver = PlayFlowFetchObserver(playFlow, backgroundScope) { latestSourceTiers.value }
+    private val fetchObserver = PlayFlowFetchObserver(playFlow, backgroundScope)
 
     /**
      * 条目级查询会话, 各集共用: 切集只重建选择器, 不重新查询.

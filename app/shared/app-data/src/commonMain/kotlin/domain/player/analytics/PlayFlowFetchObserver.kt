@@ -21,24 +21,26 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.isDisabled
 import me.him188.ani.app.domain.media.fetch.isFinal
-import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.mediasource.web.BlockedException
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeMark
 
 /**
- * 观察播放页的条目级查询会话, 在每轮查询全部结束时为每个参与的数据源记录一条 `search_source_done`, 再记录一条 `search_done`.
+ * 观察播放页的条目级查询会话: 一轮查询结束 (所有源到达终态, 或用户提前离开) 时, 先把这一轮里失败、限流、需要验证码,
+ * 或成功但耗时达到 [slowThreshold] 的源汇总成一条 `source_failed` (每个源一个 `域名=结果` 记号), 再记录一条 `search_done`;
+ * 正常完成的源只计入 `search_done` 的 `count`, `media_count` 与 `cached_count`.
  *
  * 查询会话跨集共享, 因此本观察者是页级的, 事件归到记录时的当前剧集尝试 ([PlayFlowRecorder.currentEpisode]).
- * 一轮 (`round`) 从会话创建, 或上一轮结束后首次有源重启开始, 到所有源都到达终态结束; 每轮只记录这一轮里跑过的源.
+ * 一轮 (`round`) 从会话创建, 或上一轮结束后首次有源重启开始, 到所有源都到达终态结束; 每轮只统计这一轮里跑过的源.
  *
  * 同时为 `search_started` 事件提供每个会话在各次剧集尝试里首次出现时的类型 (新建 / 复用) 与复用时重试的源数, 见 [describeSearchStart].
  */
 class PlayFlowFetchObserver(
     private val recorder: PlayFlowRecorder,
     private val scope: CoroutineScope,
-    private val sourceTiers: () -> MediaSelectorSourceTiers?,
+    private val slowThreshold: Duration = DEFAULT_SLOW_THRESHOLD,
 ) {
     private val lock = SynchronizedObject()
     private val sessions = HashMap<MediaFetchSession, SessionTrack>()
@@ -97,19 +99,13 @@ class PlayFlowFetchObserver(
     }
 
     /**
-     * 停止观察 [track]; 它的查询还没全部结束时记一条 `search_done outcome=incomplete`.
+     * 停止观察 [track]; 它的查询还没全部结束时, 汇总本轮已出问题的源并记一条 `search_done outcome=incomplete`.
      */
     private fun finish(track: SessionTrack) {
         track.job?.cancel()
-        val incomplete = synchronized(lock) { track.sources.any { !it.state.isFinal } }
-        if (incomplete) {
-            recorder.record(PlayFlowStep.SEARCH_DONE, recorder.currentEpisode) {
-                put("outcome", "incomplete")
-                put("round", track.round)
-                put("count", track.sources.size)
-                put("duration_ms", track.roundStart.elapsedNow())
-            }
-        }
+        synchronized(lock) {
+            if (track.sources.any { !it.state.isFinal }) summarize(track, outcome = "incomplete") else null
+        }?.invoke()
     }
 
     /**
@@ -141,55 +137,62 @@ class PlayFlowFetchObserver(
     }
 
     /**
-     * 按各源的最新状态判断本轮是否结束. 终态直接跟着上一代的终态出现 (StateFlow 合并了中间状态) 时, 也能据此开新一轮并结束它.
+     * 按各源的最新状态更新本轮统计: 本代还没统计过且已到终态的源计入本轮, 出了问题的 ([SourceTrack.problem]) 记到本轮的问题清单;
+     * 所有源都到终态且本轮还没收尾时记录 `source_failed` (有问题的源时) 与 `search_done`. 上一轮结束后又有源在跑则先开新一轮.
+     * 终态直接跟着上一代的终态出现 (StateFlow 合并了中间状态) 时, 也能据此开新一轮并结束它.
+     *
      * 在锁内调用; 返回的记录动作在锁外执行.
      */
     private fun evaluate(track: SessionTrack): (() -> Unit)? {
-        val allFinal = track.sources.all { it.state.isFinal }
-        val pending = track.sources.filter { !it.state.isDisabled && it.generation != it.reportedGeneration }
-        if (track.roundClosed && pending.isNotEmpty()) {
+        val unreported = track.sources.filter { !it.state.isDisabled && it.generation != it.reportedGeneration }
+        if (track.round.closed && unreported.isNotEmpty()) {
             // 上一轮结束后又有源在跑: 开新一轮, 从最早重启的源算起
-            track.round++
-            track.roundStart = pending.mapNotNull { it.startedAt }.maxByOrNull { it.elapsedNow() } ?: recorder.markNow()
-            track.roundClosed = false
+            val start = unreported.mapNotNull { it.startedAt }.maxByOrNull { it.elapsedNow() } ?: recorder.markNow()
+            track.round = Round(track.round.number + 1, start)
         }
-        if (!allFinal || track.roundClosed) return null
-        return completeRound(track, pending)
+        val round = track.round
+        for (source in unreported) {
+            if (source.state !is MediaSourceFetchState.Completed) continue
+            source.reportedGeneration = source.generation
+            round.sourceCount++
+            if (source.result.searchStats.value?.isCacheOnly == true) round.cachedCount++
+            source.problem(slowThreshold)?.let { round.problems += it }
+        }
+        if (round.closed || !track.sources.all { it.state.isFinal }) return null
+        round.closed = true
+        return summarize(track, outcome = "complete")
     }
 
     /**
-     * 本轮结束: 收集需要记录的源. 在锁内计算, 锁外记录.
+     * 取本轮的统计快照, 返回记录 `source_failed` (有问题的源时, 装不下时按 `part` 分成多条) 与 `search_done` 的动作.
+     * 在锁内调用; 返回的动作在锁外执行.
      */
-    private fun completeRound(track: SessionTrack, pending: List<SourceTrack>): () -> Unit {
-        track.roundClosed = true
+    private fun summarize(track: SessionTrack, outcome: String): () -> Unit {
         val episode = recorder.currentEpisode
-        val tiers = sourceTiers()
-        for (source in pending) source.reportedGeneration = source.generation
         val round = track.round
-        val roundDuration = track.roundStart.elapsedNow()
-        val snapshots = pending.map { it.snapshot() }
-        val totalResults = track.sources.sumOf { it.resultCount }
+        val number = round.number
+        val sourceCount = round.sourceCount
+        val cachedCount = round.cachedCount
+        val mediaCount = track.sources.sumOf { it.resultCount }
+        val duration = round.start.elapsedNow()
+        // 失败类在前, 慢源在后
+        val problems = round.problems.sortedBy { it.outcome == SLOW_OUTCOME }
         return {
-            for (snapshot in snapshots) {
-                recorder.record(PlayFlowStep.SEARCH_SOURCE_DONE, episode) {
-                    put("media_source_id", snapshot.mediaSourceId)
-                    put("kind", snapshot.kind.toPlayFlowKind())
-                    put("outcome", snapshot.outcome)
-                    put("reason", snapshot.reason)
-                    put("count", snapshot.resultCount)
-                    put("tier", tiers?.get(snapshot.mediaSourceId)?.value?.toLong())
-                    put("restarts", snapshot.restarts)
-                    put("duration_ms", snapshot.duration)
-                    put("is_cached", snapshot.cacheHit)
-                    put("round", round)
+            packPlayFlowTokens(problems.map { it.token }).chunked(MAX_SOURCE_CHUNKS).forEachIndexed { partIndex, chunks ->
+                recorder.record(PlayFlowStep.SOURCE_FAILED, episode) {
+                    put("round", number)
+                    put("count", problems.size)
+                    put("part", partIndex + 1)
+                    chunks.forEachIndexed { index, chunk -> put("sources_${index + 1}", chunk) }
                 }
             }
             recorder.record(PlayFlowStep.SEARCH_DONE, episode) {
-                put("outcome", "complete")
-                put("round", round)
-                put("count", snapshots.size)
-                put("media_count", totalResults)
-                put("duration_ms", roundDuration)
+                put("outcome", outcome)
+                put("round", number)
+                put("count", sourceCount)
+                put("media_count", mediaCount)
+                put("cached_count", cachedCount)
+                put("duration_ms", duration)
             }
         }
     }
@@ -205,14 +208,29 @@ class PlayFlowFetchObserver(
 
     private class SessionTrack(
         val session: MediaFetchSession,
-        var roundStart: TimeMark,
+        start: TimeMark,
     ) {
         var job: Job? = null
         val sources = ArrayList<SourceTrack>()
         val reportedAttempts = HashSet<Long>()
         var pendingRetried = 0
-        var round = 1
-        var roundClosed = false
+        var round = Round(1, start)
+    }
+
+    /**
+     * 一轮查询的统计: 从 [start] 到所有源到达终态 ([closed]).
+     */
+    private class Round(val number: Int, val start: TimeMark) {
+        var closed = false
+
+        /** 已到终态的源数. */
+        var sourceCount = 0
+
+        /** 完全由搜索缓存满足的源数. */
+        var cachedCount = 0
+
+        /** 出了问题的源, 按到达终态的顺序. */
+        val problems = ArrayList<SourceProblem>()
     }
 
     private class SourceTrack(
@@ -255,28 +273,22 @@ class PlayFlowFetchObserver(
             }
         }
 
-        fun snapshot(): SourceSnapshot {
+        /**
+         * 这一代出的问题: 失败 (结果为异常简名或阻断原因)、限流、需要验证码, 或成功但耗时达到 [slowThreshold] (结果为 [SLOW_OUTCOME]).
+         * 没有问题, 或被取消 (不是源本身的问题) 时为 `null`.
+         */
+        fun problem(slowThreshold: Duration): SourceProblem? {
             val state = state
-            val (outcome, reason) = when (state) {
-                is MediaSourceFetchState.Succeed -> "ok" to null
-                is MediaSourceFetchState.Failed -> "failed" to state.cause.reasonName()
-                is MediaSourceFetchState.CaptchaRequired -> "captcha_required" to null
-                is MediaSourceFetchState.RateLimited -> "rate_limited" to null
-                is MediaSourceFetchState.Abandoned -> "cancelled" to null
-                MediaSourceFetchState.Idle -> "not_started" to null
-                MediaSourceFetchState.Working -> "working" to null
-                MediaSourceFetchState.Disabled -> "disabled" to null
+            val outcome = when (state) {
+                is MediaSourceFetchState.Succeed -> if (duration?.let { it >= slowThreshold } == true) SLOW_OUTCOME else return null
+                is MediaSourceFetchState.Failed -> state.cause.reasonName()
+                is MediaSourceFetchState.CaptchaRequired -> "captcha_required"
+                is MediaSourceFetchState.RateLimited -> "rate_limited"
+                is MediaSourceFetchState.Abandoned, MediaSourceFetchState.Idle, MediaSourceFetchState.Working, MediaSourceFetchState.Disabled -> return null
             }
-            return SourceSnapshot(
-                mediaSourceId = result.mediaSourceId,
-                kind = result.kind,
-                outcome = outcome,
-                reason = reason,
-                resultCount = resultCount,
-                restarts = generation,
-                duration = duration,
-                cacheHit = result.searchStats.value?.isCacheOnly,
-            )
+            // 源的标识: 网址的主机名, 没有网址时是 mediaSourceId
+            val host = playFlowHost(result.sourceInfo.websiteUrl) ?: result.mediaSourceId
+            return SourceProblem(host, outcome)
         }
 
         private fun Throwable.reasonName(): String = when (this) {
@@ -285,14 +297,24 @@ class PlayFlowFetchObserver(
         }
     }
 
-    private class SourceSnapshot(
-        val mediaSourceId: String,
-        val kind: MediaSourceKind,
+    private class SourceProblem(
+        val host: String,
         val outcome: String,
-        val reason: String?,
-        val resultCount: Int,
-        val restarts: Int,
-        val duration: Duration?,
-        val cacheHit: Boolean?,
-    )
+    ) {
+        /** `source_failed.sources_*` 里的记号. */
+        val token: String get() = "$host=$outcome"
+    }
+
+    companion object {
+        /** 成功的源耗时达到这个值时也计入 `source_failed`, 结果为 [SLOW_OUTCOME]. */
+        val DEFAULT_SLOW_THRESHOLD: Duration = 10.seconds
+
+        /** 成功但慢的源在 `source_failed` 记号里的结果. */
+        const val SLOW_OUTCOME = "slow"
+
+        /**
+         * 一条 `source_failed` 最多装这么多段 `sources_N`: GA4 的属性上限减去公共属性与 `round` / `count` / `part`. 更多时分成多条.
+         */
+        val MAX_SOURCE_CHUNKS: Int = PlayFlowRecorder.MAX_PROPERTIES - PlayFlowRecorder.COMMON_KEYS.size - 3
+    }
 }

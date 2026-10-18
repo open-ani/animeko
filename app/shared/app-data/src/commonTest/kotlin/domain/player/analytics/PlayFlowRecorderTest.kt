@@ -49,6 +49,7 @@ class PlayFlowRecorderTest {
         }
 
         val event = events().single()
+        assertEquals(PlayFlowRecorder.COMMON_KEYS, event.keys.take(PlayFlowRecorder.COMMON_KEYS.size))
         assertEquals("enter", event["step"])
         assertEquals("sid", event["play_session_id"])
         assertEquals(1L, event["episode_attempt"])

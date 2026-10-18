@@ -87,7 +87,7 @@ class PlayFlowExtensionsTest : AbstractPlayerExtensionTest() {
     private fun step(step: PlayFlowStep) = analytics.stepsOf(step)
 
     @Test
-    fun `records enter, info, search, selection, load and playback`() = runTest {
+    fun `records enter info search selection load and playback`() = runTest {
         val case = createCase()
         val sourceA = case.suite.mediaSelectorTestBuilder.delayedMediaSource("a")
         val sourceB = case.suite.mediaSelectorTestBuilder.delayedMediaSource("b")
@@ -139,11 +139,8 @@ class PlayFlowExtensionsTest : AbstractPlayerExtensionTest() {
         assertEquals(1L, playing["is_first"])
         assertEquals(2_000L, playing["since_enter_ms"])
 
-        val sources = step(PlayFlowStep.SEARCH_SOURCE_DONE)
-        assertEquals(setOf("a", "b"), sources.map { it["media_source_id"] }.toSet())
-        assertTrue(sources.all { it["outcome"] == "ok" && it["round"] == 1L })
-        assertEquals(1L, sources.single { it["media_source_id"] == "a" }["count"])
-        assertEquals(1_000L, sources.single { it["media_source_id"] == "a" }["duration_ms"])
+        // 两个源都正常完成: 不单独记录, 只在 search_done 里汇总
+        assertTrue(step(PlayFlowStep.SOURCE_FAILED).isEmpty())
 
         val done = step(PlayFlowStep.SEARCH_DONE).single()
         assertEquals("complete", done["outcome"])
@@ -263,7 +260,7 @@ class PlayFlowExtensionsTest : AbstractPlayerExtensionTest() {
         val done = step(PlayFlowStep.SEARCH_DONE).single()
         assertEquals("incomplete", done["outcome"])
         assertEquals(3_000L, done["duration_ms"])
-        assertTrue(step(PlayFlowStep.SEARCH_SOURCE_DONE).isEmpty())
+        assertTrue(step(PlayFlowStep.SOURCE_FAILED).isEmpty())
         assertTrue(PlayFlowStep.SEARCH_STARTED.value in steps())
         case.scope.cancel()
     }

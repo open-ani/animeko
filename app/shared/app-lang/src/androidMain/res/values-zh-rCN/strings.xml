@@ -112,6 +112,23 @@
     <string name="settings_debug_dev_builds">CI 构建</string>
     <string name="settings_debug_dev_builds_install_commit">安装指定 commit、PR 或安装包</string>
     <string name="settings_debug_dev_builds_install_commit_description">列出 main 分支最近的 commits 及其 CI 构建状态，也可粘贴 commit、PR、artifact 链接或安装包地址，下载 CI 为当前平台构建的安装包并安装</string>
+
+    <string name="settings_debug_play_flow">播放流程</string>
+    <string name="settings_debug_play_flow_open">打开播放流程悬浮窗</string>
+    <string name="settings_debug_play_flow_open_description">悬浮窗实时显示播放加载的每一步，并保留本次运行内最近的播放会话供回看</string>
+    <string name="play_flow_debug_title">播放流程</string>
+    <string name="play_flow_debug_tab_live">实时</string>
+    <string name="play_flow_debug_tab_history">历史</string>
+    <string name="play_flow_debug_empty">还没有播放会话</string>
+    <string name="play_flow_debug_follow">跳到最新</string>
+    <string name="play_flow_debug_close">关闭</string>
+    <string name="play_flow_debug_back">返回</string>
+    <string name="play_flow_debug_session_summary">条目 %1$d · %2$d 条事件</string>
+    <string name="play_flow_debug_attempt">第 %1$d 次尝试 · 剧集 %2$d</string>
+
+    <string name="play_flow_debug_minimize">最小化</string>
+    <string name="play_flow_debug_restore">展开播放流程悬浮窗</string>
+    <string name="play_flow_debug_copy">复制为 JSON</string>
     <string name="settings_debug_dev_builds_unsupported_platform">CI 没有为当前平台生成可安装的安装包</string>
     <string name="settings_debug_dev_builds_token">GitHub Token</string>
     <string name="settings_debug_dev_builds_token_description">下载 GitHub Actions 产物需要 token。Fine-grained token 需要 Actions 读取权限，classic token 需要 public_repo 范围。查询列表不需要 token，但有速率限制。</string>

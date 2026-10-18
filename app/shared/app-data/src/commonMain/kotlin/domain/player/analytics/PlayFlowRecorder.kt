@@ -32,6 +32,7 @@ import kotlin.time.TimeSource
  * `seq` 在本页内严格递增, 是重放时唯一可靠的排序键; `t_ms` 是距进入播放页的毫秒数.
  *
  * [record] 不挂起, 任意线程可调. 事件数超过 [maxEvents] 时只再发一条 `step=truncated`, 防止异常循环刷爆配额.
+ * 发出的每条事件同时写入 [debugLog], 供调试悬浮窗显示.
  *
  * 事件清单与属性含义见 `docs/contributing/code/analytics-play-flow.md`.
  */
@@ -41,6 +42,7 @@ class PlayFlowRecorder(
     private val timeSource: TimeSource = TimeSource.Monotonic,
     val playSessionId: String = Uuid.randomString(),
     private val maxEvents: Int = DEFAULT_MAX_EVENTS,
+    private val debugLog: PlayFlowDebugLog? = PlayFlowDebugLog.Global,
 ) {
     private val start: TimeMark = timeSource.markNow()
     private val seq = atomic(0L)
@@ -78,12 +80,16 @@ class PlayFlowRecorder(
         val seq = seq.incrementAndGet()
         if (seq > maxEvents) {
             if (seq == maxEvents + 1L) {
-                analytics.recordEvent(AnalyticsEvent.PlayFlow, commonProperties(PlayFlowStep.TRUNCATED, episode, seq))
+                post(commonProperties(PlayFlowStep.TRUNCATED, episode, seq))
             }
             return
         }
-        val properties = PlayFlowProps(commonProperties(step, episode, seq)).apply(build).build()
+        post(PlayFlowProps(commonProperties(step, episode, seq)).apply(build).build())
+    }
+
+    private fun post(properties: Map<String, Any?>) {
         analytics.recordEvent(AnalyticsEvent.PlayFlow, properties)
+        debugLog?.record(playSessionId, subjectId, properties)
     }
 
     /**
@@ -115,6 +121,9 @@ class PlayFlowRecorder(
 
     companion object {
         const val DEFAULT_MAX_EVENTS = 400
+
+        /** 每条事件都带的公共属性, 顺序与 [commonProperties] 一致. */
+        val COMMON_KEYS: List<String> = listOf("step", "play_session_id", "episode_attempt", "seq", "t_ms", "subject_id", "episode_id")
 
         /**
          * GA4 单条事件的参数上限.
@@ -188,8 +197,8 @@ enum class PlayFlowStep(val value: String) {
     /** 已在播放中出错. */
     PLAY_ERROR("play_error"),
 
-    /** 查询全部结束时, 每个参与的数据源一条. */
-    SEARCH_SOURCE_DONE("search_source_done"),
+    /** 一轮查询结束时, 这一轮里失败、限流、需要验证码或成功但慢的源的汇总; 一条装不下时分成多条 (`part`). 正常完成的源只计入 `search_done`. */
+    SOURCE_FAILED("source_failed"),
 
     /** 查询全部结束, 或用户在结束前离开. */
     SEARCH_DONE("search_done"),

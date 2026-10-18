@@ -41,11 +41,18 @@
 | step | 时机 | 属性 |
 |---|---|---|
 | `search_started` | 本次尝试开始查找资源 | `kind`: `new` (新建查询) / `reused` (切集复用上一集的查询); `count` 参与的数据源数 (不含禁用与本地缓存源); `restarts` 复用时自动重试的失败源数 |
-| `search_source_done` | 一轮查询全部结束时, 本轮里跑过的每个源一条 | `media_source_id`; `kind`: `web` / `bt`; `outcome`: `ok` / `failed` / `captcha_required` / `rate_limited` / `cancelled` / `not_started`; `reason` (failed): 异常简名或阻断原因; `count` 返回的资源数; `tier` 数据源阶级; `restarts` 该源被重启的次数; `duration_ms` 开始到结束; `is_cached` 本代查询完全由搜索缓存满足; `round` |
-| `search_done` | 一轮查询全部结束, 或用户在结束前离开播放页 | `outcome`: `complete` / `incomplete`; `round`; `count` 本轮记录的源数; `media_count` 全部源返回的资源总数; `duration_ms` 本轮时长 |
+| `source_failed` | 一轮查询结束时 (紧接在 `search_done` 之前), 这一轮里有失败、限流、需要验证码, 或成功但耗时达到 10 秒的源 | `round`; `count` 本轮有问题的源数; `part` 从 1 起; `sources_1` … `sources_15`: 逗号分隔的 `域名=结果` 记号, 每段不超过 100 字符; 一条装不下时按 `part` 分成多条, 所有源都会记录 |
+| `search_done` | 一轮查询全部结束, 或用户在结束前离开播放页 | `outcome`: `complete` / `incomplete`; `round`; `count` 本轮到达终态的源数; `media_count` 全部源返回的资源总数; `cached_count` 本轮完全由搜索缓存满足的源数; `duration_ms` 本轮时长 |
+
+`source_failed` 的记号里, 域名是数据源网址的主机名 (去掉 `www.`), 没有网址的源用 `media_source_id`; 结果是失败的异常简名或阻断原因,
+`rate_limited`, `captcha_required`, 或 `slow` (成功但慢). 失败类记号排在前, 慢源在后. 查询时按 `(play_session_id, round, part)` 收齐各条, 把各段拼起来再按逗号拆:
+`SPLIT(CONCAT(sources_1, ',', sources_2, …), ',')`.
+
+正常完成的源不单独记录 (一次查询通常有几十个源, 逐源记录会占 play_flow 总量的七成以上), 只计入 `search_done` 的 `count`, `media_count` 与 `cached_count`;
+被取消的源不是源本身的问题, 也不记录. 慢阈值是 `PlayFlowFetchObserver.DEFAULT_SLOW_THRESHOLD`.
 
 查询会话是条目级的, 同一条目的各集共用. `round` 从会话创建起为 1; 一轮结束后再有源重启 (用户刷新、限流自动重试、切集重试失败的源) 开新一轮,
-新一轮只记录重启过的源. 切集复用已结束的会话时不重发逐源结果, 只有 `search_started kind=reused`.
+新一轮只统计重启过的源. 切集复用已结束的会话时不重发逐源结果, 只有 `search_started kind=reused`.
 
 ### 自动选源
 
@@ -112,13 +119,18 @@ ORDER BY seq;
 
 桌面端打开 `AnalyticsConfig.debugLogging` 时, 每条事件会以 `Posted event: play_flow` 打到日志, 可按 `seq` 人工核对.
 
+设置 → 调试 → 「打开播放流程悬浮窗」会在所有页面之上显示一个可拖动的悬浮窗 (`PlayFlowDebugFloatingWindow`):
+「实时」页以时间线显示当前播放会话的事件 (旧在上, 新在下, 停在底部时自动跟随), 「历史」页列出本次运行内最近的播放会话.
+数据来自 `PlayFlowDebugLog` (进程内, 最多保留 20 个会话, 不持久化), `PlayFlowRecorder` 发出的每条事件都会写入它.
+
 ## 代码位置
 
 - `domain/player/analytics/PlayFlowRecorder.kt`: 记录器、`PlayFlowEpisode`、`PlayFlowStep`、属性类型转换.
+- `domain/player/analytics/PlayFlowDebugLog.kt` + `app/shared/.../ui/subject/episode/analytics/PlayFlowDebugWindow.kt`: 调试悬浮窗及其数据.
 - `domain/player/analytics/EpisodeFlowExtension.kt`: `info_loaded`, `search_started`, `user_select`.
 - `domain/player/analytics/PlaybackFlowExtension.kt`: `playback_started`, `play_error`.
 - `domain/player/analytics/PlayFlowMediaLoadListener.kt` + `domain/episode/MediaLoadListener.kt`: `video_load_done`, 由 `PlayerSession.loadMedia` 回调.
-- `domain/player/analytics/PlayFlowFetchObserver.kt`: `search_source_done`, `search_done`; 搜索缓存命中来自 `MediaSourceFetchResult.searchStats`
+- `domain/player/analytics/PlayFlowFetchObserver.kt`: `source_failed`, `search_done`; 搜索缓存命中来自 `MediaSourceFetchResult.searchStats`
   (`domain/media/fetch/MediaSourceFetchTelemetry.kt`, 由 `keywordSearchChain` 报告).
 - `domain/player/extension/AutoSelectExtension.kt`: `auto_select_done`, 结果来自 `MediaAutoSelectOutcome` / `ReplayResult`.
 - `domain/player/extension/SwitchMediaOnPlayerErrorExtension.kt`: `auto_switch`, 结果来自 `PlayerLoadErrorHandling`.

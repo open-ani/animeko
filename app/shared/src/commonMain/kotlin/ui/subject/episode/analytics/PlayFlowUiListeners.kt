@@ -60,7 +60,7 @@ fun PlayFlowRecorder.recordUserAction(
     }
 }
 
-internal fun SolveOutcome.toPlayFlowOutcome(): String = when (this) {
+fun SolveOutcome.toPlayFlowOutcome(): String = when (this) {
     SolveOutcome.Solved -> "solved"
     is SolveOutcome.Failed -> "failed"
     SolveOutcome.Cancelled -> "cancelled"
