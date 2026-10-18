@@ -29,7 +29,6 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.unit.Density
@@ -57,10 +56,9 @@ class SearchPageWideLayoutTest {
         runSearchPageTest(widthDp = 840) {
             assertTrue(onNodeWithTag(SearchFilterSidePanelTestTags.Panel).exists())
             assertTrue(onNodeWithTag(SearchPageTestTags.LegacyFilterRow).doesNotExist())
-            onNodeWithTag(SearchPageTestTags.DateFilterRow).assertIsDisplayed()
-                .assert(hasAnyAncestor(hasTestTag(SearchFilterSidePanelTestTags.Panel)))
-            onNodeWithTag(SearchPageTestTags.YearFilter).assertIsDisplayed()
-            onNodeWithTag(SearchPageTestTags.SeasonFilter).onChild().assertIsNotEnabled()
+            onNodeWithTag(SearchFilterSidePanelTestTags.group(SearchFilterTimeGroupKey)).assertIsDisplayed()
+            assertTrue(onNodeWithTag(SearchTimeFilterTestTags.Content).doesNotExist())
+            assertTrue(onNodeWithTag(SearchPageTestTags.YearFilter).doesNotExist())
             for (chip in createUiTestState().searchFilterState.chips) {
                 assertTrue(onNodeWithTag(SearchFilterSidePanelTestTags.group(chip.groupKey)).exists())
                 assertFalse(
@@ -94,13 +92,17 @@ class SearchPageWideLayoutTest {
             widthDp = 1400,
             state = createUiTestState(
                 query = SubjectSearchQuery("test", year = 2025),
-            ).copy(seasons = listOf(AnimeSeasonId(2026, AnimeSeason.SPRING))),
+            ).copy(
+                seasons = listOf(AnimeSeasonId(2026, AnimeSeason.SPRING)),
+                expandedFilterGroups = setOf(SearchFilterTimeGroupKey),
+            ),
             onIntent = { intents += it },
         ) {
-            onNodeWithTag(SearchPageTestTags.YearFilter).onChild().performClick()
-            onNodeWithText("2026").performClick()
-            onNodeWithTag(SearchPageTestTags.SeasonFilter).onChild().assertIsEnabled().performClick()
-            onNodeWithText("Q2").performClick()
+            onNodeWithTag(SearchTimeFilterTestTags.YearSelector)
+                .assert(hasAnyAncestor(hasTestTag(SearchFilterSidePanelTestTags.Panel)))
+                .performClick()
+            onNodeWithTag(SearchTimeFilterTestTags.year(2026)).performClick()
+            onNodeWithTag(SearchTimeFilterTestTags.season(AnimeSeason.SPRING)).assertIsEnabled().performClick()
             runOnIdle {
                 assertEquals(
                     listOf(
@@ -121,7 +123,7 @@ class SearchPageWideLayoutTest {
         ) {
             assertTrue(onNodeWithTag(SearchFilterSidePanelTestTags.Panel).doesNotExist())
             assertTrue(onNodeWithTag(SearchPageTestTags.LegacyFilterRow).doesNotExist())
-            assertTrue(onNodeWithTag(SearchPageTestTags.DateFilterRow).doesNotExist())
+            assertTrue(onNodeWithTag(SearchTimeFilterTestTags.Content).doesNotExist())
         }
     }
 
@@ -133,7 +135,7 @@ class SearchPageWideLayoutTest {
         var showPage by mutableStateOf(true)
         runSearchPageTest(
             widthDp = 1400,
-            state = state.copy(expandedFilterGroups = setOf(expandedGroup.groupKey)),
+            state = state.copy(expandedFilterGroups = setOf(expandedGroup.groupKey, SearchFilterTimeGroupKey)),
             showPage = { showPage },
         ) {
             val expandedValue = onNodeWithTag(
@@ -144,11 +146,13 @@ class SearchPageWideLayoutTest {
             )
             assertTrue(expandedValue.exists())
             assertFalse(collapsedValue.exists())
+            onNodeWithTag(SearchTimeFilterTestTags.YearSelector).assertIsDisplayed()
             runOnIdle { showPage = false }
             assertTrue(onNodeWithTag(SearchFilterSidePanelTestTags.Panel).doesNotExist())
             runOnIdle { showPage = true }
             assertTrue(expandedValue.exists())
             assertFalse(collapsedValue.exists())
+            onNodeWithTag(SearchTimeFilterTestTags.YearSelector).assertIsDisplayed()
         }
     }
 
@@ -156,7 +160,7 @@ class SearchPageWideLayoutTest {
     fun `wide desktop group headers report expansion intents`() {
         val intents = mutableListOf<SearchPageIntent>()
         runSearchPageTest(widthDp = 1400, onIntent = { intents += it }) {
-            val groupKey = createUiTestState().searchFilterState.chips.first().groupKey
+            val groupKey = SearchFilterTimeGroupKey
             onNodeWithTag(SearchFilterSidePanelTestTags.group(groupKey)).performClick()
             runOnIdle {
                 assertEquals(listOf<SearchPageIntent>(SearchPageIntent.ToggleFilterGroup(groupKey)), intents)

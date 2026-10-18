@@ -79,7 +79,7 @@ internal fun SearchFilterSidePanel(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (leadingContent != null) {
-                    item(key = "date-filters") {
+                    item(key = SearchFilterTimeGroupKey) {
                         leadingContent()
                     }
                 }
@@ -115,7 +115,52 @@ private fun SearchFilterGroup(
     onCheckedChange: (value: String) -> Unit,
     onClear: () -> Unit,
 ) {
-    val groupLabel = searchFilterGroupLabel(state)
+    SearchFilterGroupSection(
+        label = searchFilterGroupLabel(state),
+        groupKey = state.groupKey,
+        expanded = expanded,
+        onToggleExpanded = onToggleExpanded,
+    ) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            val allText = stringResource(Lang.exploration_search_filter_all)
+            SearchFilterSidePanelChip(
+                selected = !state.hasSelection,
+                onClick = {
+                    if (state.hasSelection) {
+                        onClear()
+                    }
+                },
+                label = allText,
+                modifier = Modifier.testTag(SearchFilterSidePanelTestTags.all(state.groupKey)),
+            )
+
+            for (value in state.values) {
+                val selected = value in state.selected
+                SearchFilterSidePanelChip(
+                    selected = selected,
+                    onClick = { onCheckedChange(value) },
+                    label = value,
+                    modifier = Modifier.testTag(
+                        SearchFilterSidePanelTestTags.value(state.groupKey, value),
+                    ),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun SearchFilterGroupSection(
+    label: String,
+    groupKey: String,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
+    content: @Composable () -> Unit,
+) {
     val expandText = stringResource(Lang.subject_episode_expand)
     val collapseText = stringResource(Lang.subject_episode_collapse)
 
@@ -124,7 +169,7 @@ private fun SearchFilterGroup(
             onClick = onToggleExpanded,
             modifier = Modifier
                 .fillMaxWidth()
-                .testTag(SearchFilterSidePanelTestTags.group(state.groupKey)),
+                .testTag(SearchFilterSidePanelTestTags.group(groupKey)),
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
@@ -133,7 +178,7 @@ private fun SearchFilterGroup(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = groupLabel,
+                    text = label,
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
@@ -151,48 +196,22 @@ private fun SearchFilterGroup(
         }
 
         AnimatedVisibility(visible = expanded) {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                val allText = stringResource(Lang.exploration_search_filter_all)
-                SearchFilterSidePanelChip(
-                    selected = !state.hasSelection,
-                    onClick = {
-                        if (state.hasSelection) {
-                            onClear()
-                        }
-                    },
-                    label = allText,
-                    modifier = Modifier.testTag(SearchFilterSidePanelTestTags.all(state.groupKey)),
-                )
-
-                for (value in state.values) {
-                    val selected = value in state.selected
-                    SearchFilterSidePanelChip(
-                        selected = selected,
-                        onClick = { onCheckedChange(value) },
-                        label = value,
-                        modifier = Modifier.testTag(
-                            SearchFilterSidePanelTestTags.value(state.groupKey, value),
-                        ),
-                    )
-                }
-            }
+            content()
         }
     }
 }
 
 @Composable
-private fun SearchFilterSidePanelChip(
+internal fun SearchFilterSidePanelChip(
     selected: Boolean,
     onClick: () -> Unit,
     label: String,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val hovered by interactionSource.collectIsHoveredAsState()
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val hovered = enabled && isHovered
     val colors = MaterialTheme.colorScheme
     val containerColor = when {
         selected && hovered -> colors.primaryContainer.copy(alpha = 0.78f)
@@ -201,6 +220,7 @@ private fun SearchFilterSidePanelChip(
         else -> Color.Transparent
     }
     val contentColor = when {
+        !enabled -> colors.onSurface.copy(alpha = 0.38f)
         selected || hovered -> colors.onPrimaryContainer
         else -> colors.onSurfaceVariant
     }
@@ -212,9 +232,10 @@ private fun SearchFilterSidePanelChip(
 
     Surface(
         modifier = modifier
-            .hoverable(interactionSource)
+            .hoverable(interactionSource, enabled = enabled)
             .selectable(
                 selected = selected,
+                enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
                 role = Role.Button,

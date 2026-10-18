@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -308,14 +307,17 @@ fun SearchPage(
                     },
                     modifier = Modifier.fillMaxSize(),
                     leadingContent = {
-                        FlowRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag(SearchPageTestTags.DateFilterRow),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            SearchDateFilters(state, onIntent)
-                        }
+                        SearchTimeFilterGroup(
+                            years = state.seasons.map { it.year }.distinct(),
+                            selectedYear = state.query.year,
+                            selectedSeason = state.query.season,
+                            expanded = SearchFilterTimeGroupKey in state.expandedFilterGroups,
+                            onToggleExpanded = {
+                                onIntent(SearchPageIntent.ToggleFilterGroup(SearchFilterTimeGroupKey))
+                            },
+                            onYearChange = { onIntent(SearchPageIntent.ChangeYear(it)) },
+                            onSeasonChange = { onIntent(SearchPageIntent.ChangeSeason(it)) },
+                        )
                     },
                 )
             }
@@ -385,7 +387,6 @@ private fun SearchDateFilters(
 
 internal object SearchPageTestTags {
     const val LegacyFilterRow = "search-filter-legacy-row"
-    const val DateFilterRow = "search-filter-date-row"
     const val YearFilter = "search-filter-year"
     const val SeasonFilter = "search-filter-season"
 }
