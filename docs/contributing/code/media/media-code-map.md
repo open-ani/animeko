@@ -185,6 +185,15 @@
     - `domain/media/selector/BrowseEpisodeIndex.kt`：线路里按位置换算剧集下标（回放与下载弹窗共用），
       以及手动查找打开线路时的默认预选。
 
+## Android 内封 ASS 字幕
+
+`LibassExoPlayerMediampPlayer`（`app/shared/video-player/src/androidMain/.../media/`）
+通过 media source interceptor 安装 libass 字幕解析器及 `CompressedAssMatroskaExtractor`。
+后者按 Matroska 轨道的 `ContentCompression` / `ContentCompAlgo` 识别 zlib 压缩的 ASS/SSA，
+在 BlockGroup 提交、文本 NUL 截断及 libass 解析前解压完整的对白数据。
+解压失败、需要字典或单条对白超过 16 MiB 时报告媒体解析错误。
+回归夹具与生成脚本位于 `video-player/src/androidDeviceTest/`，设备测试覆盖原生 libass 的文本、时间和播放轨道切换。
+
 ## 播放时使用的 Resolver
 
 - `TorrentMediaResolver`：解析磁力/种子资源，并在种子内选择具体视频文件。

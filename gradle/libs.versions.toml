@@ -324,6 +324,7 @@ sokkuri-runtime = { module = "com.generalk1ng.sokkuri:sokkuri-runtime", version.
 mediamp-source-ktxio = { module = "org.openani.mediamp:mediamp-source-ktxio", version.ref = "mediamp" }
 mediamp-test = { module = "org.openani.mediamp:mediamp-test", version.ref = "mediamp" }
 libass-media = { module = "io.github.peerless2012:ass-media", version.ref = "libass-android" }
+libass-kt = { module = "io.github.peerless2012:ass-kt", version.ref = "libass-android" }
 
 ### All other libraries ###
 
