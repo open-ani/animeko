@@ -53,6 +53,8 @@ import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
 import me.him188.ani.tv.ui.foundation.tvViewModel
 import me.him188.ani.tv.ui.login.TvLoginRoute
 import me.him188.ani.tv.ui.login.TvLoginViewModel
+import me.him188.ani.tv.ui.playback.TvPlaybackHistoryRoute
+import me.him188.ani.tv.ui.playback.TvPlaybackHistoryViewModel
 import me.him188.ani.tv.ui.schedule.TvScheduleRoute
 import me.him188.ani.tv.ui.schedule.TvScheduleViewModel
 import me.him188.ani.tv.ui.search.TvSearchRoute
@@ -160,6 +162,7 @@ fun TvAniAppContent(
                             TvShellContent.Exploration -> "exploration"
                             TvShellContent.Schedule -> "schedule"
                             TvShellContent.Collection -> "collection"
+                            TvShellContent.PlaybackHistory -> "playback_history"
                             TvShellContent.Login -> "login"
                         },
                     )
@@ -192,6 +195,11 @@ fun TvAniAppContent(
                             TvShellContent.Collection -> {
                                 val viewModel = tvViewModel { TvCollectionViewModel() }
                                 TvCollectionRoute(viewModel, onNavigate, navigationRailInsets = navigationRailInsets)
+                            }
+
+                            TvShellContent.PlaybackHistory -> {
+                                val viewModel = tvViewModel { TvPlaybackHistoryViewModel() }
+                                TvPlaybackHistoryRoute(viewModel, onNavigate, navigationRailInsets = navigationRailInsets)
                             }
 
                             TvShellContent.Search -> {
