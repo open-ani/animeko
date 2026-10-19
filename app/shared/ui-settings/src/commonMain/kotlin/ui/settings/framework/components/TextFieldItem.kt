@@ -41,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
@@ -219,6 +220,7 @@ internal fun SettingsScope.TextFieldDialog(
             TextButton(
                 onClick = onConfirm,
                 enabled = confirmEnabled,
+                modifier = Modifier.testTag("settings_text_field_dialog_confirm"),
             ) {
                 Text(stringResource(Lang.foundation_confirm))
             }
