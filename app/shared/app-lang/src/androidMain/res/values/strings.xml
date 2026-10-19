@@ -1272,6 +1272,9 @@
     <string name="comment_review_hidden">[Hidden content]</string>
     <string name="subject_details_rate">Rate</string>
     <string name="subject_details_summary">Description</string>
+    <string name="foundation_back">Back</string>
+    <string name="foundation_refresh">Refresh</string>
+    <string name="foundation_done">Done</string>
     <string name="foundation_load_error_network">Network error</string>
     <string name="foundation_load_error_rate_limited">You’re doing that too fast. Please try again</string>
     <string name="foundation_load_error_service_unavailable">Service unavailable</string>

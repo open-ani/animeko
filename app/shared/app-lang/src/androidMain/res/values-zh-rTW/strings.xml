@@ -1265,6 +1265,9 @@
     <string name="comment_review_hidden">[隱藏內容]</string>
     <string name="subject_details_rate">打分</string>
     <string name="subject_details_summary">簡介</string>
+    <string name="foundation_back">返回</string>
+    <string name="foundation_refresh">重新整理</string>
+    <string name="foundation_done">完成</string>
     <string name="foundation_load_error_network">網路錯誤</string>
     <string name="foundation_load_error_rate_limited">操作過快，請重試</string>
     <string name="foundation_load_error_service_unavailable">服務暫不可用</string>

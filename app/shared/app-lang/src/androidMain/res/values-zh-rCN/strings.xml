@@ -1312,6 +1312,9 @@
     <string name="comment_review_hidden">[隐藏内容]</string>
     <string name="subject_details_rate">打分</string>
     <string name="subject_details_summary">简介</string>
+    <string name="foundation_back">返回</string>
+    <string name="foundation_refresh">刷新</string>
+    <string name="foundation_done">完成</string>
     <string name="foundation_load_error_network">网络错误</string>
     <string name="foundation_load_error_rate_limited">操作过快，请重试</string>
     <string name="foundation_load_error_service_unavailable">服务暂不可用</string>
