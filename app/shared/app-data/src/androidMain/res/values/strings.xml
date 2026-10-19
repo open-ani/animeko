@@ -5,4 +5,9 @@
     <string name="pikpak_cache_service_title_working">Caching %1$d resource(s)</string>
     <string name="pikpak_cache_service_content">Download: %1$s</string>
     <string name="pikpak_cache_service_pause_all">Pause all</string>
+    <string name="ani_torrent_service_name">Animeko BT engine service</string>
+    <string name="ani_torrent_service_title_idle">BT download service is running</string>
+    <string name="ani_torrent_service_title_working">Downloading %1$d resource(s)</string>
+    <string name="ani_torrent_service_content">Download: %1$s, upload: %2$s</string>
+    <string name="ani_torrent_service_stop">Stop</string>
 </resources>
