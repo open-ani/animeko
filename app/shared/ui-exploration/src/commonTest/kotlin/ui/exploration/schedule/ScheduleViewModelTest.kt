@@ -295,15 +295,19 @@ class ScheduleViewModelTest {
 
     /**
      * 不固定时区, 因此时区来自 [FakeSettingsRepository] (即用户偏好), 可以测试切换时区的行为.
+     *
+     * @param systemTimeZone 读取系统时区; 默认跟随真实的 [TimeZone.currentSystemDefault].
      */
     private fun newViewModelReadingTimeZoneSetting(
         useCase: GetAnimeScheduleFlowUseCase,
         clock: Clock,
         settings: FakeSettingsRepository,
+        systemTimeZone: () -> TimeZone = { TimeZone.currentSystemDefault() },
     ): ScheduleViewModel =
         ScheduleViewModel(
             koin = koinWith(useCase, settings),
             clock = clock,
+            systemTimeZone = systemTimeZone,
         ).also { viewModels += it }
 
     @AfterTest
@@ -784,18 +788,22 @@ class ScheduleViewModelTest {
         val vm = newViewModelReadingTimeZoneSetting(useCase, OffsetClock(Instant.parse("2026-09-30T10:00:00Z")), settings)
         val subscription = fixtureScope.launch { vm.presentationFlow.collect {} }
 
-        fun SchedulePagePresentation.firstTime(): LocalTime? =
-            (airingSchedules.first().episodes.first() as AiringScheduleColumnItem.Data).item.time
+        fun SchedulePagePresentation.firstTimeOrNull(): LocalTime? {
+            // 占位帧里是 PlaceholderData, 直接强转会抛 ClassCastException.
+            if (isPlaceholder) return null
+            val item = airingSchedules.firstOrNull()?.episodes?.firstOrNull()
+            return (item as? AiringScheduleColumnItem.Data)?.item?.time
+        }
 
         val shanghaiPresentation = awaitReal { vm.presentationFlow.first { !it.isPlaceholder } }
-        assertEquals(LocalTime(18, 0), shanghaiPresentation.firstTime(), "上海应为 18:00")
+        assertEquals(LocalTime(18, 0), shanghaiPresentation.firstTimeOrNull(), "上海应为 18:00")
 
         vm.setScheduleTimeZone(berlin)
 
         val berlinPresentation = awaitReal {
-            vm.presentationFlow.first { it.firstTime() == LocalTime(12, 0) }
+            vm.presentationFlow.first { it.firstTimeOrNull() == LocalTime(12, 0) }
         }
-        assertEquals(LocalTime(12, 0), berlinPresentation.firstTime(), "柏林应为 12:00")
+        assertEquals(LocalTime(12, 0), berlinPresentation.firstTimeOrNull(), "柏林应为 12:00")
         assertEquals(
             shanghaiPresentation.days,
             berlinPresentation.days,
@@ -803,6 +811,78 @@ class ScheduleViewModelTest {
         )
 
         subscription.cancel()
+    }
+
+    /**
+     * 跟随系统时, [ScheduleViewModel.refresh] 重新解析系统时区.
+     *
+     * 时间表没有系统时区变化的观察源, 因此不会自行跟随; 但"在别处改了系统时区再回到本页"必须生效.
+     */
+    @Test
+    fun `refresh re-reads the system time zone while following the system`() = runTest {
+        val shanghai = TimeZone.of("Asia/Shanghai")
+        val tokyo = TimeZone.of("Asia/Tokyo")
+        var current = shanghai
+
+        val settings = FakeSettingsRepository() // 未选择过 = 跟随系统
+        val useCase = FakeGetAnimeScheduleFlowUseCase { day, _ -> flow { emit(emptyList()) } }
+        val vm = newViewModelReadingTimeZoneSetting(
+            useCase,
+            OffsetClock(Instant.parse("2026-09-30T10:00:00Z")),
+            settings,
+            systemTimeZone = { current },
+        )
+
+        assertEquals(shanghai, awaitReal { vm.scheduleTimeZone.first() }, "初始应解析出当前系统时区")
+
+        // 模拟用户在页面存活期间改掉了系统时区
+        current = tokyo
+        assertEquals(
+            shanghai,
+            vm.scheduleTimeZone.value,
+            "未刷新前仍使用已缓存的时区 (没有系统时区变化的观察源)",
+        )
+
+        vm.refresh()
+
+        assertEquals(
+            tokyo,
+            awaitReal { vm.scheduleTimeZone.first { it == tokyo } },
+            "refresh 后应重新解析系统时区",
+        )
+    }
+
+    /**
+     * [ScheduleViewModel.scheduleTimeZonePreference] 保留"未选择"这一状态, 选择器靠它勾选"系统时区".
+     *
+     * [ScheduleViewModel.scheduleTimeZone] 恒为非空, 无法区分"跟随系统"与"固定选了系统所在时区".
+     */
+    @Test
+    fun `the raw preference distinguishes following the system from a fixed zone`() = runTest {
+        val systemZone = TimeZone.currentSystemDefault()
+        val settings = FakeSettingsRepository() // 未选择过
+        val useCase = FakeGetAnimeScheduleFlowUseCase { day, _ -> flow { emit(emptyList()) } }
+        val vm = newViewModelReadingTimeZoneSetting(
+            useCase,
+            OffsetClock(Instant.parse("2026-09-30T10:00:00Z")),
+            settings,
+            systemTimeZone = { systemZone },
+        )
+
+        assertNull(
+            awaitReal { vm.scheduleTimeZonePreference.first() },
+            "未选择过时偏好应为 null",
+        )
+        assertEquals(systemZone, vm.scheduleTimeZone.value, "解析结果此时等于系统时区")
+
+        // 固定选择"恰好就是系统时区"的那一项: 解析结果不变, 但偏好必须与跟随系统区分开
+        vm.setScheduleTimeZone(systemZone)
+
+        assertEquals(
+            systemZone,
+            awaitReal { vm.scheduleTimeZonePreference.first { it != null } },
+            "固定选择后偏好应带上该时区",
+        )
     }
 
     // endregion

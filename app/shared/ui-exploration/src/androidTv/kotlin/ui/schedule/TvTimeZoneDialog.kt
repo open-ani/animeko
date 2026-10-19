@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -27,9 +28,16 @@ import me.him188.ani.app.ui.exploration.schedule.formatUtcOffset
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_schedule_time_zone
 import me.him188.ani.app.ui.lang.exploration_schedule_time_zone_system
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.layout.TvModalOverlay
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionModal
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
 import org.jetbrains.compose.resources.stringResource
+
+/** 时区选项的焦点锚点; 每个选项一个, 以便按 ID 聚焦到当前选中项. */
+private fun timeZoneOptionKey(id: String?): TvFocusKey = TvFocusKey("time-zone-${id ?: "system"}")
 
 /**
  * TV 新番时间表的时区选择弹窗.
@@ -41,15 +49,23 @@ import org.jetbrains.compose.resources.stringResource
  * 手机端的 `DropdownMenu` 依赖指针输入, 在遥控器上无法操作, 因此 TV 侧不复用该 composable,
  * 只复用共享的状态层与时区列表.
  *
- * @param timeZone 当前生效的时区
+ * 两层组合缺一不可: [TvModalOverlay] 建立焦点边界与遮罩, 让时间表在弹窗打开时不接收输入;
+ * [TvOptionModal] 只负责面板外观, 自身不请求焦点, 因此这里用 [LaunchedEffect] 把焦点送到当前选中项。
+ *
+ * @param selectedTimeZone 当前的时区偏好. **必须传原始偏好而不是解析后的时区**: `null` 表示"跟随系统时区",
+ *   与"恰好等于系统时区的固定选择"是两种持久化行为不同的状态, 只有原始偏好能区分它们.
  * @param onDismiss 关闭弹窗 (返回键或选中后)
  * @param onSelectTimeZone 用户选择了某个时区; 传 `null` 表示跟随系统时区
+ * @param focus 页面的焦点框架, 用于请求与恢复焦点
+ * @param entryKey 打开弹窗的那个入口锚点; 关闭后焦点回到它
  */
 @Composable
 internal fun TvTimeZoneDialog(
-    timeZone: TimeZone,
+    selectedTimeZone: TimeZone?,
     onDismiss: () -> Unit,
     onSelectTimeZone: (TimeZone?) -> Unit,
+    focus: TvFocusScope,
+    entryKey: TvFocusKey,
 ) {
     val title = stringResource(Lang.exploration_schedule_time_zone)
     val systemLabel = stringResource(Lang.exploration_schedule_time_zone_system)
@@ -82,25 +98,40 @@ internal fun TvTimeZoneDialog(
     }
 
     // 跟随系统时系统时区不出现在列表里, 因此此时落到"系统"一项上.
-    val selectedId = timeZone.id
+    val selectedId = selectedTimeZone?.id
+    val selectedKey = timeZoneOptionKey(selectedId)
     val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = options.indexOfFirst { it.id == selectedId }.coerceAtLeast(0),
     )
 
-    TvOptionModal(title, width = 520.dp) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxWidth().testTag("tv-time-zone-options"),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            items(options, key = { it.testTagSuffix }) { option ->
-                TvOptionRow(
-                    title = option.label,
-                    value = option.description,
-                    selected = option.id == selectedId,
-                ) {
-                    onSelectTimeZone(option.id?.let { runCatching { TimeZone.of(it) }.getOrNull() })
-                    onDismiss()
+    // 打开时把焦点送到当前选中项; 面板关闭时组合被移除, 该 key 随即脱离, 焦点由入口锚点恢复.
+    LaunchedEffect(selectedKey) {
+        focus.request(selectedKey)
+    }
+
+    TvModalOverlay(
+        onClose = onDismiss,
+        modifier = Modifier.testTag("tv-time-zone-overlay"),
+        background = {},
+    ) {
+        TvOptionModal(title, width = 520.dp) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxWidth().testTag("tv-time-zone-options"),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(options, key = { it.testTagSuffix }) { option ->
+                    TvOptionRow(
+                        title = option.label,
+                        value = option.description,
+                        modifier = Modifier
+                            .tvFocusAnchor(focus, timeZoneOptionKey(option.id))
+                            .testTag("tv-time-zone-option-${option.testTagSuffix}"),
+                        selected = option.id == selectedId,
+                    ) {
+                        onSelectTimeZone(option.id?.let { runCatching { TimeZone.of(it) }.getOrNull() })
+                        onDismiss()
+                    }
                 }
             }
         }

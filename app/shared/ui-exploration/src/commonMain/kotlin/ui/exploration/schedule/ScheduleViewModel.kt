@@ -17,6 +17,8 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -71,11 +73,13 @@ import org.koin.core.component.inject
  * @param koin 依赖来源. 测试传入自己的 Koin.
  * @param clock 时钟. 测试用假时钟驱动跨午夜.
  * @param timeZoneOverride 非 `null` 时固定使用该时区, 不读取用户偏好. 供测试与预览使用.
+ * @param systemTimeZone 读取系统时区. 跟随系统模式下每次重新解析时调用; 测试可注入可变实现.
  */
 open class ScheduleViewModel(
     koin: Koin = GlobalKoin,
     private val clock: Clock = Clock.System,
     timeZoneOverride: TimeZone? = null,
+    private val systemTimeZone: () -> TimeZone = { TimeZone.currentSystemDefault() },
 ) : AbstractViewModel() {
     private val getAnimeScheduleFlowUseCase: GetAnimeScheduleFlowUseCase by koin.inject()
     private val settingsRepository: SettingsRepository by koin.inject()
@@ -93,14 +97,44 @@ open class ScheduleViewModel(
         }
 
     /**
-     * 页面使用的时区. [selectedTimeZoneFlow] 为 `null` 时取系统时区.
+     * 重新解析系统时区的信号, 由 [refresh] 触发.
      *
-     * 每次读取都重新调用 [TimeZone.currentSystemDefault], 因此系统时区改变后无需任何操作即可生效.
+     * 时间表页面没有系统时区变化的观察源: kotlinx-datetime 只在调用时读取当前系统时区, 不提供变更通知.
+     * 因此跟随系统模式下的重新解析挂在 [refresh] 上 —— 回到应用/回到页面时重新解析一次, 覆盖"在别处改了
+     * 系统时区再回来"的情形.
      */
-    val scheduleTimeZone: StateFlow<TimeZone> = selectedTimeZoneFlow
-        .map { it ?: TimeZone.currentSystemDefault() }
-        .distinctUntilChanged()
-        .stateIn(backgroundScope, SharingStarted.Eagerly, timeZoneOverride ?: TimeZone.currentSystemDefault())
+    private val systemTimeZoneRefresh = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    /**
+     * 页面使用的时区: 用户选择, 未选择 (`null`) 时用系统时区.
+     *
+     * [systemTimeZone] 只在本流发射时求值, 结果随后由 `stateIn` 缓存; 因此跟随系统模式下改动系统时区
+     * 不会自行生效, 需要 [refresh] 重新解析.
+     */
+    val scheduleTimeZone: StateFlow<TimeZone> = if (timeZoneOverride != null) {
+        MutableStateFlow(timeZoneOverride)
+    } else {
+        combine(
+            selectedTimeZoneFlow,
+            systemTimeZoneRefresh.onStart { emit(Unit) },
+        ) { selected, _ ->
+            selected ?: systemTimeZone()
+        }
+            .distinctUntilChanged()
+            .stateIn(backgroundScope, SharingStarted.Eagerly, systemTimeZone())
+    }
+
+    /**
+     * 用户选择的时区偏好本身: `null` 表示未选择过 (即跟随系统时区).
+     *
+     * 与 [scheduleTimeZone] 的区别在于它保留"未选择"这一状态。选择器需要它才能正确勾选"系统时区"一项:
+     * [scheduleTimeZone] 恒为非空, 无法区分"跟随系统"和"恰好等于系统时区的固定选择".
+     */
+    val scheduleTimeZonePreference: StateFlow<TimeZone?> = if (timeZoneOverride != null) {
+        MutableStateFlow(timeZoneOverride)
+    } else {
+        selectedTimeZoneFlow.stateIn(backgroundScope, SharingStarted.Eagerly, null)
+    }
 
     /**
      * 修改时区. 传 `null` 表示跟随系统时区.
@@ -174,8 +208,11 @@ open class ScheduleViewModel(
 
     /**
      * 重新读取今天并重新请求服务端. 在新的响应到达之前, [presentationFlow] 先发出占位状态.
+     *
+     * 同时重新解析系统时区: 跟随系统模式下, 这覆盖"在别处改了系统时区再回到本页"的情形.
      */
     fun refresh() {
+        systemTimeZoneRefresh.tryEmit(Unit)
         airingSchedulesFlowRestarter.restart()
     }
 

@@ -64,7 +64,6 @@ import me.him188.ani.app.ui.exploration.schedule.ScheduleDay
 import me.him188.ani.app.ui.exploration.schedule.SchedulePagePresentation
 import me.him188.ani.app.ui.exploration.schedule.formatUtcOffset
 import me.him188.ani.app.ui.foundation.AsyncImage
-import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
@@ -75,6 +74,7 @@ import me.him188.ani.tv.ui.foundation.focus.tvCardFocusBorder
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
@@ -109,6 +109,7 @@ fun TvScheduleScreen(
     onIntent: (TvScheduleIntent) -> Unit,
     modifier: Modifier = Modifier,
     timeZone: TimeZone = TimeZone.currentSystemDefault(),
+    timeZonePreference: TimeZone? = null,
     navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     // rememberLazyListState saves the viewport in the navigation entry across detail visits.
@@ -169,46 +170,53 @@ fun TvScheduleScreen(
 
     // ── 多列并排 (手机 Medium 档): 固定 360dp 列宽, 列间 16dp, 初始滚动到今天列 ──
     var timeZoneDialogVisible by rememberSaveable { mutableStateOf(false) }
-    if (timeZoneDialogVisible) {
-        BackHandler(enabled = true) { timeZoneDialogVisible = false }
-        // 不在这里再挂一次 TvScheduleFocus.TimeZone: 该锚点属于入口按钮,
-        // 弹窗关闭后焦点回到它 (与播放器 DialogEntry / DialogHost 的分工一致).
-        TvTimeZoneDialog(
-            timeZone = timeZone,
-            onDismiss = { timeZoneDialogVisible = false },
-            onSelectTimeZone = { onIntent(TvScheduleIntent.SetTimeZone(it)) },
-        )
-    }
-
-    Column(modifier.fillMaxSize().padding(navigationRailInsets)) {
-        // 时区入口: 焦点框架下排在所有日期列之前, 因此向下移动即进入今天列.
-        TvScheduleTimeZoneEntry(
-            timeZone = timeZone,
-            onClick = { timeZoneDialogVisible = true },
-            modifier = Modifier
-                .padding(start = TvScheduleDefaults.StartPadding)
-                .padding(bottom = 12.dp)
-                .tvFocusAnchor(focus, TvScheduleFocus.TimeZone),
-        )
-        CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec) {
-            LazyRow(
-                Modifier.fillMaxSize().tvFocusNavSignal(focus),
-                state = listState,
-                horizontalArrangement = Arrangement.spacedBy(TvScheduleDefaults.PageSpacing),
-                contentPadding = PaddingValues(start = TvScheduleDefaults.StartPadding, end = TvPageDefaults.EndPadding),
-            ) {
-                items(days, key = { it.date.toString() }) { day ->
-                    val columnItems = presentation.airingSchedules
-                        .firstOrNull { it.date == day.date }?.episodes.orEmpty()
-                    TvScheduleDayColumn(
-                        day = day,
-                        items = columnItems,
-                        onClickSubject = { onIntent(TvScheduleIntent.OpenSubject(it)) },
-                        focus = focus,
-                        modifier = Modifier.width(TvScheduleDefaults.PageWidth).fillParentMaxHeight(),
-                    )
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize().padding(navigationRailInsets)
+                // 弹窗打开时页面保持组合 (保留视口与状态), 但不接收输入.
+                .tvModalUnderlay(timeZoneDialogVisible),
+        ) {
+            // 时区入口: 焦点框架下排在所有日期列之前, 因此向下移动即进入今天列.
+            TvScheduleTimeZoneEntry(
+                timeZone = timeZone,
+                onClick = { timeZoneDialogVisible = true },
+                modifier = Modifier
+                    .padding(start = TvScheduleDefaults.StartPadding)
+                    .padding(bottom = 12.dp)
+                    .tvFocusAnchor(focus, TvScheduleFocus.TimeZone),
+            )
+            CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec) {
+                LazyRow(
+                    Modifier.fillMaxSize().tvFocusNavSignal(focus),
+                    state = listState,
+                    horizontalArrangement = Arrangement.spacedBy(TvScheduleDefaults.PageSpacing),
+                    contentPadding = PaddingValues(start = TvScheduleDefaults.StartPadding, end = TvPageDefaults.EndPadding),
+                ) {
+                    items(days, key = { it.date.toString() }) { day ->
+                        val columnItems = presentation.airingSchedules
+                            .firstOrNull { it.date == day.date }?.episodes.orEmpty()
+                        TvScheduleDayColumn(
+                            day = day,
+                            items = columnItems,
+                            onClickSubject = { onIntent(TvScheduleIntent.OpenSubject(it)) },
+                            focus = focus,
+                            modifier = Modifier.width(TvScheduleDefaults.PageWidth).fillParentMaxHeight(),
+                        )
+                    }
                 }
             }
+        }
+
+        // 弹层必须在页面内容之后组合: TvOptionModal 只是当前窗口里的普通 Box, 不创建独立窗口,
+        // 先组合就会被后组合的日期列盖住.
+        if (timeZoneDialogVisible) {
+            TvTimeZoneDialog(
+                selectedTimeZone = timeZonePreference,
+                onDismiss = { timeZoneDialogVisible = false },
+                onSelectTimeZone = { onIntent(TvScheduleIntent.SetTimeZone(it)) },
+                focus = focus,
+                entryKey = TvScheduleFocus.TimeZone,
+            )
         }
     }
 }

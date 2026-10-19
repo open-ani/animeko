@@ -139,7 +139,8 @@ class ScheduleScreenState(
 
 
 /**
- * @param timeZone 页面显示放送时刻所使用的时区. 顶栏的选择器可以修改它.
+ * @param timeZone 页面显示放送时刻所使用的时区 (已解析, 恒非空)
+ * @param timeZonePreference 时区偏好本身: `null` 表示跟随系统时区. 选择器据此勾选"系统时区"一项
  * @param onSelectTimeZone 用户选择了新的时区; 传 `null` 表示跟随系统时区
  */
 @Composable
@@ -151,6 +152,7 @@ fun ScheduleScreen(
     layoutParams: ScheduleScreenLayoutParams = ScheduleScreenLayoutParams.calculate(),
     colors: ScheduleScreenColors = ScheduleScreenDefaults.colors(),
     timeZone: TimeZone = TimeZone.currentSystemDefault(),
+    timeZonePreference: TimeZone? = null,
     onSelectTimeZone: (TimeZone?) -> Unit = {},
     navigationIcon: @Composable () -> Unit = {},
     state: ScheduleScreenState = remember { ScheduleScreenState { presentation.days } },
@@ -164,7 +166,7 @@ fun ScheduleScreen(
                 Modifier.fillMaxWidth(),
                 navigationIcon = navigationIcon,
                 actions = {
-                    ScheduleTimeZoneSelector(timeZone, onSelectTimeZone)
+                    ScheduleTimeZoneSelector(timeZonePreference, onSelectTimeZone)
                 },
                 windowInsets = windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
             )

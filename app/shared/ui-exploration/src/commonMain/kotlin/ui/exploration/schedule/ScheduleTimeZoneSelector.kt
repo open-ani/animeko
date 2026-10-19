@@ -86,12 +86,13 @@ fun formatUtcOffset(offset: UtcOffset): String {
  *
  * 每个选项显示时区 ID, 并附带该时区当前时刻的 UTC 偏移, 因此夏令时期间显示的偏移也是正确的.
  *
- * @param timeZone 当前生效的时区
+ * @param selectedTimeZone 当前的时区偏好. **必须传原始偏好而不是解析后的时区**: `null` 表示"跟随系统时区",
+ *   与"恰好等于系统时区的固定选择"是两种持久化行为不同的状态, 只有原始偏好能区分它们.
  * @param onSelectTimeZone 用户选择了某个时区; 传 `null` 表示跟随系统时区
  */
 @Composable
 fun ScheduleTimeZoneSelector(
-    timeZone: TimeZone,
+    selectedTimeZone: TimeZone?,
     onSelectTimeZone: (TimeZone?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -102,8 +103,8 @@ fun ScheduleTimeZoneSelector(
     val systemLabel = stringResource(Lang.exploration_schedule_time_zone_system)
     val menuLabel = stringResource(Lang.exploration_schedule_time_zone)
 
-    // 当前生效的时区 ID; 跟随系统时系统时区不在列表中, 因此会落到"系统"一项上.
-    val selectedId = timeZone.id
+    // 跟随系统时系统时区不在列表中, 因此此时会落到"系统"一项上.
+    val selectedId = selectedTimeZone?.id
 
     val options = remember(systemLabel) {
         buildList {
@@ -168,7 +169,18 @@ private data class ScheduleTimeZoneOption(
 private fun PreviewScheduleTimeZoneSelector() {
     ProvideCompositionLocalsForPreview {
         ScheduleTimeZoneSelector(
-            timeZone = TimeZone.of("Asia/Tokyo"),
+            selectedTimeZone = TimeZone.of("Asia/Tokyo"),
+            onSelectTimeZone = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewScheduleTimeZoneSelectorFollowingSystem() {
+    ProvideCompositionLocalsForPreview {
+        ScheduleTimeZoneSelector(
+            selectedTimeZone = null,
             onSelectTimeZone = {},
         )
     }

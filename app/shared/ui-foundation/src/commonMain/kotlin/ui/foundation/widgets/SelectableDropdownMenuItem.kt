@@ -27,6 +27,8 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -61,7 +63,9 @@ fun SelectableDropdownMenuItem(
         onClick = onClick,
         modifier.ifThen(backgroundColor != Color.Unspecified) {
             background(backgroundColor)
-        },
+        }
+            // 选中态此前只有对勾图标与底色, 语义树里读不到; 暴露出来让无障碍服务与测试都能观察到.
+            .semantics { this.selected = selected },
         leadingIcon,
         trailingIcon = {
             if (selected) {
