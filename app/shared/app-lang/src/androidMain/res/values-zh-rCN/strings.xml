@@ -790,6 +790,15 @@
     <string name="settings_media_torrent_extra_trackers_dialog_description">每行一个 tracker 地址，例如 udp://tracker.example.com:6969/announce。将在 BT 下载开始前与内置 tracker 一起添加。修改仅对之后开始的下载生效。</string>
     <string name="settings_media_torrent_peer_filter">Peer 过滤和屏蔽设置</string>
     <string name="settings_media_torrent_peer_filter_description">在下载或上传缓存的番剧时不与黑名单或命中过滤规则的客户端连接</string>
+    <string name="settings_media_torrent_peer_blacklist_title">黑名单</string>
+    <string name="settings_media_torrent_peer_blacklist_description">黑名单中的 Peer 总是被屏蔽，无论是否匹配过滤规则</string>
+    <string name="settings_media_torrent_peer_blacklist_add">添加黑名单 IP 地址</string>
+    <string name="settings_media_torrent_peer_blacklist_remove">移除此黑名单 IP</string>
+    <string name="settings_media_torrent_peer_blacklist_add_title">添加 IP 地址</string>
+    <string name="settings_media_torrent_peer_blacklist_add_description">向 IP 地址黑名单添加新的 IP 地址</string>
+    <string name="settings_media_torrent_peer_blacklist_add_format_hint">支持 IPv4 或 IPv6 地址，且 IPv6 地址必须为完整格式的地址</string>
+    <string name="settings_media_torrent_peer_blacklist_add_multiline_hint">可输入多行，按 Enter 确认添加，Ctrl+Enter 换行</string>
+    <string name="settings_media_torrent_peer_blacklist_invalid_ip">IP 地址格式错误</string>
 
     <!-- AutoCacheGroup -->
     <string name="settings_media_auto_cache_title">自动缓存</string>

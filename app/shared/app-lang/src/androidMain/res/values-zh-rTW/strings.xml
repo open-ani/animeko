@@ -742,6 +742,15 @@
     <string name="settings_media_torrent_limit_upload_on_metered_description">在計費網絡環境下限制上傳速度為 1 KB/s</string>
     <string name="settings_media_torrent_peer_filter">Peer 過濾和屏蔽設置</string>
     <string name="settings_media_torrent_peer_filter_description">在下載或上傳緩存的番劇時不與黑名單或命中過濾規則的客戶端連接</string>
+    <string name="settings_media_torrent_peer_blacklist_title">黑名單</string>
+    <string name="settings_media_torrent_peer_blacklist_description">黑名單中的 Peer 總是會被屏蔽，無論是否符合過濾規則</string>
+    <string name="settings_media_torrent_peer_blacklist_add">新增黑名單 IP 地址</string>
+    <string name="settings_media_torrent_peer_blacklist_remove">移除此黑名單 IP</string>
+    <string name="settings_media_torrent_peer_blacklist_add_title">新增 IP 地址</string>
+    <string name="settings_media_torrent_peer_blacklist_add_description">將新的 IP 地址加入 IP 地址黑名單</string>
+    <string name="settings_media_torrent_peer_blacklist_add_format_hint">支援 IPv4 或 IPv6 地址，且 IPv6 地址必須為完整格式的地址</string>
+    <string name="settings_media_torrent_peer_blacklist_add_multiline_hint">可輸入多行，按 Enter 確認新增，Ctrl+Enter 換行</string>
+    <string name="settings_media_torrent_peer_blacklist_invalid_ip">IP 地址格式錯誤</string>
     <string name="settings_media_torrent_extra_trackers">額外 Tracker</string>
     <string name="settings_media_torrent_extra_trackers_description">在 BT 下載開始前額外添加的 tracker 伺服器，幫助發現更多用戶</string>
     <string name="settings_media_torrent_extra_trackers_dialog_description">每行一個 tracker 地址，例如 udp://tracker.example.com:6969/announce。將在 BT 下載開始前與內置 tracker 一起添加。修改僅對之後開始的下載生效。</string>

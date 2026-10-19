@@ -750,6 +750,15 @@
     <string name="settings_media_torrent_extra_trackers_dialog_description">One tracker URL per line, e.g. udp://tracker.example.com:6969/announce. They will be added in addition to the built-in trackers before each BT download starts. Changes only affect downloads started afterwards.</string>
     <string name="settings_media_torrent_peer_filter">Peer Filtering and Blocking Settings</string>
     <string name="settings_media_torrent_peer_filter_description">Do not connect with blacklisted clients or those that match filter rules when downloading or uploading cached anime</string>
+    <string name="settings_media_torrent_peer_blacklist_title">Blacklist</string>
+    <string name="settings_media_torrent_peer_blacklist_description">Peers in the blacklist are always blocked, whether or not they match filter rules</string>
+    <string name="settings_media_torrent_peer_blacklist_add">Add blacklisted IP address</string>
+    <string name="settings_media_torrent_peer_blacklist_remove">Remove this blacklisted IP</string>
+    <string name="settings_media_torrent_peer_blacklist_add_title">Add IP Address</string>
+    <string name="settings_media_torrent_peer_blacklist_add_description">Add a new IP address to the IP blacklist</string>
+    <string name="settings_media_torrent_peer_blacklist_add_format_hint">IPv4 or IPv6 addresses are supported. IPv6 addresses must be in full format</string>
+    <string name="settings_media_torrent_peer_blacklist_add_multiline_hint">Multiple lines are allowed. Press Enter to add, Ctrl+Enter for a new line</string>
+    <string name="settings_media_torrent_peer_blacklist_invalid_ip">Invalid IP address format</string>
 
     <!-- AutoCacheGroup -->
     <string name="settings_media_auto_cache_title">Auto Cache</string>
