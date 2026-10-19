@@ -826,6 +826,8 @@
     <string name="settings_media_torrent_peer_filter_client_type">过滤客户端类型</string>
     <string name="settings_media_torrent_peer_filter_ip_blacklist">IP 黑名单设置</string>
     <string name="settings_media_torrent_peer_filter_ip_blacklist_description">配置 IP 黑名单列表</string>
+    <string name="settings_media_torrent_peer_filter_ip_blacklist_manage">管理 IP 黑名单</string>
+    <string name="settings_media_torrent_peer_filter_ip_blacklist_search">搜索黑名单 IP 地址</string>
     <string name="settings_media_torrent_peer_filter_auto_save_hint">提示：修改自动保存</string>
     <string name="settings_media_torrent_peer_filter_ip_help">每行一条过滤规则，支持 IPv4 和 IPv6\n支持以下格式：</string>
     <string name="settings_media_torrent_peer_filter_ip_help_cidr">* 无类别域间路由（CIDR）\n  例如：[code]10.0.0.1/24[/code] 将过滤从 [code]10.0.0.0[/code] 至 [code]10.0.0.255[/code] 的所有 IP\n  [code]ff06:1234::/64[/code] 将过滤从 [code]ff06:1234::[/code] 至 [code]ff06:1234::ffff:ffff:ffff:ffff[/code] 的所有 IP</string>
@@ -1317,6 +1319,7 @@
     <string name="foundation_done">完成</string>
     <string name="foundation_edit">编辑</string>
     <string name="foundation_confirm">确认</string>
+    <string name="foundation_delete">删除 %1$s</string>
     <string name="foundation_load_error_network">网络错误</string>
     <string name="foundation_load_error_rate_limited">操作过快，请重试</string>
     <string name="foundation_load_error_service_unavailable">服务暂不可用</string>

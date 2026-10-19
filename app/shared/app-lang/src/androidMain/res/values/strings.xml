@@ -786,6 +786,8 @@
     <string name="settings_media_torrent_peer_filter_client_type">Filter client types</string>
     <string name="settings_media_torrent_peer_filter_ip_blacklist">IP Blacklist Settings</string>
     <string name="settings_media_torrent_peer_filter_ip_blacklist_description">Configure the IP blacklist</string>
+    <string name="settings_media_torrent_peer_filter_ip_blacklist_manage">Manage IP blacklist</string>
+    <string name="settings_media_torrent_peer_filter_ip_blacklist_search">Search blacklisted IP addresses</string>
     <string name="settings_media_torrent_peer_filter_auto_save_hint">Changes are saved automatically</string>
     <string name="settings_media_torrent_peer_filter_ip_help">One rule per line. IPv4 and IPv6 are supported.\nSupported formats:</string>
     <string name="settings_media_torrent_peer_filter_ip_help_cidr">* CIDR\n  e.g. [code]10.0.0.1/24[/code] blocks all IPs from [code]10.0.0.0[/code] to [code]10.0.0.255[/code]\n  [code]ff06:1234::/64[/code] blocks all IPs from [code]ff06:1234::[/code] to [code]ff06:1234::ffff:ffff:ffff:ffff[/code]</string>
@@ -1277,6 +1279,7 @@
     <string name="foundation_done">Done</string>
     <string name="foundation_edit">Edit</string>
     <string name="foundation_confirm">Confirm</string>
+    <string name="foundation_delete">Delete %1$s</string>
     <string name="foundation_load_error_network">Network error</string>
     <string name="foundation_load_error_rate_limited">You’re doing that too fast. Please try again</string>
     <string name="foundation_load_error_service_unavailable">Service unavailable</string>

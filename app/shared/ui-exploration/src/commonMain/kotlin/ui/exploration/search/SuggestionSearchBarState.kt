@@ -49,9 +49,12 @@ import me.him188.ani.app.ui.adaptive.AdaptiveSearchBar
 import me.him188.ani.app.ui.foundation.interaction.onEnterKeyEvent
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_delete
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SearchStart
 import me.him188.ani.utils.analytics.recordEvent
+import org.jetbrains.compose.resources.stringResource
 
 @Stable
 class SuggestionSearchBarState(
@@ -213,7 +216,10 @@ fun SuggestionSearchBar(
                     trailingContent = if (presentation.previewType == SuggestionSearchPreviewType.HISTORY) {
                         {
                             IconButton({ state.removeHistory(text) }, enabled = state.removingHistory != text) {
-                                Icon(Icons.Default.Close, contentDescription = "删除 $text")
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = stringResource(Lang.foundation_delete, text),
+                                )
                             }
                         }
                     } else null,
