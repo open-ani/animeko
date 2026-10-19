@@ -1276,6 +1276,16 @@
     <string name="comment_review_hidden">[Hidden content]</string>
     <string name="subject_details_rate">Rate</string>
     <string name="subject_details_summary">Description</string>
+    <!-- Relative time -->
+    <string name="time_just_now">Just now</string>
+    <string name="time_seconds_ago">%1$d seconds ago</string>
+    <string name="time_seconds_later">In %1$d seconds</string>
+    <string name="time_minutes_ago">%1$d minutes ago</string>
+    <string name="time_minutes_later">In %1$d minutes</string>
+    <string name="time_hours_ago">%1$d hours ago</string>
+    <string name="time_hours_later">In %1$d hours</string>
+    <string name="time_days_ago">%1$d days ago</string>
+    <string name="time_days_later">In %1$d days</string>
     <string name="foundation_back">Back</string>
     <string name="foundation_refresh">Refresh</string>
     <string name="foundation_done">Done</string>

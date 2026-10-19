@@ -40,6 +40,17 @@ import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
+import me.him188.ani.app.tools.TimeFormatterStrings
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.time_days_ago
+import me.him188.ani.app.ui.lang.time_days_later
+import me.him188.ani.app.ui.lang.time_hours_ago
+import me.him188.ani.app.ui.lang.time_hours_later
+import me.him188.ani.app.ui.lang.time_just_now
+import me.him188.ani.app.ui.lang.time_minutes_ago
+import me.him188.ani.app.ui.lang.time_minutes_later
+import me.him188.ani.app.ui.lang.time_seconds_ago
+import me.him188.ani.app.ui.lang.time_seconds_later
 import me.him188.ani.tv.ui.collection.TvCollectionRoute
 import me.him188.ani.tv.ui.collection.TvCollectionViewModel
 import me.him188.ani.tv.ui.di.TvAppDependencies
@@ -74,6 +85,7 @@ import me.him188.ani.tv.ui.watchtogether.TvWatchTogetherViewModel
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.ScreenView
 import me.him188.ani.utils.analytics.recordEvent
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * TV 端根内容: 注册 TV 支持的 [NavRoutes] 子集, Navigation 3
@@ -145,9 +157,20 @@ fun TvAniAppContent(
             TvNavigationEvent.Login -> aniNavigator.navigateBangumiAuthorize()
         }
     }
+    val timeFormatterStrings = TimeFormatterStrings(
+        justNow = stringResource(Lang.time_just_now),
+        secondsAgo = stringResource(Lang.time_seconds_ago),
+        secondsLater = stringResource(Lang.time_seconds_later),
+        minutesAgo = stringResource(Lang.time_minutes_ago),
+        minutesLater = stringResource(Lang.time_minutes_later),
+        hoursAgo = stringResource(Lang.time_hours_ago),
+        hoursLater = stringResource(Lang.time_hours_later),
+        daysAgo = stringResource(Lang.time_days_ago),
+        daysLater = stringResource(Lang.time_days_later),
+    )
     CompositionLocalProvider(
         LocalNavigator provides aniNavigator,
-        LocalTimeFormatter provides remember { TimeFormatter() },
+        LocalTimeFormatter provides remember(timeFormatterStrings) { TimeFormatter(strings = timeFormatterStrings) },
     ) {
         // tv MaterialTheme 不绘制窗口背景, 根部铺一层 Surface (深色 surface + content color)
         Surface(modifier.fillMaxSize()) {

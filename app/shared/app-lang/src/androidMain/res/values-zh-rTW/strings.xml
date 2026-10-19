@@ -1269,6 +1269,16 @@
     <string name="comment_review_hidden">[隱藏內容]</string>
     <string name="subject_details_rate">打分</string>
     <string name="subject_details_summary">簡介</string>
+    <!-- Relative time -->
+    <string name="time_just_now">剛剛</string>
+    <string name="time_seconds_ago">%1$d 秒前</string>
+    <string name="time_seconds_later">%1$d 秒後</string>
+    <string name="time_minutes_ago">%1$d 分鐘前</string>
+    <string name="time_minutes_later">%1$d 分鐘後</string>
+    <string name="time_hours_ago">%1$d 小時前</string>
+    <string name="time_hours_later">%1$d 小時後</string>
+    <string name="time_days_ago">%1$d 天前</string>
+    <string name="time_days_later">%1$d 天後</string>
     <string name="foundation_back">返回</string>
     <string name="foundation_refresh">重新整理</string>
     <string name="foundation_done">完成</string>

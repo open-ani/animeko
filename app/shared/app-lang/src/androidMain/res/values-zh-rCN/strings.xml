@@ -1316,6 +1316,16 @@
     <string name="comment_review_hidden">[隐藏内容]</string>
     <string name="subject_details_rate">打分</string>
     <string name="subject_details_summary">简介</string>
+    <!-- Relative time -->
+    <string name="time_just_now">刚刚</string>
+    <string name="time_seconds_ago">%1$d 秒前</string>
+    <string name="time_seconds_later">%1$d 秒后</string>
+    <string name="time_minutes_ago">%1$d 分钟前</string>
+    <string name="time_minutes_later">%1$d 分钟后</string>
+    <string name="time_hours_ago">%1$d 小时前</string>
+    <string name="time_hours_later">%1$d 小时后</string>
+    <string name="time_days_ago">%1$d 天前</string>
+    <string name="time_days_later">%1$d 天后</string>
     <string name="foundation_back">返回</string>
     <string name="foundation_refresh">刷新</string>
     <string name="foundation_done">完成</string>
