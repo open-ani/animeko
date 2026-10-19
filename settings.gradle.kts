@@ -30,6 +30,11 @@ dependencyResolutionManagement {
     repositories {
         // mavenLocal 的位置不能动: 本地 mediamp / anitorrent 调试构建依赖它排在这里.
         mavenCentral()
+        // 临时: 测试未发布的 mediamp snapshot, 测完删掉.
+        maven("https://central.sonatype.com/repository/maven-snapshots/") {
+            mavenContent { snapshotsOnly() }
+            content { includeGroup("org.openani.mediamp") }
+        }
         google()
         mavenLocal()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
