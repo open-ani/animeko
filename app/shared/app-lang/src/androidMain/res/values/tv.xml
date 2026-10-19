@@ -55,6 +55,7 @@
     <string name="foundation_empty_content">No content</string>
     <string name="foundation_loading">Loading…</string>
     <string name="foundation_anonymous">Anonymous</string>
+    <string name="tv_collection_empty">Nothing here yet. Find anime on the Explore page</string>
 
     <!-- Comments -->
     <string name="comment_read_full">Read full comment</string>

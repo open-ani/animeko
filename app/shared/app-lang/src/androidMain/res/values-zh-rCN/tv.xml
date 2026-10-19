@@ -55,6 +55,7 @@
     <string name="foundation_empty_content">暂无内容</string>
     <string name="foundation_loading">正在加载…</string>
     <string name="foundation_anonymous">匿名</string>
+    <string name="tv_collection_empty">这里空空如也，去探索页找些番剧吧</string>
 
     <!-- Comments -->
     <string name="comment_read_full">查看全文</string>
