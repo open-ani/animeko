@@ -1277,6 +1277,7 @@
     <string name="media_selector_summary_change">Change</string>
     <string name="media_selector_summary_auto_selecting">Automatically selecting a data source</string>
     <string name="media_selector_summary_select_source">Please select a data source</string>
+    <string name="media_selector_summary_switch_source">Switch data source</string>
     <string name="media_selector_summary_source">Data source</string>
     <string name="media_selector_summary_dropped_file">Local file</string>
     <string name="media_selector_summary_searched">Searched:</string>

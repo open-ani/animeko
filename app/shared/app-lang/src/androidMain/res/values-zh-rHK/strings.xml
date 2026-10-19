@@ -1280,6 +1280,7 @@
     <string name="media_selector_summary_change">更換</string>
     <string name="media_selector_summary_auto_selecting">正在自動選擇資料來源</string>
     <string name="media_selector_summary_select_source">請選擇資料來源</string>
+    <string name="media_selector_summary_switch_source">切換資料來源</string>
     <string name="media_selector_summary_source">資料來源</string>
     <string name="media_selector_summary_dropped_file">本機檔案</string>
     <string name="media_selector_summary_searched">已查找：</string>

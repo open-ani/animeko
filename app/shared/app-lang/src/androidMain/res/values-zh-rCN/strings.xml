@@ -1317,6 +1317,7 @@
     <string name="media_selector_summary_change">更换</string>
     <string name="media_selector_summary_auto_selecting">正在自动选择数据源</string>
     <string name="media_selector_summary_select_source">请选择数据源</string>
+    <string name="media_selector_summary_switch_source">切换数据源</string>
     <string name="media_selector_summary_source">数据源</string>
     <string name="media_selector_summary_dropped_file">本地文件</string>
     <string name="media_selector_summary_searched">已查找：</string>
