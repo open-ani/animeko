@@ -799,6 +799,23 @@
     <string name="settings_media_torrent_peer_blacklist_add_format_hint">支持 IPv4 或 IPv6 地址，且 IPv6 地址必须为完整格式的地址</string>
     <string name="settings_media_torrent_peer_blacklist_add_multiline_hint">可输入多行，按 Enter 确认添加，Ctrl+Enter 换行</string>
     <string name="settings_media_torrent_peer_blacklist_invalid_ip">IP 地址格式错误</string>
+    <string name="settings_media_torrent_peer_filter_rule">规则</string>
+    <string name="settings_media_torrent_peer_filter_not_updated">未更新，启用以更新</string>
+    <string name="settings_media_torrent_peer_filter_stats">包含 %1$d 个 IP 过滤项，%2$d 个 ID 过滤项和 %3$d 个客户端过滤项</string>
+    <string name="settings_media_torrent_peer_filter_load_error">加载错误：%1$s</string>
+    <string name="settings_media_torrent_peer_filter_update_error">更新错误：%1$s</string>
+    <string name="settings_media_torrent_peer_filter_subscriptions">过滤规则订阅</string>
+    <string name="settings_media_torrent_peer_filter_refresh_all">刷新全部</string>
+    <string name="settings_media_torrent_peer_filter_use_builtin">使用内置过滤规则</string>
+    <string name="settings_media_torrent_peer_filter_local">本地过滤规则</string>
+    <string name="settings_media_torrent_peer_filter_local_description">除通过订阅过滤规则外，还可以手动添加过滤规则</string>
+    <string name="settings_media_torrent_peer_filter_ip">过滤 IP 地址</string>
+    <string name="settings_media_torrent_peer_filter_client_fingerprint">过滤客户端指纹</string>
+    <string name="settings_media_torrent_peer_filter_always_block_invalid_fingerprint">总是过滤异常指纹</string>
+    <string name="settings_media_torrent_peer_filter_client_type">过滤客户端类型</string>
+    <string name="settings_media_torrent_peer_filter_ip_blacklist">IP 黑名单设置</string>
+    <string name="settings_media_torrent_peer_filter_ip_blacklist_description">配置 IP 黑名单列表</string>
+    <string name="settings_media_torrent_peer_filter_auto_save_hint">提示：修改自动保存</string>
 
     <!-- AutoCacheGroup -->
     <string name="settings_media_auto_cache_title">自动缓存</string>

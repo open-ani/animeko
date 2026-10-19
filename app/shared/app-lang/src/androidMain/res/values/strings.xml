@@ -759,6 +759,23 @@
     <string name="settings_media_torrent_peer_blacklist_add_format_hint">IPv4 or IPv6 addresses are supported. IPv6 addresses must be in full format</string>
     <string name="settings_media_torrent_peer_blacklist_add_multiline_hint">Multiple lines are allowed. Press Enter to add, Ctrl+Enter for a new line</string>
     <string name="settings_media_torrent_peer_blacklist_invalid_ip">Invalid IP address format</string>
+    <string name="settings_media_torrent_peer_filter_rule">Rule</string>
+    <string name="settings_media_torrent_peer_filter_not_updated">Not updated, enable to update</string>
+    <string name="settings_media_torrent_peer_filter_stats">Contains %1$d IP rules, %2$d ID rules, and %3$d client rules</string>
+    <string name="settings_media_torrent_peer_filter_load_error">Load error: %1$s</string>
+    <string name="settings_media_torrent_peer_filter_update_error">Update error: %1$s</string>
+    <string name="settings_media_torrent_peer_filter_subscriptions">Filter rule subscriptions</string>
+    <string name="settings_media_torrent_peer_filter_refresh_all">Refresh all</string>
+    <string name="settings_media_torrent_peer_filter_use_builtin">Use built-in filter rules</string>
+    <string name="settings_media_torrent_peer_filter_local">Local filter rules</string>
+    <string name="settings_media_torrent_peer_filter_local_description">In addition to subscription rules, you can also add filter rules manually</string>
+    <string name="settings_media_torrent_peer_filter_ip">Filter IP addresses</string>
+    <string name="settings_media_torrent_peer_filter_client_fingerprint">Filter client fingerprints</string>
+    <string name="settings_media_torrent_peer_filter_always_block_invalid_fingerprint">Always filter invalid fingerprints</string>
+    <string name="settings_media_torrent_peer_filter_client_type">Filter client types</string>
+    <string name="settings_media_torrent_peer_filter_ip_blacklist">IP Blacklist Settings</string>
+    <string name="settings_media_torrent_peer_filter_ip_blacklist_description">Configure the IP blacklist</string>
+    <string name="settings_media_torrent_peer_filter_auto_save_hint">Changes are saved automatically</string>
 
     <!-- AutoCacheGroup -->
     <string name="settings_media_auto_cache_title">Auto Cache</string>
