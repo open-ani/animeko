@@ -33,6 +33,7 @@ import kotlin.time.TimeSource
  *
  * [record] 不挂起, 任意线程可调. 事件数超过 [maxEvents] 时只再发一条 `step=truncated`, 防止异常循环刷爆配额.
  * 发出的每条事件同时写入 [debugLog], 供调试悬浮窗显示.
+ * [enabled] 为 `false` 时 (功能开关 `play_flow_analytics` 关闭) 不向 [analytics] 发送, 只写入 [debugLog]; 序号照常递增.
  *
  * 事件清单与属性含义见 `docs/contributing/code/analytics-play-flow.md`.
  */
@@ -43,6 +44,7 @@ class PlayFlowRecorder(
     val playSessionId: String = Uuid.randomString(),
     private val maxEvents: Int = DEFAULT_MAX_EVENTS,
     private val debugLog: PlayFlowDebugLog? = PlayFlowDebugLog.Global,
+    private val enabled: Boolean = true,
 ) {
     private val start: TimeMark = timeSource.markNow()
     private val seq = atomic(0L)
@@ -88,7 +90,7 @@ class PlayFlowRecorder(
     }
 
     private fun post(properties: Map<String, Any?>) {
-        analytics.recordEvent(AnalyticsEvent.PlayFlow, properties)
+        if (enabled) analytics.recordEvent(AnalyticsEvent.PlayFlow, properties)
         debugLog?.record(playSessionId, subjectId, properties)
     }
 

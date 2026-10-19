@@ -27,6 +27,11 @@
 扩展通过 `PlayerExtensionContext.playFlow` 使用, 事件带 `EpisodeSession.playFlowEpisode` 作为归属, 切集后旧任务补发的事件仍归到旧的尝试.
 一个会话超过 400 条事件后只再发一条 `step=truncated`.
 
+## 开关
+
+`play_flow` 是否发送由功能开关 `play_flow_analytics` 控制 (见 [功能开关](feature-flags.md)), 默认开启. `EpisodeViewModel` 创建 `PlayFlowRecorder` 时读一次, 一次播放会话内保持一致;
+关闭时记录器照常写入调试悬浮窗, 只是不向 Analytics 发送, 既有事件 (`episode_enter` 等) 不受影响. 服务端用 "客户端随机" 策略即可按播放会话抽样 (每个播放会话抽一次签), 用 "每次请求随机" 则按启动抽样; 用总开关可以在配额紧张时立即停发.
+
 ## 事件
 
 ### 进入与剧集信息

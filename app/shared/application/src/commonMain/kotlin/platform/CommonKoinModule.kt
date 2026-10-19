@@ -29,6 +29,7 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.network.AniAnnouncementService
+import me.him188.ani.app.data.network.AniFeatureFlagService
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AniEpisodeCommentService
@@ -91,6 +92,7 @@ import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
 import me.him188.ani.app.domain.install.InstallIdRepository
+import me.him188.ani.app.domain.featureflag.FeatureFlagManager
 import me.him188.ani.app.domain.install.InstallReporter
 import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
@@ -299,6 +301,7 @@ private fun KoinApplication.otherModules(
     single<AniCommentReportService> { AniCommentReportService(get<AniApiProvider>().commentsApi) }
     single<AniNotificationService> { AniNotificationService(aniApiProvider.notificationsApi) }
     single<AniAnnouncementService> { AniAnnouncementService(aniApiProvider.announcementsApi) }
+    single<AniFeatureFlagService> { AniFeatureFlagService(aniApiProvider.featureFlagsApi) }
     single<NotificationBadgeManager>(createdAtStart = true) {
         NotificationBadgeManagerImpl(
             notificationService = get(),
@@ -334,6 +337,16 @@ private fun KoinApplication.otherModules(
             store = getContext().dataStores.installInfoStore,
             playHistoryRepository = get(),
             api = aniApiProvider.userProfileApi,
+            sessionStateProvider = get(),
+            currentUserId = get<UserRepository>().selfInfoFlow.map { it?.id?.toString() },
+            scope = coroutineScope,
+        ).also { it.start() }
+    }
+    // 功能开关: 先用上次的快照, 登录状态确定后拉取, 身份变化时再拉取 (见 docs/contributing/code/feature-flags.md)
+    single(createdAtStart = true) {
+        FeatureFlagManager(
+            store = getContext().dataStores.featureFlagStore,
+            service = get(),
             sessionStateProvider = get(),
             currentUserId = get<UserRepository>().selfInfoFlow.map { it?.id?.toString() },
             scope = coroutineScope,

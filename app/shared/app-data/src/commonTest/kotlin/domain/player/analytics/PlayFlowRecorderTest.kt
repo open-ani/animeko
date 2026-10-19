@@ -124,4 +124,22 @@ class PlayFlowRecorderTest {
             }
         }
     }
+
+    @Test
+    fun `disabled recorder keeps the debug log but sends nothing`() {
+        val debugLog = PlayFlowDebugLog()
+        val recorder = PlayFlowRecorder(
+            subjectId = 1, analytics = analytics, timeSource = timeSource, playSessionId = "sid",
+            debugLog = debugLog, enabled = false,
+        )
+        val episode = recorder.nextEpisodeAttempt(2)
+        recorder.record(PlayFlowStep.ENTER, episode) { put("trigger", "open") }
+        recorder.record(PlayFlowStep.SEARCH_STARTED, episode)
+
+        assertTrue(events().isEmpty())
+        val session = debugLog.sessions.value.single()
+        assertEquals("sid", session.playSessionId)
+        assertEquals(listOf(1L, 2L), session.events.map { it.properties["seq"] })
+        assertEquals(listOf("enter", "search_started"), session.events.map { it.properties["step"] })
+    }
 }

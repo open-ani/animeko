@@ -109,6 +109,8 @@ import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.player.CacheProgressProvider
 import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.app.domain.player.analytics.PlayFlowEpisode
+import me.him188.ani.app.domain.featureflag.FeatureFlag
+import me.him188.ani.app.domain.featureflag.FeatureFlagManager
 import me.him188.ani.app.domain.player.analytics.PlayFlowRecorder
 import me.him188.ani.app.domain.player.extension.AnalyticsExtension
 import me.him188.ani.app.domain.player.extension.AutoSelectExtension
@@ -317,6 +319,7 @@ open class EpisodeViewModel(
     private val downloadManager: MediaDownloadManager by inject()
     private val danmakuRepository: DanmakuRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
+    private val featureFlagManager: FeatureFlagManager by inject()
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()
     private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
     private val mediaSourceManager: MediaSourceManager by inject()
@@ -374,8 +377,12 @@ open class EpisodeViewModel(
 
     /**
      * 本播放页的加载流程埋点记录器. 与本 ViewModel 同生命周期, 持有本次播放会话的 `play_session_id`.
+     * 是否向 Analytics 发送由功能开关 `play_flow_analytics` 决定, 进入页面时读一次, 一次播放会话内保持一致.
      */
-    val playFlow: PlayFlowRecorder = PlayFlowRecorder(subjectId).also {
+    val playFlow: PlayFlowRecorder = PlayFlowRecorder(
+        subjectId,
+        enabled = featureFlagManager.isEnabled(FeatureFlag.PLAY_FLOW_ANALYTICS),
+    ).also {
         Analytics.recordEvent(
             EpisodeEnter,
             buildMap {
