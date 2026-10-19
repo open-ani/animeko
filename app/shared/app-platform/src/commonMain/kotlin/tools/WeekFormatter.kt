@@ -50,8 +50,8 @@ internal fun String.withValues(vararg values: Long): String {
 }
 
 class WeekFormatter(
-    private val getTimeNow: () -> Instant = { Clock.System.now() },
     private val strings: WeekFormatterStrings = WeekFormatterStrings(),
+    private val getTimeNow: () -> Instant = { Clock.System.now() },
 ) {
     fun format(instance: Instant, timeZone: TimeZone = TimeZone.currentSystemDefault()): String {
         return format(instance.toLocalDateTime(timeZone).date)
