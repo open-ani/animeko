@@ -10,6 +10,7 @@
 package me.him188.ani.android.activity
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
@@ -25,11 +26,20 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.him188.ani.android.BuildConfig
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.user.QrLoginRepository
+import me.him188.ani.app.domain.episode.EpisodeLink
+import me.him188.ani.app.domain.episode.ResolveEpisodeLinkUseCase
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.navigation.AniNavigator
+import me.him188.ani.app.pip.PIPModeChangedListener
+import me.him188.ani.app.pip.PictureInPictureHost
+import me.him188.ani.app.pip.UserLeaveHintListener
 import me.him188.ani.app.platform.AniComponentActivity
 import me.him188.ani.app.platform.rememberPlatformWindow
 import me.him188.ani.app.ui.exprovider.ExternalContentProviderFactory
@@ -38,17 +48,49 @@ import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.theme.SystemBarColorEffect
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
+import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.inject
+import java.util.concurrent.CopyOnWriteArrayList
 
-class MainActivity : AniComponentActivity() {
+class MainActivity : AniComponentActivity(), PictureInPictureHost {
     private val logger = logger<MainActivity>()
     private val aniNavigator = AniNavigator()
+    private val resolveEpisodeLink: ResolveEpisodeLinkUseCase by inject()
+    private var linkNavigationJob: Job? = null
+    private val toaster = object : Toaster {
+        override fun toast(text: String) {
+            Toast.makeText(this@MainActivity, text, Toast.LENGTH_LONG).show()
+        }
+    }
 
     private val externalContentProviderFactory: ExternalContentProviderFactory by inject()
+
+    private val userLeaveHintListeners = CopyOnWriteArrayList<UserLeaveHintListener>()
+    private val pipModeChangedListeners = CopyOnWriteArrayList<PIPModeChangedListener>()
+
+    override fun registerUserLeaveHintListener(listener: UserLeaveHintListener): AutoCloseable {
+        userLeaveHintListeners.add(listener)
+        return AutoCloseable { userLeaveHintListeners.remove(listener) }
+    }
+
+    override fun registerPictureInPictureModeChangedListener(listener: PIPModeChangedListener): AutoCloseable {
+        pipModeChangedListeners.add(listener)
+        return AutoCloseable { pipModeChangedListeners.remove(listener) }
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        userLeaveHintListeners.forEach { it.onUserLeaveHint() }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        pipModeChangedListeners.forEach { it.onChanged(isInPictureInPictureMode) }
+    }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -60,19 +102,31 @@ class MainActivity : AniComponentActivity() {
         val data = intent.data ?: return
         if (data.scheme != "ani") return
         when (data.host) {
-            "subjects" -> {
-                val id = data.pathSegments.getOrNull(0)?.toIntOrNull() ?: return
-                navigateWhenReady("subject details") { navigateSubjectDetails(id, placeholder = null) }
+            "subjects", "episodes" -> {
+                val link = EpisodeLink.parse(data.toString()) ?: return
+                linkNavigationJob?.cancel()
+                linkNavigationJob = navigateWhenReady("episode link") {
+                    val resolution = resolveEpisodeLink(link)
+                    resolution.error?.let { toaster.showLoadError(it) }
+                    val destination = resolution.destination ?: return@navigateWhenReady
+                    val episodeId = destination.episodeId
+                    if (episodeId == null) {
+                        navigateSubjectDetails(destination.subjectId, placeholder = null)
+                    } else {
+                        navigateEpisodeDetails(destination.subjectId, episodeId)
+                    }
+                }
             }
 
             "qr-login" -> {
                 val requestId = QrLoginRepository.parseRequestId(data.toString()) ?: return
-                navigateWhenReady("QR login confirm") { navigateQrLoginConfirm(requestId) }
+                linkNavigationJob?.cancel()
+                linkNavigationJob = navigateWhenReady("QR login confirm") { navigateQrLoginConfirm(requestId) }
             }
         }
     }
 
-    private fun navigateWhenReady(destination: String, action: AniNavigator.() -> Unit) {
+    private fun navigateWhenReady(destination: String, action: suspend AniNavigator.() -> Unit): Job =
         lifecycleScope.launch {
             try {
                 if (!aniNavigator.isBackStackReady()) {
@@ -80,11 +134,13 @@ class MainActivity : AniComponentActivity() {
                     delay(1000) // 等待初始化好, 否则跳转可能无效
                 }
                 aniNavigator.action()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.error(e) { "Failed to navigate to $destination" }
+                toaster.showLoadError(LoadError.fromException(RepositoryException.wrapOrThrowCancellation(e)))
             }
         }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,12 +161,6 @@ class MainActivity : AniComponentActivity() {
 
         // 允许画到 system bars
         WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        val toaster = object : Toaster {
-            override fun toast(text: String) {
-                Toast.makeText(this@MainActivity, text, Toast.LENGTH_LONG).show()
-            }
-        }
 
         val externalContentProvider = externalContentProviderFactory.create(this, lifecycleScope)
 

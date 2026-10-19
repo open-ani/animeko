@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.player.downloadSpeedFlow
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -40,7 +41,9 @@ import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_no_matching
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_resolution_timed_out
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_unknown_error
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_unsupported_media
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_web_engine_unavailable
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_decoding_bt
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_decoding_cloud
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_decoding_data
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_failed_prefix
 import me.him188.ani.app.ui.lang.subject_episode_video_loading_player_error
@@ -95,6 +98,7 @@ fun EpisodeVideoLoadingIndicator(
     val resolvingSourceText = stringResource(Lang.subject_episode_video_loading_resolving_source)
     val decodingDataText = stringResource(Lang.subject_episode_video_loading_decoding_data)
     val decodingBtText = stringResource(Lang.subject_episode_video_loading_decoding_bt)
+    val decodingCloudText = stringResource(Lang.subject_episode_video_loading_decoding_cloud)
     val bufferingText = stringResource(Lang.subject_episode_video_loading_buffering)
     val bufferingBtTooLongText = stringResource(Lang.subject_episode_video_loading_buffering_bt_too_long)
     val bufferingNoSpeedTrySwitchText =
@@ -106,6 +110,7 @@ fun EpisodeVideoLoadingIndicator(
         unknownError = stringResource(Lang.subject_episode_video_loading_cause_unknown_error),
         unsupportedMedia = stringResource(Lang.subject_episode_video_loading_cause_unsupported_media),
         noMatchingFile = stringResource(Lang.subject_episode_video_loading_cause_no_matching_file),
+        webEngineUnavailable = stringResource(Lang.subject_episode_video_loading_cause_web_engine_unavailable),
         cancelled = stringResource(Lang.subject_episode_video_loading_cause_cancelled),
         networkError = stringResource(Lang.subject_episode_video_loading_cause_network_error),
     )
@@ -129,11 +134,12 @@ fun EpisodeVideoLoadingIndicator(
                 }
 
                 is VideoLoadingState.DecodingData -> {
+                    val engineKey = state.engineKey
                     TextWithBorder(
-                        if (!state.isBt) {
-                            decodingDataText
-                        } else {
-                            decodingBtText
+                        when {
+                            engineKey == null -> decodingDataText
+                            engineKey.isCloud -> decodingCloudText
+                            else -> decodingBtText
                         },
                         textAlign = TextAlign.Center,
                     )
@@ -163,7 +169,9 @@ fun EpisodeVideoLoadingIndicator(
 
                                 if (tooLong) {
                                     appendLine()
-                                    if (state.isBt) {
+                                    // 云盘和 WEB 一样是按需取流, 没有找节点这一步要解释, 用通用文案.
+                                    val engineKey = state.engineKey
+                                    if (engineKey != null && !engineKey.isCloud) {
                                         append(bufferingBtTooLongText)
                                         appendLine()
                                         append(bufferingNoSpeedTrySwitchText)
@@ -197,6 +205,7 @@ private data class VideoLoadingCauseLabels(
     val unknownError: String,
     val unsupportedMedia: String,
     val noMatchingFile: String,
+    val webEngineUnavailable: String,
     val cancelled: String,
     val networkError: String,
 )
@@ -206,6 +215,7 @@ private fun renderCause(cause: VideoLoadingState.Failed, labels: VideoLoadingCau
     is VideoLoadingState.UnknownError -> labels.unknownError
     is VideoLoadingState.UnsupportedMedia -> labels.unsupportedMedia
     VideoLoadingState.NoMatchingFile -> labels.noMatchingFile
+    VideoLoadingState.WebEngineUnavailable -> labels.webEngineUnavailable
     VideoLoadingState.Cancelled -> labels.cancelled
     VideoLoadingState.NetworkError -> labels.networkError
 }
@@ -251,14 +261,14 @@ private fun PreviewEpisodeVideoLoadingIndicator2() {
 private fun PreviewEpisodeVideoLoadingIndicator5() {
     ProvideCompositionLocalsForPreview {
         EpisodeVideoLoadingIndicator(
-            VideoLoadingState.DecodingData(true),
+            VideoLoadingState.DecodingData(MediaCacheEngineKey.Anitorrent),
             speedProvider = { 0.3.bytes },
             optimizeForFullscreen = false,
         )
     }
 }
 
-private fun successState() = VideoLoadingState.Succeed(isBt = true)
+private fun successState() = VideoLoadingState.Succeed(MediaCacheEngineKey.Anitorrent)
 
 @Preview(name = "Buffering")
 @Composable

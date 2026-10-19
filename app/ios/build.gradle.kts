@@ -80,6 +80,36 @@ tasks.register("podInstall", Exec::class) {
     commandLine("pod", "install")
 }
 
+// ── Sentry terminate 补丁测试 ──
+// 编译并运行模拟 Sentry fatal cleanup 的 C++ 程序, 验证 podInstall 应用的补丁仍会调用 Kotlin/Native 的 terminate handler。
+tasks.register("testSentryTerminatePatch", Exec::class) {
+    group = "verification"
+    description = "Tests the Sentry C++ terminate-handler patch applied by pod install"
+    workingDir(projectDir)
+    commandLine("ruby", "tests/sentry_terminate_patch_test.rb")
+}
+
+tasks.register("testVideoEnhancementGeometry", Exec::class) {
+    group = "verification"
+    description = "Tests native video frame aperture and presentation geometry with CoreVideo and XCTest"
+    onlyIf("Apple frameworks require macOS") { System.getProperty("os.name") == "Mac OS X" }
+    workingDir(projectDir)
+    commandLine(
+        "sh", "-c", """
+            set -eu
+            test_developer="${'$'}(xcrun --sdk macosx --show-sdk-platform-path)/Developer"
+            mkdir -p build/tests
+            xcrun --sdk macosx swiftc -F "${'$'}test_developer/Library/Frameworks" \
+                -I "${'$'}test_developer/usr/lib" -L "${'$'}test_developer/usr/lib" \
+                -Xlinker -rpath -Xlinker "${'$'}test_developer/Library/Frameworks" \
+                -Xlinker -rpath -Xlinker "${'$'}test_developer/usr/lib" \
+                Animeko/VideoEnhancementRenderer.swift tests/VideoEnhancementGeometryTests.swift \
+                -o build/tests/video-enhancement-geometry
+            build/tests/video-enhancement-geometry
+        """.trimIndent(),
+    )
+}
+
 // ── Kotlin/Native iOS Framework 编译 ──
 // 触发 Kotlin Multiplatform 的 iOS framework 编译和嵌入流程。
 // 这是 Xcode 构建的前置步骤, 确保 Kotlin 代码已编译为 iOS 可用的 .framework。

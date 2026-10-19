@@ -71,6 +71,7 @@ class ProfileGroupEmailTest {
                         onGithubAccountClick = {},
                         onUnbindExternalAccount = {},
                         onUnbindEmail = { callbacks.unbindEmail++ },
+                        onDeleteAccount = {},
                     )
                 }
             }

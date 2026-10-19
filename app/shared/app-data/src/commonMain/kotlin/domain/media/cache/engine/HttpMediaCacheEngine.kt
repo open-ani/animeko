@@ -24,7 +24,6 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.writeString
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
-import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.domain.media.cache.DownloaderStatus
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
@@ -38,7 +37,6 @@ import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.MediaCacheProperties
-import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
@@ -72,7 +70,6 @@ class HttpMediaCacheEngine(
     private val mediaResolver: MediaResolver,
     private val mediaSourceId: String,
     private val dao: HttpCacheDownloadStateDao,
-    private val pikpakConfig: () -> PikPakConfig = { PikPakConfig.Default },
 ) : MediaCacheEngine {
     override val engineKey: MediaCacheEngineKey = MediaCacheEngineKey.WebM3u
 
@@ -105,8 +102,6 @@ class HttpMediaCacheEngine(
             is ResourceLocation.HttpStreamingFile -> mediaResolver.supports(media)
             is ResourceLocation.HttpTorrentFile,
             is ResourceLocation.MagnetLink,
-                -> pikpakConfig().enabled && mediaResolver.supports(media)
-
             is ResourceLocation.LocalFile,
                 -> {
                 false
@@ -169,18 +164,7 @@ class HttpMediaCacheEngine(
 
             is UriMediaData -> {
                 val downloadId = httpDownloadId(origin, metadata)
-                var options = DownloadOptions(headers = mediaData.headers)
-                if (origin.kind == MediaSourceKind.BitTorrent) {
-                    val config = pikpakConfig()
-                    options = options.copy(
-                        maxConcurrentSegments = config.downloadConcurrency.coerceIn(
-                            PikPakConfig.MIN_DOWNLOAD_CONCURRENCY,
-                            PikPakConfig.MAX_DOWNLOAD_CONCURRENCY,
-                        ),
-                        // PikPak CDN rejects Ktor's default JSON Accept header with 406.
-                        headers = options.headers + ("Accept" to "application/octet-stream"),
-                    )
-                }
+                val options = DownloadOptions(headers = mediaData.headers)
                 val state = downloader.downloadWithId(
                     downloadId = downloadId,
                     mediaData.uri,
@@ -197,7 +181,7 @@ class HttpMediaCacheEngine(
     }
 
     /**
-     * 新建任务的标识, 由 mediaId, subjectId 与 episodeId 共同决定: 合集资源经 PikPak 下载时各集有独立的任务与文件.
+     * 新建任务的标识, 由 mediaId, subjectId 与 episodeId 共同决定: 合集资源各集有独立的任务与文件.
      */
     private fun httpDownloadId(media: Media, metadata: MediaCacheMetadata): DownloadId {
         val identity = listOf(media.mediaId, metadata.subjectId, metadata.episodeId)
@@ -388,21 +372,21 @@ class HttpMediaCacheEngine(
         dao.deleteById(state.downloadId)
     }
 
-    /**
-     * 仅由 mediaId 派生的旧标识, 只用于 [restoredHttpDownloadId] 的回退匹配.
-     */
-    private fun Media.toSafeDownloadId(): DownloadId {
-        return DownloadId(mediaId.replace(PATH_AFFECTING_CHARS_REGEX, "-"))
-    }
-
     companion object {
         private val logger = logger<HttpMediaCacheEngine>()
-        private val PATH_AFFECTING_CHARS_REGEX = Regex("[\\\\/:*?\"<>|]")
 
         @Deprecated("Use HttpMediaCacheEngine.MEDIA_CACHE_DIR instead")
         const val LEGACY_MEDIA_CACHE_DIR = "web-m3u-cache"
         const val MEDIA_CACHE_DIR = "web-m3u"
     }
+}
+
+private val PATH_AFFECTING_CHARS_REGEX = Regex("[\\\\/:*?\"<>|]")
+
+// Legacy id derived from mediaId only. Rows written before httpDownloadId are keyed by it, so both
+// the restore fallback and the PikPak migration derive it the same way. Any change orphans those rows.
+internal fun Media.toSafeDownloadId(): DownloadId {
+    return DownloadId(mediaId.replace(PATH_AFFECTING_CHARS_REGEX, "-"))
 }
 
 internal fun DownloadStatus.toMediaCacheState(): MediaCacheState {

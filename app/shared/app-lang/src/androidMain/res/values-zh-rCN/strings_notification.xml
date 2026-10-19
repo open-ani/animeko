@@ -1,0 +1,85 @@
+<resources>
+    <string name="notification_title">通知</string>
+    <string name="notification_mark_all_read">全部标为已读</string>
+    <string name="notification_settings">通知设置</string>
+    <string name="notification_unread">未读</string>
+    <string name="notification_has_unread">有未读通知</string>
+    <string name="notification_unread_count">%1$d 条未读</string>
+    <string name="notification_empty">暂无通知</string>
+    <string name="notification_empty_supporting">举报的处理结果和账号相关的提醒会显示在这里</string>
+    <string name="notification_interaction_empty">暂无互动</string>
+    <string name="notification_interaction_empty_supporting">评论收到的回复、提及和回应会显示在这里</string>
+    <string name="notification_detail_placeholder">选择一条通知查看详情</string>
+    <string name="notification_not_found">该通知不存在</string>
+    <string name="notification_group_notice">通知</string>
+    <string name="notification_group_interaction">互动</string>
+    <string name="notification_view_details">查看详情</string>
+    <string name="notification_update_hint">当前版本可能无法完整显示这条通知，更新 Animeko 后可查看完整内容。</string>
+    <string name="notification_check_update">检查更新</string>
+    <string name="notification_update_banner">部分通知需要更新版本才能完整显示</string>
+    <string name="notification_update_banner_action">更新</string>
+
+    <string name="notification_time_just_now">刚刚</string>
+    <string name="notification_time_minutes_ago">%1$s 分钟前</string>
+    <string name="notification_time_hours_ago">%1$s 小时前</string>
+    <string name="notification_time_yesterday">昨天</string>
+    <string name="notification_time_month_day">%2$s 月 %3$s 日</string>
+    <string name="notification_time_date">%1$s/%2$s/%3$s</string>
+    <string name="notification_time_detail_month_day_time">%2$s 月 %3$s 日 %5$s</string>
+    <string name="notification_time_detail_date_time">%1$s 年 %2$s 月 %3$s 日 %5$s</string>
+
+    <string name="notification_announcement_overline">公告</string>
+    <string name="notification_announcements_title">公告</string>
+    <string name="notification_announcements_empty">暂无公告</string>
+    <string name="notification_announcements_empty_supporting">维护、版本更新等公告会显示在这里</string>
+    <string name="notification_announcement_detail_title">公告</string>
+    <string name="notification_announcement_detail_placeholder">选择一条公告查看详情</string>
+    <string name="notification_announcement_not_found">该公告不存在或已被删除</string>
+    <string name="notification_announcement_pinned">置顶</string>
+    <string name="notification_announcement_tag_general">公告</string>
+    <string name="notification_announcement_tag_maintenance">维护</string>
+    <string name="notification_announcement_tag_release">版本更新</string>
+    <string name="notification_announcement_tag_community">社区</string>
+
+    <string name="notification_report_result_row_title">你举报的评论已被处理</string>
+    <string name="notification_report_result_detail_title">举报结果</string>
+    <string name="notification_report_result_upheld">举报成立</string>
+    <string name="notification_report_result_description_removed">经审核，该评论违反社区规则，已被删除。感谢你的举报。</string>
+    <string name="notification_report_result_description_handled">经审核，该评论违反社区规则，已处理。感谢你的举报。</string>
+    <string name="notification_report_reason">举报原因</string>
+    <string name="notification_report_target">举报对象</string>
+    <string name="notification_report_reported_at">举报时间</string>
+    <string name="notification_report_handled_at">处理时间</string>
+    <string name="notification_report_outcome">处理结果</string>
+    <string name="notification_report_outcome_removed">评论已删除</string>
+    <string name="notification_report_outcome_handled">已处理</string>
+    <string name="notification_report_snapshot_title">被举报内容（举报时的快照）</string>
+    <string name="notification_report_snapshot_footnote">评论可能已被作者编辑或删除，审核以你举报时的快照为准。%1$s</string>
+    <string name="notification_report_privacy_footnote">举报人身份不会告知对方。</string>
+    <string name="notification_report_target_episode_comment">剧集评论</string>
+    <string name="notification_report_target_subject_review">条目评论</string>
+    <string name="notification_report_target_person_comment">人物评论</string>
+    <string name="notification_report_target_character_comment">角色评论</string>
+    <string name="notification_report_target_comment">评论</string>
+    <string name="notification_go_to_episode">前往该剧集</string>
+    <string name="notification_go_to_subject">前往该条目</string>
+    <string name="notification_go_to_person">前往人物</string>
+    <string name="notification_go_to_character">前往角色</string>
+
+    <string name="notification_account_third_party_unbound">%1$s 账号已解绑</string>
+    <string name="notification_account_third_party_unbound_generic">第三方账号已解绑</string>
+    <string name="notification_account_third_party_unbound_supporting">该账号已登录另一个 Animeko 账号</string>
+
+    <string name="notification_system_detail_title">系统通知</string>
+    <string name="notification_system_bangumi_expired">Bangumi 授权已过期</string>
+    <string name="notification_system_bangumi_expired_supporting">追番进度已停止同步，重新授权后自动恢复。</string>
+    <string name="notification_system_bangumi_reauthorize">重新授权</string>
+
+    <string name="notification_settings_group_system">系统</string>
+    <string name="notification_settings_system_group_description">关闭后，对应的通知不会在本设备显示，也不计入未读。</string>
+    <string name="notification_settings_report_result_item">你举报的评论有处理结果</string>
+    <string name="notification_settings_account_security_item">你的账号有安全提醒</string>
+    <string name="notification_settings_group_announcements">公告</string>
+    <string name="notification_settings_announcement_item">你收到新公告</string>
+    <string name="notification_settings_announcement_description">关闭后新公告不会在头像上显示红点。</string>
+</resources>

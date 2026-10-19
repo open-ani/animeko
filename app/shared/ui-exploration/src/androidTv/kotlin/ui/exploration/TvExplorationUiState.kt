@@ -22,6 +22,6 @@ data class TvHeroSubject(val subjectId: Int, val title: String, val imageUrl: St
 sealed interface TvExplorationIntent {
     data class ShowHero(val subject: TvHeroSubject) : TvExplorationIntent
     data class CardVisible(val subjectId: Int, val collection: SubjectCollectionInfo? = null) : TvExplorationIntent
-    data class OpenSubject(val subject: TvHeroSubject) : TvExplorationIntent
+    data class OpenSubject(val subject: TvHeroSubject, val area: TvExplorationArea) : TvExplorationIntent
     data class ContinueWatching(val subject: TvHeroSubject, val episodeId: Int) : TvExplorationIntent
 }

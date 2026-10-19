@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -43,6 +45,7 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PictureInPicture
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Subtitles
@@ -133,6 +136,7 @@ import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_8
 import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_9
 import me.him188.ani.app.ui.lang.video_player_disable_danmaku
 import me.him188.ani.app.ui.lang.video_player_enable_danmaku
+import me.him188.ani.app.ui.lang.video_player_enter_picture_in_picture
 import me.him188.ani.app.ui.lang.video_player_mute
 import me.him188.ani.app.ui.lang.video_player_next_episode
 import me.him188.ani.app.ui.lang.video_player_pause
@@ -146,9 +150,7 @@ import me.him188.ani.app.utils.formatSpeedValue
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
-import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.keepLayoutWhenHidden
-import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
 import me.him188.ani.app.videoplayer.ui.toggle
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
 import org.jetbrains.compose.resources.stringResource
@@ -160,8 +162,7 @@ const val TAG_SPEED_SWITCHER_DROPDOWN_MENU = "SpeedSwitcherDropdownMenu"
 const val TAG_SPEED_SWITCHER_SLIDER = "SpeedSwitcherSlider"
 const val TAG_SPEED_SWITCHER_VALUE_INDICATOR = "SpeedSwitcherValueIndicator"
 const val TAG_DANMAKU_ICON_BUTTON = "DanmakuIconButton"
-const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_TEXT_BUTTON = "VideoAspectRatioTextButton"
-const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_DROPDOWN_MENU = "VideoAspectRatioDropdownMenu"
+const val TAG_PICTURE_IN_PICTURE_BUTTON = "PictureInPictureButton"
 
 const val TAG_FULL_SCREEN_BUTTON = "FullScreenButton"
 
@@ -206,6 +207,27 @@ object PlayerControllerDefaults {
             } else {
                 Icon(Icons.Rounded.SubtitlesOff, contentDescription = stringResource(Lang.video_player_enable_danmaku))
             }
+        }
+    }
+
+    /**
+     * 进入系统画中画小窗. 仅移动端显示; 不支持的平台由调用方隐藏.
+     */
+    @Composable
+    fun PictureInPictureIcon(
+        enabled: Boolean,
+        onClick: () -> Unit,
+        modifier: Modifier = Modifier,
+    ) {
+        IconButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier.testTag(TAG_PICTURE_IN_PICTURE_BUTTON),
+        ) {
+            Icon(
+                Icons.Rounded.PictureInPicture,
+                contentDescription = stringResource(Lang.video_player_enter_picture_in_picture),
+            )
         }
     }
 
@@ -689,32 +711,6 @@ object PlayerControllerDefaults {
     }
 
     /**
-     * Video aspect ratio selector
-     */
-
-    @Composable
-    fun VideoAspectRatioSelector(
-        videoAspectRatioControllerState: VideoAspectRatioControllerState,
-        modifier: Modifier = Modifier,
-        onExpandedChanged: (expanded: Boolean) -> Unit = {},
-    ) {
-        return OptionsSwitcher(
-            value = videoAspectRatioControllerState.currentMode,
-            onValueChange = { videoAspectRatioControllerState.setMode(it) },
-            optionsProvider = { VideoAspectRatioControllerState.Entries },
-            renderValue = { Text(renderAspectRatioMode(it)) },
-            renderValueExposed = { Text(renderAspectRatioMode(it)) },
-            modifier,
-            properties = PlatformPopupProperties(
-                clippingEnabled = false,
-            ),
-            textButtonTestTag = TAG_VIDEO_ASPECT_RATIO_SELECTOR_TEXT_BUTTON,
-            dropdownMenuTestTag = TAG_VIDEO_ASPECT_RATIO_SELECTOR_DROPDOWN_MENU,
-            onExpandedChanged = onExpandedChanged,
-        )
-    }
-
-    /**
      * @param optionsProvider The options to choose from. Note that when the value changes, it will not reflect in the UI.
      */
     @Composable
@@ -842,6 +838,8 @@ object PlayerControllerDefaults {
  * @param expanded Whether the controller bar is expanded.
  * If `true`, the [progressIndicator] and [progressSlider] will be shown on a separate row above. The bottom row will contain a [danmakuEditor].
  * If `false`, the entire bar will be only one row. [danmakuEditor] will be ignored.
+ * @param topActions Actions shown at the top end of the [PlayerControllerBarLayout.VerticalSplit] layout.
+ * @param layout 控制器内容在可用空间内的排列方式.
  * @param sliderOnly Whether to keep only [progressSlider] visible without replacing its composition.
  */
 @Composable
@@ -852,9 +850,25 @@ fun PlayerControllerBar(
     danmakuEditor: @Composable RowScope.() -> Unit,
     endActions: @Composable RowScope.() -> Unit,
     expanded: Boolean,
+    topActions: @Composable RowScope.() -> Unit = {},
+    layout: PlayerControllerBarLayout = PlayerControllerBarLayout.Standard,
     sliderOnly: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    if (layout == PlayerControllerBarLayout.VerticalSplit) {
+        VerticalSplitPlayerControllerBar(
+            startActions = startActions,
+            progressIndicator = progressIndicator,
+            progressSlider = progressSlider,
+            danmakuEditor = danmakuEditor,
+            endActions = endActions,
+            topActions = topActions,
+            sliderOnly = sliderOnly,
+            modifier = modifier,
+        )
+        return
+    }
+
     Column(
         modifier
             .clickable(remember { MutableInteractionSource() }, null, onClick = {}) // Consume touch event
@@ -914,6 +928,70 @@ fun PlayerControllerBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 endActions()
+            }
+        }
+    }
+}
+
+enum class PlayerControllerBarLayout {
+    Standard,
+    VerticalSplit,
+}
+
+@Composable
+private fun VerticalSplitPlayerControllerBar(
+    startActions: @Composable RowScope.() -> Unit,
+    progressIndicator: @Composable RowScope.() -> Unit,
+    progressSlider: @Composable RowScope.() -> Unit,
+    danmakuEditor: @Composable RowScope.() -> Unit,
+    endActions: @Composable RowScope.() -> Unit,
+    topActions: @Composable RowScope.() -> Unit,
+    sliderOnly: Boolean,
+    modifier: Modifier,
+) {
+    Column(
+        modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().keepLayoutWhenHidden(sliderOnly),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            topActions()
+        }
+        Row(
+            Modifier.fillMaxWidth().weight(1f).keepLayoutWhenHidden(sliderOnly),
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            startActions()
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(bottom = 12.dp).keepLayoutWhenHidden(sliderOnly),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ProvideTextStyle(MaterialTheme.typography.labelSmall) {
+                danmakuEditor()
+            }
+        }
+        ProvideTextStyle(MaterialTheme.typography.labelMedium) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                progressSlider()
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                progressIndicator()
+                Spacer(Modifier.weight(1f))
+                Row(Modifier.keepLayoutWhenHidden(sliderOnly)) {
+                    endActions()
+                }
             }
         }
     }

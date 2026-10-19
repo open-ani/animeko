@@ -49,7 +49,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import me.him188.ani.app.data.network.protocol.ReleaseClass
-import me.him188.ani.app.navigation.QQ_GROUP_ID
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -60,7 +59,6 @@ import me.him188.ani.app.ui.foundation.icons.AniIcons
 import me.him188.ani.app.ui.foundation.icons.AwardStar
 import me.him188.ani.app.ui.foundation.icons.DeployedCodeAccount
 import me.him188.ani.app.ui.foundation.icons.News
-import me.him188.ani.app.ui.foundation.icons.QqRoundedOutline
 import me.him188.ani.app.ui.foundation.icons.Telegram
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.foundation.widgets.HeroIconDefaults
@@ -73,7 +71,6 @@ import me.him188.ani.app.ui.lang.settings_about_build_info
 import me.him188.ani.app.ui.lang.settings_about_chat_groups
 import me.him188.ani.app.ui.lang.settings_about_feedback
 import me.him188.ani.app.ui.lang.settings_about_icon_description
-import me.him188.ani.app.ui.lang.settings_about_qq_group
 import me.him188.ani.app.ui.lang.settings_about_release_notes
 import me.him188.ani.app.ui.lang.settings_about_source_code
 import me.him188.ani.app.ui.lang.settings_about_version
@@ -212,17 +209,6 @@ fun AboutTab(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 val browserNavigator = rememberAsyncBrowserNavigator()
-                SuggestionChip(
-                    { browserNavigator.openJoinGroup(context) },
-                    icon = {
-                        Icon(
-                            AniIcons.QqRoundedOutline, stringResource(Lang.settings_about_qq_group),
-                            Modifier.size(20.dp),
-                        )
-                    },
-                    label = { Text(QQ_GROUP_ID) },
-                )
-
                 SuggestionChip(
                     { browserNavigator.openJoinTelegram(context) },
                     icon = {

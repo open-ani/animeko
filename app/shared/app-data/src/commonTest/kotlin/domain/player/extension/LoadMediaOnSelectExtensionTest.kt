@@ -21,29 +21,39 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemTemporaryDirectory
+import me.him188.ani.app.data.models.preference.HlsAdFilteringMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
+import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.hls.HlsPlaybackOptions
+import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
+import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparerResult
 import me.him188.ani.app.domain.media.player.data.AniSystemFileMediaData
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
+import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.name
 import me.him188.ani.utils.io.writeBytes
+import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.source.MediaData
 import org.openani.mediamp.source.UriMediaData
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 
@@ -51,21 +61,36 @@ import kotlin.test.assertSame
  * @see EpisodeFetchSelectPlayState.LoadMediaOnSelectExtension
  */
 class LoadMediaOnSelectExtensionTest : AbstractPlayerExtensionTest() {
+    /**
+     * @param hlsPreparer 非空时开启 HLS 广告过滤并使用它.
+     */
     private fun TestScope.createCase(
         mediaResolver: MediaResolver = TestUniversalMediaResolver,
+        hlsPreparer: HlsPlaybackPreparer? = null,
+        extensions: List<EpisodePlayerExtensionFactory<*>> = listOf(),
+        configure: EpisodePlayerTestSuite.() -> Unit = {},
     ): Triple<CoroutineScope, EpisodePlayerTestSuite, EpisodeFetchSelectPlayState> {
         val testScope = this.childScope()
         val suite = EpisodePlayerTestSuite(this, testScope)
         suite.registerComponent<GetVideoScaffoldConfigUseCase> {
             GetVideoScaffoldConfigUseCase {
-                flowOf(VideoScaffoldConfig.AllDisabled.copy(autoPlayNext = true))
+                flowOf(
+                    VideoScaffoldConfig.AllDisabled.copy(
+                        autoPlayNext = true,
+                        hlsAdFilteringMode = if (hlsPreparer != null) HlsAdFilteringMode.ALL else HlsAdFilteringMode.OFF,
+                    ),
+                )
             }
         }
         suite.registerComponent<MediaResolver> {
             mediaResolver
         }
+        if (hlsPreparer != null) {
+            suite.registerComponent<HlsPlaybackPreparer> { hlsPreparer }
+        }
 
-        val state = suite.createState(listOf()) // LoadMediaOnSelectExtension is intrinsic
+        suite.configure()
+        val state = suite.createState(extensions) // LoadMediaOnSelectExtension is intrinsic
         state.onUIReady()
         advanceUntilIdle()
         return Triple(testScope, suite, state)
@@ -87,6 +112,153 @@ class LoadMediaOnSelectExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals(0, suite.player.currentPositionMillis.value)
 
         testScope.cancel()
+    }
+
+    @Test
+    fun `opens media at saved play progress`() = runTest {
+        val (testScope, suite, state) = createCase()
+        suite.koin.get<EpisodePlayHistoryRepository>().saveOrUpdate(initialEpisodeId, 30_000)
+
+        val ms1 = suite.mediaSelectorTestBuilder.delayedMediaSource("1")
+        ms1.complete(listOf(TestMediaList[0]))
+        state.mediaSelectorFlow.filterNotNull().first().select(TestMediaList[0])
+        advanceUntilIdle()
+
+        // 播放器在打开时就定位到记忆的进度, 不需要任何扩展在起播后跳转
+        assertEquals(MediaStatus.Ready, suite.player.state.value.mediaStatus)
+        assertEquals(30_000, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `passes start position to the hls preparer as prefetch hint`() = runTest {
+        val preparer = HintRecordingHlsPlaybackPreparer()
+        val (testScope, suite, state) = createCase(hlsPreparer = preparer)
+        suite.koin.get<EpisodePlayHistoryRepository>().saveOrUpdate(initialEpisodeId, 30_000)
+
+        val ms1 = suite.mediaSelectorTestBuilder.delayedMediaSource("1")
+        ms1.complete(listOf(TestMediaList[0]))
+        state.mediaSelectorFlow.filterNotNull().first().select(TestMediaList[0])
+        advanceUntilIdle()
+
+        assertEquals(listOf<Long?>(30_000), preparer.hints)
+        assertEquals(30_000, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `starts from the beginning while watch together suppresses resume`() = runTest {
+        val preparer = HintRecordingHlsPlaybackPreparer()
+        val (testScope, suite, state) = createCase(hlsPreparer = preparer)
+        suite.koin.get<EpisodePlayHistoryRepository>().saveOrUpdate(initialEpisodeId, 30_000)
+        suite.koin.get<PlaybackAutomationGate>().setSuppressed(true)
+
+        val ms1 = suite.mediaSelectorTestBuilder.delayedMediaSource("1")
+        ms1.complete(listOf(TestMediaList[0]))
+        state.mediaSelectorFlow.filterNotNull().first().select(TestMediaList[0])
+        advanceUntilIdle()
+
+        assertEquals(listOf<Long?>(null), preparer.hints)
+        assertEquals(0, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `starts from the beginning when play progress cannot be read`() = runTest {
+        val (testScope, suite, state) = createCase {
+            val repository = koin.get<EpisodePlayHistoryRepository>()
+            registerComponent<EpisodePlayHistoryRepository> {
+                object : EpisodePlayHistoryRepository by repository {
+                    override suspend fun getResumePositionMillisByEpisodeId(episodeId: Int): Long? =
+                        throw IllegalStateException("database unavailable")
+                }
+            }
+        }
+
+        val ms1 = suite.mediaSelectorTestBuilder.delayedMediaSource("1")
+        ms1.complete(listOf(TestMediaList[0]))
+        state.mediaSelectorFlow.filterNotNull().first().select(TestMediaList[0])
+        advanceUntilIdle()
+
+        assertIs<VideoLoadingState.Succeed>(state.playerSession.videoLoadingState.value)
+        assertEquals(0, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `reads start position after onBeforeLoadMedia while the player still holds the previous media`() = runTest {
+        val previousMediaInHook = mutableListOf<MediaData?>()
+        val (testScope, suite, state) = createCase(
+            extensions = listOf(
+                EpisodePlayerExtensionFactory { context, koin ->
+                    object : PlayerExtension("SaveOnBeforeLoadMedia") {
+                        override suspend fun onBeforeLoadMedia(episodeSession: EpisodeSession) {
+                            previousMediaInHook += context.player.mediaData.value
+                            koin.get<EpisodePlayHistoryRepository>()
+                                .saveOrUpdate(episodeSession.episodeId, context.player.currentPositionMillis.value)
+                        }
+                    }
+                },
+            ),
+        )
+
+        val ms1 = suite.mediaSelectorTestBuilder.delayedMediaSource("1")
+        ms1.complete(TestMediaList.take(2))
+        state.mediaSelectorFlow.filterNotNull().first().select(TestMediaList[0])
+        advanceUntilIdle()
+        val firstData = assertNotNull(suite.player.mediaData.value)
+
+        suite.player.seekTo(42_000)
+        state.mediaSelectorFlow.filterNotNull().first().select(TestMediaList[1])
+        advanceUntilIdle()
+
+        assertEquals(listOf(null, firstData), previousMediaInHook)
+        assertNotSame(firstData, suite.player.mediaData.value)
+        assertEquals(42_000, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `failing onBeforeLoadMedia does not prevent loading`() = runTest {
+        val (testScope, suite, state) = createCase(
+            extensions = listOf(
+                EpisodePlayerExtensionFactory { _, _ ->
+                    object : PlayerExtension("FailingOnBeforeLoadMedia") {
+                        override suspend fun onBeforeLoadMedia(episodeSession: EpisodeSession) {
+                            throw IllegalStateException("test failure")
+                        }
+                    }
+                },
+            ),
+        )
+
+        val ms1 = suite.mediaSelectorTestBuilder.delayedMediaSource("1")
+        ms1.complete(listOf(TestMediaList[0]))
+        state.mediaSelectorFlow.filterNotNull().first().select(TestMediaList[0])
+        advanceUntilIdle()
+
+        assertIs<VideoLoadingState.Succeed>(state.playerSession.videoLoadingState.value)
+        assertIs<UriMediaData>(suite.player.mediaData.value)
+
+        testScope.cancel()
+    }
+
+    private class HintRecordingHlsPlaybackPreparer : HlsPlaybackPreparer {
+        val hints = mutableListOf<Long?>()
+
+        override suspend fun prepare(
+            data: UriMediaData,
+            options: HlsPlaybackOptions,
+            startPositionHintMillis: Long?,
+        ): HlsPlaybackPreparerResult {
+            hints += startPositionHintMillis
+            return HlsPlaybackPreparerResult(data)
+        }
     }
 
     @Test

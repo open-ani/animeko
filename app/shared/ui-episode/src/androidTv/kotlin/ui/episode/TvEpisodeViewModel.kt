@@ -51,6 +51,7 @@ import me.him188.ani.app.domain.episode.findNeighborEpisode
 import me.him188.ani.app.domain.episode.infoBundleFlow
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
+import me.him188.ani.app.domain.media.player.data.suppliedFramePreview
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.player.VideoLoadingState
@@ -76,11 +77,16 @@ import me.him188.ani.tv.ui.episode.source.TvSourceSelectionState
 import me.him188.ani.tv.ui.episode.source.tvSourceGroups
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectRecommendationClick
+import me.him188.ani.utils.analytics.recordEvent
 import org.koin.core.Koin
 import org.openani.mediamp.features.AspectRatioMode
 import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.subtitleTracks
+import org.openani.mediamp.source.MediaData
 import org.openani.mediamp.togglePlayWhenReady
 
 /**
@@ -517,6 +523,13 @@ class TvEpisodeViewModel(
                 val recommendation = intent.recommendation
                 val targetSubjectId = recommendation.tvNavigationSubjectId
                 if (targetSubjectId != null) {
+                    Analytics.recordEvent(SubjectRecommendationClick) {
+                        put("subject_id", targetSubjectId)
+                    }
+                    Analytics.recordEvent(SubjectEnter) {
+                        put("source", "episode_recommendation")
+                        put("subject_id", targetSubjectId)
+                    }
                     navigation.emit(
                         TvNavigationEvent.Subject(
                             targetSubjectId,
@@ -753,7 +766,7 @@ class TvEpisodeViewModel(
     }
 
     private fun observePreview() {
-        val preview = createMediaProgressFramePreviewState(player, 384, 216) ?: return
+        val preview = createMediaProgressFramePreviewState(player, 384, 216, MediaData::suppliedFramePreview) ?: return
         backgroundScope.launch(Dispatchers.Main) {
             settingsRepository.videoScaffoldConfig.flow.map { it.enableFramePreview }.distinctUntilChanged()
                 .collectLatest { enabled ->

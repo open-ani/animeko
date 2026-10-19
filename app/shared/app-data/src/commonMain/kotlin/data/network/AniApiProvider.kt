@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,6 +10,7 @@
 package me.him188.ani.app.data.network
 
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
+import me.him188.ani.client.apis.AnnouncementsAniApi
 import me.him188.ani.client.apis.BangumiAniApi
 import me.him188.ani.client.apis.CharactersAniApi
 import me.him188.ani.client.apis.CommentsAniApi
@@ -17,6 +18,7 @@ import me.him188.ani.client.apis.DanmakuAniApi
 import me.him188.ani.client.apis.DeveloperVerificationAniApi
 import me.him188.ani.client.apis.EpisodesAniApi
 import me.him188.ani.client.apis.HomeAniApi
+import me.him188.ani.client.apis.NotificationsAniApi
 import me.him188.ani.client.apis.OAuthAniApi
 import me.him188.ani.client.apis.QRLoginAniApi
 import me.him188.ani.client.apis.PeerFilterRuleAniApi
@@ -62,6 +64,8 @@ class AniApiProvider(
     val userProfileApi = ApiInvoker(client) { UserProfileAniApi(baseurl, it) }
     val subscriptionApi = ApiInvoker(client) { SubscriptionsAniApi(baseurl, it) }
     val watchTogetherApi = ApiInvoker(client) { WatchTogetherAniApi(baseurl, it) }
+    val notificationsApi = ApiInvoker(client) { NotificationsAniApi(baseurl, it) }
+    val announcementsApi = ApiInvoker(client) { AnnouncementsAniApi(baseurl, it) }
 
     private inline val baseurl get() = ServerListFeatureConfig.Companion.MAGIC_ANI_SERVER
 }

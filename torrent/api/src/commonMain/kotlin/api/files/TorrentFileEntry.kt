@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
@@ -78,6 +79,13 @@ interface TorrentFileEntry { // 实现提示, 无 test mock
      * 有关返回的 flow 的性质, 参考 [TorrentSession.sessionStats].
      */
     val fileStats: Flow<Stats> // shared
+
+    /**
+     * 取数据失败的原因, 引擎正在退避重试时非 `null`.
+     *
+     * 本地 BT 从其他 peer 取数据, 单个 peer 失败不构成这个文件的错误, 因此默认不报告.
+     */
+    val error: Flow<Throwable?> get() = flowOf(null)
 
     /**
      * 文件数据长度. 注意, 这不是文件在硬盘上的大小. 在硬盘上可能会略有差别.
@@ -209,16 +217,6 @@ abstract class AbstractTorrentFileEntry(
 
         override val entry get() = this@AbstractTorrentFileEntry
 
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other !is AbstractTorrentFileHandle) return false
-            return entry === other.entry
-        }
-
-        override fun hashCode(): Int {
-            return entry.hashCode()
-        }
-
         final override fun resume(priority: FilePriority) {
             checkClosed()
             requestPriority(priority)
@@ -244,6 +242,7 @@ abstract class AbstractTorrentFileEntry(
 
     final override val pathInTorrent: String = relativePath
 
+    // Handle identity separates playback priority from cache priority for the same file.
     protected val priorityRequests: MutableMap<TorrentFileHandle, FilePriority?> = mutableMapOf()
 
     /**

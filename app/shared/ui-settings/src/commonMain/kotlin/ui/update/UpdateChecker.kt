@@ -26,9 +26,16 @@ import me.him188.ani.utils.ktor.getPlatformKtorEngine
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
+import me.him188.ani.utils.platform.isAndroidTv
 
-class UpdateChecker {
+/**
+ * @param serverUrls 版本 API 的服务器, 按顺序尝试, 前一个失败才用下一个. 端到端测试用它指向本机 mock 的服务器.
+ */
+class UpdateChecker(
+    private val serverUrls: List<String> = DEFAULT_SERVER_URLS,
+) {
     /**
      * 检查是否有更新的版本. 返回最新版本的信息, 或者 `null` 表示没有新版本.
      */
@@ -36,29 +43,27 @@ class UpdateChecker {
         releaseClass: ReleaseClass,
         currentVersion: String = currentAniBuildConfig.versionName,
     ): NewVersion? {
+        require(serverUrls.isNotEmpty()) { "serverUrls must not be empty" }
         HttpClient(getPlatformKtorEngine()) {
             expectSuccess = true
         }.use { client ->
             withExceptionCollector {
-                return kotlin.runCatching {
-                    client.getVersionFromAniServer("https://danmaku-global.myani.org/", currentVersion, releaseClass)
-                        .also {
-                            logger.info { "Got latest version from global server: ${it?.name}" }
+                for (baseUrl in serverUrls) {
+                    try {
+                        return client.getVersionFromAniServer(baseUrl, currentVersion, releaseClass).also {
+                            logger.info { "Got latest version from $baseUrl: ${it?.name}" }
                         }
-                }.recoverCatching { exception ->
-                    collect(exception)
-                    client.getVersionFromAniServer("https://danmaku-cn.myani.org/", currentVersion, releaseClass).also {
-                        logger.info { "Got latest version from CN server: ${it?.name}" }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Throwable) {
+                        collect(e)
                     }
-                }.onFailure { exception ->
-                    collect(exception)
-                    if (exception is CancellationException || exception is IOException) {
-                        throwLast()
-                    }
-                    val finalException = getLast()!!
+                }
+                val finalException = getLast()!!
+                if (finalException !is IOException) {
                     logger.error(finalException) { "Failed to get latest version" }
-                    throw finalException
-                }.getOrThrow()// should not throw, because of `onFailure`   
+                }
+                throwLast()
             }
         }
     }
@@ -87,7 +92,7 @@ class UpdateChecker {
             }
             val platform = currentPlatform()
             parameter("clientVersion", currentAniBuildConfig.versionName)
-            parameter("clientPlatform", platform.name.lowercase())
+            parameter("clientPlatform", platform.updateClientPlatform())
             parameter("clientArch", platform.arch.displayName)
             parameter("releaseClass", releaseClass.name)
         }.bodyAsText().let {
@@ -110,8 +115,13 @@ class UpdateChecker {
         }
     }
 
-    private companion object {
+    companion object {
         private val logger = logger<UpdateChecker>()
+
+        val DEFAULT_SERVER_URLS = listOf(
+            "https://danmaku-global.myani.org/",
+            "https://danmaku-cn.myani.org/",
+        )
         private val json = Json {
             ignoreUnknownKeys = true
         }
@@ -121,3 +131,6 @@ class UpdateChecker {
         ): String = kotlin.runCatching { TimeFormatter().format(seconds * 1000) }.getOrElse { seconds.toString() }
     }
 }
+
+internal fun Platform.updateClientPlatform(): String =
+    if (isAndroidTv()) "androidtv" else name.lowercase()

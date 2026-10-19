@@ -28,8 +28,20 @@ import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 
+/**
+ * @param notificationId must differ per service: notification ids are scoped to the package, not to
+ * the process, so two services sharing one id would overwrite each other's notification.
+ * @param buildStopServiceIntent a factory rather than a ready [PendingIntent] because a [Service]
+ * creates this helper in a field initializer, before its base context is attached.
+ */
 class ServiceNotification(
-    private val context: Context
+    private val context: Context,
+    private val notificationId: Int = TORRENT_NOTIFICATION_ID,
+    private val channelId: String = TORRENT_NOTIFICATION_CHANNEL_ID,
+    private val buildStopServiceIntent: (Context) -> Intent = { ctx ->
+        Intent(ctx, AniTorrentService.actualServiceClass)
+            .apply { putExtra(AniTorrentService.INTENT_STOP_EXTRA, true) }
+    },
 ) {
     private val notificationService by lazy { context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager }
 
@@ -38,22 +50,29 @@ class ServiceNotification(
     private var notificationOpenActivityIntent: Intent? = null
     private val stopServiceIntent by lazy {
         PendingIntent.getService(
-            context, 0,
-            Intent(context, AniTorrentService.actualServiceClass)
-                .apply { putExtra(AniTorrentService.INTENT_STOP_EXTRA, true) },
+            context, notificationId,
+            buildStopServiceIntent(context),
             PendingIntent.FLAG_IMMUTABLE,
         )
     }
 
     private val notificationChannel by lazy {
-        notificationService.getNotificationChannel(NOTIFICATION_CHANNEL_ID)
+        notificationService.getNotificationChannel(channelId)
             ?: NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
+                channelId,
                 notificationAppearance.name,
                 NotificationManager.IMPORTANCE_LOW,
             )
                 .apply { lockscreenVisibility = Notification.VISIBILITY_PUBLIC }
                 .also { notificationService.createNotificationChannel(it) }
+    }
+
+    /**
+     * For services that know their own appearance and therefore do not carry it through an [Intent].
+     */
+    fun setAppearance(appearance: NotificationAppearance, openActivityIntent: Intent?) {
+        notificationAppearance = appearance
+        notificationOpenActivityIntent = openActivityIntent
     }
 
     fun parseNotificationStrategyFromIntent(intent: Intent?) {
@@ -98,7 +117,7 @@ class ServiceNotification(
      * create notification with initial state idle.
      */
     fun createNotification(service: Service): Boolean {
-        val currentNotification = notificationService.activeNotifications.find { it.id == NOTIFICATION_ID }
+        val currentNotification = notificationService.activeNotifications.find { it.id == notificationId }
         if (currentNotification != null) return true
 
         val notification = buildNotification(
@@ -107,7 +126,7 @@ class ServiceNotification(
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
-                service.startForeground(NOTIFICATION_ID, notification)
+                service.startForeground(notificationId, notification)
                 return true
             } catch (e: ForegroundServiceStartNotAllowedException) {
                 // Android 15 limitation: https://developer.android.com/about/versions/15/behavior-changes-15#datasync-timeout
@@ -115,7 +134,7 @@ class ServiceNotification(
                 return false
             }
         } else {
-            service.startForeground(NOTIFICATION_ID, notification)
+            service.startForeground(notificationId, notification)
             return true
         }
     }
@@ -124,10 +143,10 @@ class ServiceNotification(
      * update notification to current state.
      */
     fun updateNotification(displayStrategy: NotificationDisplayStrategy) {
-        notificationService.activeNotifications.find { it.id == NOTIFICATION_ID } ?: return
+        notificationService.activeNotifications.find { it.id == notificationId } ?: return
 
         val notification = buildNotification(notificationAppearance, displayStrategy)
-        notificationService.notify(NOTIFICATION_ID, notification)
+        notificationService.notify(notificationId, notification)
     }
 
     /**
@@ -190,8 +209,9 @@ class ServiceNotification(
     }
 
     companion object {
-        private const val NOTIFICATION_ID = 114
-        private const val NOTIFICATION_CHANNEL_ID = "me.him188.ani.app.domain.torrent.service.AniTorrentService"
+        private const val TORRENT_NOTIFICATION_ID = 114
+        private const val TORRENT_NOTIFICATION_CHANNEL_ID =
+            "me.him188.ani.app.domain.torrent.service.AniTorrentService"
         private val logger = logger<ServiceNotification>()
 
         private val defaultNotificationAppearance = NotificationAppearance(

@@ -9,6 +9,9 @@ import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
+import me.him188.ani.app.data.models.preference.ProxyConfig
+import me.him188.ani.app.data.models.preference.ProxyMode
+import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
@@ -27,6 +30,7 @@ data class TvSettingsUiState(
     val preference: MediaPreference = MediaPreference.PlatformDefault,
     val selector: MediaSelectorSettings = MediaSelectorSettings.Default,
     val resolver: VideoResolverSettings = VideoResolverSettings.Default,
+    val proxy: ProxySettings = ProxySettings.Default,
     val sources: List<TvSettingsSource> = emptyList(),
     val subscriptions: List<TvSettingsSubscription> = emptyList(),
     val libraries: List<TvSettingsLibrary> = emptyList(),
@@ -45,7 +49,10 @@ data class TvSettingsSource(
     val subscription: String?,
 )
 
-data class TvSettingsSubscription(val id: String, val url: String, val enabled: Boolean)
+/**
+ * @param name 订阅作者提供的名称, 没有时为订阅链接
+ */
+data class TvSettingsSubscription(val id: String, val name: String, val enabled: Boolean)
 
 data class TvSettingsLibrary(
     val id: String,
@@ -67,6 +74,7 @@ sealed interface TvSettingsIntent {
     data class Preference(val update: MediaPreference.() -> MediaPreference) : TvSettingsIntent
     data class Selector(val update: MediaSelectorSettings.() -> MediaSelectorSettings) : TvSettingsIntent
     data class Resolver(val update: VideoResolverSettings.() -> VideoResolverSettings) : TvSettingsIntent
+    data class SaveProxy(val mode: ProxyMode, val config: ProxyConfig) : TvSettingsIntent
     data class SourceEnabled(val id: String, val enabled: Boolean) : TvSettingsIntent
     data class SubscriptionEnabled(val id: String, val enabled: Boolean) : TvSettingsIntent
     data class SaveRegex(val filter: DanmakuRegexFilter, val isNew: Boolean) : TvSettingsIntent

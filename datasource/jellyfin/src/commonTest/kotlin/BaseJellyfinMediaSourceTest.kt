@@ -887,7 +887,9 @@ class BaseJellyfinMediaSourceTest {
         }
 
         val result = source.fetch(
-            request(subjectNames = listOf("Fallback title")),
+            request(subjectNames = listOf("Fallback title")).copy(
+                episodes = listOf(MediaFetchRequest.Episode("456", EpisodeSort(1))),
+            ),
         ).results.toList()
 
         assertEquals("right-episode", result.single().media.mediaId)
@@ -1983,6 +1985,82 @@ class BaseJellyfinMediaSourceTest {
                 case.subjectName,
             )
             assertEquals(MatchKind.EXACT, result.single().kind, case.subjectName)
+        }
+    }
+
+    @Test
+    fun `returns every known episode for series season and direct search results`() = runTest {
+        for (containerType in listOf("Series", "Season", "Episode")) {
+            val source = createSubjectWideSource(containerType)
+            val episodes = listOf(
+                MediaFetchRequest.Episode("456", EpisodeSort(13), EpisodeSort(1)),
+                MediaFetchRequest.Episode("457", EpisodeSort(14), EpisodeSort(2)),
+            )
+            val query = request(subjectNames = listOf("Subject title")).copy(episodes = episodes)
+            val first = source.fetch(query).results.toList()
+            val next = source.fetch(
+                query.copy(episodeId = "457", episodeSort = EpisodeSort(14), episodeEp = EpisodeSort(2)),
+            ).results.toList()
+
+            assertEquals(setOf("episode-1", "episode-2"), first.map { it.media.mediaId }.toSet(), containerType)
+            assertEquals(first.map { it.media.mediaId }, next.map { it.media.mediaId }, containerType)
+            assertTrue(first.all { it.kind == MatchKind.EXACT }, containerType)
+            assertEquals(
+                listOf(EpisodeRange.single(EpisodeSort(1)), EpisodeRange.single(EpisodeSort(2))),
+                first.map { it.media.episodeRange },
+                containerType,
+            )
+        }
+    }
+
+    @Test
+    fun `keeps sibling provider ids when the subject episode list is unknown`() = runTest {
+        val source = createSubjectWideSource("Season")
+        val result = source.fetch(request(subjectNames = listOf("Subject title"))).results.toList()
+
+        assertEquals(setOf("episode-1", "episode-2", "unknown-episode"), result.map { it.media.mediaId }.toSet())
+    }
+
+    private fun createSubjectWideSource(containerType: String): JellyfinMediaSource {
+        val items = """
+            { "Items": [
+              { "Name": "First", "SeasonName": "Subject title", "Id": "episode-1",
+                "Type": "Episode", "IndexNumber": 13, "ParentIndexNumber": 1,
+                "ProviderIds": { "Bangumi": "456", "BangumiSubject": "123" } },
+              { "Name": "Next", "SeasonName": "Subject title", "Id": "episode-2",
+                "Type": "Episode", "IndexNumber": 14, "ParentIndexNumber": 1,
+                "ProviderIds": { "bangumi": " 457 ", "BangumiSubject": "123" } },
+              { "Name": "Outside episode list", "SeasonName": "Subject title", "Id": "unknown-episode",
+                "Type": "Episode", "IndexNumber": 3, "ParentIndexNumber": 1,
+                "ProviderIds": { "Bangumi": "999", "BangumiSubject": "123" } },
+              { "Name": "Conflicting subject", "SeasonName": "Subject title", "Id": "conflicting-subject",
+                "Type": "Episode", "IndexNumber": 2, "ParentIndexNumber": 1,
+                "ProviderIds": { "Bangumi": "457", "BangumiSubject": "999" } }
+            ] }
+        """.trimIndent()
+        return createSource { request ->
+            when {
+                request.url.parameters["searchTerm"] != null -> if (containerType == "Episode") {
+                    respondJson(items)
+                } else {
+                    respondJson(
+                        """{ "Items": [{ "Name": "Subject title", "Id": "container",
+                            "Type": "$containerType", "IndexNumber": 1,
+                            "ProviderIds": { "Bangumi": "123" } }] }""",
+                    )
+                }
+
+                request.url.encodedPath == "/Shows/container/Seasons" -> respondJson(
+                    """{ "Items": [{ "Name": "Subject title", "Id": "season", "Type": "Season",
+                        "IndexNumber": 1, "ProviderIds": { "Bangumi": "123" } }] }""",
+                )
+
+                request.url.encodedPath == "/Shows/container/Episodes" ||
+                        request.url.parameters["parentId"] == "container" -> respondJson(items)
+
+                request.url.parameters["ids"] != null -> respondJson("""{ "Items": [] }""")
+                else -> error("Unexpected request: ${request.url}")
+            }
         }
     }
 

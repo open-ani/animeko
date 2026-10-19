@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -56,6 +56,8 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * 在右上角显示的个人信息弹窗
+ *
+ * @param showNotificationDot 是否在“通知”上显示未读红点, 与顶栏头像上的红点一致.
  */
 @Composable
 fun ProfilePopup(
@@ -64,6 +66,8 @@ fun ProfilePopup(
     onNavigateToLogin: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAccountSettings: () -> Unit,
+    showNotificationDot: Boolean,
+    onNavigateToNotifications: () -> Unit,
     onNavigateToPlaybackHistory: () -> Unit,
     windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass,
 ) {
@@ -76,10 +80,12 @@ fun ProfilePopup(
             onClickLogin = onNavigateToLogin,
             onClickEditAvatar = onNavigateToAccountSettings,
             onClickEditProfile = onNavigateToAccountSettings,
+            showNotificationDot = showNotificationDot,
+            onClickNotifications = onNavigateToNotifications,
             onClickPlaybackHistory = onNavigateToPlaybackHistory,
             onClickSettings = onNavigateToSettings,
-            { showLogoutDialog = true },
-            Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
+            onClickLogout = { showLogoutDialog = true },
+            modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
                 .ifThen(windowSizeClass.isWidthAtLeastMedium) {
                     padding(horizontal = 8.dp)
                 }

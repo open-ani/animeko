@@ -101,6 +101,12 @@ enum class ResolutionFailures {
     NO_MATCHING_RESOURCE,
 
     /**
+     * 负责加载网页的引擎 (桌面端 JCEF) 未初始化或已不可用.
+     * 与 [NO_MATCHING_RESOURCE] 区分: 此时换任何网页资源都会同样失败.
+     */
+    WEB_ENGINE_UNAVAILABLE,
+
+    /**
      * 引擎自身错误 (bug)
      */
     ENGINE_ERROR,

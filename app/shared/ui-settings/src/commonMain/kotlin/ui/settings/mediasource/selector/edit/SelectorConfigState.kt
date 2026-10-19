@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -24,6 +24,9 @@ import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatInde
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatJsonPathIndexed
 import me.him188.ani.app.domain.mediasource.web.format.parseOrNull
 import me.him188.ani.app.ui.settings.danmaku.isValidRegex
+import me.him188.ani.app.ui.settings.mediasource.editor.AutoMatchConfigState
+import me.him188.ani.app.ui.settings.mediasource.editor.MediaSourceConfigState
+import me.him188.ani.app.ui.settings.mediasource.rss.ConfigSection
 import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
 import me.him188.ani.utils.jsonpath.JsonPath
 import me.him188.ani.utils.jsonpath.compileOrNull
@@ -32,66 +35,36 @@ import me.him188.ani.utils.xml.parseSelectorOrNull
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * 编辑配置
+ * CSS 选择器数据源的编辑状态.
  */
 @Stable
 class SelectorConfigState(
-    private val argumentsStorage: SaveableStorage<SelectorMediaSourceArguments>,
-    private val allowEditState: State<Boolean>,
+    argumentsStorage: SaveableStorage<SelectorMediaSourceArguments>,
+    allowEditState: State<Boolean>,
+) : MediaSourceConfigState<SelectorMediaSourceArguments>(
+    argumentsStorage, allowEditState, SelectorMediaSourceArguments.Default,
 ) {
-    private val arguments by argumentsStorage.containerState
-    val isLoading by derivedStateOf { arguments == null }
+    override var displayName: String by arguments.prop({ it.name }, { copy(name = it) })
+    override var iconUrl: String by arguments.prop({ it.iconUrl }, { copy(iconUrl = it) })
 
-    val enableEdit by derivedStateOf {
-        !isLoading && allowEditState.value
-    }
+    private val searchConfig: ConfigSection<SelectorSearchConfig> =
+        arguments.sub({ it.searchConfig }, { copy(searchConfig = it) })
 
-    var displayName by argumentsStorage.prop(
-        { it.name }, { copy(name = it) },
-        SelectorMediaSourceArguments.Default.name,
-    )
-
-    val displayNameIsError by derivedStateOf { displayName.isBlank() }
-
-    var iconUrl by argumentsStorage.prop(
-        { it.iconUrl }, { copy(iconUrl = it) },
-        SelectorMediaSourceArguments.Default.iconUrl,
-    )
-
-    var searchUrl by argumentsStorage.prop(
-        { it.searchConfig.searchUrl }, { copy(searchConfig = searchConfig.copy(searchUrl = it)) },
-        SelectorMediaSourceArguments.Default.searchConfig.searchUrl,
-    )
+    var searchUrl: String by searchConfig.prop({ it.searchUrl }, { copy(searchUrl = it) })
     val searchUrlIsError by derivedStateOf { searchUrl.isBlank() }
 
-    var searchUseOnlyFirstWord by argumentsStorage.prop(
-        { it.searchConfig.autoMatch.searchUseOnlyFirstWord },
-        { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(searchUseOnlyFirstWord = it))) },
-        SelectorMediaSourceArguments.Default.searchConfig.autoMatch.searchUseOnlyFirstWord,
+    val autoMatch = AutoMatchConfigState(
+        searchConfig.sub({ it.autoMatch }, { copy(autoMatch = it) }),
+        tier = arguments.prop({ it.tier }, { copy(tier = it) }),
+        searchCacheTtl = searchConfig.prop(
+            { it.searchCacheTtl },
+            { copy(searchCacheTtl = it.coerceAtLeast(0.milliseconds)) },
+        ),
     )
 
-    var searchRemoveSpecial by argumentsStorage.prop(
-        { it.searchConfig.autoMatch.searchRemoveSpecial },
-        { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(searchRemoveSpecial = it))) },
-        SelectorMediaSourceArguments.Default.searchConfig.autoMatch.searchRemoveSpecial,
-    )
+    var userAgent: String by searchConfig.prop({ it.userAgent }, { copy(userAgent = it) })
 
-    var searchUseSubjectNamesCount by argumentsStorage.prop(
-        { it.searchConfig.autoMatch.searchUseSubjectNamesCount },
-        { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(searchUseSubjectNamesCount = it))) },
-        SelectorMediaSourceArguments.Default.searchConfig.autoMatch.searchUseSubjectNamesCount,
-    )
-    var preferShorterName by argumentsStorage.prop(
-        { it.searchConfig.autoMatch.preferShorterName },
-        { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(preferShorterName = it))) },
-        SelectorMediaSourceArguments.Default.searchConfig.autoMatch.preferShorterName,
-    )
-
-    var rawBaseUrl by argumentsStorage.prop(
-        { it.searchConfig.rawBaseUrl },
-        { copy(searchConfig = searchConfig.copy(rawBaseUrl = it)) },
-        SelectorMediaSourceArguments.Default.searchConfig.rawBaseUrl,
-    )
+    var rawBaseUrl: String by searchConfig.prop({ it.rawBaseUrl }, { copy(rawBaseUrl = it) })
     val baseUrlPlaceholder by derivedStateOf {
         if (rawBaseUrl.isBlank()) {
             SelectorSearchConfig.guessBaseUrl(searchUrl)
@@ -100,191 +73,120 @@ class SelectorConfigState(
         }
     }
 
-    var requestInterval by argumentsStorage.prop(
-        { it.searchConfig.requestInterval },
-        { copy(searchConfig = searchConfig.copy(requestInterval = it.coerceAtLeast(0.milliseconds))) },
-        SelectorMediaSourceArguments.Default.searchConfig.requestInterval,
-    )
-
-    var searchCacheTtl by argumentsStorage.prop(
-        { it.searchConfig.searchCacheTtl },
-        { copy(searchConfig = searchConfig.copy(searchCacheTtl = it.coerceAtLeast(0.milliseconds))) },
-        SelectorMediaSourceArguments.Default.searchConfig.searchCacheTtl,
+    var requestInterval by searchConfig.prop(
+        { it.requestInterval },
+        { copy(requestInterval = it.coerceAtLeast(0.milliseconds)) },
     )
 
     // region SubjectFormat
 
     val allSubjectFormats get() = SelectorSubjectFormat.entries
-    var subjectFormatId by argumentsStorage.prop(
-        { it.searchConfig.subjectFormatId }, { copy(searchConfig = searchConfig.copy(subjectFormatId = it)) },
-        SelectorMediaSourceArguments.Default.searchConfig.subjectFormatId,
+    var subjectFormatId by searchConfig.prop({ it.subjectFormatId }, { copy(subjectFormatId = it) })
+
+    val subjectFormatA = SubjectFormatAConfig(
+        searchConfig.sub({ it.selectorSubjectFormatA }, { copy(selectorSubjectFormatA = it) }),
     )
-    val subjectFormatA = SubjectFormatAConfig()
 
     @Stable
-    inner class SubjectFormatAConfig {
-        private fun <T : Any> prop(
-            get: (SelectorSubjectFormatA.Config) -> T,
-            set: SelectorSubjectFormatA.Config.(T) -> SelectorSubjectFormatA.Config,
-        ) = argumentsStorage.prop(
-            { it.searchConfig.selectorSubjectFormatA.let(get) },
-            {
-                copy(
-                    searchConfig = searchConfig.copy(
-                        selectorSubjectFormatA = searchConfig.selectorSubjectFormatA.set(it),
-                    ),
-                )
-            },
-            SelectorMediaSourceArguments.Default.searchConfig.selectorSubjectFormatA.let(get),
-        )
-
-        var selectLists by prop({ it.selectLists }, { copy(selectLists = it) })
+    class SubjectFormatAConfig(section: ConfigSection<SelectorSubjectFormatA.Config>) {
+        var selectLists by section.prop({ it.selectLists }, { copy(selectLists = it) })
         val selectListsIsError by derivedStateOf {
             QueryParser.parseSelectorOrNull(selectLists) == null
         }
     }
 
-    val subjectFormatIndex = SubjectFormatIndexedConfig()
+    val subjectFormatIndex = SubjectFormatIndexedConfig(
+        searchConfig.sub({ it.selectorSubjectFormatIndexed }, { copy(selectorSubjectFormatIndexed = it) }),
+    )
 
-    inner class SubjectFormatIndexedConfig {
-        private fun <T : Any> prop(
-            get: (SelectorSubjectFormatIndexed.Config) -> T,
-            set: SelectorSubjectFormatIndexed.Config.(T) -> SelectorSubjectFormatIndexed.Config,
-        ) = argumentsStorage.prop(
-            { it.searchConfig.selectorSubjectFormatIndexed.let(get) },
-            {
-                copy(
-                    searchConfig = searchConfig.copy(
-                        selectorSubjectFormatIndexed = searchConfig.selectorSubjectFormatIndexed.set(it),
-                    ),
-                )
-            },
-            SelectorMediaSourceArguments.Default.searchConfig.selectorSubjectFormatIndexed.let(get),
-        )
-
-        var selectNames by prop({ it.selectNames }, { copy(selectNames = it) })
+    @Stable
+    class SubjectFormatIndexedConfig(section: ConfigSection<SelectorSubjectFormatIndexed.Config>) {
+        var selectNames by section.prop({ it.selectNames }, { copy(selectNames = it) })
         val selectNamesIsError by derivedStateOf {
             QueryParser.parseSelectorOrNull(selectNames) == null
         }
 
-        var selectLinks by prop({ it.selectLinks }, { copy(selectLinks = it) })
+        var selectLinks by section.prop({ it.selectLinks }, { copy(selectLinks = it) })
         val selectLinksIsError by derivedStateOf {
             QueryParser.parseSelectorOrNull(selectLinks) == null
         }
-
     }
 
-    val subjectFormatJsonPathIndex = SubjectFormatJsonPathIndexedConfig()
+    val subjectFormatJsonPathIndex = SubjectFormatJsonPathIndexedConfig(
+        searchConfig.sub(
+            { it.selectorSubjectFormatJsonPathIndexed },
+            { copy(selectorSubjectFormatJsonPathIndexed = it) },
+        ),
+    )
 
-    inner class SubjectFormatJsonPathIndexedConfig {
-        private fun <T : Any> prop(
-            get: (SelectorSubjectFormatJsonPathIndexed.Config) -> T,
-            set: SelectorSubjectFormatJsonPathIndexed.Config.(T) -> SelectorSubjectFormatJsonPathIndexed.Config,
-        ) = argumentsStorage.prop(
-            { it.searchConfig.selectorSubjectFormatJsonPathIndexed.let(get) },
-            {
-                copy(
-                    searchConfig = searchConfig.copy(
-                        selectorSubjectFormatJsonPathIndexed = searchConfig.selectorSubjectFormatJsonPathIndexed.set(it),
-                    ),
-                )
-            },
-            SelectorMediaSourceArguments.Default.searchConfig.selectorSubjectFormatJsonPathIndexed.let(get),
-        )
-
-        var selectNames by prop({ it.selectNames }, { copy(selectNames = it) })
+    @Stable
+    class SubjectFormatJsonPathIndexedConfig(section: ConfigSection<SelectorSubjectFormatJsonPathIndexed.Config>) {
+        var selectNames by section.prop({ it.selectNames }, { copy(selectNames = it) })
         val selectNamesIsError by derivedStateOf {
             JsonPath.compileOrNull(selectNames) == null
         }
 
-        var selectLinks by prop({ it.selectLinks }, { copy(selectLinks = it) })
+        var selectLinks by section.prop({ it.selectLinks }, { copy(selectLinks = it) })
         val selectLinksIsError by derivedStateOf {
             JsonPath.compileOrNull(selectLinks) == null
         }
-
     }
 
     // endregion
 
     // region ChannelFormat
 
-    var channelFormatId by argumentsStorage.prop(
-        { it.searchConfig.channelFormatId }, { copy(searchConfig = searchConfig.copy(channelFormatId = it)) },
-        SelectorMediaSourceArguments.Default.searchConfig.channelFormatId,
-    )
+    var channelFormatId by searchConfig.prop({ it.channelFormatId }, { copy(channelFormatId = it) })
     val allChannelFormats get() = SelectorChannelFormat.entries
 
-    val channelFormatIndexed = ChannelFormatIndexedConfig()
+    val channelFormatIndexed = ChannelFormatIndexedConfig(
+        searchConfig.sub({ it.selectorChannelFormatFlattened }, { copy(selectorChannelFormatFlattened = it) }),
+    )
 
     @Stable
-    inner class ChannelFormatIndexedConfig {
-        private fun <T : Any> prop(
-            get: (SelectorChannelFormatIndexGrouped.Config) -> T,
-            set: SelectorChannelFormatIndexGrouped.Config.(T) -> SelectorChannelFormatIndexGrouped.Config,
-        ) = argumentsStorage.prop(
-            { it.searchConfig.selectorChannelFormatFlattened.let(get) },
-            {
-                copy(
-                    searchConfig = searchConfig.copy(
-                        selectorChannelFormatFlattened = searchConfig.selectorChannelFormatFlattened.set(it),
-                    ),
-                )
-            },
-            SelectorMediaSourceArguments.Default.searchConfig.selectorChannelFormatFlattened.let(get),
-        )
-
-        var selectChannelNames by prop({ it.selectChannelNames }, { copy(selectChannelNames = it) })
+    class ChannelFormatIndexedConfig(section: ConfigSection<SelectorChannelFormatIndexGrouped.Config>) {
+        var selectChannelNames by section.prop({ it.selectChannelNames }, { copy(selectChannelNames = it) })
         val selectChannelNamesIsError by derivedStateOf {
             QueryParser.parseSelectorOrNull(selectChannelNames) == null
         }
-        var matchChannelName by prop({ it.matchChannelName }, { copy(matchChannelName = it) })
+        var matchChannelName by section.prop({ it.matchChannelName }, { copy(matchChannelName = it) })
         val matchChannelNameIsError by derivedStateOf {
             if (matchChannelName.isEmpty()) false
             else Regex.parseOrNull(matchChannelName) == null
         }
-        var selectEpisodeLists by prop({ it.selectEpisodeLists }, { copy(selectEpisodeLists = it) })
+        var selectEpisodeLists by section.prop({ it.selectEpisodeLists }, { copy(selectEpisodeLists = it) })
         val selectEpisodeListsIsError by derivedStateOf {
             QueryParser.parseSelectorOrNull(selectEpisodeLists) == null
         }
-        var selectEpisodesFromList by prop({ it.selectEpisodesFromList }, { copy(selectEpisodesFromList = it) })
+        var selectEpisodesFromList by section.prop({ it.selectEpisodesFromList }, { copy(selectEpisodesFromList = it) })
         val selectEpisodesFromListIsError by derivedStateOf {
             QueryParser.parseSelectorOrNull(selectEpisodesFromList) == null
         }
-        var selectEpisodeLinksFromList by prop(
+        var selectEpisodeLinksFromList by section.prop(
             { it.selectEpisodeLinksFromList },
             { copy(selectEpisodeLinksFromList = it) },
         )
 
-        var matchEpisodeSortFromName by prop({ it.matchEpisodeSortFromName }, { copy(matchEpisodeSortFromName = it) })
+        var matchEpisodeSortFromName by section.prop(
+            { it.matchEpisodeSortFromName },
+            { copy(matchEpisodeSortFromName = it) },
+        )
         val matchEpisodeSortFromNameIsError by derivedStateOf {
             matchEpisodeSortFromName.isBlank() || !isValidRegex(matchEpisodeSortFromName)
         }
     }
 
-    val channelFormatNoChannel = ChannelFormatNoChannelConfig()
+    val channelFormatNoChannel = ChannelFormatNoChannelConfig(
+        searchConfig.sub({ it.selectorChannelFormatNoChannel }, { copy(selectorChannelFormatNoChannel = it) }),
+    )
 
     @Stable
-    inner class ChannelFormatNoChannelConfig {
-        private fun <T : Any> prop(
-            get: (SelectorChannelFormatNoChannel.Config) -> T,
-            set: SelectorChannelFormatNoChannel.Config.(T) -> SelectorChannelFormatNoChannel.Config,
-        ) = argumentsStorage.prop(
-            { it.searchConfig.selectorChannelFormatNoChannel.let(get) },
-            {
-                copy(
-                    searchConfig = searchConfig.copy(
-                        selectorChannelFormatNoChannel = searchConfig.selectorChannelFormatNoChannel.set(it),
-                    ),
-                )
-            },
-            SelectorMediaSourceArguments.Default.searchConfig.selectorChannelFormatNoChannel.let(get),
-        )
-
-        var selectEpisodes by prop({ it.selectEpisodes }, { copy(selectEpisodes = it) })
+    class ChannelFormatNoChannelConfig(section: ConfigSection<SelectorChannelFormatNoChannel.Config>) {
+        var selectEpisodes by section.prop({ it.selectEpisodes }, { copy(selectEpisodes = it) })
         val selectEpisodesIsError by derivedStateOf { QueryParser.parseSelectorOrNull(selectEpisodes) == null }
-        var selectEpisodeLinks by prop({ it.selectEpisodeLinks }, { copy(selectEpisodeLinks = it) })
+        var selectEpisodeLinks by section.prop({ it.selectEpisodeLinks }, { copy(selectEpisodeLinks = it) })
 
-        var matchEpisodeSortFromName by prop(
+        var matchEpisodeSortFromName by section.prop(
             { it.matchEpisodeSortFromName },
             { copy(matchEpisodeSortFromName = it) },
         )
@@ -295,105 +197,47 @@ class SelectorConfigState(
 
     // endregion
 
-    var defaultResolution by argumentsStorage.prop(
-        { it.searchConfig.defaultResolution }, { copy(searchConfig = searchConfig.copy(defaultResolution = it)) },
-        SelectorMediaSourceArguments.Default.searchConfig.defaultResolution,
-    )
-    var defaultSubtitleLanguage by argumentsStorage.prop(
-        { it.searchConfig.defaultSubtitleLanguage },
-        { copy(searchConfig = searchConfig.copy(defaultSubtitleLanguage = it)) },
-        SelectorMediaSourceArguments.Default.searchConfig.defaultSubtitleLanguage,
-    )
-    var filterByEpisodeSort by argumentsStorage.prop(
-        { it.searchConfig.autoMatch.filterByEpisodeSort }, { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(filterByEpisodeSort = it))) },
-        SelectorMediaSourceArguments.Default.searchConfig.autoMatch.filterByEpisodeSort,
-    )
-    var filterBySubjectName by argumentsStorage.prop(
-        { it.searchConfig.autoMatch.filterBySubjectName }, { copy(searchConfig = searchConfig.copy(autoMatch = searchConfig.autoMatch.copy(filterBySubjectName = it))) },
-        SelectorMediaSourceArguments.Default.searchConfig.autoMatch.filterBySubjectName,
+    var defaultResolution by searchConfig.prop({ it.defaultResolution }, { copy(defaultResolution = it) })
+    var defaultSubtitleLanguage by searchConfig.prop(
+        { it.defaultSubtitleLanguage },
+        { copy(defaultSubtitleLanguage = it) },
     )
 
-
-    val selectMediaConfig: SelectMediaConfig = SelectMediaConfig()
+    val selectMediaConfig = SelectMediaConfig(
+        searchConfig.sub({ it.selectMedia }, { copy(selectMedia = it) }),
+    )
 
     @Stable
-    inner class SelectMediaConfig {
-        private fun <T : Any> prop(
-            get: (SelectorSearchConfig.SelectMediaConfig) -> T,
-            set: SelectorSearchConfig.SelectMediaConfig.(T) -> SelectorSearchConfig.SelectMediaConfig,
-        ) = argumentsStorage.prop(
-            { it.searchConfig.selectMedia.let(get) },
-            {
-                copy(
-                    searchConfig = searchConfig.copy(
-                        selectMedia = searchConfig.selectMedia.set(it),
-                    ),
-                )
-            },
-            SelectorMediaSourceArguments.Default.searchConfig.selectMedia.let(get),
-        )
-
-        var distinguishSubjectName by prop({ it.distinguishSubjectName }, { copy(distinguishSubjectName = it) })
-        var distinguishChannelName by prop({ it.distinguishChannelName }, { copy(distinguishChannelName = it) })
+    class SelectMediaConfig(section: ConfigSection<SelectorSearchConfig.SelectMediaConfig>) {
+        var distinguishSubjectName by section.prop({ it.distinguishSubjectName }, { copy(distinguishSubjectName = it) })
+        var distinguishChannelName by section.prop({ it.distinguishChannelName }, { copy(distinguishChannelName = it) })
     }
 
-    val matchVideoConfig: MatchVideoConfig = MatchVideoConfig()
+    val matchVideoConfig = MatchVideoConfig(
+        searchConfig.sub({ it.matchVideo }, { copy(matchVideo = it) }),
+    )
 
     @Stable
-    inner class MatchVideoConfig {
-        private fun <T : Any> prop(
-            get: (SelectorSearchConfig.MatchVideoConfig) -> T,
-            set: SelectorSearchConfig.MatchVideoConfig.(T) -> SelectorSearchConfig.MatchVideoConfig,
-        ) = argumentsStorage.prop(
-            { it.searchConfig.matchVideo.let(get) },
-            {
-                copy(
-                    searchConfig = searchConfig.copy(
-                        matchVideo = searchConfig.matchVideo.set(it),
-                    ),
-                )
-            },
-            SelectorMediaSourceArguments.Default.searchConfig.matchVideo.let(get),
-        )
-
-        var matchVideoUrl by prop(
-            { it.matchVideoUrl }, { copy(matchVideoUrl = it) },
-        )
+    class MatchVideoConfig(section: ConfigSection<SelectorSearchConfig.MatchVideoConfig>) {
+        var matchVideoUrl by section.prop({ it.matchVideoUrl }, { copy(matchVideoUrl = it) })
         val matchVideoUrlIsError by derivedStateOf {
             matchVideoUrl.isBlank() || !isValidRegex(matchVideoUrl)
         }
-        var cookies by prop(
-            { it.cookies }, { copy(cookies = it) },
-        )
+        var cookies by section.prop({ it.cookies }, { copy(cookies = it) })
 
-        var enableNestedUrl by prop(
-            { it.enableNestedUrl }, { copy(enableNestedUrl = it) },
-        )
-        var matchNestedUrl by prop(
-            { it.matchNestedUrl }, { copy(matchNestedUrl = it) },
-        )
+        var enableNestedUrl by section.prop({ it.enableNestedUrl }, { copy(enableNestedUrl = it) })
+        var matchNestedUrl by section.prop({ it.matchNestedUrl }, { copy(matchNestedUrl = it) })
         val matchNestedUrlIsError by derivedStateOf {
             matchNestedUrl.isBlank() || !isValidRegex(matchNestedUrl)
         }
 
-        val videoHeaders = HeadersConfig()
+        val videoHeaders = HeadersConfig(
+            section.sub({ it.addHeadersToVideo }, { copy(addHeadersToVideo = it) }),
+        )
 
         @Stable
-        inner class HeadersConfig {
-            private fun <T : Any> prop(
-                get: (SelectorSearchConfig.VideoHeaders) -> T,
-                set: SelectorSearchConfig.VideoHeaders.(T) -> SelectorSearchConfig.VideoHeaders,
-            ) = this@MatchVideoConfig.prop(
-                { it.addHeadersToVideo.let(get) },
-                { copy(addHeadersToVideo = addHeadersToVideo.set(it)) },
-            )
-
-            var referer by prop(
-                { it.referer }, { copy(referer = it) },
-            )
-            var userAgent by prop(
-                { it.userAgent }, { copy(userAgent = it) },
-            )
+        class HeadersConfig(section: ConfigSection<SelectorSearchConfig.VideoHeaders>) {
+            var referer by section.prop({ it.referer }, { copy(referer = it) })
         }
     }
 

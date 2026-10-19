@@ -72,6 +72,7 @@ kotlin {
         api(projects.app.shared.uiExploration)
         api(projects.app.shared.uiSubject)
         api(projects.app.shared.uiDownload)
+        api(projects.app.shared.uiNotification)
         api(projects.app.shared.uiAdaptive)
         api(projects.app.shared.uiOnboarding)
         api(projects.app.shared.uiEpisode)
@@ -94,7 +95,6 @@ kotlin {
         // Data sources
         api(projects.datasource.datasourceApi)
         api(projects.datasource.datasourceCore)
-        api(projects.datasource.bangumi)
         api(projects.datasource.mikan)
 
         api(projects.client)

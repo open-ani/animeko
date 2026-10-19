@@ -98,7 +98,7 @@ sealed interface SearchPageEffect {
 
 fun SearchPageState.withQuery(
     query: SubjectSearchQuery,
-    tagKinds: List<CanonicalTagKind> = SearchFilterState.DEFAULT_TAG_KINDS,
+    tagKinds: List<CanonicalTagKind> = searchFilterState.tagKinds,
 ): SearchPageState {
     val normalizedQuery = query.normalized()
     if (normalizedQuery == this.query) {
@@ -115,7 +115,7 @@ fun SearchPageState.toggleTagSelection(
     tag: SearchFilterChipState,
     value: String,
     unselectOthersOfSameKind: Boolean,
-    tagKinds: List<CanonicalTagKind> = SearchFilterState.DEFAULT_TAG_KINDS,
+    tagKinds: List<CanonicalTagKind> = searchFilterState.tagKinds,
 ): SearchPageState {
     val existingTags = query.tags.orEmpty()
     val updatedTags = if (value in existingTags) {
@@ -129,6 +129,19 @@ fun SearchPageState.toggleTagSelection(
     return withQuery(
         query.copy(tags = updatedTags),
         tagKinds = tagKinds,
+    )
+}
+
+/**
+ * 切换筛选栏展示的标签分类. 不在 [tagKinds] 中的已选标签作为自定义标签展示.
+ */
+fun SearchPageState.withTagKinds(tagKinds: List<CanonicalTagKind>): SearchPageState {
+    if (tagKinds == searchFilterState.tagKinds) {
+        return this
+    }
+
+    return copy(
+        searchFilterState = buildSearchFilterState(query.tags.orEmpty(), tagKinds),
     )
 }
 

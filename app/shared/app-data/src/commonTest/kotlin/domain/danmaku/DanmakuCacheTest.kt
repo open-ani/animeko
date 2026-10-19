@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
+import me.him188.ani.app.data.models.danmaku.DanmakuTextConversionOverrides
 import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
@@ -26,6 +27,7 @@ import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
@@ -251,6 +253,7 @@ class DanmakuCacheTest {
         override val danmakuEnabled: Settings<Boolean> by lazy { error("no implemented") }
         override val danmakuConfig: Settings<DanmakuConfig> by lazy { error("no implemented") }
         override val danmakuFilterConfig: Settings<DanmakuFilterConfig> by lazy { error("no implemented") }
+        override val danmakuTextConversionOverrides: Settings<DanmakuTextConversionOverrides> by lazy { error("no implemented") }
         override val mediaSelectorSettings: Settings<MediaSelectorSettings> by lazy { error("no implemented") }
         override val defaultMediaPreference: Settings<MediaPreference> by lazy { error("no implemented") }
         override val profileSettings: Settings<ProfileSettings> by lazy { error("no implemented") }
@@ -269,6 +272,7 @@ class DanmakuCacheTest {
         override val analyticsSettings: Settings<AnalyticsSettings> by lazy { error("no implemented") }
         override val debugSettings: Settings<DebugSettings> by lazy { error("no implemented") }
         override val watchTogetherSettings: Settings<WatchTogetherSettings> by lazy { error("no implemented") }
+        override val notificationSettings: Settings<NotificationSettings> by lazy { error("no implemented") }
     }
 
     private class TestDanmakuDao : DanmakuDao {

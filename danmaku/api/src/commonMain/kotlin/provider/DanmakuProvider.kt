@@ -74,4 +74,8 @@ class DanmakuFetchRequest(
     val fileHash: String?,
     val fileSize: Long?,
     val videoDuration: Duration,
+    /**
+     * 当前条目是拆分季的后半时按季内序号对集的规则, 其他情况为 `null`.
+     */
+    val splitSeason: DanmakuSplitSeasonMatcher? = null,
 )

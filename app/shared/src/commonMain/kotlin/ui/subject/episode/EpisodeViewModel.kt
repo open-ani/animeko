@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
+import me.him188.ani.app.data.models.danmaku.DanmakuTextConversionOverrides
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.nameOrNameCn
@@ -81,6 +82,7 @@ import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDelet
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
+import me.him188.ani.app.domain.danmaku.DanmakuTextConversionSettings
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
@@ -110,7 +112,9 @@ import me.him188.ani.app.domain.player.CacheProgressProvider
 import me.him188.ani.app.domain.player.extension.AnalyticsExtension
 import me.him188.ani.app.domain.player.extension.AutoSelectExtension
 import me.him188.ani.app.domain.player.extension.CacheOnBtPlayExtension
+import me.him188.ani.app.domain.player.extension.EpisodeExitAnalyticsExtension
 import me.him188.ani.app.domain.player.extension.MarkAsWatchedExtension
+import me.him188.ani.app.domain.player.extension.MediaFetchAnalyticsExtension
 import me.him188.ani.app.domain.player.extension.ObserveWebMediaSourcePreferenceExtension
 import me.him188.ani.app.domain.player.extension.PlaybackSpeedExtension
 import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
@@ -161,7 +165,6 @@ import me.him188.ani.app.ui.mediaselect.manual.ManualBrowseTarget
 import me.him188.ani.app.ui.mediaselect.toWatchingEpisode
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummary
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryStateProducer
-import me.him188.ani.app.ui.mediaselect.summary.selectedMaybeExcludedMediaFlow
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
@@ -194,6 +197,7 @@ import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuTrackProperties
+import me.him188.ani.danmaku.ui.DanmakuTextConversion
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.source.MediaFetchRequest
@@ -367,6 +371,8 @@ open class EpisodeViewModel(
         subjectId, initialEpisodeId, player, backgroundScope,
         extensions = listOf(
             AnalyticsExtension,
+            EpisodeExitAnalyticsExtension,
+            MediaFetchAnalyticsExtension,
             PlaybackSpeedExtension.Factory(playbackSpeedFlow),
             RememberPlayProgressExtension,
             WatchTogetherPlayerExtension,
@@ -406,7 +412,7 @@ open class EpisodeViewModel(
 
     /**
      * 全屏播放器的手动查找 / BT 容器是否可见. 放 VM 而不是 EpisodeVideo 的 rememberSaveable:
-     * EpisodeVideo 被 EpisodeScreenTabletVeryWide 与 EpisodeScreenContentPhone 两处调用, 窗口跨 600dp / 旋转时组合位置改变, 位置型状态会归零.
+     * 容器从侧边栏页面打开, 侧边栏页面被 closeSideSheet 销毁后容器仍要保留.
      */
     var fullscreenSelectorVisible: Boolean by mutableStateOf(false)
 
@@ -431,6 +437,9 @@ open class EpisodeViewModel(
                     subjectName = it.subjectInfo.nameCnOrName,
                     episodeSort = it.episodeInfo.sort,
                     episodeSortText = it.episodeInfo.sort.toString(),
+                    subjectNames = it.subjectInfo.allNames,
+                    episodeEp = it.episodeInfo.ep,
+                    splitSeason = it.seriesInfo.splitSeason,
                 )
             }
         }.distinctUntilChanged(),
@@ -444,7 +453,7 @@ open class EpisodeViewModel(
             // 关掉「记住选择」也结束本条目已有的记忆, 否则下一集仍会按旧记忆回放.
             if (!remember) forgetBrowseMemory()
         },
-        onPlay = ::playBrowsedMedia,
+        onPlay = { pick, memory -> playBrowsedMedia(pick.media, memory) },
         backgroundScope = backgroundScope,
     )
 
@@ -693,7 +702,8 @@ open class EpisodeViewModel(
         )
 
     var isFullscreen: Boolean by mutableStateOf(initialIsFullscreen)
-    var sidebarVisible: Boolean by mutableStateOf(true)
+    private val sidebarState = EpisodeSidebarState { isFullscreen }
+    var sidebarVisible: Boolean by sidebarState::isVisible
     val commentLazyGirdState: LazyGridState = LazyGridState()
 
     /**
@@ -716,10 +726,50 @@ open class EpisodeViewModel(
     )
 
 
+    /**
+     * 弹幕文字转换设置流: 全局目标来自 [SettingsRepository.danmakuConfig],
+     * 按来源的覆盖来自 [SettingsRepository.danmakuTextConversionOverrides] (持久保存).
+     */
+    private val danmakuTextConversionFlow: Flow<DanmakuTextConversionSettings> = combine(
+        settingsRepository.danmakuConfig.flow,
+        settingsRepository.danmakuTextConversionOverrides.flow,
+    ) { config, overrides ->
+        DanmakuTextConversionSettings(
+            global = config.textConversion,
+            overrides = overrides.overrides.mapKeys { DanmakuServiceId(it.key) },
+        )
+    }
+
+    fun setDanmakuTextConversionOverride(serviceId: DanmakuServiceId, target: DanmakuTextConversion?) {
+        launchInBackground {
+            settingsRepository.danmakuTextConversionOverrides.update {
+                copy(
+                    overrides = if (target == null) {
+                        overrides - serviceId.value
+                    } else {
+                        overrides + (serviceId.value to target)
+                    },
+                )
+            }
+        }
+    }
+
+    fun setDanmakuTextConversionGlobal(target: DanmakuTextConversion) {
+        launchInBackground {
+            settingsRepository.danmakuConfig.update { copy(textConversion = target) }
+        }
+    }
+
+    fun resetDanmakuTextConversionOverrides() {
+        launchInBackground {
+            settingsRepository.danmakuTextConversionOverrides.update { DanmakuTextConversionOverrides.Default }
+        }
+    }
+
     @OptIn(UnsafeEpisodeSessionApi::class)
     protected val episodeDanmakuLoader = EpisodeDanmakuLoader(
         player = player,
-        // TODO: 2025/1/6 this is not very good. May see old data. 
+        // TODO: 2025/1/6 this is not very good. May see old data.
         selectedMedia = fetchPlayState.mediaSelectorFlow.transformLatest {
             if (it == null) {
                 emit(null)
@@ -730,7 +780,8 @@ open class EpisodeViewModel(
         bundleFlow = fetchPlayState.infoBundleFlow.filterNotNull().distinctUntilChanged(),
         danmakuRepository = danmakuRepository,
         getDanmakuRegexFilterListFlowUseCase = getDanmakuRegexFilterListFlowUseCase,
-        backgroundScope,
+        danmakuTextConversion = danmakuTextConversionFlow,
+        backgroundScope = backgroundScope,
         sharingStarted = SharingStarted.WhileSubscribed(5_000),
     )
 
@@ -786,6 +837,7 @@ open class EpisodeViewModel(
     val danmakuListStateProducer = DanmakuListStateProducer(
         danmakuFlow = allDanmakuListFlow,
         fetchResultsFlow = episodeDanmakuLoader.fetchResults,
+        textConversion = danmakuTextConversionFlow,
     )
 
     val danmakuListState = danmakuListStateProducer.stateFlow
@@ -991,7 +1043,7 @@ open class EpisodeViewModel(
 
         val mediaSelectorSummaryStateProducer = MediaSelectorSummaryStateProducer(
             episodeSession.fetchSelectFlow.mapNotNull { it?.mediaSelector }
-                .flatMapLatest { it.selectedMaybeExcludedMediaFlow }
+                .flatMapLatest { it.selectedMaybeExcludedMedia }
                 .onStart { emit(null) },
             filteredSourceResults,
             getMediaSelectorSettings(),

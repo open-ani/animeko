@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.search
 
+import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.schedule.AnimeSeason
 
 data class SubjectSearchQuery(
@@ -54,6 +55,28 @@ data class SubjectSearchQuery(
     fun hasSearchRequest(): Boolean {
         return keywords.isNotEmpty() || hasFilters()
     }
+}
+
+/**
+ * 是否通过 R18 标签主动查找 NSFW 条目.
+ */
+val SubjectSearchQuery.isExplicitR18: Boolean
+    get() = tags?.contains("R18") == true
+
+/**
+ * 按 NSFW 设置填充 [SubjectSearchQuery.nsfw].
+ *
+ * [NsfwMode.HIDE] 始终排除 NSFW 条目, 即使选择了 R18 标签.
+ * 其他模式下, 选择 R18 标签时只搜 NSFW 条目, 否则不限.
+ */
+fun SubjectSearchQuery.withNsfwFilter(nsfwMode: NsfwMode): SubjectSearchQuery {
+    return copy(
+        nsfw = when {
+            nsfwMode == NsfwMode.HIDE -> false
+            isExplicitR18 -> true
+            else -> null
+        },
+    )
 }
 
 /**

@@ -39,12 +39,13 @@ The transport is a stateless subset of the MCP Streamable HTTP spec: JSON-RPC me
   并从 mpv 读取真实媒体信息 (分辨率/时长/编码/帧率/码率).
   mpv 原生库自动加载 (可用 `-Dani.mpv.native.dir` 指定目录); 加载失败时降级为仅 HTTP 探测.
 - `detect_hls_ads` — 不播放, 仅抓取 m3u8 (自动跟随 master → media) 做结构启发式分析,
-  并运行 Ani 客户端真实的 HLS 广告过滤器 (`HlsManifestFilter`), 报告各疑似广告组的时间偏移
+  并运行 Ani 客户端真实的 HLS 广告过滤器 (`HlsManifestFilter`, 需读取各组首片开头的 2 KB 判断时间轴), 报告各疑似广告组的时间偏移
   (可配合 `probe_video` 的 `captureAtSeconds` 定点截帧确认) 与 App 是否会自动滤除.
 
 ### 兼容保留
 
-- `test_subject_episode_source` — 任意数据源工厂 (dmhy/mikan/selector/...) 的端到端测试.
+- `test_subject_episode_source` — 任意数据源工厂 (dmhy/mikan/selector/json-api/...) 的端到端测试.
+  `json-api` 源的资源由接口签发播放地址, 逐线路测试直接向源取地址 (`ApiVideoResolver`), 不经过 WebView.
 - `test_resource_page_url` — 任意播放页的 WebView 视频解析 + 探测.
 
 `probe_video_url` 已被 `probe_video` 取代 (输入兼容, 输出更丰富).
@@ -109,7 +110,8 @@ fetch subject and episode metadata from the Ani API. Ani API is the metadata sou
 
 For web media sources, the playback path in the client is:
 
-1. `WebVideoMatcher` produces a `WebVideo` with `headers`
+1. `WebVideoMatcher` produces a `WebVideo` with `headers` (for `json-api` sources, the source's
+   `ApiVideoResolver` produces it from the playback API instead of a page)
 2. resolver returns `HttpStreamingMediaDataProvider`
 3. `HttpStreamingMediaDataProvider.open()` creates `UriMediaData`
 4. player and cache downloader consume `UriMediaData.headers`
@@ -140,8 +142,8 @@ removes an already resolved URL; inspect `resolveStatus`, `probeStatus`, and the
 ```
 
 WebView/CEF tools must run on a JetBrains Runtime that includes JCEF (prefer JBR 21); a plain OpenJDK can
-still start the server but cannot resolve WebVideo pages. On Windows, the datasource-eval launcher also uses
-a Java argument file to avoid `cmd.exe`'s 8191-character command limit.
+still start the server but cannot resolve WebVideo pages. The start scripts prefer a JBR bundled under `jbr/`
+in the distribution over `JAVA_HOME`.
 
 Defaults to `http://127.0.0.1:8264/mcp`; override with `--host <host>` / `--port <port>`.
 
@@ -160,6 +162,27 @@ Point your MCP client at the running server, e.g. in `.mcp.json`:
 
 The `.agents/skills/datasource-test` skill looks for this MCP under the name `ani-datasource-test`
 (tools like `mcp__ani-datasource-test__selector_resolve_episode`); keep the name in sync if you change it.
+
+## Prebuilt Distribution
+
+`.github/workflows/datasource-test-mcp.yml` builds a Windows x64 distribution on every push to `main`, which
+runs without a checkout or build environment of this repository. It bundles a JBR with JCEF under `jbr/`, so
+the machine needs no Java installation; `build-info.txt` records the commit.
+
+There is no Linux distribution: on Linux, mpv's render context has to join the GLX context of a playback
+window, so `probe_video` cannot play anything without a desktop.
+
+Artifacts are kept for 30 days. Downloading them requires a GitHub login (`gh auth login`), even though the
+repository is public:
+
+```bash
+run=$(gh run list -R open-ani/animeko --workflow datasource-test-mcp.yml --branch main --status success \
+  --limit 1 --json databaseId -q '.[0].databaseId')
+gh run download "$run" -R open-ani/animeko -n datasource-test-mcp-windows-x64 -D datasource-test-mcp
+```
+
+Run `python smoke-test.py` in the distribution directory to check the machine. It starts the server, plays a
+video with mpv and intercepts the video URL of a play page with CEF, all against a local HTTP server.
 
 ## Test
 

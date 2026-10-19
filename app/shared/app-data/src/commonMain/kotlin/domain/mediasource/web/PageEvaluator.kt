@@ -48,6 +48,16 @@ sealed interface PageExpectation<out T> {
 
     /** 无 selector 可用时的兜底 (视频页等): 只要没有被挡特征就算 [PageVerdict.Ok]. */
     data object AnyContent : PageExpectation<Document>
+
+    /**
+     * 数据源配置的 User-Agent ([SelectorSearchConfig.userAgentOrNull]). 取这个页面与为它解验证码都以此 UA 进行.
+     */
+    val userAgent: String?
+        get() = when (this) {
+            is SearchResults -> config.userAgentOrNull
+            is SubjectDetails -> config.userAgentOrNull
+            AnyContent -> null
+        }
 }
 
 /**

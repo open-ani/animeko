@@ -31,6 +31,7 @@ internal object CommonTracingInitializer {
         scope.setContext("os", platform.name)
         scope.setContext("arch", platform.arch.name)
         scope.setContext("version", currentAniBuildConfig.versionName)
+        scope.setTag("distro_channel", currentAniBuildConfig.distroChannel)
     }
 }
 

@@ -1,0 +1,340 @@
+{
+  "recordedAt": "2026-10-13",
+  "subjects": [
+    {
+      "subjectId": 316247,
+      "name": "Re：从零开始的异世界生活 第二季 后半部分",
+      "episodes": [
+        {"sort": 39, "expected": [155930001]},
+        {"sort": 40, "expected": [155930002]},
+        {"sort": 41, "expected": [155930003]},
+        {"sort": 42, "expected": [155930004]},
+        {"sort": 43, "expected": [155930005]},
+        {"sort": 44, "expected": [155930006]},
+        {"sort": 45, "expected": [155930007]},
+        {"sort": 46, "expected": [155930008]},
+        {"sort": 47, "expected": [155930009]},
+        {"sort": 48, "expected": [155930010]},
+        {"sort": 49, "expected": [155930011]},
+        {"sort": 50, "expected": [155930012]}
+      ]
+    },
+    {
+      "subjectId": 510728,
+      "name": "Re：从零开始的异世界生活 第三季 反击篇",
+      "episodes": [
+        {"sort": 59, "expected": [179470009]},
+        {"sort": 60, "expected": [179470010]},
+        {"sort": 61, "expected": [179470011]},
+        {"sort": 62, "expected": [179470012]},
+        {"sort": 63, "expected": [179470013]},
+        {"sort": 64, "expected": [179470014]},
+        {"sort": 65, "expected": [179470015]},
+        {"sort": 66, "expected": [179470016], "note": "弹弹的标题是“攻略戦”，Bangumi 是“攻防戦”；按播出日期和季内序号核对"}
+      ]
+    },
+    {
+      "subjectId": 547888,
+      "name": "Re：从零开始的异世界生活 第四季 丧失篇",
+      "episodes": [
+        {"sort": 67, "expected": [192420001]},
+        {"sort": 68, "expected": [192420002]},
+        {"sort": 69, "expected": [192420003]},
+        {"sort": 70, "expected": [192420004]},
+        {"sort": 71, "expected": [192420005]},
+        {"sort": 72, "expected": [192420006]},
+        {"sort": 73, "expected": [192420007]},
+        {"sort": 74, "expected": [192420008]},
+        {"sort": 75, "expected": [192420009]},
+        {"sort": 76, "expected": [192420010]},
+        {"sort": 77, "expected": [192420011]}
+      ]
+    },
+    {
+      "subjectId": 633836,
+      "name": "Re：从零开始的异世界生活 第四季 夺还篇",
+      "episodes": [
+        {"sort": 78, "expected": [192420012]},
+        {"sort": 79, "expected": [192420013]},
+        {"sort": 80, "expected": [192420014]},
+        {"sort": 81, "expected": [192420015]},
+        {"sort": 82, "expected": [192420016]},
+        {"sort": 83, "expected": [192420017]},
+        {"sort": 84, "expected": [192420018]},
+        {"sort": 85, "expected": [192420019]}
+      ]
+    },
+    {
+      "subjectId": 325585,
+      "name": "无职转生～到了异世界就拿出真本事～ 第2部分",
+      "episodes": [
+        {"sort": 12, "expected": [159540001]},
+        {"sort": 13, "expected": [159540002]},
+        {"sort": 14, "expected": [159540003]},
+        {"sort": 15, "expected": [159540004]},
+        {"sort": 16, "expected": [159540005]},
+        {"sort": 17, "expected": [159540006]},
+        {"sort": 18, "expected": [159540007]},
+        {"sort": 19, "expected": [159540008]},
+        {"sort": 20, "expected": [159540009]},
+        {"sort": 21, "expected": [159540010]},
+        {"sort": 22, "expected": [159540011]},
+        {"sort": 23, "expected": [159540012]}
+      ]
+    },
+    {
+      "subjectId": 444557,
+      "name": "无职转生 第二季 ～到了异世界就拿出真本事～ 第2部分",
+      "episodes": [
+        {"sort": 13, "expected": [181040001]},
+        {"sort": 14, "expected": [181040002]},
+        {"sort": 15, "expected": [181040003]},
+        {"sort": 16, "expected": [181040004]},
+        {"sort": 17, "expected": [181040005]},
+        {"sort": 18, "expected": [181040006]},
+        {"sort": 19, "expected": [181040007]},
+        {"sort": 20, "expected": [181040008]},
+        {"sort": 21, "expected": [181040009]},
+        {"sort": 22, "expected": [181040010]},
+        {"sort": 23, "expected": [181040011]},
+        {"sort": 24, "expected": [181040012]}
+      ]
+    },
+    {
+      "subjectId": 263750,
+      "name": "进击的巨人 第三季 Part.2",
+      "episodes": [
+        {"sort": 50, "expected": [144440001]},
+        {"sort": 51, "expected": [144440002]},
+        {"sort": 52, "expected": [144440003]},
+        {"sort": 53, "expected": [144440004]},
+        {"sort": 54, "expected": [144440005]},
+        {"sort": 55, "expected": [144440006]},
+        {"sort": 56, "expected": [144440007]},
+        {"sort": 57, "expected": [144440008]},
+        {"sort": 58, "expected": [144440009]},
+        {"sort": 59, "expected": [144440010]}
+      ]
+    },
+    {
+      "subjectId": 331752,
+      "name": "进击的巨人 最终季 Part.2",
+      "episodes": [
+        {"sort": 76, "expected": [161770001]},
+        {"sort": 77, "expected": [161770002]},
+        {"sort": 78, "expected": [161770003]},
+        {"sort": 79, "expected": [161770004]},
+        {"sort": 80, "expected": [161770005]},
+        {"sort": 81, "expected": [161770006]},
+        {"sort": 82, "expected": [161770007]},
+        {"sort": 83, "expected": [161770008]},
+        {"sort": 84, "expected": [161770009]},
+        {"sort": 85, "expected": [161770010]},
+        {"sort": 86, "expected": [161770011]},
+        {"sort": 87, "expected": [161770012]}
+      ]
+    },
+    {
+      "subjectId": 373267,
+      "name": "间谍过家家 第2部分",
+      "episodes": [
+        {"sort": 13, "expected": [170610001]},
+        {"sort": 14, "expected": [170610002]},
+        {"sort": 15, "expected": [170610003]},
+        {"sort": 16, "expected": [170610004]},
+        {"sort": 17, "expected": [170610005]},
+        {"sort": 18, "expected": [170610006]},
+        {"sort": 19, "expected": [170610007]},
+        {"sort": 20, "expected": [170610008]},
+        {"sort": 21, "expected": [170610009]},
+        {"sort": 22, "expected": [170610010]},
+        {"sort": 23, "expected": [170610011]},
+        {"sort": 24, "expected": [170610012]},
+        {"sort": 25, "expected": [170610013]}
+      ]
+    },
+    {
+      "subjectId": 442523,
+      "name": "魔法使的新娘 第二季 第2部分",
+      "episodes": [
+        {"sort": 13, "expected": [180760001]},
+        {"sort": 14, "expected": [180760002]},
+        {"sort": 15, "expected": [180760003]},
+        {"sort": 16, "expected": [180760004]},
+        {"sort": 17, "expected": [180760005]},
+        {"sort": 18, "expected": [180760006]},
+        {"sort": 19, "expected": [180760007], "note": "撇号写法不同（’ 与 `）；按播出日期核对"},
+        {"sort": 20, "expected": [180760008]},
+        {"sort": 21, "expected": [180760009]},
+        {"sort": 22, "expected": [180760010], "note": "撇号写法不同（’ 与 `）；按播出日期核对"},
+        {"sort": 23, "expected": [180760011]},
+        {"sort": 24, "expected": [180760012]}
+      ]
+    },
+    {
+      "subjectId": 331887,
+      "name": "86 -不存在的战区- 第2部分",
+      "episodes": [
+        {"sort": 12, "expected": [161720001]},
+        {"sort": 13, "expected": [161720002]},
+        {"sort": 14, "expected": [161720003]},
+        {"sort": 15, "expected": [161720004]},
+        {"sort": 16, "expected": [161720005]},
+        {"sort": 17, "expected": [161720006]},
+        {"sort": 18, "expected": [161720007]},
+        {"sort": 19, "expected": [161720008]},
+        {"sort": 20, "expected": [161720009]},
+        {"sort": 21, "expected": [161720010]},
+        {"sort": 22, "expected": [161720011]},
+        {"sort": 23, "expected": [161720012]}
+      ]
+    },
+    {
+      "subjectId": 319252,
+      "name": "忧国的莫里亚蒂 第二季",
+      "episodes": [
+        {"sort": 12, "expected": [157740001]},
+        {"sort": 13, "expected": [157740002]},
+        {"sort": 14, "expected": [157740003]},
+        {"sort": 15, "expected": [157740004]},
+        {"sort": 16, "expected": [157740005]},
+        {"sort": 17, "expected": [157740006]},
+        {"sort": 18, "expected": [157740007]},
+        {"sort": 19, "expected": [157740008]},
+        {"sort": 20, "expected": [157740009]},
+        {"sort": 21, "expected": [157740010]},
+        {"sort": 22, "expected": [157740011]},
+        {"sort": 23, "expected": [157740012]},
+        {"sort": 24, "expected": [157740013]}
+      ]
+    },
+    {
+      "subjectId": 295421,
+      "name": "排球少年 TO THE TOP 第二期",
+      "episodes": [
+        {"sort": 14, "expected": [152830001]},
+        {"sort": 15, "expected": [152830002]},
+        {"sort": 16, "expected": [152830003]},
+        {"sort": 17, "expected": [152830004]},
+        {"sort": 18, "expected": [152830005]},
+        {"sort": 19, "expected": [152830006]},
+        {"sort": 20, "expected": [152830007]},
+        {"sort": 21, "expected": [152830008]},
+        {"sort": 22, "expected": [152830009]},
+        {"sort": 23, "expected": [152830010]},
+        {"sort": 24, "expected": [152830011]},
+        {"sort": 25, "expected": [152830012]}
+      ]
+    },
+    {
+      "subjectId": 502876,
+      "name": "炎炎消防队 叁之章 第2部分",
+      "episodes": [
+        {"sort": 13, "expected": [187420001], "note": "弹弹第 13 话的标题也写成“无自觉”，标题有两个候选；按播出日期核对"},
+        {"sort": 14, "expected": [187420002]},
+        {"sort": 15, "expected": [187420003]},
+        {"sort": 16, "expected": [187420004]},
+        {"sort": 17, "expected": [187420005]},
+        {"sort": 18, "expected": [187420006]},
+        {"sort": 19, "expected": [187420007], "note": "弹弹的标题带注音“[イメージ]”；按播出日期核对"},
+        {"sort": 20, "expected": [187420008]},
+        {"sort": 21, "expected": [187420009]},
+        {"sort": 22, "expected": [187420010]},
+        {"sort": 23, "expected": [187420011]},
+        {"sort": 24, "expected": [187420012]},
+        {"sort": 25, "expected": [187420013], "note": "弹弹第 13 话的标题错写成“无自觉”；按播出日期和集号核对"}
+      ]
+    },
+    {
+      "subjectId": 524005,
+      "name": "坂本日常 第2部分",
+      "episodes": [
+        {"sort": 12, "expected": [189840001]},
+        {"sort": 13, "expected": [189840002]},
+        {"sort": 14, "expected": [189840003]},
+        {"sort": 15, "expected": [189840004]},
+        {"sort": 16, "expected": [189840005]},
+        {"sort": 17, "expected": [189840006]},
+        {"sort": 18, "expected": [189840007]},
+        {"sort": 19, "expected": [189840008]},
+        {"sort": 20, "expected": [189840009]},
+        {"sort": 21, "expected": [189840010]},
+        {"sort": 22, "expected": [189840011]}
+      ]
+    },
+    {
+      "subjectId": 332261,
+      "name": "JOJO的奇妙冒险 石之海",
+      "episodes": [
+        {"sort": 1, "expected": [161870001]},
+        {"sort": 2, "expected": [161870002]},
+        {"sort": 3, "expected": [161870003]},
+        {"sort": 4, "expected": [161870004]},
+        {"sort": 5, "expected": [161870005]},
+        {"sort": 6, "expected": [161870006]},
+        {"sort": 7, "expected": [161870007]},
+        {"sort": 8, "expected": [161870008]},
+        {"sort": 9, "expected": [161870009]},
+        {"sort": 10, "expected": [161870010]},
+        {"sort": 11, "expected": [161870011]},
+        {"sort": 12, "expected": [161870012]}
+      ]
+    },
+    {
+      "subjectId": 375913,
+      "name": "JOJO的奇妙冒险 石之海 第2部分",
+      "episodes": [
+        {"sort": 13, "expected": [172860001]},
+        {"sort": 14, "expected": [172860002]},
+        {"sort": 15, "expected": [172860003]},
+        {"sort": 16, "expected": [172860004]},
+        {"sort": 17, "expected": [172860005]},
+        {"sort": 18, "expected": [172860006]},
+        {"sort": 19, "expected": [172860007]},
+        {"sort": 20, "expected": [172860008]},
+        {"sort": 21, "expected": [172860009]},
+        {"sort": 22, "expected": [172860010]},
+        {"sort": 23, "expected": [172860011]},
+        {"sort": 24, "expected": [172860012]}
+      ]
+    },
+    {
+      "subjectId": 395782,
+      "name": "JOJO的奇妙冒险 石之海 第3部分",
+      "episodes": [
+        {"sort": 25, "expected": [176640001]},
+        {"sort": 26, "expected": [176640002]},
+        {"sort": 27, "expected": [176640003]},
+        {"sort": 28, "expected": [176640004]},
+        {"sort": 29, "expected": [176640005]},
+        {"sort": 30, "expected": [176640006]},
+        {"sort": 31, "expected": [176640007]},
+        {"sort": 32, "expected": [176640008]},
+        {"sort": 33, "expected": [176640009]},
+        {"sort": 34, "expected": [176640010]},
+        {"sort": 35, "expected": [176640011]},
+        {"sort": 36, "expected": [176640012]},
+        {"sort": 37, "expected": [176640013]},
+        {"sort": 38, "expected": [176640014]}
+      ]
+    },
+    {
+      "subjectId": 455981,
+      "name": "魔王学院的不适任者～史上最强的魔王始祖，转生就读子孙们的学校～ 第二季 第2部分",
+      "episodes": [
+        {"sort": 13, "expected": [161020001]},
+        {"sort": 14, "expected": [161020002]},
+        {"sort": 15, "expected": [161020003]},
+        {"sort": 16, "expected": [161020004]},
+        {"sort": 17, "expected": [161020005]},
+        {"sort": 18, "expected": [161020006]},
+        {"sort": 19, "expected": [161020007]},
+        {"sort": 20, "expected": [161020008]},
+        {"sort": 21, "expected": [161020009]},
+        {"sort": 22, "expected": [161020010]},
+        {"sort": 23, "expected": [161020011]},
+        {"sort": 24, "expected": [161020012]}
+      ]
+    }
+  ]
+}

@@ -90,6 +90,7 @@ import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
@@ -159,6 +160,7 @@ import me.him188.ani.app.ui.subject.episode.statistics.createTestDanmakuStatisti
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.danmaku.api.DanmakuServiceId
+import me.him188.ani.danmaku.ui.DanmakuTextConversion
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -224,6 +226,9 @@ fun EpisodeDetails(
      * 入口按钮 (onClickManualSelect / onClickSwitchSource) 打开容器前调用一次; 宿主在这里锁存模式.
      */
     onBeforeOpenMediaSelector: () -> Unit = {},
+    onSetDanmakuTextConversion: (DanmakuServiceId, DanmakuTextConversion?) -> Unit = { _, _ -> },
+    onSetDanmakuTextConversionGlobal: (DanmakuTextConversion) -> Unit = {},
+    onResetDanmakuTextConversionOverrides: () -> Unit = {},
 ) {
     var showSubjectDetails by rememberSaveable {
         mutableStateOf(false)
@@ -475,6 +480,9 @@ fun EpisodeDetails(
                     onAdjustShift = { serviceId ->
                         editingShiftServiceId = serviceId
                     },
+                    onSetTextConversion = onSetDanmakuTextConversion,
+                    onSetTextConversionGlobal = onSetDanmakuTextConversionGlobal,
+                    onResetTextConversionOverrides = onResetDanmakuTextConversionOverrides,
                 )
             }
         } else null,
@@ -751,6 +759,9 @@ fun EpisodeDetails(
                                 editingShiftServiceId = serviceId
                             },
                             modifier = Modifier.padding(horizontal = 8.dp),
+                            onSetTextConversion = onSetDanmakuTextConversion,
+                            onSetTextConversionGlobal = onSetDanmakuTextConversionGlobal,
+                            onResetTextConversionOverrides = onResetDanmakuTextConversionOverrides,
                         )
                     }
                 }
@@ -1130,7 +1141,7 @@ private fun PreviewEpisodeDetailsImpl(
                     previewPlayerStatisticsState(
                         playingMedia = playingMedia,
                         playingFilename = "filename-filename-filename-filename-filename-filename-filename.mkv",
-                        videoLoadingState = VideoLoadingState.Succeed(isBt = true),
+                        videoLoadingState = VideoLoadingState.Succeed(MediaCacheEngineKey.Anitorrent),
                     ),
                 )
             },

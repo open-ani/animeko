@@ -37,17 +37,6 @@ class IosBrowserNavigator : BrowserNavigator {
         }
     }
 
-    override fun openJoinGroup(context: Context): OpenBrowserResult {
-        // The same QQ group URI used on Android; iOS QQ supports the mqqopensdkapi:// scheme as well
-        try {
-            openUrl(QQ_GROUP)
-            return OpenBrowserResult.Success
-        } catch (ex: Exception) {
-            logger.warn("Failed to open QQ group", ex)
-            return OpenBrowserResult.Failure(ex, QQ_GROUP_JOIN_LINK)
-        }
-    }
-
     private fun openUrl(url: String) {
         val nsUrl = NSURL.URLWithString(url) ?: return
         UIApplication.sharedApplication.openURL(
@@ -58,8 +47,3 @@ class IosBrowserNavigator : BrowserNavigator {
         )
     }
 }
-
-// Same QQ_GROUP URI constant used on Android:
-private const val QQ_GROUP =
-    "mqqopensdkapi://bizAgent/qm/qr?url=http%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Ffrom%3Dapp%26p%3Dandroid%26jump_from%3Dwebapi%26k%3D" +
-            "oiWgOz87g6x4Eskej1Ja0bKWYyZR_dPO"

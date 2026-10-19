@@ -21,6 +21,7 @@ import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstan
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.mediasource.web.captcha.createTestWebSessionManager
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
+import me.him188.ani.app.ui.mediaselect.manual.ManualBrowsePick
 import me.him188.ani.app.ui.mediaselect.manual.ManualBrowseState
 import me.him188.ani.app.ui.mediaselect.manual.ManualBrowseTarget
 import me.him188.ani.datasources.api.EpisodeSort
@@ -118,9 +119,9 @@ class TestBrowsableMediaSource(
     val subjects: List<BrowseSubject> = TestBrowseSubjects,
     val channels: (BrowseSubject) -> List<BrowseChannel> = { TestBrowseChannels },
     val searchDelegate: suspend (String) -> List<BrowseSubject> = { subjects },
+    override val info: MediaSourceInfo = MediaSourceInfo(displayName = mediaSourceId),
 ) : MediaSource {
     override val kind: MediaSourceKind get() = MediaSourceKind.WEB
-    override val info: MediaSourceInfo = MediaSourceInfo(displayName = mediaSourceId)
     override val supportsBrowsing: Boolean get() = true
 
     override suspend fun checkConnection(): ConnectionStatus = ConnectionStatus.SUCCESS
@@ -169,7 +170,7 @@ fun createTestManualBrowseState(
     backgroundScope: CoroutineScope,
     source: MediaSource = TestBrowsableMediaSource(),
     target: ManualBrowseTarget? = ManualBrowseTarget(1, "命运石之门", EpisodeSort(25), "25"),
-    onPlay: suspend (Media, ManualBrowseMemory?) -> Unit = { _, _ -> },
+    onPlay: suspend (ManualBrowsePick, ManualBrowseMemory?) -> Unit = { _, _ -> },
     webSessionManager: WebSessionManager = createTestWebSessionManager(backgroundScope),
     rememberSelection: MutableStateFlow<Boolean> = MutableStateFlow(true),
 ): ManualBrowseState = ManualBrowseState(

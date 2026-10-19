@@ -215,6 +215,9 @@ internal val TestSubjectPreviewItemInfos
         ),
     )
 
+/**
+ * @param extraInfo 标签下方的额外信息, 默认显示制作人员与配音
+ */
 @Composable
 fun SubjectPreviewItem(
     selected: Boolean,
@@ -227,7 +230,15 @@ fun SubjectPreviewItem(
     },
     title: @Composable (Int) -> Unit = { maxLines ->
         val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
-        Text(if (useOriginalTitle) info.originalTitle else info.title, maxLines = maxLines)
+        Text(
+            if (useOriginalTitle) info.originalTitle else info.title,
+            maxLines = maxLines,
+            overflow = TextOverflow.Ellipsis,
+        )
+    },
+    extraInfo: @Composable () -> Unit = {
+        info.staff?.let { Text(it, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+        info.actors?.let { Text(it, maxLines = 2, overflow = TextOverflow.Ellipsis) }
     },
 ) {
     SubjectItemLayout(
@@ -238,10 +249,7 @@ fun SubjectPreviewItem(
         tags = {
             Text(info.tags, maxLines = 2, overflow = TextOverflow.Ellipsis)
         },
-        extraInfo = {
-            info.staff?.let { Text(it, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-            info.actors?.let { Text(it, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-        },
+        extraInfo = extraInfo,
         rating = {
             RatingText(info.rating)
         },

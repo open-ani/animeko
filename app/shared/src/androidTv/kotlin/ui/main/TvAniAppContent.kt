@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -47,6 +48,7 @@ import me.him188.ani.tv.ui.episode.TvEpisodeViewModel
 import me.him188.ani.tv.ui.exploration.TvExplorationRoute
 import me.him188.ani.tv.ui.exploration.TvExplorationViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
+import me.him188.ani.tv.ui.foundation.focus.TvFocusBoundary
 import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
 import me.him188.ani.tv.ui.foundation.tvViewModel
 import me.him188.ani.tv.ui.login.TvLoginRoute
@@ -57,6 +59,9 @@ import me.him188.ani.tv.ui.search.TvSearchRoute
 import me.him188.ani.tv.ui.search.TvSearchViewModel
 import me.him188.ani.tv.ui.settings.TvSettingsRoute
 import me.him188.ani.tv.ui.settings.TvSettingsViewModel
+import me.him188.ani.tv.ui.update.TvUpdateDialog
+import me.him188.ani.tv.ui.update.TvUpdateIntent
+import me.him188.ani.tv.ui.update.TvUpdateViewModel
 import me.him188.ani.app.shared.loadOpenSourceLibrariesJsons
 import me.him188.ani.tv.ui.subject.TvSubjectDetailsRoute
 import me.him188.ani.tv.ui.subject.TvSubjectDetailsViewModel
@@ -66,6 +71,9 @@ import me.him188.ani.tv.ui.subject.person.TvPeopleKind
 import me.him188.ani.tv.ui.subject.person.TvPeopleTarget
 import me.him188.ani.tv.ui.watchtogether.TvTogetherIntent
 import me.him188.ani.tv.ui.watchtogether.TvWatchTogetherViewModel
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.ScreenView
+import me.him188.ani.utils.analytics.recordEvent
 
 /**
  * TV 端根内容: 注册 TV 支持的 [NavRoutes] 子集, Navigation 3
@@ -101,6 +109,9 @@ fun TvAniAppContent(
             aniNavigator.navigateEpisodeDetails(event.subjectId, event.episodeId, force = true)
         }
     }
+    val updateViewModel = tvViewModel { TvUpdateViewModel(dependencies.versionExpiryService) }
+    val updateState by updateViewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(updateViewModel) { updateViewModel.onIntent(TvUpdateIntent.AutoCheck) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(togetherViewModel, lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
@@ -143,6 +154,15 @@ fun TvAniAppContent(
             val pages = entryProvider<NavRoutes> {
                 entry<NavRoutes.Main> {
                     var shellContent by rememberSaveable { mutableStateOf(TvShellContent.Exploration) }
+                    TvScreenView(
+                        when (shellContent) {
+                            TvShellContent.Search -> "search"
+                            TvShellContent.Exploration -> "exploration"
+                            TvShellContent.Schedule -> "schedule"
+                            TvShellContent.Collection -> "collection"
+                            TvShellContent.Login -> "login"
+                        },
+                    )
                     val mainViewModel = tvViewModel {
                         TvMainViewModel(dependencies.userRepository, dependencies.sessionStateProvider)
                     }
@@ -197,6 +217,7 @@ fun TvAniAppContent(
                     }
                 }
                 entry<NavRoutes.Settings> {
+                    TvScreenView("settings")
                     val viewModel = tvViewModel {
                         TvSettingsViewModel(
                             dependencies.settingsRepository,
@@ -206,11 +227,12 @@ fun TvAniAppContent(
                             loadLibraries = ::loadOpenSourceLibrariesJsons,
                         )
                     }
-                    TvSettingsRoute(viewModel)
+                    TvSettingsRoute(viewModel, onCheckUpdate = { updateViewModel.onIntent(TvUpdateIntent.Check) })
                 }
 
 
                 entry<NavRoutes.OAuthAuthorize> {
+                    TvScreenView("login")
                     val viewModel = tvViewModel { TvLoginViewModel(dependencies.koin) }
                     TvLoginRoute(
                         viewModel,
@@ -222,6 +244,7 @@ fun TvAniAppContent(
                 }
 
                 entry<NavRoutes.CharacterDetail> { route ->
+                    TvScreenView("character")
                     val viewModel = tvViewModel {
                         TvPeopleDetailsViewModel(
                             TvPeopleTarget(route.characterId, TvPeopleKind.Character),
@@ -231,6 +254,7 @@ fun TvAniAppContent(
                     TvPeopleDetailsRoute(viewModel, onNavigate)
                 }
                 entry<NavRoutes.PersonDetail> { route ->
+                    TvScreenView("person")
                     val viewModel = tvViewModel {
                         TvPeopleDetailsViewModel(
                             TvPeopleTarget(
@@ -246,6 +270,7 @@ fun TvAniAppContent(
                     TvPeopleDetailsRoute(viewModel, onNavigate)
                 }
                 entry<NavRoutes.SubjectDetail> { route ->
+                    TvScreenView("subject_details")
                     val viewModel = tvViewModel(key = "subject-${route.subjectId}") {
                         TvSubjectDetailsViewModel(
                             subjectId = route.subjectId,
@@ -261,6 +286,7 @@ fun TvAniAppContent(
                 }
 
                 entry<NavRoutes.EpisodeDetail> { route ->
+                    TvScreenView("episode")
                     val context = LocalContext.current.applicationContext
                     val viewModel = tvViewModel(key = "episode-${route.subjectId}-${route.episodeId}") {
                         TvEpisodeViewModel(
@@ -278,16 +304,30 @@ fun TvAniAppContent(
                     TvEpisodeRoute(viewModel, togetherViewModel, onNavigate)
                 }
             }
-            NavDisplay(
-                backStack = backStack,
-                onBack = { aniNavigator.popBackStack() },
-                entryDecorators = listOf(
-                    rememberSaveableStateHolderNavEntryDecorator(),
-                    rememberViewModelStoreNavEntryDecorator(),
-                    rememberTvNavigationFocusDecorator(pages(backStack.last()).contentKey),
-                ),
-                entryProvider = pages,
-            )
+            TvFocusBoundary(active = !updateState.visible, modifier = Modifier.fillMaxSize()) {
+                NavDisplay(
+                    backStack = backStack,
+                    onBack = { aniNavigator.popBackStack() },
+                    entryDecorators = listOf(
+                        rememberSaveableStateHolderNavEntryDecorator(),
+                        rememberViewModelStoreNavEntryDecorator(),
+                        rememberTvNavigationFocusDecorator(pages(backStack.last()).contentKey),
+                    ),
+                    entryProvider = pages,
+                )
+            }
+            if (updateState.visible) {
+                TvUpdateDialog(updateState, updateViewModel::onIntent)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TvScreenView(screenName: String) {
+    LaunchedEffect(screenName) {
+        Analytics.recordEvent(ScreenView) {
+            put("screen_name", screenName)
         }
     }
 }

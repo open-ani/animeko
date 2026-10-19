@@ -163,6 +163,23 @@ internal fun LazyGridScope.downloaderDetailsItems(details: DownloaderDetails, un
             }
         }
 
+        is DownloaderStatus.Cloud -> {
+            val errorMessage = status.errorMessage
+            if (errorMessage != null) {
+                item {
+                    ListItem(
+                        headlineContent = { Text(stringResource(Lang.cache_details_error)) },
+                        leadingContent = { Icon(Icons.Rounded.ErrorOutline, contentDescription = null) },
+                        supportingContent = {
+                            SelectionContainer {
+                                Text(errorMessage, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                            }
+                        },
+                    )
+                }
+            }
+        }
+
         DownloaderStatus.Resolving, null -> Unit
     }
 }
@@ -201,6 +218,9 @@ private fun downloadStateText(details: DownloaderDetails): String {
             DownloadStatus.CANCELED -> Lang.cache_details_http_state_canceled
             DownloadStatus.DOWNLOADING, DownloadStatus.PAUSED, DownloadStatus.COMPLETED, DownloadStatus.FAILED -> null
         }
+
+        // 云盘没有引擎级状态可补充, 失败原因单独占一行.
+        is DownloaderStatus.Cloud -> null
 
         DownloaderStatus.Resolving -> Lang.cache_details_http_state_resolving
         null -> null

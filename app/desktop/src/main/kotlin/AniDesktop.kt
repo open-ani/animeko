@@ -22,6 +22,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -97,6 +98,7 @@ import me.him188.ani.app.ui.foundation.WindowDropHost
 import me.him188.ani.app.ui.foundation.input.ProvideTouchViewConfiguration
 import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.layout.LocalAppWindowVisible
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.LocalSecondaryWindowFrame
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
@@ -591,6 +593,9 @@ object AniDesktop {
                     },
                     LocalOnBackPressedDispatcherOwner provides backPressedDispatcherOwner,
                     LocalSystemDarkThemeOverride provides systemIsDark,
+                    LocalAppWindowVisible provides remember(trayState) {
+                        derivedStateOf { !trayState.isWindowHiddenToTray }
+                    },
                     // 二级窗口 (图片查看器) 沿用主窗口的自定义外观
                     LocalSecondaryWindowFrame provides if (isRunningUnderWine()) {
                         null
