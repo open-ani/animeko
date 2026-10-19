@@ -30,10 +30,12 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.UtcOffset
 import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.offsetAt
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
+import me.him188.ani.app.data.models.danmaku.DanmakuTextConversionOverrides
 import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
@@ -41,6 +43,7 @@ import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
@@ -212,6 +215,7 @@ class ScheduleViewModelTest {
         override val danmakuEnabled: Settings<Boolean> get() = notNeeded()
         override val danmakuConfig: Settings<DanmakuConfig> get() = notNeeded()
         override val danmakuFilterConfig: Settings<DanmakuFilterConfig> get() = notNeeded()
+        override val danmakuTextConversionOverrides: Settings<DanmakuTextConversionOverrides> get() = notNeeded()
         override val mediaSelectorSettings: Settings<MediaSelectorSettings> get() = notNeeded()
         override val defaultMediaPreference: Settings<MediaPreference> get() = notNeeded()
         override val profileSettings: Settings<ProfileSettings> get() = notNeeded()
@@ -230,6 +234,7 @@ class ScheduleViewModelTest {
         override val analyticsSettings: Settings<AnalyticsSettings> get() = notNeeded()
         override val debugSettings: Settings<DebugSettings> get() = notNeeded()
         override val watchTogetherSettings: Settings<WatchTogetherSettings> get() = notNeeded()
+        override val notificationSettings: Settings<NotificationSettings> get() = notNeeded()
 
         private fun <T> notNeeded(): Settings<T> =
             error("ScheduleViewModel 只使用 uiSettings")
@@ -662,17 +667,38 @@ class ScheduleViewModelTest {
         assertEquals("UTC+00:00", formatUtcOffset(UtcOffset(hours = 0)))
     }
 
+    /**
+     * 可选偏移覆盖 -12:00 … +14:00, 按升序排列, 无重复, 且每个都能解析成固定偏移时区.
+     *
+     * 偏好以时区 ID 字符串持久化, 因此这里同时校验 ID 能重新解析回来.
+     */
     @Test
-    fun `selectable time zones are valid ids and unique`() {
-        assertTrue(ScheduleSelectableTimeZones.isNotEmpty())
-        assertEquals(
-            ScheduleSelectableTimeZones.size,
-            ScheduleSelectableTimeZones.toSet().size,
-            "不应有重复项",
-        )
-        for (id in ScheduleSelectableTimeZones) {
-            // 无法解析的 ID 会让选择器少一个选项, 因此这里逐个校验
-            assertEquals(id, TimeZone.of(id).id, "时区 ID 应当可解析: $id")
+    fun `selectable offsets are sorted, unique and resolvable`() {
+        val minutes = ScheduleSelectableUtcOffsetMinutes
+        assertTrue(minutes.isNotEmpty())
+        assertEquals(minutes.sorted(), minutes, "应当按偏移升序排列")
+        assertEquals(minutes.size, minutes.toSet().size, "不应有重复项")
+        assertEquals(-12 * 60, minutes.first(), "第一个应当是 -12:00")
+        assertEquals(14 * 60, minutes.last(), "最后一个应当是 +14:00")
+
+        for (totalMinutes in minutes) {
+            val zone = timeZoneOfUtcOffsetMinutes(totalMinutes)
+            assertEquals(
+                totalMinutes * 60,
+                zone.offsetAt(Instant.parse("2026-01-01T00:00:00Z")).totalSeconds,
+                "固定偏移时区应当恒等于该偏移: ${formatUtcOffset(totalMinutes)}",
+            )
+            // 偏好存的是 zone.id; 必须能重新解析回同一个时区
+            assertEquals(zone, TimeZone.of(zone.id), "时区 ID 应当可解析: ${zone.id}")
+        }
+    }
+
+    /** 列表必须包含实际在用的半小时 / 45 分钟偏移, 而不只是整点. */
+    @Test
+    fun `selectable offsets include half hour and quarter hour variants`() {
+        val minutes = ScheduleSelectableUtcOffsetMinutes.toSet()
+        for (expected in listOf(5 * 60 + 30, 5 * 60 + 45, 9 * 60 + 30, 12 * 60 + 45)) {
+            assertTrue(expected in minutes, "应当包含偏移 $expected 分钟")
         }
     }
 

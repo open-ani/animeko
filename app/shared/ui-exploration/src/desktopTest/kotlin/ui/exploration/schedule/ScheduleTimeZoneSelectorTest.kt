@@ -22,20 +22,29 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.offsetAt
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.time.Clock
 
 /**
- * 覆盖 [ScheduleTimeZoneSelector] 的交互: 打开菜单, 选择某个时区, 以及选择"系统时区"时回传 `null`.
+ * 覆盖 [ScheduleTimeZoneSelector] 的交互: 打开菜单, 选择某个 UTC 偏移, 选择"系统时区"时回传 `null`,
+ * 以及菜单高度上限 (防止菜单被窗口挤压后顶到标题栏按钮).
  */
 class ScheduleTimeZoneSelectorTest {
-    private val shanghai = TimeZone.of("Asia/Shanghai")
-    private val tokyo = TimeZone.of("Asia/Tokyo")
+    private val utc8 = timeZoneOfUtcOffsetMinutes(8 * 60)
+    private val utc9 = timeZoneOfUtcOffsetMinutes(9 * 60)
+    private val utc530 = timeZoneOfUtcOffsetMinutes(5 * 60 + 30)
+
+    private fun optionTag(zone: TimeZone) = "schedule-time-zone-option-${zone.id}"
 
     /**
      * 受控地渲染选择器并记录每次选择, 模拟页面的 timeZonePreference / onSelectTimeZone 接线.
@@ -61,36 +70,35 @@ class ScheduleTimeZoneSelectorTest {
     }
 
     @Test
-    fun `clicking the selector opens the menu with the current zone selected`() = runAniComposeUiTest {
+    fun `clicking the selector opens the menu with the current offset selected`() = runAniComposeUiTest {
         setContent {
             ProvideCompositionLocalsForPreview {
-                ControlledSelector(shanghai)
+                ControlledSelector(utc8)
             }
         }
 
         // 菜单未打开时选项不存在
-        onNodeWithTag("schedule-time-zone-option-Asia/Tokyo").assertDoesNotExist()
+        onNodeWithTag(optionTag(utc9)).assertDoesNotExist()
 
         onNodeWithTag("schedule-time-zone-selector").assertIsDisplayed().performClick()
 
-        // 打开后可看到系统时区与若干具体时区
-        onNodeWithTag("schedule-time-zone-option-system").assertIsDisplayed()
-        onNodeWithTag("schedule-time-zone-option-Asia/Tokyo").assertIsDisplayed()
-        onNodeWithTag("schedule-time-zone-option-Asia/Shanghai").assertIsDisplayed()
+        onNodeWithTag("schedule-time-zone-option-system").assertExists()
+        onNodeWithTag(optionTag(utc8)).assertExists()
+        onNodeWithTag(optionTag(utc9)).assertExists()
 
         // 固定选择时勾中的是该项, 而不是"系统时区"
-        onNodeWithTag("schedule-time-zone-option-Asia/Shanghai").assertIsSelected()
+        onNodeWithTag(optionTag(utc8)).assertIsSelected()
         onNodeWithTag("schedule-time-zone-option-system").assertIsNotSelected()
     }
 
     /**
      * 偏好为 `null` 时勾中的必须是"系统时区"一项.
      *
-     * 这条覆盖一个缺陷: 曾经向选择器传的是已解析的时区 (恒非空), 其 ID 与非空的时区项比较, 于是
-     * "系统时区"永远不可能被勾中 —— 系统恰好是上海时, 跟随系统会错误地显示为勾选了固定的上海.
+     * 系统时区通常恰好等于列表中的某个偏移; 跟随系统与"固定选了这个偏移"是两种持久化行为不同的状态,
+     * 只有原始偏好能区分它们.
      */
     @Test
-    fun `following the system selects the system option even when it matches a listed zone`() = runAniComposeUiTest {
+    fun `following the system selects the system option not a matching offset`() = runAniComposeUiTest {
         setContent {
             ProvideCompositionLocalsForPreview {
                 ControlledSelector(initial = null)
@@ -100,17 +108,33 @@ class ScheduleTimeZoneSelectorTest {
         onNodeWithTag("schedule-time-zone-selector").performClick()
 
         onNodeWithTag("schedule-time-zone-option-system").assertIsSelected()
-        // 系统时区通常就是列表里的某一项 (例如 Asia/Shanghai); 它不应被勾中
-        onNodeWithTag("schedule-time-zone-option-Asia/Shanghai").assertIsNotSelected()
+        onNodeWithTag(optionTag(utc8)).assertIsNotSelected()
+    }
+
+    /**
+     * 菜单高度必须有上限: 否则列表很长时菜单会被窗口约束向上挤压, 顶到标题栏的最小化/关闭按钮.
+     */
+    @Test
+    fun `menu height is capped`() = runAniComposeUiTest {
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                ControlledSelector(null)
+            }
+        }
+
+        onNodeWithTag("schedule-time-zone-selector").performClick()
+        val heightPx = onNodeWithTag("schedule-time-zone-menu").assertIsDisplayed().fetchSemanticsNode().size.height
+        val capPx = with(density) { 420.dp.roundToPx() }
+        assertTrue(heightPx <= capPx, "菜单高度 $heightPx px 不应超过上限 $capPx px")
     }
 
     @Test
-    fun `selecting a zone reports it and closes the menu`() = runAniComposeUiTest {
+    fun `selecting an offset reports it and closes the menu`() = runAniComposeUiTest {
         var selected: TimeZone? = null
         var called = false
         setContent {
             ProvideCompositionLocalsForPreview {
-                ControlledSelector(shanghai) {
+                ControlledSelector(utc8) {
                     selected = it
                     called = true
                 }
@@ -118,23 +142,48 @@ class ScheduleTimeZoneSelectorTest {
         }
 
         onNodeWithTag("schedule-time-zone-selector").performClick()
-        onNodeWithTag("schedule-time-zone-option-Asia/Tokyo").performClick()
+        // 列表很长, +09:00 可能不在可视区内, 先滚动到它
+        onNodeWithTag(optionTag(utc9)).performScrollTo().performClick()
 
         runOnIdle {
             assertEquals(true, called, "应当回调一次")
-            assertEquals(tokyo, selected)
+            assertEquals(utc9, selected)
         }
         // 选择后菜单关闭
-        onNodeWithTag("schedule-time-zone-option-Asia/Tokyo").assertDoesNotExist()
+        onNodeWithTag(optionTag(utc9)).assertDoesNotExist()
+    }
+
+    /** 半小时偏移也要能选中, 证明列表覆盖的不是整点. */
+    @Test
+    fun `half hour offsets are selectable`() = runAniComposeUiTest {
+        var selected: TimeZone? = null
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                ControlledSelector(null) { selected = it }
+            }
+        }
+
+        onNodeWithTag("schedule-time-zone-selector").performClick()
+        onNodeWithTag(optionTag(utc530)).performScrollTo().performClick()
+
+        runOnIdle {
+            assertEquals(utc530, selected)
+            assertIs<TimeZone>(selected)
+            assertEquals(
+                5 * 3600 + 30 * 60,
+                selected!!.offsetAt(Clock.System.now()).totalSeconds,
+                "选中的应当是 +05:30 固定偏移",
+            )
+        }
     }
 
     @Test
     fun `selecting the system option reports null`() = runAniComposeUiTest {
-        var selected: TimeZone? = shanghai
+        var selected: TimeZone? = utc8
         var called = false
         setContent {
             ProvideCompositionLocalsForPreview {
-                ControlledSelector(shanghai) {
+                ControlledSelector(utc8) {
                     selected = it
                     called = true
                 }

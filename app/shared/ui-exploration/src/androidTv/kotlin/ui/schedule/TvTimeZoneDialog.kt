@@ -23,8 +23,9 @@ import androidx.compose.ui.unit.dp
 import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.offsetAt
-import me.him188.ani.app.ui.exploration.schedule.ScheduleSelectableTimeZones
+import me.him188.ani.app.ui.exploration.schedule.ScheduleSelectableUtcOffsetMinutes
 import me.him188.ani.app.ui.exploration.schedule.formatUtcOffset
+import me.him188.ani.app.ui.exploration.schedule.timeZoneOfUtcOffsetMinutes
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_schedule_time_zone
 import me.him188.ani.app.ui.lang.exploration_schedule_time_zone_system
@@ -83,14 +84,12 @@ internal fun TvTimeZoneDialog(
                     description = "${systemTimeZone.id} · ${formatUtcOffset(systemTimeZone.offsetAt(now))}",
                 ),
             )
-            for (id in ScheduleSelectableTimeZones) {
-                // 时区数据库理论上可能缺少某个 ID; 缺失时跳过, 而不是让时间表页面崩溃.
-                val zone = runCatching { TimeZone.of(id) }.getOrNull() ?: continue
+            for (minutes in ScheduleSelectableUtcOffsetMinutes) {
                 add(
                     TvTimeZoneOption(
-                        id = id,
-                        label = id,
-                        description = formatUtcOffset(zone.offsetAt(now)),
+                        id = timeZoneOfUtcOffsetMinutes(minutes).id,
+                        label = formatUtcOffset(minutes),
+                        description = "",
                     ),
                 )
             }
