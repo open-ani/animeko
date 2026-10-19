@@ -39,7 +39,21 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.login_email_label
+import me.him188.ani.app.ui.lang.login_sign_in
+import me.him188.ani.app.ui.lang.login_verify_title
+import me.him188.ani.app.ui.lang.tv_login_email_subtitle
+import me.him188.ani.app.ui.lang.tv_login_existing_account
+import me.him188.ani.app.ui.lang.tv_login_new_account
 import me.him188.ani.app.ui.lang.tv_login_or
+import me.him188.ani.app.ui.lang.tv_login_otp_placeholder
+import me.him188.ani.app.ui.lang.tv_login_reenter_email
+import me.him188.ani.app.ui.lang.tv_login_resend_countdown
+import me.him188.ani.app.ui.lang.tv_login_send_code
+import me.him188.ani.app.ui.lang.tv_login_sending
+import me.him188.ani.app.ui.lang.tv_login_sent_to
+import me.him188.ani.app.ui.lang.tv_login_title
+import me.him188.ani.app.ui.lang.tv_login_verifying
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
@@ -103,8 +117,8 @@ fun TvLoginScreen(
     ) {
         when (step) {
             TvLoginStep.Email -> TvLoginStepSection(
-                title = "登录 Animeko",
-                subtitle = "输入邮箱, 我们将发送 6 位验证码",
+                title = stringResource(Lang.tv_login_title),
+                subtitle = stringResource(Lang.tv_login_email_subtitle),
                 field = {
                     TvTextField(
                         value = uiState.email,
@@ -112,7 +126,7 @@ fun TvLoginScreen(
                         modifier = Modifier.fillMaxWidth(0.85f)
                             .tvFocusAnchor(focus, TvLoginFocus.Field)
                             .tvFocusHotkey(focus, Key.DirectionDown to TvLoginFocus.Submit),
-                        placeholder = "邮箱地址",
+                        placeholder = stringResource(Lang.login_email_label),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Email,
                             imeAction = ImeAction.Send,
@@ -123,9 +137,9 @@ fun TvLoginScreen(
                 buttons = {
                     TvHeroButton(
                         text = when {
-                            busy -> "发送中…"
-                            resendRemainSec > 0 -> "重新发送 (${resendRemainSec}s)"
-                            else -> "发送验证码"
+                            busy -> stringResource(Lang.tv_login_sending)
+                            resendRemainSec > 0 -> stringResource(Lang.tv_login_resend_countdown, resendRemainSec)
+                            else -> stringResource(Lang.tv_login_send_code)
                         },
                         icon = Icons.AutoMirrored.Rounded.Send,
                         filled = true,
@@ -138,14 +152,19 @@ fun TvLoginScreen(
 
             TvLoginStep.Otp -> {
                 val otp = uiState.otp
+                val sentToText = stringResource(Lang.tv_login_sent_to, uiState.email)
+                val accountHint = when (uiState.isExistingAccount) {
+                    true -> stringResource(Lang.tv_login_existing_account)
+                    false -> stringResource(Lang.tv_login_new_account)
+                    null -> null
+                }
                 TvLoginStepSection(
-                    title = "输入验证码",
+                    title = stringResource(Lang.login_verify_title),
                     subtitle = buildString {
-                        append("已发送至 ${uiState.email}")
-                        when (uiState.isExistingAccount) {
-                            true -> append(" · 登录已有账号")
-                            false -> append(" · 将注册新账号")
-                            null -> {}
+                        append(sentToText)
+                        accountHint?.let {
+                            append(" · ")
+                            append(it)
                         }
                     },
                     field = {
@@ -155,7 +174,7 @@ fun TvLoginScreen(
                             modifier = Modifier.fillMaxWidth(0.55f)
                                 .tvFocusAnchor(focus, TvLoginFocus.Field)
                                 .tvFocusHotkey(focus, Key.DirectionDown to TvLoginFocus.Submit),
-                            placeholder = "6 位验证码",
+                            placeholder = stringResource(Lang.tv_login_otp_placeholder),
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Number,
                                 imeAction = ImeAction.Done,
@@ -165,7 +184,11 @@ fun TvLoginScreen(
                     },
                     buttons = {
                         TvHeroButton(
-                            text = if (busy) "验证中…" else "登录",
+                            text = if (busy) {
+                                stringResource(Lang.tv_login_verifying)
+                            } else {
+                                stringResource(Lang.login_sign_in)
+                            },
                             icon = Icons.Rounded.Done,
                             filled = true,
                             onClick = { onIntent(TvLoginIntent.SubmitOtp) },
@@ -173,7 +196,7 @@ fun TvLoginScreen(
                             modifier = Modifier.tvFocusAnchor(focus, TvLoginFocus.Submit),
                         )
                         TvHeroButton(
-                            text = "重新输入邮箱",
+                            text = stringResource(Lang.tv_login_reenter_email),
                             icon = Icons.Rounded.Undo,
                             filled = false,
                             onClick = {

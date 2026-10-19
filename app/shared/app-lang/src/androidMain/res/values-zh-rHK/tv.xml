@@ -129,6 +129,17 @@
     <string name="tv_login_qr_rejected">已在手機上拒絕</string>
     <string name="tv_login_qr_failed">二維碼載入失敗, 請檢查網絡</string>
     <string name="tv_login_qr_refresh">重新載入二維碼</string>
+    <string name="tv_login_title">登入 Animeko</string>
+    <string name="tv_login_email_subtitle">輸入電子郵件，我們將發送 6 位驗證碼</string>
+    <string name="tv_login_sending">發送中…</string>
+    <string name="tv_login_resend_countdown">重新發送 (%1$ds)</string>
+    <string name="tv_login_send_code">發送驗證碼</string>
+    <string name="tv_login_sent_to">已發送至 %1$s</string>
+    <string name="tv_login_existing_account">登入現有賬戶</string>
+    <string name="tv_login_new_account">將註冊新賬戶</string>
+    <string name="tv_login_otp_placeholder">6 位驗證碼</string>
+    <string name="tv_login_verifying">驗證中…</string>
+    <string name="tv_login_reenter_email">重新輸入電子郵件</string>
     <string name="tv_settings_network">網絡</string>
     <string name="tv_settings_proxy_address_invalid">請輸入有效的 HTTP(S) 或 SOCKS 代理地址</string>
     <string name="tv_update_download">下載更新</string>

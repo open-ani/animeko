@@ -129,6 +129,17 @@
     <string name="tv_login_qr_rejected">Declined on your phone</string>
     <string name="tv_login_qr_failed">Couldn’t load the QR code. Check your network</string>
     <string name="tv_login_qr_refresh">Refresh QR code</string>
+    <string name="tv_login_title">Sign in to Animeko</string>
+    <string name="tv_login_email_subtitle">Enter your email and we’ll send a 6-digit code</string>
+    <string name="tv_login_sending">Sending…</string>
+    <string name="tv_login_resend_countdown">Resend (%1$ds)</string>
+    <string name="tv_login_send_code">Send code</string>
+    <string name="tv_login_sent_to">Sent to %1$s</string>
+    <string name="tv_login_existing_account">Sign in to an existing account</string>
+    <string name="tv_login_new_account">Create a new account</string>
+    <string name="tv_login_otp_placeholder">6-digit code</string>
+    <string name="tv_login_verifying">Verifying…</string>
+    <string name="tv_login_reenter_email">Re-enter email</string>
     <string name="tv_settings_network">Network</string>
     <string name="tv_settings_proxy_address_invalid">Enter a valid HTTP(S) or SOCKS proxy address</string>
     <string name="tv_update_download">Download update</string>
