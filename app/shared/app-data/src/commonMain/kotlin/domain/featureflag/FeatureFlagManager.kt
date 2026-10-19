@@ -10,14 +10,11 @@
 package me.him188.ani.app.domain.featureflag
 
 import androidx.datastore.core.DataStore
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -28,13 +25,13 @@ import me.him188.ani.app.data.network.AniFeatureFlagService
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.utils.coroutines.runCatchingCancellable
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
-import kotlin.time.Clock
+import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
-import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -58,18 +55,13 @@ class FeatureFlagManager(
     private val sessionStateProvider: SessionStateProvider,
     private val currentUserId: Flow<String?>,
     private val scope: CoroutineScope,
-    private val clock: Clock = Clock.System,
     private val retryDelays: List<Duration> = DEFAULT_RETRY_DELAYS,
     private val random: Random = Random.Default,
 ) {
     private val logger = logger<FeatureFlagManager>()
 
+    /** 服务端返回的全部开关 (包括本版本不认识的), 还没有任何值时为空 */
     private val values = MutableStateFlow<Map<String, FeatureFlagValue>>(emptyMap())
-
-    /**
-     * 服务端返回的全部开关 (包括本版本不认识的), 还没有任何值时为空.
-     */
-    val valuesFlow: StateFlow<Map<String, FeatureFlagValue>> = values.asStateFlow()
 
     /**
      * [flag] 的当前值; 服务端没有配置或还没有拉取到时是 [FeatureFlag.default]. 客户端随机策略的开关每次调用独立抽签.
@@ -98,6 +90,8 @@ class FeatureFlagManager(
         scope.launch(CoroutineName("FeatureFlagManager")) {
             loadSnapshot()
             identityFlow().collectLatest { identity ->
+                // 登录状态比用户信息先到: 等 id 一会儿, 它到了就只按 id 拉一次, 而不是先按 "id 未知" 拉一次再按 id 拉一次
+                if (identity == LOGGED_IN_UNKNOWN_USER) delay(UNKNOWN_USER_GRACE)
                 refreshWithRetry(identity)
             }
         }
@@ -107,28 +101,16 @@ class FeatureFlagManager(
      * 立即从服务端拉取一次并更新值. 失败时抛出 [RepositoryException], 已有的值不变.
      */
     suspend fun refresh() {
-        val userId = currentUserId.first()
         val flags = service.getFeatureFlags()
         values.value = flags
-        try {
-            store.updateData {
-                FeatureFlagSnapshot(flags = flags, userId = userId, fetchedAtMillis = clock.now().toEpochMilliseconds())
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.warn(e) { "Failed to save feature flags" }
-        }
-        logger.info { "Feature flags refreshed: ${flags.size} flags, userId=$userId" }
+        runCatchingCancellable { store.updateData { FeatureFlagSnapshot(flags) } }
+            .onFailure { logger.warn(it) { "Failed to save feature flags" } }
+        logger.info { "Feature flags refreshed: ${flags.size} flags" }
     }
 
     private suspend fun loadSnapshot() {
-        val snapshot = try {
-            store.data.first()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.warn(e) { "Failed to load saved feature flags" }
+        val snapshot = runCatchingCancellable { store.data.first() }.getOrElse {
+            logger.warn(it) { "Failed to load saved feature flags" }
             return
         }
         // 拉取完成前先用上次的值: 启动时通常还是同一个用户 (或同一台设备), 与服务端的结果一致
@@ -139,7 +121,7 @@ class FeatureFlagManager(
 
     /**
      * 请求的身份: 登录时是用户 id, 未登录时是 `null` (服务端按安装 ID). 登录状态确定后才发出第一个值.
-     * 用户信息可能比登录状态晚一步到达, 这时会先按 "已登录但 id 未知" 拉一次, id 到达后再拉一次, 后一次的结果为准.
+     * 用户信息可能比登录状态晚到达, 这时先发出 "已登录但 id 未知", id 到达后再发出 id.
      */
     private fun identityFlow(): Flow<String?> = combine(
         sessionStateProvider.stateFlow.map { it is SessionState.Valid },
@@ -150,25 +132,22 @@ class FeatureFlagManager(
 
     private suspend fun refreshWithRetry(identity: String?) {
         for (attempt in 0..retryDelays.size) {
-            try {
-                refresh()
+            val e = runCatchingCancellable { refresh() }.exceptionOrNull() ?: return
+            val delayFor = retryDelays.getOrNull(attempt)
+            if (delayFor == null) {
+                logger.warn(e) { "Failed to fetch feature flags for identity=$identity, giving up until the session changes" }
                 return
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                val delayFor = retryDelays.getOrNull(attempt)
-                if (delayFor == null) {
-                    logger.warn(e) { "Failed to fetch feature flags for identity=$identity, giving up until the session changes" }
-                    return
-                }
-                logger.warn { "Failed to fetch feature flags (attempt ${attempt + 1}): ${e.message}, retrying in $delayFor" }
-                delay(delayFor)
             }
+            logger.warn { "Failed to fetch feature flags (attempt ${attempt + 1}): ${e.message}, retrying in $delayFor" }
+            delay(delayFor)
         }
     }
 
     companion object {
         val DEFAULT_RETRY_DELAYS: List<Duration> = listOf(5.seconds, 30.seconds, 2.minutes)
+
+        /** 登录状态已确定但用户 id 还没到时, 最多等这么久再拉取 */
+        val UNKNOWN_USER_GRACE: Duration = 5.seconds
 
         private const val LOGGED_IN_UNKNOWN_USER = "logged-in"
     }

@@ -33,25 +33,18 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
 
 class FeatureFlagManagerTest {
-    private val nowMillis = 1_800_000_000_000L
-    private val clock = object : Clock {
-        override fun now(): Instant = Instant.fromEpochMilliseconds(nowMillis)
-    }
-
     private val store = MemoryDataStore(FeatureFlagSnapshot.Empty)
     private val session = FakeSession()
     private val currentUserId = MutableStateFlow<String?>(null)
     private val service = FakeService()
     private val random = FakeRandom()
-    private val on = FeatureFlagValue.On
-    private val off = FeatureFlagValue.Off
+    private val on = FeatureFlagValue(enabled = true)
+    private val off = FeatureFlagValue(enabled = false)
 
     /** 启动时登录状态还没有确定: [stateFlow] 在发出第一个值之前不 emit. */
     private class FakeSession : SessionStateProvider {
@@ -93,7 +86,6 @@ class FeatureFlagManagerTest {
         sessionStateProvider = session,
         currentUserId = currentUserId,
         scope = backgroundScope,
-        clock = clock,
         random = random,
     )
 
@@ -111,7 +103,7 @@ class FeatureFlagManagerTest {
 
     @Test
     fun `saved snapshot is used before the first fetch`() = runTest {
-        store.updateData { FeatureFlagSnapshot(flags = mapOf(flag.key to off), userId = "u1", fetchedAtMillis = 1) }
+        store.updateData { FeatureFlagSnapshot(flags = mapOf(flag.key to off)) }
         val manager = manager()
         manager.start()
         runCurrent()
@@ -132,11 +124,8 @@ class FeatureFlagManagerTest {
 
         assertEquals(1, service.calls)
         assertFalse(manager.isEnabled(flag))
-        assertEquals(mapOf(flag.key to off, "other" to on), manager.valuesFlow.value)
-        assertEquals(
-            FeatureFlagSnapshot(flags = mapOf(flag.key to off, "other" to on), userId = null, fetchedAtMillis = nowMillis),
-            store.data.value,
-        )
+        // 本版本不认识的开关也保存
+        assertEquals(FeatureFlagSnapshot(flags = mapOf(flag.key to off, "other" to on)), store.data.value)
     }
 
     @Test
@@ -145,28 +134,44 @@ class FeatureFlagManagerTest {
         manager.start()
         session.stateFlow.emit(SessionState.Valid(bangumiConnected = false))
         runCurrent()
-        assertEquals(1, service.calls) // 已登录, 用户 id 未知
+        assertEquals(0, service.calls) // 已登录但用户 id 还没到: 等 id
 
         currentUserId.value = "u1"
         runCurrent()
-        assertEquals(2, service.calls)
-        assertEquals("u1", store.data.value.userId)
+        assertEquals(1, service.calls) // id 到了只拉一次
 
         // 同一个用户的登录状态刷新 (StateFlow 去重) 不再请求
         session.stateFlow.emit(SessionState.Valid(bangumiConnected = true))
         runCurrent()
-        assertEquals(2, service.calls)
+        assertEquals(1, service.calls)
 
         currentUserId.value = "u2"
         runCurrent()
-        assertEquals(3, service.calls)
+        assertEquals(2, service.calls)
 
         // 退出登录: 身份变为设备
         session.stateFlow.emit(SessionState.Invalid(InvalidSessionReason.NO_TOKEN))
         currentUserId.value = null
         runCurrent()
-        assertEquals(4, service.calls)
-        assertEquals(null, store.data.value.userId)
+        assertEquals(3, service.calls)
+    }
+
+    @Test
+    fun `fetches as logged in when the user id does not arrive in time`() = runTest {
+        val manager = manager()
+        manager.start()
+        session.stateFlow.emit(SessionState.Valid(bangumiConnected = false))
+        runCurrent()
+        assertEquals(0, service.calls)
+
+        // 等不到 id 也要拉: 请求带着 token, 服务端认得用户
+        advanceTimeBy(FeatureFlagManager.UNKNOWN_USER_GRACE)
+        runCurrent()
+        assertEquals(1, service.calls)
+
+        currentUserId.value = "u1"
+        runCurrent()
+        assertEquals(2, service.calls)
     }
 
     @Test
@@ -208,6 +213,8 @@ class FeatureFlagManagerTest {
         assertEquals(4, service.calls) // 首次 + 3 次重试
         assertEquals(flag.default, manager.isEnabled(flag))
 
+        // 登录: 身份变化, 重新拉
+        currentUserId.value = "u1"
         session.stateFlow.emit(SessionState.Valid(bangumiConnected = false))
         runCurrent()
         assertEquals(5, service.calls)
@@ -228,7 +235,8 @@ class FeatureFlagManagerTest {
         runCurrent()
         assertEquals(listOf(true, false), seen)
 
-        // 服务端删除了这个开关: 回到默认值
+        // 登录后再拉一次, 服务端已删除这个开关: 回到默认值
+        currentUserId.value = "u1"
         session.stateFlow.emit(SessionState.Valid(bangumiConnected = false))
         runCurrent()
         assertEquals(listOf(true, false, true), seen)

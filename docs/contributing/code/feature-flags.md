@@ -9,7 +9,7 @@
 - `FeatureFlag`（`app/shared/app-data/.../domain/featureflag/`）枚举了客户端认识的开关：开关名 `key` 与后台配置一致，`default` 是服务端没有配置、
   或还没有拉取到值时的行为。响应里没有的开关用默认值，所以后台删除一个开关等于让客户端回到默认行为；后台停用则所有人都收到 `false`。
 - 服务端返回的每个值是 `FeatureFlagValue(enabled, threshold)`：`enabled` 是本次请求的值；`threshold`（0..1）只在「客户端随机」策略下出现，
-  表示服务端不抽签、由客户端每次使用时按这个概率抽。本版本不认识的开关也保留在 `FeatureFlagManager.valuesFlow` 里，但没有 `FeatureFlag` 项就没人读它。
+  表示服务端不抽签、由客户端每次使用时按这个概率抽。本版本不认识的开关也随快照保存，但没有 `FeatureFlag` 项就没人读它。
 - 抽签封装在 `FeatureFlagManager` 里：`isEnabled` 对客户端随机的开关每次调用独立抽一次，`flow` 在服务端的值每次变化时抽一次；
   `enabled == false` 时不抽（总开关、关闭名单、平台 / 版本条件仍然有效）。业务代码只拿布尔值，不自己随机。
 

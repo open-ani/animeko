@@ -29,10 +29,10 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.network.AniAnnouncementService
-import me.him188.ani.app.data.network.AniFeatureFlagService
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AniEpisodeCommentService
+import me.him188.ani.app.data.network.AniFeatureFlagService
 import me.him188.ani.app.data.network.AniNotificationService
 import me.him188.ani.app.data.network.AniPersonCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
@@ -66,6 +66,7 @@ import me.him188.ani.app.domain.torrent.engines.PikPakEngine
 import me.him188.ani.torrent.pikpak.PikPakCredentials
 import me.him188.ani.torrent.pikpak.PikPakSessionStoreAdapter
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.app.domain.featureflag.FeatureFlagManager
 import me.him188.ani.app.domain.foundation.AniInstallIdFeatureHandler
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
@@ -92,7 +93,6 @@ import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
 import me.him188.ani.app.domain.install.InstallIdRepository
-import me.him188.ani.app.domain.featureflag.FeatureFlagManager
 import me.him188.ani.app.domain.install.InstallReporter
 import me.him188.ani.app.domain.media.download.DownloadOperations
 import me.him188.ani.app.domain.media.download.MediaDownloadManager

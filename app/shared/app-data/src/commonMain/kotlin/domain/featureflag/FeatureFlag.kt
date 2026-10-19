@@ -28,11 +28,6 @@ enum class FeatureFlag(
      * "客户端随机" 策略即可按播放会话抽样以控制事件量.
      */
     PLAY_FLOW_ANALYTICS("play_flow_analytics", default = true),
-    ;
-
-    companion object {
-        fun byKey(key: String): FeatureFlag? = entries.firstOrNull { it.key == key }
-    }
 }
 
 /**
@@ -47,12 +42,7 @@ data class FeatureFlagValue(
     val enabled: Boolean,
     /** 客户端随机策略下启用的概率, 0..1; 其他策略为 `null` */
     val threshold: Float? = null,
-) {
-    companion object {
-        val On = FeatureFlagValue(enabled = true)
-        val Off = FeatureFlagValue(enabled = false)
-    }
-}
+)
 
 /**
  * 上次从服务端拉取到的开关值, 持久化后供下次启动在拉取完成前使用.
@@ -65,11 +55,6 @@ data class FeatureFlagSnapshot(
      * 服务端返回的全部开关, 按开关名. 可能包含本版本客户端不认识的开关.
      */
     val flags: Map<String, FeatureFlagValue> = emptyMap(),
-    /**
-     * 拉取时登录的用户 id, 未登录时为 `null`. 只用于排查问题.
-     */
-    val userId: String? = null,
-    val fetchedAtMillis: Long? = null,
 ) {
     companion object {
         val Empty = FeatureFlagSnapshot()
