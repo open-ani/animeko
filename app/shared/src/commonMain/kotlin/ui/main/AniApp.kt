@@ -44,8 +44,11 @@ import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.tools.LocalTimeFormatter
+import me.him188.ani.app.tools.LocalWeekFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.tools.TimeFormatterStrings
+import me.him188.ani.app.tools.WeekFormatter
+import me.him188.ani.app.tools.WeekFormatterStrings
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalPlatformFontFamily
@@ -74,6 +77,19 @@ import me.him188.ani.app.ui.lang.time_minutes_ago
 import me.him188.ani.app.ui.lang.time_minutes_later
 import me.him188.ani.app.ui.lang.time_seconds_ago
 import me.him188.ani.app.ui.lang.time_seconds_later
+import me.him188.ani.app.ui.lang.week_day_after_tomorrow
+import me.him188.ani.app.ui.lang.week_friday
+import me.him188.ani.app.ui.lang.week_monday
+import me.him188.ani.app.ui.lang.week_next
+import me.him188.ani.app.ui.lang.week_other_year_date
+import me.him188.ani.app.ui.lang.week_same_year_date
+import me.him188.ani.app.ui.lang.week_saturday
+import me.him188.ani.app.ui.lang.week_sunday
+import me.him188.ani.app.ui.lang.week_thursday
+import me.him188.ani.app.ui.lang.week_today
+import me.him188.ani.app.ui.lang.week_tomorrow
+import me.him188.ani.app.ui.lang.week_tuesday
+import me.him188.ani.app.ui.lang.week_wednesday
 import me.him188.ani.torrent.pikpak.PikPakNotEnoughSpaceException
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.platform.Platform
@@ -175,9 +191,26 @@ fun AniApp(
         daysLater = stringResource(Lang.time_days_later),
     )
 
+    val weekFormatterStrings = WeekFormatterStrings(
+        today = stringResource(Lang.week_today),
+        tomorrow = stringResource(Lang.week_tomorrow),
+        dayAfterTomorrow = stringResource(Lang.week_day_after_tomorrow),
+        monday = stringResource(Lang.week_monday),
+        tuesday = stringResource(Lang.week_tuesday),
+        wednesday = stringResource(Lang.week_wednesday),
+        thursday = stringResource(Lang.week_thursday),
+        friday = stringResource(Lang.week_friday),
+        saturday = stringResource(Lang.week_saturday),
+        sunday = stringResource(Lang.week_sunday),
+        nextWeek = stringResource(Lang.week_next),
+        sameYearDateFormat = stringResource(Lang.week_same_year_date),
+        otherYearDateFormat = stringResource(Lang.week_other_year_date),
+    )
+
     CompositionLocalProvider(
         LocalSketch provides rememberAniSketchInstance(appState.imageLoaderClient),
         LocalTimeFormatter provides remember(timeFormatterStrings) { TimeFormatter(strings = timeFormatterStrings) },
+        LocalWeekFormatter provides remember(weekFormatterStrings) { WeekFormatter(strings = weekFormatterStrings) },
         LocalThemeSettings provides appState.themeSettings,
         LocalEpisodeProgressSettings provides appState.episodeProgressSettings,
         LocalSubjectAppearanceSettings provides appState.subjectAppearanceSettings,

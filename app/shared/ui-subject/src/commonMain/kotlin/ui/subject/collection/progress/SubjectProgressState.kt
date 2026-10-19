@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
+import me.him188.ani.app.tools.LocalWeekFormatter
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.subject.SubjectProgressState
 import me.him188.ani.datasources.api.PackedDate
@@ -59,9 +60,11 @@ fun SubjectProgressStateFactory.rememberSubjectProgressState(
         }
     }
 
-    return remember(info, this, subjectId) {
+    val weekFormatter = LocalWeekFormatter.current
+    return remember(info, this, subjectId, weekFormatter) {
         SubjectProgressState(
             info,
+            weekFormatter,
         )
     }
 }
