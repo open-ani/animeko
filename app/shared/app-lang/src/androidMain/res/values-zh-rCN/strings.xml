@@ -1920,6 +1920,7 @@
     <string name="subject_episode_danmaku_text_conversion_section_per_source">单个来源</string>
     <string name="subject_episode_danmaku_text_conversion_reset_overrides">重置单独设置</string>
     <string name="subject_episode_danmaku_sources_empty">暂无可用弹幕源</string>
+    <string name="subject_episode_group_title">第 %1$d-%2$d 话</string>
     <string name="video_player_screenshot">截图</string>
     <string name="video_player_screenshot_share">分享</string>
     <string name="video_player_screenshot_copy">复制</string>

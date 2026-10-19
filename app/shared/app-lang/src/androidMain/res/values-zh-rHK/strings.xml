@@ -1883,6 +1883,7 @@
     <string name="subject_episode_danmaku_text_conversion_section_per_source">個別來源</string>
     <string name="subject_episode_danmaku_text_conversion_reset_overrides">重設個別設定</string>
     <string name="subject_episode_danmaku_sources_empty">暫無可用彈幕來源</string>
+    <string name="subject_episode_group_title">第 %1$d-%2$d 話</string>
     <string name="video_player_screenshot">截圖</string>
     <string name="video_player_screenshot_share">分享</string>
     <string name="video_player_screenshot_copy">複製</string>
