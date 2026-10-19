@@ -296,6 +296,8 @@
     <string name="settings_mediasource_test_keyword">關鍵字</string>
     <string name="settings_mediasource_test_random">隨機</string>
     <string name="settings_mediasource_test_episode_sort">劇集序號</string>
+    <string name="settings_mediasource_test_handling">正在處理%1$s</string>
+    <string name="settings_mediasource_test_needs_action">需要處理%1$s</string>
 
     <!-- AcknowledgementsTab -->
     <string name="settings_acknowledgements_bangumi">Bangumi</string>

@@ -65,6 +65,7 @@ import me.him188.ani.app.domain.mediasource.web.captcha.createTestWebSessionMana
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
 import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatId
 import me.him188.ani.app.domain.mediasource.web.displayName
@@ -77,11 +78,18 @@ import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.media_captcha_cloudflare
+import me.him188.ani.app.ui.lang.media_captcha_image
+import me.him188.ani.app.ui.lang.media_captcha_slider
+import me.him188.ani.app.ui.lang.media_captcha_turnstile
+import me.him188.ani.app.ui.lang.media_captcha_unknown
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_channels
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_copied
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_copy_link
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_open_page
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_title
+import me.him188.ani.app.ui.lang.settings_mediasource_test_handling
+import me.him188.ani.app.ui.lang.settings_mediasource_test_needs_action
 import me.him188.ani.app.ui.settings.mediasource.RefreshIndicatedHeadlineRow
 import me.him188.ani.app.ui.settings.mediasource.editor.MediaSourceEditorDefaults
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -306,14 +314,23 @@ private fun SelectorCaptchaHintRow(
         Icon(Icons.Rounded.WarningAmber, contentDescription = null)
         Text(
             if (isHandlingCaptcha) {
-                "正在处理${request.kind.displayName()}"
+                stringResource(Lang.settings_mediasource_test_handling, request.kind.displayName())
             } else {
-                "需要处理${request.kind.displayName()}"
+                stringResource(Lang.settings_mediasource_test_needs_action, request.kind.displayName())
             },
             modifier = Modifier.padding(start = 8.dp),
             color = MaterialTheme.colorScheme.error,
         )
     }
+}
+
+@Composable
+private fun WebCaptchaKind.displayName(): String = when (this) {
+    WebCaptchaKind.Image -> stringResource(Lang.media_captcha_image)
+    WebCaptchaKind.Cloudflare -> stringResource(Lang.media_captcha_cloudflare)
+    WebCaptchaKind.CloudflareTurnstile -> stringResource(Lang.media_captcha_turnstile)
+    WebCaptchaKind.Unknown -> stringResource(Lang.media_captcha_unknown)
+    WebCaptchaKind.SliderCaptcha -> stringResource(Lang.media_captcha_slider)
 }
 
 @Composable

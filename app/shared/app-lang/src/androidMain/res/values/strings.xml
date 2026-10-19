@@ -317,6 +317,8 @@
     <string name="settings_mediasource_test_keyword">Keyword</string>
     <string name="settings_mediasource_test_random">Random</string>
     <string name="settings_mediasource_test_episode_sort">Episode number</string>
+    <string name="settings_mediasource_test_handling">Handling %1$s</string>
+    <string name="settings_mediasource_test_needs_action">Needs action: %1$s</string>
     <string name="settings_acknowledgements_bangumi">Bangumi</string>
     <string name="settings_acknowledgements_bangumi_description">Item data &amp; collection services</string>
     <string name="settings_acknowledgements_dandanplay">DanDanPlay</string>
