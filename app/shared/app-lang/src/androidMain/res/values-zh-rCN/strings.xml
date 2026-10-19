@@ -276,6 +276,17 @@
     <string name="settings_mediasource_selector_config_referer_description">播放视频时执行的 HTTP 请求的 Referer，可留空</string>
     <string name="settings_mediasource_selector_config_subject_format_single_tag">单标签</string>
     <string name="settings_mediasource_selector_config_subject_format_multi_tag">多标签</string>
+    <string name="settings_mediasource_selector_subject_format_single">单个表达式，选取一些 &lt;a&gt;，根据其 title 属性或 text 确定名称，href 属性确定链接</string>
+    <string name="settings_mediasource_selector_subject_format_single_label">提取条目列表</string>
+    <string name="settings_mediasource_selector_subject_format_single_supporting">CSS Selector 表达式。期望返回一些 &lt;a&gt;，每个对应一个条目，将会读取其 href 属性和 text</string>
+    <string name="settings_mediasource_selector_subject_format_css_intro">两个 CSS Selector 表达式，分别选取条目名称列表和链接列表，按顺序一一对应</string>
+    <string name="settings_mediasource_selector_subject_format_names_label">提取条目名称列表</string>
+    <string name="settings_mediasource_selector_subject_format_css_names_supporting">CSS Selector 表达式。选取条目名称列表</string>
+    <string name="settings_mediasource_selector_subject_format_links_label">提取条目链接列表</string>
+    <string name="settings_mediasource_selector_subject_format_css_links_supporting">CSS Selector 表达式。选取链接列表</string>
+    <string name="settings_mediasource_selector_subject_format_jsonpath_intro">两个 JsonPath 表达式，分别选取条目名称列表和链接列表，按顺序一一对应</string>
+    <string name="settings_mediasource_selector_subject_format_jsonpath_names_supporting">JsonPath 表达式。选取条目名称列表。期望返回一个数组，每个元素对应一个名称。支持嵌套结构，例如 ["a", "b"] 与 [{"any": "a"}, {"any": "b"}] 都可以解析为两个名称 a b</string>
+    <string name="settings_mediasource_selector_subject_format_jsonpath_links_supporting">JsonPath 表达式。选取链接列表。期望返回一个数组，每个元素对应一个链接。支持嵌套结构</string>
     <string name="settings_mediasource_selector_config_channel_format_no_channel">不区分线路</string>
     <string name="settings_mediasource_selector_config_channel_format_grouped">线路分组</string>
     <string name="settings_mediasource_selector_enable_nested_link">启用嵌套链接</string>

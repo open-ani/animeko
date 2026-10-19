@@ -22,8 +22,21 @@ import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormat
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatA
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatIndexed
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatJsonPathIndexed
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_subject_format_css_intro
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_subject_format_css_links_supporting
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_subject_format_css_names_supporting
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_subject_format_jsonpath_intro
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_subject_format_jsonpath_links_supporting
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_subject_format_jsonpath_names_supporting
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_subject_format_links_label
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_subject_format_names_label
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_subject_format_single
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_subject_format_single_label
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_subject_format_single_supporting
 import me.him188.ani.app.ui.settings.mediasource.editor.ConfigTextField
 import me.him188.ani.app.ui.settings.mediasource.editor.UnsupportedFormatIdHint
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun SelectorSubjectConfigurationColumn(
@@ -36,7 +49,7 @@ internal fun SelectorSubjectConfigurationColumn(
     when (format) {
         SelectorSubjectFormatA -> Column(modifier) {
             Text(
-                "单个表达式，选取一些 <a>，根据其 title 属性或 text 确定名称，href 属性确定链接",
+                stringResource(Lang.settings_mediasource_selector_subject_format_single),
                 Modifier,
                 style = MaterialTheme.typography.labelLarge,
             )
@@ -44,9 +57,11 @@ internal fun SelectorSubjectConfigurationColumn(
             val conf = state.subjectFormatA
             ConfigTextField(
                 conf.selectLists, { conf.selectLists = it },
-                label = "提取条目列表",
+                label = stringResource(Lang.settings_mediasource_selector_subject_format_single_label),
                 Modifier.padding(top = verticalSpacing),
-                supportingText = "CSS Selector 表达式。期望返回一些 <a>，每个对应一个条目，将会读取其 href 属性和 text",
+                supportingText = stringResource(
+                    Lang.settings_mediasource_selector_subject_format_single_supporting,
+                ),
                 isError = conf.selectListsIsError,
                 enabled = state.enableEdit,
                 shape = textFieldShape,
@@ -55,25 +70,29 @@ internal fun SelectorSubjectConfigurationColumn(
 
         SelectorSubjectFormatIndexed -> Column(modifier) {
             Text(
-                "两个 CSS Selector 表达式，分别选取条目名称列表和链接列表，按顺序一一对应",
+                stringResource(Lang.settings_mediasource_selector_subject_format_css_intro),
                 Modifier,
                 style = MaterialTheme.typography.labelLarge,
             )
             val conf = state.subjectFormatIndex
             ConfigTextField(
                 conf.selectNames, { conf.selectNames = it },
-                label = "提取条目名称列表",
+                label = stringResource(Lang.settings_mediasource_selector_subject_format_names_label),
                 Modifier.padding(top = verticalSpacing),
-                supportingText = "CSS Selector 表达式。选取条目名称列表",
+                supportingText = stringResource(
+                    Lang.settings_mediasource_selector_subject_format_css_names_supporting,
+                ),
                 isError = conf.selectNamesIsError,
                 enabled = state.enableEdit,
                 shape = textFieldShape,
             )
             ConfigTextField(
                 conf.selectLinks, { conf.selectLinks = it },
-                label = "提取条目链接列表",
+                label = stringResource(Lang.settings_mediasource_selector_subject_format_links_label),
                 Modifier.padding(top = verticalSpacing),
-                supportingText = "CSS Selector 表达式。选取链接列表",
+                supportingText = stringResource(
+                    Lang.settings_mediasource_selector_subject_format_css_links_supporting,
+                ),
                 isError = conf.selectLinksIsError,
                 enabled = state.enableEdit,
                 shape = textFieldShape,
@@ -82,25 +101,29 @@ internal fun SelectorSubjectConfigurationColumn(
 
         SelectorSubjectFormatJsonPathIndexed -> Column(modifier) {
             Text(
-                "两个 JsonPath 表达式，分别选取条目名称列表和链接列表，按顺序一一对应",
+                stringResource(Lang.settings_mediasource_selector_subject_format_jsonpath_intro),
                 Modifier,
                 style = MaterialTheme.typography.labelLarge,
             )
             val conf = state.subjectFormatJsonPathIndex
             ConfigTextField(
                 conf.selectNames, { conf.selectNames = it },
-                label = "提取条目名称列表",
+                label = stringResource(Lang.settings_mediasource_selector_subject_format_names_label),
                 Modifier.padding(top = verticalSpacing),
-                supportingText = """JsonPath 表达式。选取条目名称列表。期望返回一个数组，每个元素对应一个名称。支持嵌套结构，例如 ["a", "b"] 与 [{"any": "a"}, {"any": "b"}] 都可以解析为两个名称 a b""",
+                supportingText = stringResource(
+                    Lang.settings_mediasource_selector_subject_format_jsonpath_names_supporting,
+                ),
                 isError = conf.selectNamesIsError,
                 enabled = state.enableEdit,
                 shape = textFieldShape,
             )
             ConfigTextField(
                 conf.selectLinks, { conf.selectLinks = it },
-                label = "提取条目链接列表",
+                label = stringResource(Lang.settings_mediasource_selector_subject_format_links_label),
                 Modifier.padding(top = verticalSpacing),
-                supportingText = "JsonPath 表达式。选取链接列表。期望返回一个数组，每个元素对应一个链接。支持嵌套结构",
+                supportingText = stringResource(
+                    Lang.settings_mediasource_selector_subject_format_jsonpath_links_supporting,
+                ),
                 isError = conf.selectLinksIsError,
                 enabled = state.enableEdit,
                 shape = textFieldShape,

@@ -273,6 +273,17 @@
     <string name="settings_mediasource_selector_config_referer_description">Referer for HTTP requests made when playing videos. Can be left blank</string>
     <string name="settings_mediasource_selector_config_subject_format_single_tag">Single tag</string>
     <string name="settings_mediasource_selector_config_subject_format_multi_tag">Multiple tags</string>
+    <string name="settings_mediasource_selector_subject_format_single">A single expression that selects &lt;a&gt; elements; the name comes from the title attribute or text, and the link from the href attribute</string>
+    <string name="settings_mediasource_selector_subject_format_single_label">Extract subject list</string>
+    <string name="settings_mediasource_selector_subject_format_single_supporting">CSS Selector expression. It should return &lt;a&gt; elements, one per subject; their href and text are read</string>
+    <string name="settings_mediasource_selector_subject_format_css_intro">Two CSS Selector expressions that select the subject names and links, matched in order</string>
+    <string name="settings_mediasource_selector_subject_format_names_label">Extract subject names</string>
+    <string name="settings_mediasource_selector_subject_format_css_names_supporting">CSS Selector expression that selects the subject names</string>
+    <string name="settings_mediasource_selector_subject_format_links_label">Extract subject links</string>
+    <string name="settings_mediasource_selector_subject_format_css_links_supporting">CSS Selector expression that selects the links</string>
+    <string name="settings_mediasource_selector_subject_format_jsonpath_intro">Two JsonPath expressions that select the subject names and links, matched in order</string>
+    <string name="settings_mediasource_selector_subject_format_jsonpath_names_supporting">JsonPath expression that selects the subject names. It should return an array with one element per name. Nested structures are supported; both ["a", "b"] and [{"any": "a"}, {"any": "b"}] resolve to the two names a and b</string>
+    <string name="settings_mediasource_selector_subject_format_jsonpath_links_supporting">JsonPath expression that selects the links. It should return an array with one element per link. Nested structures are supported</string>
     <string name="settings_mediasource_selector_config_channel_format_no_channel">Do not distinguish channels</string>
     <string name="settings_mediasource_selector_config_channel_format_grouped">Group by channels</string>
     <string name="settings_mediasource_selector_enable_nested_link">Enable nested links</string>

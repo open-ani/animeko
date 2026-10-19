@@ -252,6 +252,17 @@
     <string name="settings_mediasource_selector_config_referer_description">播放影片時執行的 HTTP 請求 Referer，可留空</string>
     <string name="settings_mediasource_selector_config_subject_format_single_tag">單標籤</string>
     <string name="settings_mediasource_selector_config_subject_format_multi_tag">多標籤</string>
+    <string name="settings_mediasource_selector_subject_format_single">單個表達式，選取一些 &lt;a&gt;，根據其 title 屬性或 text 確定名稱，href 屬性確定連結</string>
+    <string name="settings_mediasource_selector_subject_format_single_label">提取條目列表</string>
+    <string name="settings_mediasource_selector_subject_format_single_supporting">CSS Selector 表達式。期望回傳一些 &lt;a&gt;，每個對應一個條目，將會讀取其 href 屬性與 text</string>
+    <string name="settings_mediasource_selector_subject_format_css_intro">兩個 CSS Selector 表達式，分別選取條目名稱列表與連結列表，按順序一一對應</string>
+    <string name="settings_mediasource_selector_subject_format_names_label">提取條目名稱列表</string>
+    <string name="settings_mediasource_selector_subject_format_css_names_supporting">CSS Selector 表達式。選取條目名稱列表</string>
+    <string name="settings_mediasource_selector_subject_format_links_label">提取條目連結列表</string>
+    <string name="settings_mediasource_selector_subject_format_css_links_supporting">CSS Selector 表達式。選取連結列表</string>
+    <string name="settings_mediasource_selector_subject_format_jsonpath_intro">兩個 JsonPath 表達式，分別選取條目名稱列表與連結列表，按順序一一對應</string>
+    <string name="settings_mediasource_selector_subject_format_jsonpath_names_supporting">JsonPath 表達式。選取條目名稱列表。期望回傳一個陣列，每個元素對應一個名稱。支援巢狀結構，例如 ["a", "b"] 與 [{"any": "a"}, {"any": "b"}] 都可以解析為兩個名稱 a b</string>
+    <string name="settings_mediasource_selector_subject_format_jsonpath_links_supporting">JsonPath 表達式。選取連結列表。期望回傳一個陣列，每個元素對應一個連結。支援巢狀結構</string>
     <string name="settings_mediasource_selector_config_channel_format_no_channel">不區分線路</string>
     <string name="settings_mediasource_selector_config_channel_format_grouped">線路分組</string>
     <string name="settings_mediasource_selector_enable_nested_link">啟用巢狀連結</string>
