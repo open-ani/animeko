@@ -39,10 +39,15 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.login_email_already_used
 import me.him188.ani.app.ui.lang.login_email_label
 import me.him188.ani.app.ui.lang.login_sign_in
 import me.him188.ani.app.ui.lang.login_verify_title
 import me.him188.ani.app.ui.lang.tv_login_email_subtitle
+import me.him188.ani.app.ui.lang.tv_login_error_invalid_otp
+import me.him188.ani.app.ui.lang.tv_login_error_rate_limited
+import me.him188.ani.app.ui.lang.tv_login_error_send_failed
+import me.him188.ani.app.ui.lang.tv_login_error_sign_in_failed
 import me.him188.ani.app.ui.lang.tv_login_existing_account
 import me.him188.ani.app.ui.lang.tv_login_new_account
 import me.him188.ani.app.ui.lang.tv_login_or
@@ -74,6 +79,15 @@ private enum class TvLoginFocus : TvFocusKey {
 
     /** 二维码失效时出现的刷新按钮. */
     RefreshQr,
+}
+
+@Composable
+private fun TvLoginError.displayText(): String = when (this) {
+    TvLoginError.InvalidOtp -> stringResource(Lang.tv_login_error_invalid_otp)
+    TvLoginError.EmailAlreadyExist -> stringResource(Lang.login_email_already_used)
+    TvLoginError.RateLimited -> stringResource(Lang.tv_login_error_rate_limited)
+    TvLoginError.SendFailed -> stringResource(Lang.tv_login_error_send_failed)
+    TvLoginError.SignInFailed -> stringResource(Lang.tv_login_error_sign_in_failed)
 }
 
 /**
@@ -212,7 +226,7 @@ fun TvLoginScreen(
 
         error?.let {
             Text(
-                it,
+                it.displayText(),
                 Modifier.padding(top = 16.dp),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.error,

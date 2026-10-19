@@ -144,6 +144,10 @@
     <string name="tv_login_otp_placeholder">6 位驗證碼</string>
     <string name="tv_login_verifying">驗證中…</string>
     <string name="tv_login_reenter_email">重新輸入電子郵件</string>
+    <string name="tv_login_error_invalid_otp">驗證碼不正確</string>
+    <string name="tv_login_error_rate_limited">發送太頻繁，請稍後再試</string>
+    <string name="tv_login_error_send_failed">發送失敗，請檢查電子郵件地址與網絡</string>
+    <string name="tv_login_error_sign_in_failed">登入失敗，請重試</string>
     <string name="tv_settings_network">網絡</string>
     <string name="tv_settings_proxy_address_invalid">請輸入有效的 HTTP(S) 或 SOCKS 代理地址</string>
     <string name="tv_update_download">下載更新</string>

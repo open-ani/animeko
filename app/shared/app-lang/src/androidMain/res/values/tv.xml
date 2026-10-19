@@ -144,6 +144,10 @@
     <string name="tv_login_otp_placeholder">6-digit code</string>
     <string name="tv_login_verifying">Verifying…</string>
     <string name="tv_login_reenter_email">Re-enter email</string>
+    <string name="tv_login_error_invalid_otp">The verification code is incorrect</string>
+    <string name="tv_login_error_rate_limited">Too many requests. Try again later</string>
+    <string name="tv_login_error_send_failed">Failed to send. Check your email address and network</string>
+    <string name="tv_login_error_sign_in_failed">Sign-in failed. Try again</string>
     <string name="tv_settings_network">Network</string>
     <string name="tv_settings_proxy_address_invalid">Enter a valid HTTP(S) or SOCKS proxy address</string>
     <string name="tv_update_download">Download update</string>
