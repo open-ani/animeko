@@ -35,17 +35,17 @@ private val yyyyMMdd = LocalDateTime.Format {
  */
 data class TimeFormatterStrings(
     val justNow: String = "刚刚",
-    val secondsAgo: String = "%1$d 秒前",
-    val secondsLater: String = "%1$d 秒后",
-    val minutesAgo: String = "%1$d 分钟前",
-    val minutesLater: String = "%1$d 分钟后",
-    val hoursAgo: String = "%1$d 小时前",
-    val hoursLater: String = "%1$d 小时后",
-    val daysAgo: String = "%1$d 天前",
-    val daysLater: String = "%1$d 天后",
-) {
-    internal fun String.withValue(value: Long): String = replace("%1$d", value.toString())
-}
+    val secondsAgo: String = "%1\$d 秒前",
+    val secondsLater: String = "%1\$d 秒后",
+    val minutesAgo: String = "%1\$d 分钟前",
+    val minutesLater: String = "%1\$d 分钟后",
+    val hoursAgo: String = "%1\$d 小时前",
+    val hoursLater: String = "%1\$d 小时后",
+    val daysAgo: String = "%1\$d 天前",
+    val daysLater: String = "%1\$d 天后",
+)
+
+internal fun String.withValue(value: Long): String = replace("%1\$d", value.toString())
 
 /**
  * @see formatDateTime

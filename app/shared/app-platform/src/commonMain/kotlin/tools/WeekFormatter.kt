@@ -34,19 +34,19 @@ data class WeekFormatterStrings(
     val friday: String = "周五",
     val saturday: String = "周六",
     val sunday: String = "周日",
-    val nextWeek: String = "下%1$s",
-    val sameYearDateFormat: String = "%1$d 月 %2$d 日",
-    val otherYearDateFormat: String = "%3$d 年 %1$d 月 %2$d 日",
-) {
-    internal fun String.withWeekday(weekday: String): String = replace("%1$s", weekday)
+    val nextWeek: String = "下%1\$s",
+    val sameYearDateFormat: String = "%1\$d 月 %2\$d 日",
+    val otherYearDateFormat: String = "%3\$d 年 %1\$d 月 %2\$d 日",
+)
 
-    internal fun String.withValues(vararg values: Long): String {
-        var result = this
-        values.forEachIndexed { index, value ->
-            result = result.replace("%${index + 1}\$d", value.toString())
-        }
-        return result
+internal fun String.withWeekday(weekday: String): String = replace("%1\$s", weekday)
+
+internal fun String.withValues(vararg values: Long): String {
+    var result = this
+    values.forEachIndexed { index, value ->
+        result = result.replace("%${index + 1}\$d", value.toString())
     }
+    return result
 }
 
 class WeekFormatter(
