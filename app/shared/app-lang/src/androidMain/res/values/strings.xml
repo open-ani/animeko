@@ -776,6 +776,13 @@
     <string name="settings_media_torrent_peer_filter_ip_blacklist">IP Blacklist Settings</string>
     <string name="settings_media_torrent_peer_filter_ip_blacklist_description">Configure the IP blacklist</string>
     <string name="settings_media_torrent_peer_filter_auto_save_hint">Changes are saved automatically</string>
+    <string name="settings_media_torrent_peer_filter_ip_help">One rule per line. IPv4 and IPv6 are supported.\nSupported formats:</string>
+    <string name="settings_media_torrent_peer_filter_ip_help_cidr">* CIDR\n  e.g. [code]10.0.0.1/24[/code] blocks all IPs from [code]10.0.0.0[/code] to [code]10.0.0.255[/code]\n  [code]ff06:1234::/64[/code] blocks all IPs from [code]ff06:1234::[/code] to [code]ff06:1234::ffff:ffff:ffff:ffff[/code]</string>
+    <string name="settings_media_torrent_peer_filter_ip_help_wildcard">* Wildcards\n  e.g. [code]10.0.12.*[/code] blocks all IPs from [code]10.0.12.0[/code] to [code]10.0.12.255[/code]\n  [code]ff06:1234::*[/code] blocks all IPs from [code]ff06:1234::[/code] to [code]ff06:1234::ffff[/code]\n  Multi-level wildcards are supported, e.g. [code]10.0.*.*[/code]</string>
+    <string name="settings_media_torrent_peer_filter_ip_help_range">* Ranges\n  e.g. [code]10.0.24.100-200[/code] and [code]ff06:1234::cafe-dead[/code]</string>
+    <string name="settings_media_torrent_peer_filter_client_id_help">One rule per line. Only regular expressions are supported.\ne.g. [code]-HP[0-9]{4}-[/code] blocks clients with a -HPxxxx- fingerprint</string>
+    <string name="settings_media_torrent_peer_filter_client_type_help">One rule per line. Only regular expressions are supported.\ne.g. [code]go[.]torrent( +dev)?[/code] blocks Baidu Netdisk offline download clients</string>
+    <string name="settings_media_torrent_peer_filter_invalid_fingerprint_description">Blocks clients whose fingerprint does not match [code]-xxxxxx-[/code], regardless of the rules</string>
 
     <!-- AutoCacheGroup -->
     <string name="settings_media_auto_cache_title">Auto Cache</string>

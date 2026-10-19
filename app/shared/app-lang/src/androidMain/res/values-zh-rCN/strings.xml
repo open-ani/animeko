@@ -816,6 +816,13 @@
     <string name="settings_media_torrent_peer_filter_ip_blacklist">IP 黑名单设置</string>
     <string name="settings_media_torrent_peer_filter_ip_blacklist_description">配置 IP 黑名单列表</string>
     <string name="settings_media_torrent_peer_filter_auto_save_hint">提示：修改自动保存</string>
+    <string name="settings_media_torrent_peer_filter_ip_help">每行一条过滤规则，支持 IPv4 和 IPv6\n支持以下格式：</string>
+    <string name="settings_media_torrent_peer_filter_ip_help_cidr">* 无类别域间路由（CIDR）\n  例如：[code]10.0.0.1/24[/code] 将过滤从 [code]10.0.0.0[/code] 至 [code]10.0.0.255[/code] 的所有 IP\n  [code]ff06:1234::/64[/code] 将过滤从 [code]ff06:1234::[/code] 至 [code]ff06:1234::ffff:ffff:ffff:ffff[/code] 的所有 IP</string>
+    <string name="settings_media_torrent_peer_filter_ip_help_wildcard">* 通配符\n  例如：[code]10.0.12.*[/code] 将过滤从 [code]10.0.12.0[/code] 至 [code]10.0.12.255[/code] 的所有 IP\n  [code]ff06:1234::*[/code] 将过滤从 [code]ff06:1234::[/code] 至 [code]ff06:1234::ffff[/code] 的所有 IP\n  支持多级通配符，例如 [code]10.0.*.*[/code]</string>
+    <string name="settings_media_torrent_peer_filter_ip_help_range">* 范围表示\n  例如 [code]10.0.24.100-200[/code] 和 [code]ff06:1234::cafe-dead[/code]</string>
+    <string name="settings_media_torrent_peer_filter_client_id_help">每行一条过滤规则，仅支持使用正则表达式过滤\n例如：[code]-HP[0-9]{4}-[/code] 将封禁具有 -HPxxxx- 指纹的客户端</string>
+    <string name="settings_media_torrent_peer_filter_client_type_help">每行一条过滤规则，仅支持使用正则表达式过滤\n例如：[code]go[.]torrent( +dev)?[/code] 将封禁百度网盘的离线下载客户端</string>
+    <string name="settings_media_torrent_peer_filter_invalid_fingerprint_description">无论是否满足规则，都会屏蔽指纹不符合 [code]-xxxxxx-[/code] 格式的客户端</string>
 
     <!-- AutoCacheGroup -->
     <string name="settings_media_auto_cache_title">自动缓存</string>

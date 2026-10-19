@@ -53,10 +53,17 @@ import me.him188.ani.app.ui.lang.settings_media_torrent_peer_blacklist_title
 import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_always_block_invalid_fingerprint
 import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_auto_save_hint
 import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_client_fingerprint
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_client_id_help
 import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_client_type
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_client_type_help
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_invalid_fingerprint_description
 import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip
 import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_blacklist
 import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_blacklist_description
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_help
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_help_cidr
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_help_range
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_help_wildcard
 import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_load_error
 import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_local
 import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_local_description
@@ -206,19 +213,12 @@ fun PeerFilterEditPane(
                 RuleEditItem(
                     content = state.ipFiltersPattern,
                     enabled = true,
-                    supportingTextBBCode = """
-                        每行一条过滤规则，支持 IPv4 和 IPv6
-                        支持以下格式：
-                        * 无类别域间路由（CIDR）
-                          例如：[code]10.0.0.1/24[/code] 将过滤从 [code]10.0.0.0[/code] 至 [code]10.0.0.255[/code] 的所有 IP
-                          [code]ff06:1234::/64[/code] 将过滤从 [code]ff06:1234::[/code] 至 [code]ff06:1234::ffff:ffff:ffff:ffff[/code] 的所有 IP
-                        * 通配符
-                          例如：[code]10.0.12.*[/code] 将过滤从 [code]10.0.12.0[/code] 至 [code]10.0.12.255[/code] 的所有 IP
-                          [code]ff06:1234::*[/code] 将过滤从 [code]ff06:1234::[/code] 至 [code]ff06:1234::ffff[/code] 的所有 IP
-                          支持多级通配符，例如 [code]10.0.*.*[/code]
-                        * 范围表示
-                          例如 [code]10.0.24.100-200[/code] 和 [code]ff06:1234::cafe-dead[/code]
-                    """.trimIndent(),
+                    supportingTextBBCode = listOf(
+                        stringResource(Lang.settings_media_torrent_peer_filter_ip_help),
+                        stringResource(Lang.settings_media_torrent_peer_filter_ip_help_cidr),
+                        stringResource(Lang.settings_media_torrent_peer_filter_ip_help_wildcard),
+                        stringResource(Lang.settings_media_torrent_peer_filter_ip_help_range),
+                    ).joinToString("\n"),
                     onContentChange = { state.ipFiltersPattern = it },
                 )
             }
@@ -233,10 +233,9 @@ fun PeerFilterEditPane(
                     RuleEditItem(
                         content = state.idFiltersRegex,
                         enabled = true,
-                        supportingTextBBCode = """
-                        每行一条过滤规则，仅支持使用正则表达式过滤
-                        例如：[code]\-HP\d{4}\-[/code] 将封禁具有 -HPxxxx- 指纹的客户端
-                    """.trimIndent(),
+                        supportingTextBBCode = stringResource(
+                            Lang.settings_media_torrent_peer_filter_client_id_help,
+                        ),
                         onContentChange = { state.idFiltersRegex = it },
                     )
                     SwitchItem(
@@ -250,7 +249,11 @@ fun PeerFilterEditPane(
                         checked = state.blockInvalidId,
                         onCheckedChange = { state.blockInvalidId = it },
                         description = {
-                            BBCodeSupportingText("无论是否满足规则, 都会屏蔽指纹不符合 [code]-xxxxxx-[/code] 格式的客户端")
+                            BBCodeSupportingText(
+                                stringResource(
+                                    Lang.settings_media_torrent_peer_filter_invalid_fingerprint_description,
+                                ),
+                            )
                         },
                     )
                 }
@@ -265,10 +268,9 @@ fun PeerFilterEditPane(
                 RuleEditItem(
                     content = state.clientFiltersRegex,
                     enabled = true,
-                    supportingTextBBCode = """
-                        每行一条过滤规则，仅支持使用正则表达式过滤
-                        例如：[code]go\.torrent(\sdev)?[/code] 将封禁百度网盘的离线下载客户端
-                    """.trimIndent(),
+                    supportingTextBBCode = stringResource(
+                        Lang.settings_media_torrent_peer_filter_client_type_help,
+                    ),
                     onContentChange = { state.clientFiltersRegex = it },
                 )
             }

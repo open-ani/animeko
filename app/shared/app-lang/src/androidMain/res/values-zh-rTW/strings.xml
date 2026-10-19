@@ -768,6 +768,13 @@
     <string name="settings_media_torrent_peer_filter_ip_blacklist">IP 黑名單設定</string>
     <string name="settings_media_torrent_peer_filter_ip_blacklist_description">配置 IP 黑名單列表</string>
     <string name="settings_media_torrent_peer_filter_auto_save_hint">提示：修改會自動儲存</string>
+    <string name="settings_media_torrent_peer_filter_ip_help">每行一條過濾規則，支援 IPv4 和 IPv6\n支援以下格式：</string>
+    <string name="settings_media_torrent_peer_filter_ip_help_cidr">* 無類別域間路由（CIDR）\n  例如：[code]10.0.0.1/24[/code] 將過濾從 [code]10.0.0.0[/code] 至 [code]10.0.0.255[/code] 的所有 IP\n  [code]ff06:1234::/64[/code] 將過濾從 [code]ff06:1234::[/code] 至 [code]ff06:1234::ffff:ffff:ffff:ffff[/code] 的所有 IP</string>
+    <string name="settings_media_torrent_peer_filter_ip_help_wildcard">* 萬用字元\n  例如：[code]10.0.12.*[/code] 將過濾從 [code]10.0.12.0[/code] 至 [code]10.0.12.255[/code] 的所有 IP\n  [code]ff06:1234::*[/code] 將過濾從 [code]ff06:1234::[/code] 至 [code]ff06:1234::ffff[/code] 的所有 IP\n  支援多級萬用字元，例如 [code]10.0.*.*[/code]</string>
+    <string name="settings_media_torrent_peer_filter_ip_help_range">* 範圍表示\n  例如 [code]10.0.24.100-200[/code] 和 [code]ff06:1234::cafe-dead[/code]</string>
+    <string name="settings_media_torrent_peer_filter_client_id_help">每行一條過濾規則，僅支援使用正規表示式過濾\n例如：[code]-HP[0-9]{4}-[/code] 將封鎖具有 -HPxxxx- 指紋的客戶端</string>
+    <string name="settings_media_torrent_peer_filter_client_type_help">每行一條過濾規則，僅支援使用正規表示式過濾\n例如：[code]go[.]torrent( +dev)?[/code] 將封鎖百度網盤的離線下載客戶端</string>
+    <string name="settings_media_torrent_peer_filter_invalid_fingerprint_description">無論是否符合規則，都會屏蔽指紋不符合 [code]-xxxxxx-[/code] 格式的客戶端</string>
     <string name="settings_media_torrent_extra_trackers">額外 Tracker</string>
     <string name="settings_media_torrent_extra_trackers_description">在 BT 下載開始前額外添加的 tracker 伺服器，幫助發現更多用戶</string>
     <string name="settings_media_torrent_extra_trackers_dialog_description">每行一個 tracker 地址，例如 udp://tracker.example.com:6969/announce。將在 BT 下載開始前與內置 tracker 一起添加。修改僅對之後開始的下載生效。</string>
