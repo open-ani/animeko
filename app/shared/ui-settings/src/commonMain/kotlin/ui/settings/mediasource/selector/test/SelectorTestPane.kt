@@ -68,7 +68,6 @@ import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
 import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatId
-import me.him188.ani.app.domain.mediasource.web.displayName
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.cardHorizontalPadding
