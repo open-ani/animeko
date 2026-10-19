@@ -1315,6 +1315,8 @@
     <string name="foundation_back">返回</string>
     <string name="foundation_refresh">刷新</string>
     <string name="foundation_done">完成</string>
+    <string name="foundation_edit">编辑</string>
+    <string name="foundation_confirm">确认</string>
     <string name="foundation_load_error_network">网络错误</string>
     <string name="foundation_load_error_rate_limited">操作过快，请重试</string>
     <string name="foundation_load_error_service_unavailable">服务暂不可用</string>

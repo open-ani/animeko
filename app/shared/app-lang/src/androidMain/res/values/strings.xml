@@ -1275,6 +1275,8 @@
     <string name="foundation_back">Back</string>
     <string name="foundation_refresh">Refresh</string>
     <string name="foundation_done">Done</string>
+    <string name="foundation_edit">Edit</string>
+    <string name="foundation_confirm">Confirm</string>
     <string name="foundation_load_error_network">Network error</string>
     <string name="foundation_load_error_rate_limited">You’re doing that too fast. Please try again</string>
     <string name="foundation_load_error_service_unavailable">Service unavailable</string>

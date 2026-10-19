@@ -1278,6 +1278,8 @@
     <string name="foundation_back">返回</string>
     <string name="foundation_refresh">刷新</string>
     <string name="foundation_done">完成</string>
+    <string name="foundation_edit">編輯</string>
+    <string name="foundation_confirm">確認</string>
     <string name="foundation_load_error_network">網絡錯誤</string>
     <string name="foundation_load_error_rate_limited">操作過快，請重試</string>
     <string name="foundation_load_error_service_unavailable">服務暫不可用</string>
