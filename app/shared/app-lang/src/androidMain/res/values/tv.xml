@@ -120,6 +120,9 @@
     <string name="tv_schedule_retry">Retry</string>
     <string name="tv_schedule_empty">No anime on this day</string>
     <string name="tv_schedule_subject_cover">Cover of %1$s</string>
+    <string name="tv_search_hint">Enter a keyword and press Search on the keyboard</string>
+    <string name="tv_search_empty">No anime found</string>
+    <string name="tv_search_placeholder">Search anime…</string>
     <string name="tv_login_or">or</string>
     <string name="tv_login_qr_title">Sign in with your phone</string>
     <string name="tv_login_qr_hint">Use “Scan to sign in” in Animeko on your phone, or scan with the phone camera</string>

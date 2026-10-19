@@ -120,6 +120,9 @@
     <string name="tv_schedule_retry">重試</string>
     <string name="tv_schedule_empty">這一天沒有新番</string>
     <string name="tv_schedule_subject_cover">%1$s 封面</string>
+    <string name="tv_search_hint">輸入關鍵詞，按軟鍵盤搜尋鍵開始</string>
+    <string name="tv_search_empty">沒有找到相關番劇</string>
+    <string name="tv_search_placeholder">搜尋番劇…</string>
     <string name="tv_login_or">或</string>
     <string name="tv_login_qr_title">手機掃碼登入</string>
     <string name="tv_login_qr_hint">用手機 Animeko 的「掃碼登入」或系統相機掃描</string>
