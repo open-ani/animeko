@@ -9,31 +9,36 @@
 
 package me.him188.ani.app.data.network
 
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
 import me.him188.ani.app.data.repository.RepositoryException
-import me.him188.ani.app.domain.featureflag.FeatureFlagValue
 import me.him188.ani.client.apis.FeatureFlagsAniApi
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.CoroutineContext
 
 /**
- * 功能开关 (`GET /v2/feature-flags`). 未登录也能调用: 服务端对登录用户按用户 id 固定分桶并应用名单, 对未登录的请求按安装 ID 分桶.
+ * 功能开关 (`GET /v2/feature-flags/{key}`). 未登录也能调用: 服务端对登录用户按用户 id 固定分桶并应用名单, 对未登录的请求按安装 ID 分桶.
  */
 open class AniFeatureFlagService(
     private val api: ApiInvoker<FeatureFlagsAniApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) {
     /**
-     * 服务端为本次请求求出的全部开关的值, 按开关名. 响应里没有的开关 (服务端没有配置或已删除) 由调用方用客户端自己的默认值;
-     * 客户端随机策略的开关带 [FeatureFlagValue.threshold], 由 `FeatureFlagManager` 抽签.
+     * 服务端为本次请求命中的取值的属性表. 没有命中任何取值 (总开关关闭, 关闭名单, 平台 / 版本不符, 没分到) 时服务端返回 `{}`;
+     * 服务端没有这个开关 (404, 没有创建或已删除) 时也返回空对象, 由调用方按默认值行为.
      */
-    open suspend fun getFeatureFlags(): Map<String, FeatureFlagValue> = withContext(ioDispatcher) {
+    open suspend fun getFeatureFlag(key: String): JsonObject = withContext(ioDispatcher) {
         try {
-            api.invoke { getFeatureFlags().body() }.flags.mapValues { (_, value) ->
-                FeatureFlagValue(enabled = value.enabled, threshold = value.threshold)
+            api.invoke { getFeatureFlag(key).body() }
+        } catch (e: ClientRequestException) {
+            if (e.response.status == HttpStatusCode.NotFound) {
+                return@withContext JsonObject(emptyMap())
             }
+            throw RepositoryException.wrapOrThrowCancellation(e)
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)
         }

@@ -16,8 +16,6 @@
 
 package me.him188.ani.client.apis
 
-import me.him188.ani.client.models.AniFeatureFlags
-
 import me.him188.ani.client.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
@@ -44,12 +42,13 @@ open class FeatureFlagsAniApi : ApiClient {
     ): super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
-     * Get feature flags
-     * 全部功能开关的当前值, 客户端每次启动拉取一次. 每个开关是 {enabled, threshold}: enabled 是本次请求的值; 客户端随机策略下 enabled 为 true 并带 threshold (0..1), 由客户端在每个业务单位 (例如一次播放) 内按它独立抽一次, 其他策略没有 threshold. 响应里没有的开关用客户端自己的默认值. 分发按服务端配置: 固定分桶 (同一用户或同一设备结果不变, 登录按用户 id, 未登录按请求头 &#x60;X-Ani-Install-Id&#x60;), 每次请求随机, 客户端随机, 全量, 或仅名单; 还可以限定平台与版本 (取自 User-Agent).
-     * @return AniFeatureFlags
+     * Get a feature flag
+     * 本次请求命中的取值的属性 (JSON 对象); 没命中任何取值 (总开关关闭, 关闭名单, 平台/版本不符, 没分到) 是 {}; 不存在或已删除的开关 404; 分发按服务端配置: 固定分桶 (登录按用户 id, 未登录按请求头 X-Ani-Install-Id) 或每次请求随机, 名单, 平台与版本 (取自 User-Agent); 客户端在每个业务单位开始时请求一次即可按业务单位抽样.
+     * @param key
+     * @return kotlinx.serialization.json.JsonObject
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getFeatureFlags(): HttpResponse<AniFeatureFlags> {
+    open suspend fun getFeatureFlag(key: kotlin.String): HttpResponse<kotlinx.serialization.json.JsonObject> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -61,7 +60,7 @@ open class FeatureFlagsAniApi : ApiClient {
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
-            "/v2/feature-flags",
+            "/v2/feature-flags/{key}".replace("{" + "key" + "}", "$key"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -78,4 +77,3 @@ open class FeatureFlagsAniApi : ApiClient {
 }
 
 // @formatter:on
-
