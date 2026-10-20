@@ -113,6 +113,10 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.update.AppUpdateViewModel",
         "me.him188.ani.app.ui.update.AppUpdatePresentation",
         "me.him188.ani.app.ui.update.AppUpdateState",
+        // 播放加载流程埋点的用户操作记录 (枚举与纯函数, 精确到符号; 同包的调试悬浮窗 composable 仍禁用)
+        "me.him188.ani.app.ui.subject.episode.analytics.PlayFlowUserAction",
+        "me.him188.ani.app.ui.subject.episode.analytics.recordUserAction",
+        "me.him188.ani.app.ui.subject.episode.analytics.toPlayFlowOutcome",
     )
 
     /** TV 代码 = shared 中各模块的 src/androidTv 目录 + Android 应用的 src/tv 出包胶水. */
