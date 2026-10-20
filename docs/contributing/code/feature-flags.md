@@ -39,4 +39,4 @@
 
 | 开关 | 读取的属性 | 作用 |
 |---|---|---|
-| `play_flow_analytics` | `enabled: Boolean`，默认 `false` | 是否向 Analytics 发送播放加载流程埋点 `play_flow`（见 [播放加载流程埋点](analytics-play-flow.md)）。每个播放会话 `consume` 一次，后台用「每次请求随机」即可按播放会话抽样。关闭时调试悬浮窗照常显示。 |
+| `play_flow_report` | `threshold: Double`，默认 `0` | 播放加载流程埋点 `play_flow`（见 [播放加载流程埋点](analytics-play-flow.md)）的上报比例：进入播放页时抽一个 `[0, 1)` 的随机数，小于 `threshold` 的播放会话才向 Analytics 发送，整个播放会话内一致。每个播放会话 `consume` 一次；抽样在客户端完成，后台配一个取值 `{"threshold": 0.3}`、比例与灰度 100% 即可。不发送时调试悬浮窗照常显示。 |

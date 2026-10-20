@@ -13,6 +13,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import me.him188.ani.app.domain.featureflag.FeatureFlagConfig
 import me.him188.ani.app.domain.player.extension.RecordingAnalytics
 import me.him188.ani.utils.analytics.AnalyticsEvent
 import kotlin.test.Test
@@ -141,5 +144,32 @@ class PlayFlowRecorderTest {
         assertEquals("sid", session.playSessionId)
         assertEquals(listOf(1L, 2L), session.events.map { it.properties["seq"] })
         assertEquals(listOf("enter", "search_started"), session.events.map { it.properties["step"] })
+    }
+
+    @Test
+    fun `shouldReport compares the draw with the configured threshold`() {
+        val config = FeatureFlagConfig(buildJsonObject { put("threshold", 0.3) })
+        assertTrue(PlayFlowRecorder.shouldReport(config, random = 0.0))
+        assertTrue(PlayFlowRecorder.shouldReport(config, random = 0.29))
+        assertFalse(PlayFlowRecorder.shouldReport(config, random = 0.3))
+        assertFalse(PlayFlowRecorder.shouldReport(config, random = 0.99))
+    }
+
+    @Test
+    fun `shouldReport never sends without a numeric threshold and always sends at one`() {
+        assertFalse(PlayFlowRecorder.shouldReport(FeatureFlagConfig.Empty, random = 0.0))
+        assertFalse(PlayFlowRecorder.shouldReport(FeatureFlagConfig(buildJsonObject { put("threshold", "0.3") }), random = 0.0))
+        assertFalse(PlayFlowRecorder.shouldReport(FeatureFlagConfig(buildJsonObject { put("enabled", true) }), random = 0.0))
+        assertTrue(PlayFlowRecorder.shouldReport(FeatureFlagConfig(buildJsonObject { put("threshold", 1) }), random = 0.999))
+    }
+
+    @Test
+    fun `shouldReport draws its own random number by default`() {
+        val always = FeatureFlagConfig(buildJsonObject { put("threshold", 1) })
+        val never = FeatureFlagConfig(buildJsonObject { put("threshold", 0) })
+        repeat(20) {
+            assertTrue(PlayFlowRecorder.shouldReport(always))
+            assertFalse(PlayFlowRecorder.shouldReport(never))
+        }
     }
 }

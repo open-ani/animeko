@@ -12,11 +12,13 @@ package me.him188.ani.app.domain.player.analytics
 import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
+import me.him188.ani.app.domain.featureflag.FeatureFlagConfig
 import me.him188.ani.app.domain.player.extension.toAnalyticsFlag
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent
 import me.him188.ani.utils.analytics.IAnalytics
 import me.him188.ani.utils.platform.Uuid
+import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
@@ -33,7 +35,7 @@ import kotlin.time.TimeSource
  *
  * [record] 不挂起, 任意线程可调. 事件数超过 [maxEvents] 时只再发一条 `step=truncated`, 防止异常循环刷爆配额.
  * 发出的每条事件同时写入 [debugLog], 供调试悬浮窗显示.
- * [enabled] 为 `false` 时 (功能开关 `play_flow_analytics` 关闭) 不向 [analytics] 发送, 只写入 [debugLog]; 序号照常递增.
+ * [enabled] 为 `false` 时 (功能开关 `play_flow_report` 没抽中本次播放会话, 见 [shouldReport]) 不向 [analytics] 发送, 只写入 [debugLog]; 序号照常递增.
  *
  * 事件清单与属性含义见 `docs/contributing/code/analytics-play-flow.md`.
  */
@@ -136,6 +138,13 @@ class PlayFlowRecorder(
          * GA4 字符串参数值的长度上限.
          */
         const val MAX_STRING_LENGTH = 100
+
+        /**
+         * 按功能开关 `play_flow_report` 的配置 [config] 决定一个播放会话是否发送: [random] 是本次抽到的 `[0, 1)` 随机数,
+         * 小于配置的 `threshold` (默认 `0`, 即不发送) 才发送. 进入播放页时抽一次, 整个播放会话用同一个结果.
+         */
+        fun shouldReport(config: FeatureFlagConfig, random: Double = Random.nextDouble()): Boolean =
+            random < config.double("threshold", 0.0)
     }
 }
 

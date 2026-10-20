@@ -31,7 +31,7 @@ class AniFeatureFlagServiceTest {
             respondJson("""{"enabled":true,"sample_rate":0.2,"variant":"b","nested":{"a":1},"list":[1,"x"]}""")
         }
 
-        val properties = server.featureFlagService.getFeatureFlag("play_flow_analytics")
+        val properties = server.featureFlagService.getFeatureFlag("play_flow_report")
 
         assertEquals(
             buildJsonObject {
@@ -45,13 +45,13 @@ class AniFeatureFlagServiceTest {
         )
         val request = server.requests.single()
         assertEquals(HttpMethod.Get, request.method)
-        assertEquals("/v2/feature-flags/play_flow_analytics", request.url.encodedPath)
+        assertEquals("/v2/feature-flags/play_flow_report", request.url.encodedPath)
     }
 
     @Test
     fun `empty object when the request hits no value`() = runTest {
         val server = NotificationTestServer { respondJson("{}") }
-        assertEquals(JsonObject(emptyMap()), server.featureFlagService.getFeatureFlag("play_flow_analytics"))
+        assertEquals(JsonObject(emptyMap()), server.featureFlagService.getFeatureFlag("play_flow_report"))
     }
 
     @Test
@@ -63,6 +63,6 @@ class AniFeatureFlagServiceTest {
     @Test
     fun `server errors become repository exceptions`() = runTest {
         val server = NotificationTestServer { respond("", HttpStatusCode.InternalServerError) }
-        assertFailsWith<RepositoryException> { server.featureFlagService.getFeatureFlag("play_flow_analytics") }
+        assertFailsWith<RepositoryException> { server.featureFlagService.getFeatureFlag("play_flow_report") }
     }
 }

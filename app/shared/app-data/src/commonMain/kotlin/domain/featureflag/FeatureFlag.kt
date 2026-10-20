@@ -32,11 +32,12 @@ enum class FeatureFlag(val key: String) {
     /**
      * 播放加载流程埋点 `play_flow` (见 `docs/contributing/code/analytics-play-flow.md`).
      *
-     * 读 `enabled: Boolean`, 默认 `false`: 只有命中的取值配置了 `{"enabled": true}` 才向 Analytics 发送 `play_flow` 事件,
+     * 读 `threshold: Double`, 默认 `0`: 进入播放页时抽一个 `[0, 1)` 的随机数, 小于 `threshold` 的播放会话才向 Analytics 发送
+     * `play_flow` 事件, 整个播放会话内一致 (见 `PlayFlowRecorder.shouldReport`); 例如 `{"threshold": 0.3}` 即 30% 的播放会话上报.
      * 其他情况 (没有配置、总开关关闭、没抽中) 都不发送, 但播放页仍然记录到调试悬浮窗. 每次播放会话创建记录器时
-     * [FeatureFlagManager.consume] 一次, 所以服务端用 "每次请求随机" 策略即可按播放会话抽样以控制事件量.
+     * [FeatureFlagManager.consume] 一次; 抽样由客户端按 `threshold` 完成, 服务端的取值比例与灰度配 100% 即可.
      */
-    PLAY_FLOW_ANALYTICS("play_flow_analytics"),
+    PLAY_FLOW_REPORT("play_flow_report"),
 }
 
 /**

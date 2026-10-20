@@ -84,7 +84,7 @@ class FeatureFlagManagerTest {
         scope = backgroundScope,
     )
 
-    private val flag = FeatureFlag.PLAY_FLOW_ANALYTICS
+    private val flag = FeatureFlag.PLAY_FLOW_REPORT
 
     private fun FeatureFlagManager.enabled() = config(flag).boolean("enabled", false)
 

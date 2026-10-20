@@ -377,12 +377,12 @@ open class EpisodeViewModel(
 
     /**
      * 本播放页的加载流程埋点记录器. 与本 ViewModel 同生命周期, 持有本次播放会话的 `play_session_id`.
-     * 是否向 Analytics 发送由功能开关 `play_flow_analytics` 的 `enabled` 属性决定 (默认不发送): 进入页面时读一次缓存的配置,
-     * 一次播放会话内保持一致, 同时后台再拉取一次供下次播放用, 服务端 "每次请求随机" 策略即按播放会话抽样.
+     * 是否向 Analytics 发送由功能开关 `play_flow_report` 的 `threshold` 决定 (默认不发送): 进入页面时读一次缓存的配置并抽一次签
+     * ([PlayFlowRecorder.shouldReport]), 一次播放会话内保持一致, 同时后台再拉取一次供下次播放用.
      */
     val playFlow: PlayFlowRecorder = PlayFlowRecorder(
         subjectId,
-        enabled = featureFlagManager.consume(FeatureFlag.PLAY_FLOW_ANALYTICS).boolean("enabled", false),
+        enabled = PlayFlowRecorder.shouldReport(featureFlagManager.consume(FeatureFlag.PLAY_FLOW_REPORT)),
     ).also {
         Analytics.recordEvent(
             EpisodeEnter,

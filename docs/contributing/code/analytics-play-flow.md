@@ -29,8 +29,8 @@
 
 ## 开关
 
-`play_flow` 是否发送由功能开关 `play_flow_analytics` 控制 (见 [功能开关](feature-flags.md)), 默认开启. `EpisodeViewModel` 创建 `PlayFlowRecorder` 时读一次, 一次播放会话内保持一致;
-关闭时记录器照常写入调试悬浮窗, 只是不向 Analytics 发送, 既有事件 (`episode_enter` 等) 不受影响. 服务端用 "客户端随机" 策略即可按播放会话抽样 (每个播放会话抽一次签), 用 "每次请求随机" 则按启动抽样; 用总开关可以在配额紧张时立即停发.
+`play_flow` 是否发送由功能开关 `play_flow_report` 的 `threshold` 控制 (见 [功能开关](feature-flags.md)), 默认 0 即不发送. `EpisodeViewModel` 创建 `PlayFlowRecorder` 时读一次配置并抽一个 `[0, 1)` 的随机数 (`PlayFlowRecorder.shouldReport`), 小于 `threshold` 才发送, 一次播放会话内保持一致;
+不发送时记录器照常写入调试悬浮窗, 既有事件 (`episode_enter` 等) 不受影响. 后台配 `{"threshold": 0.3}` 即 30% 的播放会话上报 (每个播放会话抽一次签, 与用户无关), 改 `threshold` 从下次播放起生效; 用总开关可以在配额紧张时立即停发.
 
 ## 事件
 
