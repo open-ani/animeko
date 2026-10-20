@@ -33,7 +33,12 @@ import kotlin.test.assertNotNull
 @OptIn(UnstableApi::class)
 class CompressedSubtitleMatroskaExtractorTest {
     @Test
-    fun compressedAndPlainTracksReachLibassWithCorrectTextAndTiming() {
+    fun compressedAndPlainTracksReachLibassWithCorrectTextAndTiming() = assertLibassTracks(ssa = false)
+
+    @Test
+    fun compressedAndPlainSsaTracksReachLibassWithCorrectTextAndTiming() = assertLibassTracks(ssa = true)
+
+    private fun assertLibassTracks(ssa: Boolean) {
         val handler = AssHandler(AssRenderType.OVERLAY_OPEN_GL)
         val extractor = CompressedSubtitleMatroskaExtractor(AssSubtitleParserFactory(handler), handler)
         val formats = mutableMapOf<Int, Format>()
@@ -45,7 +50,7 @@ class CompressedSubtitleMatroskaExtractorTest {
             override fun seekMap(seekMap: SeekMap) {}
         })
         try {
-            extractFixture(extractor, "compressed-ass.mkv")
+            extractFixture(extractor, "compressed-ass.mkv", ssa)
             for (number in 2..4) {
                 val format = assertNotNull(formats[number])
                 handler.onTracksChanged(
@@ -116,8 +121,20 @@ class CompressedSubtitleMatroskaExtractorTest {
         }
     }
 
-    private fun extractFixture(extractor: Extractor, asset: String) {
+    private fun extractFixture(extractor: Extractor, asset: String, ssa: Boolean = false) {
         val data = InstrumentationRegistry.getInstrumentation().context.assets.open(asset).use { it.readBytes() }
+        if (ssa) {
+            val assCodec = "S_TEXT/ASS".encodeToByteArray()
+            val ssaCodec = "S_TEXT/SSA".encodeToByteArray()
+            var replaced = 0
+            for (offset in 0..data.size - assCodec.size) {
+                if (assCodec.indices.all { data[offset + it] == assCodec[it] }) {
+                    ssaCodec.copyInto(data, offset)
+                    replaced++
+                }
+            }
+            assertEquals(3, replaced, "All subtitle track codec IDs must be SSA")
+        }
         val stream = data.inputStream()
         val input = DefaultExtractorInput({ buffer, offset, length -> stream.read(buffer, offset, length) }, 0, data.size.toLong())
         val seek = PositionHolder()
