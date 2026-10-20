@@ -258,7 +258,7 @@ jobs:
             --cd "$CLASSIFIER_DIR"
             --output-schema "$CLASSIFIER_DIR/schema.json"
             --output-last-message "$CLASSIFIER_DIR/classification.json"
-            --model gpt-6-sol
+            --model gpt-6.1-sol
             -c 'model_reasoning_effort="high"'
           )
           codex --ask-for-approval never exec "${CODEX_ARGS[@]}" - \
