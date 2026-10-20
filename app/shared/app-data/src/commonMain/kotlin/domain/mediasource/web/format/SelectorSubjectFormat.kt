@@ -244,7 +244,7 @@ private fun buildSubject(
     return WebSearchSubjectInfo(
         internalId = guessIdFromUrl(href),
         name = name,
-        fullUrl = SelectorHelpers.computeAbsoluteUrl(baseUrl, href),
+        fullUrl = SelectorHelpers.computeSelectorUrl(baseUrl, href),
         partialUrl = href,
         origin = origin,
     )
