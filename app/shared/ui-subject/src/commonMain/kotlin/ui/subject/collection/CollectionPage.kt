@@ -30,7 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
@@ -678,8 +678,9 @@ private fun SubjectCollectionItem(
                     ) {
                         Text(
                             stringResource(Lang.subject_collection_move_to_watched),
-                            Modifier.requiredWidth(IntrinsicSize.Max),
+                            Modifier.basicMarquee(iterations = Int.MAX_VALUE),
                             softWrap = false,
+                            maxLines = 1,
                         )
                     }
                 } else {

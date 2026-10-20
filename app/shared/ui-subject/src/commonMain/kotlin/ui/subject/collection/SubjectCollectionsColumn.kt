@@ -294,7 +294,7 @@ private fun SubjectCollectionItemContent(
                 Text(stringResource(Lang.video_player_select_episode))
             }
 
-            Box(Modifier.width(IntrinsicSize.Min)) { playButton() }
+            Box(Modifier.weight(1f, fill = false)) { playButton() }
         }
     }
 }

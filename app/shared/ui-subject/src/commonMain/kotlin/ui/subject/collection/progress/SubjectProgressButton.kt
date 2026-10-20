@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,8 +10,7 @@
 package me.him188.ani.app.ui.subject.collection.progress
 
 import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
@@ -32,16 +31,25 @@ fun SubjectProgressButton(
     onPlay: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val requiredWidth = Modifier.requiredWidth(IntrinsicSize.Max)
     val strings = rememberSubjectStatusStrings()
     Crossfade(state.buttonIsPrimary) { isPrimary ->
         if (isPrimary) {
             Button(onClick = onPlay, modifier) {
-                Text(state.buttonText(strings), requiredWidth, softWrap = false)
+                Text(
+                    state.buttonText(strings),
+                    Modifier.basicMarquee(iterations = Int.MAX_VALUE),
+                    softWrap = false,
+                    maxLines = 1,
+                )
             }
         } else {
             FilledTonalButton(onClick = onPlay, modifier) {
-                Text(state.buttonText(strings), requiredWidth, softWrap = false)
+                Text(
+                    state.buttonText(strings),
+                    Modifier.basicMarquee(iterations = Int.MAX_VALUE),
+                    softWrap = false,
+                    maxLines = 1,
+                )
             }
         }
     }
