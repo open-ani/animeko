@@ -17,7 +17,9 @@ MCP 工具对应关系:
   HTTP 可达性探测(会启动 CEF,不会启动播放器)。只提取最终视频 URL 请传 `probeVideo=false`;
   连 WebView 解析也不需要时传 `extractVideo=false`。HTTP 探测超时/失败不会丢弃已解析出的 URL。
   每个搜索词默认只访问前 3 个条目的详情页(`maxSubjectsPerName`;App 内无此限制。条目按名称长度
-  升序排序,目标条目排名靠后时把它调大);
+  升序排序,目标条目排名靠后时把它调大)。要精确指定展开哪个条目(评测时避免模糊匹配选中续季 /
+  剧场版 / 总集篇):先传 `listSubjectsOnly=true` 拿 `subjects[]`(各搜索词的全部条目,不访问详情页),
+  再把选定条目的 `fullUrl` 作为 `subjectUrls` 传入,只展开这些条目,此时忽略 `maxSubjectsPerName`;
 - `selector_run_step` 单独跑其中一个步骤;
 - `validate_selector_config` 离线校验配置字段。
 

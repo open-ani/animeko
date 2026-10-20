@@ -161,6 +161,28 @@ fun buildToolRegistrations(
                     "maxSubjectsPerName",
                     integerSchema("Max subject detail pages to visit per search keyword, default 3"),
                 )
+                put(
+                    "subjectUrls",
+                    buildJsonObject {
+                        put("type", "array")
+                        put("items", stringSchema("A search-result subject's fullUrl or partialUrl"))
+                        put(
+                            "description",
+                            JsonPrimitive(
+                                "Only expand these search-result subjects (exact fullUrl/partialUrl match), ignoring " +
+                                        "maxSubjectsPerName. Pick them from a listSubjectsOnly run so the evaluation " +
+                                        "resolves the correct entry instead of whatever fuzzy name matching returns first.",
+                            ),
+                        )
+                    },
+                )
+                put(
+                    "listSubjectsOnly",
+                    booleanSchema(
+                        "Stop after selectSubjects and return every search-result subject in result.subjects " +
+                                "without visiting detail pages, default false",
+                    ),
+                )
                 put("extractVideo", booleanSchema("Run WebView video URL extraction on matched medias, default true"))
                 put("probeVideo", booleanSchema("HTTP-probe extracted video URLs, default true"))
                 put("maxCandidatesToExtract", integerSchema("Max media candidates to run extraction on, default 3"))
