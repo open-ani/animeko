@@ -1,4 +1,5 @@
-"""Generate synthetic Matroska ASS fixtures; requires ffmpeg. No copyrighted media."""
+"""Generate synthetic Matroska subtitle fixtures; requires ffmpeg. No copyrighted media."""
+import argparse
 import pathlib
 import struct
 import subprocess
@@ -15,6 +16,10 @@ def element(tag, data):
 def uint(tag, value):
     return element(tag, value.to_bytes(max(1, (value.bit_length() + 7) // 8), 'big'))
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--codec', choices=['ass', 'srt'], default='ass')
+codec = parser.parse_args().codec
 
 header = b'''[Script Info]
 ScriptType: v4.00+
@@ -39,9 +44,9 @@ for number in (2, 3, 4):
         compression = element(0x6D80, element(0x6240, element(0x5034,
                               b'' if number == 2 else uint(0x4254, 0))))
     tracks += element(0xAE, uint(0xD7, number) + uint(0x73C5, number) + uint(0x83, 17)
-                      + uint(0x88, int(number == 2)) + element(0x86, b'S_TEXT/ASS')
+                      + uint(0x88, int(number == 2)) + element(0x86, b'S_TEXT/ASS' if codec == 'ass' else b'S_TEXT/UTF8')
                       + element(0x22B59C, b'eng' if number == 4 else b'chi')
-                      + element(0x63A2, header) + compression)
+                      + (element(0x63A2, header) if codec == 'ass' else b'') + compression)
 with tempfile.TemporaryDirectory() as tmp:
     ivf = pathlib.Path(tmp) / 'frame.ivf'
     subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=0x263850:s=640x360',
@@ -52,13 +57,13 @@ for second in range(10):
     cluster += element(0xA3, b'\x81' + struct.pack('>h', second * 1000) + b'\x80' + frame)
     if second in (1, 5):
         for track in (2, 3, 4):
-            text = ('你好，世界！简体中文字幕' if second == 1 else '繁體字幕：魔法騎士！') if track != 4 else 'Plain ASS subtitles, punctuation intact!'
-            dialogue = f'{second},0,Default,,0,0,0,,{text}'.encode()
+            text = ('你好，世界！简体中文字幕' if second == 1 else '繁體字幕：魔法騎士！') if track != 4 else f'Plain {codec.upper()} subtitles, punctuation intact!'
+            dialogue = (f'{second},0,Default,,0,0,0,,{text}' if codec == 'ass' else text).encode()
             if track != 4:
                 dialogue = zlib.compress(dialogue)
                 assert b'\0' in dialogue  # Media3 must not NUL-trim compressed data.
             block = bytes([0x80 | track]) + struct.pack('>h', second * 1000) + b'\0' + dialogue
             cluster += element(0xA0, element(0xA1, block) + uint(0x9B, 3000))
-output = pathlib.Path(__file__).parent.parent / 'assets' / 'compressed-ass.mkv'
+output = pathlib.Path(__file__).parent.parent / 'assets' / f'compressed-{codec}.mkv'
 output.write_bytes(ebml + element(0x18538067, info + element(0x1654AE6B, tracks) + element(0x1F43B675, cluster)))
 print(output, output.stat().st_size)

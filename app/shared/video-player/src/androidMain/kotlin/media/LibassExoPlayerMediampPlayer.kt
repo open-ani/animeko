@@ -302,7 +302,7 @@ private class LibassMediaSourcePipeline(
     private val extractorsFactory = ExtractorsFactory {
         DefaultExtractorsFactory().createExtractors().map { extractor ->
             if (extractor is MatroskaExtractor) {
-                CompressedAssMatroskaExtractor(subtitleParserFactory, assHandler)
+                CompressedSubtitleMatroskaExtractor(subtitleParserFactory, assHandler)
             } else {
                 extractor
             }

@@ -20,19 +20,19 @@ import java.util.zip.DataFormatException
 import java.util.zip.Inflater
 
 /**
- * Inflates zlib-compressed ASS/SSA Block payloads before the BlockGroup is committed.
+ * Inflates zlib-compressed ASS/SSA and SRT Block payloads before the BlockGroup is committed.
  * Media3 1.9 otherwise treats compressed bytes as text and truncates them at the first NUL.
  * Compression is declared per track; an omitted ContentCompAlgo means zlib (Matroska default).
  * See https://github.com/androidx/media/issues/2361.
  */
 @OptIn(UnstableApi::class)
-internal class CompressedAssMatroskaExtractor(
+internal class CompressedSubtitleMatroskaExtractor(
     subtitleParserFactory: SubtitleParser.Factory,
     assHandler: AssHandler,
 ) : AssMatroskaExtractor(subtitleParserFactory, assHandler) {
     private var compressionAlgorithm: Long? = null
     private var explicitZlib = false
-    private val compressedAssTracks = mutableSetOf<Long>()
+    private val compressedTracks = mutableMapOf<Long, Int>()
     private val blockHeader = ByteArray(11)
     // ass-media exposes the same sample through this field for its overlay TrackOutput.
     private val pendingSubtitle = subtitleSampleField.get(this) as ParsableByteArray
@@ -62,8 +62,8 @@ internal class CompressedAssMatroskaExtractor(
     override fun endMasterElement(id: Int) {
         if (id == ID_TRACK_ENTRY) {
             val track = getCurrentTrack(id)
-            if (compressionAlgorithm == 0L && track.codecId in ASS_CODECS) {
-                compressedAssTracks += track.number.toLong()
+            if (compressionAlgorithm == 0L && track.codecId in SUBTITLE_PREFIX_SIZES) {
+                compressedTracks[track.number.toLong()] = SUBTITLE_PREFIX_SIZES.getValue(track.codecId)
             } else if (explicitZlib) {
                 // Preserve Media3's validation for codecs outside this adapter's scope.
                 super.integerElement(ID_CONTENT_COMP_ALGO, 0)
@@ -73,34 +73,33 @@ internal class CompressedAssMatroskaExtractor(
     }
 
     override fun binaryElement(id: Int, contentSize: Int, input: ExtractorInput) {
-        val compressed = id == ID_BLOCK && compressedAssTracks.isNotEmpty() && isCompressedAssBlock(input)
+        val prefixSize = if (id == ID_BLOCK && compressedTracks.isNotEmpty()) compressedSubtitlePrefixSize(input) else null
         super.binaryElement(id, contentSize, input)
-        if (compressed) {
-            // Media3 prepends "Dialogue: 0:00:00:00,0:00:00:00," to the raw ASS chunk.
+        if (prefixSize != null) {
+            // Preserve the Media3 codec-specific text prefix before the compressed payload.
             // BlockGroup end supplies the duration and performs NUL trimming after inflation.
-            val prefixSize = ASS_SAMPLE_PREFIX.length
             val sample = pendingSubtitle.data
-            val inflated = inflateAssDialogue(sample, prefixSize, pendingSubtitle.limit() - prefixSize)
+            val inflated = inflateSubtitle(sample, prefixSize, pendingSubtitle.limit() - prefixSize)
             pendingSubtitle.reset(sample.copyOf(prefixSize) + inflated)
         }
     }
 
-    private fun isCompressedAssBlock(input: ExtractorInput): Boolean {
+    private fun compressedSubtitlePrefixSize(input: ExtractorInput): Int? {
         try {
             input.peekFully(blockHeader, 0, 1)
             val firstByte = blockHeader[0].toInt() and 0xff
-            if (firstByte == 0) return false // Let Media3 report the invalid track number.
+            if (firstByte == 0) return null // Let Media3 report the invalid track number.
             val numberLength = Integer.numberOfLeadingZeros(firstByte) - 23
             input.peekFully(blockHeader, 1, numberLength + 2)
             var number = (firstByte and (0xff ushr numberLength)).toLong()
             for (index in 1 until numberLength) {
                 number = (number shl 8) or (blockHeader[index].toLong() and 0xff)
             }
-            if (number !in compressedAssTracks) return false
+            val prefixSize = compressedTracks[number] ?: return null
             if (blockHeader[numberLength + 2].toInt() and 0x06 != 0) {
-                throw ParserException.createForUnsupportedContainerFeature("Laced compressed ASS subtitles")
+                throw ParserException.createForUnsupportedContainerFeature("Laced compressed text subtitles")
             }
-            return true
+            return prefixSize
         } finally {
             input.resetPeekPosition()
         }
@@ -112,13 +111,18 @@ internal class CompressedAssMatroskaExtractor(
         const val ID_CONTENT_COMP_ALGO = 0x4254
         const val ID_BLOCK = 0xA1
         const val ASS_SAMPLE_PREFIX = "Dialogue: 0:00:00:00,0:00:00:00,"
-        val ASS_CODECS = setOf("S_TEXT/ASS", "S_TEXT/SSA")
+        const val SUBRIP_SAMPLE_PREFIX = "1\n00:00:00,000 --> 00:00:00,000\n"
+        val SUBTITLE_PREFIX_SIZES = mapOf(
+            "S_TEXT/ASS" to ASS_SAMPLE_PREFIX.length,
+            "S_TEXT/SSA" to ASS_SAMPLE_PREFIX.length,
+            "S_TEXT/UTF8" to SUBRIP_SAMPLE_PREFIX.length,
+        )
     }
 }
 
-/** A complete zlib stream is required; partial or corrupt bytes must never reach libass as text. */
+/** A complete zlib stream is required; partial or corrupt bytes must never reach subtitle parsers as text. */
 @OptIn(UnstableApi::class)
-internal fun inflateAssDialogue(data: ByteArray, offset: Int, length: Int): ByteArray {
+internal fun inflateSubtitle(data: ByteArray, offset: Int, length: Int): ByteArray {
     val inflater = Inflater()
     try {
         inflater.setInput(data, offset, length)
@@ -126,20 +130,20 @@ internal fun inflateAssDialogue(data: ByteArray, offset: Int, length: Int): Byte
         val buffer = ByteArray(4096)
         while (!inflater.finished()) {
             val count = inflater.inflate(buffer)
-            if (output.size() + count > MAX_ASS_DIALOGUE_BYTES) {
-                throw DataFormatException("ASS dialogue exceeds $MAX_ASS_DIALOGUE_BYTES bytes")
+            if (output.size() + count > MAX_SUBTITLE_BYTES) {
+                throw DataFormatException("Subtitle payload exceeds $MAX_SUBTITLE_BYTES bytes")
             }
             output.write(buffer, 0, count)
             if (count == 0 && !inflater.finished()) {
-                throw DataFormatException("Incomplete zlib ASS dialogue or unsupported dictionary")
+                throw DataFormatException("Incomplete zlib subtitle payload or unsupported dictionary")
             }
         }
         return output.toByteArray()
     } catch (e: DataFormatException) {
-        throw ParserException.createForMalformedContainer("Invalid compressed ASS dialogue", e)
+        throw ParserException.createForMalformedContainer("Invalid compressed subtitle payload", e)
     } finally {
         inflater.end()
     }
 }
 
-private const val MAX_ASS_DIALOGUE_BYTES = 16 * 1024 * 1024
+private const val MAX_SUBTITLE_BYTES = 16 * 1024 * 1024
