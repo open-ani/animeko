@@ -394,9 +394,10 @@ class EpisodeFetchSelectPlayState(
                                 episodeInfo.toEpisodeMetadata(),
                                 startPositionMillis(episodeInfo.episodeId),
                                 listener = PlayFlowMediaLoadListener(playFlow, episodeSession.playFlowEpisode, media) {
+                                    // 切集时第 1 步就取消 session scope, 此时 episodeSessionFlow 里还是旧 session; 用户换源只取消内层的收集, scope 仍然活着
                                     when {
                                         !backgroundScope.isActive -> "left_page"
-                                        _episodeSessionFlow.value !== episodeSession -> "episode_switched"
+                                        !episodeSession.sessionScope.isActive -> "episode_switched"
                                         else -> "user_switched"
                                     }
                                 },

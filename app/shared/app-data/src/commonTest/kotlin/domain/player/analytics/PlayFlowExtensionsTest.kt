@@ -214,6 +214,36 @@ class PlayFlowExtensionsTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
+    fun `switching episode while loading records the cancelled load as episode_switched`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val resolver = object : MediaResolver {
+            override fun supports(media: Media): Boolean = true
+            override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> {
+                gate.await()
+                return TestMediaDataProvider()
+            }
+        }
+        val case = createCase(resolver)
+        val slow = case.suite.mediaSelectorTestBuilder.createMedia("slow")
+        case.suite.mediaSelectorTestBuilder.delayedMediaSource("slow").complete(listOf(slow))
+        start(case)
+
+        select(case, slow)
+        advanceTimeBy(1_000)
+        case.state.switchEpisode(initialEpisodeId + 1)
+        advanceUntilIdle()
+
+        // 切集在换入新 session 之前就取消了旧 session 的加载, 取消原因要按 scope 判断而不是按当前 session 判断
+        val loads = step(PlayFlowStep.VIDEO_LOAD_DONE)
+        assertEquals(listOf("cancelled"), loads.map { it["outcome"] })
+        assertEquals("episode_switched", loads[0]["reason"])
+        assertEquals("resolve", loads[0]["stage"])
+        assertEquals(1L, loads[0]["episode_attempt"])
+        assertEquals(listOf(1L, 2L), step(PlayFlowStep.ENTER).map { it["episode_attempt"] })
+        case.scope.cancel()
+    }
+
+    @Test
     fun `resolution failure and player error are recorded`() = runTest {
         val resolver = object : MediaResolver {
             override fun supports(media: Media): Boolean = true
