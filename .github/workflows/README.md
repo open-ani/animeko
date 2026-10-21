@@ -18,6 +18,7 @@
 - PR 作者没有 write 权限时，测试固定在请求时刻的 commit，与 `iterate` job 的策略一致。
 - GitHub 不允许把 PR 作者加为 reviewer，所以 openanibot 自己开的 PR 无法用这个方式测试。
 - 想让 bot 重点测试某些场景，写在 PR 描述或普通评论里即可。评论里不要 @openanibot，那会触发 `iterate` job。
+- 登录用的测试帐号来自仓库 secrets `ANI_TEST_ACCOUNT_EMAIL` 和 `ANI_TEST_ACCOUNT_OTP`：在 ani-api-server 的管理后台把某个帐号设为测试帐号（权限 `users.test-account`，固定 6 位验证码登录、不发邮件，验证码在用户详情的"绑定"分区查看），再把邮箱和验证码填进这两个 secret，两者都要设置。`implement`、`iterate`、`qa`、`respond` 四个 job 都把它们放进环境并写进 prompt。标记保存在服务端用户库里：生产服务器和用 `--server-db production` 启动的本地服务器都能用这个帐号；本地库没有它，agent 改从本地服务器日志里读验证码。没有配置时 bot 无法登录生产服务器，需要登录的场景会报告为未测试。
 - Codex 结束时没有提交 review，workflow 会在 PR 上留一条失败评论并标红；review 请求保持待处理，重新请求即可重试。
 
 离线回归测试（执行 workflow 中的 shell，使用模拟 `gh`，不会修改 GitHub）：

@@ -8,6 +8,12 @@
 #     the `openanibot` GitHub account. The token must have read/write access to this repo.
 #     Classification also needs organization Issue Fields read access (read:org for a
 #     classic PAT); the bot must be an org member to see member-only fields.
+#   - Repository secrets ANI_TEST_ACCOUNT_EMAIL / ANI_TEST_ACCOUNT_OTP (optional): an Animeko account marked
+#     as a test account in the API server's admin console (users.test-account), which logs in with a fixed
+#     6-digit email verification code and gets no email. The implement, iterate, qa, and respond jobs sign
+#     in to the app with it for runtime verification. Set both or neither. The mark lives in the server's
+#     user database, so the account exists on production (and on a local server using the production
+#     database) but not in a local database; there the agent reads codes from the local server's log.
 #
 # Triggers:
 #   1. Open an issue                                    -> Codex normalizes its title, assigns labels
@@ -443,6 +449,10 @@ jobs:
       REPO: ${{ github.repository }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       ISSUE_URL: ${{ github.event.issue.html_url }}
+      # Test account for signing in during runtime verification: an account marked as a test account in the
+      # API server's admin console (fixed email verification code). Empty when the secrets are not configured.
+      ANI_TEST_ACCOUNT_EMAIL: ${{ secrets.ANI_TEST_ACCOUNT_EMAIL }}
+      ANI_TEST_ACCOUNT_OTP: ${{ secrets.ANI_TEST_ACCOUNT_OTP }}
     steps:
       - name: Set up tool PATH
         run: |
@@ -498,6 +508,20 @@ jobs:
             echo "IMPORTANT: Do every GitHub action (PRs, comments, reactions, issue/PR reads) with the 'gh' CLI only."
             echo "Do NOT use any GitHub connector / MCP integration — 'gh' authenticates as the CI bot, a connector would act under a personal account."
             echo "GH_TOKEN is already set from the OPENANI_BOT_TOKEN repository secret. Use that existing token; do not run 'gh auth login' or replace it."
+            echo
+            if [ -n "${ANI_TEST_ACCOUNT_EMAIL:-}" ] && [ -n "${ANI_TEST_ACCOUNT_OTP:-}" ]; then
+              echo "Test account for runtime verification: sign in to the app with email login as $ANI_TEST_ACCOUNT_EMAIL; the verification"
+              echo "code is always $ANI_TEST_ACCOUNT_OTP and no email is sent. The account is marked in the API server's user database, so it"
+              echo "exists on the production server and on a local API server started with the animeko-server-local-test-server skill"
+              echo "using --server-db production; a local server with a local database (the skill's default) does not have it. There,"
+              echo "register any address and read the code from test-sandbox/local-test-server.log (the development server logs every"
+              echo "code instead of sending it). The email and the code are secrets: never put them in code, commits, the PR, comments,"
+              echo "or screenshots (crop the login screen)."
+            else
+              echo "No test account is configured (ANI_TEST_ACCOUNT_EMAIL / ANI_TEST_ACCOUNT_OTP are empty). On a local API server with a"
+              echo "local database you can still register any address by reading the code from test-sandbox/local-test-server.log;"
+              echo "otherwise say in the PR when a signed-in flow could not be verified."
+            fi
             echo
             echo "Steps:"
             echo "1. Make the code changes on a new branch: codex/issue-$ISSUE_NUMBER (branch off $BASE_BRANCH)."
@@ -576,6 +600,10 @@ jobs:
       TRIGGER_URL: ${{ github.event.comment.html_url || github.event.review.html_url }}
       TRIGGER_HEAD_SHA: ${{ needs.authorize.outputs.trigger_head_sha }}
       TRIGGER_PR_AUTHOR: ${{ needs.authorize.outputs.pr_author }}
+      # Test account for signing in during runtime verification: an account marked as a test account in the
+      # API server's admin console (fixed email verification code). Empty when the secrets are not configured.
+      ANI_TEST_ACCOUNT_EMAIL: ${{ secrets.ANI_TEST_ACCOUNT_EMAIL }}
+      ANI_TEST_ACCOUNT_OTP: ${{ secrets.ANI_TEST_ACCOUNT_OTP }}
     steps:
       - name: Set up tool PATH
         run: |
@@ -775,6 +803,20 @@ jobs:
             echo "  and state that the screenshot upload failed. Never commit verification screenshots or recordings, and never push branches or refs"
             echo "  to host images. App resources and assertScreenshot baselines under src/ are fine to commit."
             echo
+            if [ -n "${ANI_TEST_ACCOUNT_EMAIL:-}" ] && [ -n "${ANI_TEST_ACCOUNT_OTP:-}" ]; then
+              echo "Test account for runtime verification: sign in to the app with email login as $ANI_TEST_ACCOUNT_EMAIL; the verification"
+              echo "code is always $ANI_TEST_ACCOUNT_OTP and no email is sent. The account is marked in the API server's user database, so it"
+              echo "exists on the production server and on a local API server started with the animeko-server-local-test-server skill"
+              echo "using --server-db production; a local server with a local database (the skill's default) does not have it. There,"
+              echo "register any address and read the code from test-sandbox/local-test-server.log (the development server logs every"
+              echo "code instead of sending it). The email and the code are secrets: never put them in code, commits, the PR, comments,"
+              echo "or screenshots (crop the login screen)."
+            else
+              echo "No test account is configured (ANI_TEST_ACCOUNT_EMAIL / ANI_TEST_ACCOUNT_OTP are empty). On a local API server with a"
+              echo "local database you can still register any address by reading the code from test-sandbox/local-test-server.log;"
+              echo "otherwise say in the PR when a signed-in flow could not be verified."
+            fi
+            echo
             echo "You have full access to git and gh — respond to the feedback however you judge best. Options include:"
             if [ -n "$PUSH_REMOTE" ]; then
               echo "  - adjust the code and update the PR:  git push $PUSH_REMOTE HEAD:$HEAD_REF"
@@ -861,6 +903,10 @@ jobs:
       # The agent pastes this verbatim at the end of the report; the last step looks for it to
       # confirm that a review for this very run was submitted.
       QA_MARKER: '<!-- openanibot:qa-report run=${{ github.run_id }}.${{ github.run_attempt }} -->'
+      # Test account for signing in to the app: an account marked as a test account in the API server's
+      # admin console (fixed email verification code). Empty when the secrets are not configured.
+      ANI_TEST_ACCOUNT_EMAIL: ${{ secrets.ANI_TEST_ACCOUNT_EMAIL }}
+      ANI_TEST_ACCOUNT_OTP: ${{ secrets.ANI_TEST_ACCOUNT_OTP }}
     steps:
       - name: Set up tool PATH
         run: |
@@ -1015,6 +1061,22 @@ jobs:
             echo "PR title/body/labels, no closing or merging. Local, uncommitted edits that only serve testing (pointing the build at"
             echo "a local server, a temporary log line) are fine; mention them in the report when they could affect a result."
             echo
+            if [ -n "${ANI_TEST_ACCOUNT_EMAIL:-}" ] && [ -n "${ANI_TEST_ACCOUNT_OTP:-}" ]; then
+              echo "Test account: sign in to the app with email login as $ANI_TEST_ACCOUNT_EMAIL; the verification code is always"
+              echo "$ANI_TEST_ACCOUNT_OTP and no email is sent. The account is marked as a test account in the API server's user"
+              echo "database, so it exists on the production server and on a local API server started with the"
+              echo "animeko-server-local-test-server skill using --server-db production. A local server with a local database"
+              echo "(the skill's default) does not have it: there, register any address and read the code from"
+              echo "test-sandbox/local-test-server.log, where the development server logs every code instead of sending it."
+              echo "On the production server never change the account's email, password, or bound accounts, and never delete it."
+              echo "The email and the code are secrets: never write them into the report, and never embed a screenshot that shows"
+              echo "either of them (crop the login screen or leave it out)."
+            else
+              echo "No test account is configured (ANI_TEST_ACCOUNT_EMAIL / ANI_TEST_ACCOUNT_OTP are empty), so you cannot sign in to"
+              echo "the production server. On a local API server with a local database you can still register any address by reading"
+              echo "the code from test-sandbox/local-test-server.log; otherwise report scenarios that need a signed-in user as not tested."
+            fi
+            echo
             echo "How to test (follow AGENTS.md and the repo skills in .agents/skills — they are auto-loaded; actually run them):"
             echo "1. Plan. From the title, body, diff, and linked issues write down: what the PR claims (features, fixes), the user"
             echo "   journeys it touches, the platforms it affects, and the adjacent behaviour that could regress. Test the PR's own"
@@ -1147,6 +1209,10 @@ jobs:
       COMMENT_URL: ${{ github.event.comment.html_url }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       ISSUE_URL: ${{ github.event.issue.html_url }}
+      # Test account for signing in during runtime verification: an account marked as a test account in the
+      # API server's admin console (fixed email verification code). Empty when the secrets are not configured.
+      ANI_TEST_ACCOUNT_EMAIL: ${{ secrets.ANI_TEST_ACCOUNT_EMAIL }}
+      ANI_TEST_ACCOUNT_OTP: ${{ secrets.ANI_TEST_ACCOUNT_OTP }}
     steps:
       - name: Set up tool PATH
         run: |
@@ -1205,6 +1271,20 @@ jobs:
             echo "IMPORTANT: Do every GitHub action (PRs, comments, reactions, issue/PR reads) with the 'gh' CLI only."
             echo "Do NOT use any GitHub connector / MCP integration — 'gh' authenticates as the CI bot, a connector would act under a personal account."
             echo "GH_TOKEN is already set from the OPENANI_BOT_TOKEN repository secret. Use that existing token; do not run 'gh auth login' or replace it."
+            echo
+            if [ -n "${ANI_TEST_ACCOUNT_EMAIL:-}" ] && [ -n "${ANI_TEST_ACCOUNT_OTP:-}" ]; then
+              echo "Test account for runtime verification: sign in to the app with email login as $ANI_TEST_ACCOUNT_EMAIL; the verification"
+              echo "code is always $ANI_TEST_ACCOUNT_OTP and no email is sent. The account is marked in the API server's user database, so it"
+              echo "exists on the production server and on a local API server started with the animeko-server-local-test-server skill"
+              echo "using --server-db production; a local server with a local database (the skill's default) does not have it. There,"
+              echo "register any address and read the code from test-sandbox/local-test-server.log (the development server logs every"
+              echo "code instead of sending it). The email and the code are secrets: never put them in code, commits, the PR, comments,"
+              echo "or screenshots (crop the login screen)."
+            else
+              echo "No test account is configured (ANI_TEST_ACCOUNT_EMAIL / ANI_TEST_ACCOUNT_OTP are empty). On a local API server with a"
+              echo "local database you can still register any address by reading the code from test-sandbox/local-test-server.log;"
+              echo "otherwise say in the PR when a signed-in flow could not be verified."
+            fi
             echo
             echo "Follow AGENTS.md. Do what the comment actually asks — you have full access to git and gh. Options include:"
             echo "  - answer by commenting on the issue: gh issue comment $ISSUE_NUMBER --body ..."
