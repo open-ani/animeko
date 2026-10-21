@@ -14,9 +14,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodeSession
+import me.him188.ani.app.domain.episode.EpisodeSwitchTrigger
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.getCurrentEpisodeId
 import me.him188.ani.app.domain.episode.player
+import me.him188.ani.app.domain.player.analytics.PlayFlowRecorder
 import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
 import me.him188.ani.app.domain.player.extension.PlayerExtension
 import me.him188.ani.app.domain.player.extension.PlayerExtensionContext
@@ -34,6 +36,9 @@ class PlayerExtensionManager(
         override val subjectId: Int
             get() = state.subjectId
 
+        override val playFlow: PlayFlowRecorder
+            get() = state.playFlow
+
         override val player: MediampPlayer
             get() = state.player
         override val videoLoadingStateFlow: Flow<VideoLoadingState>
@@ -50,12 +55,12 @@ class PlayerExtensionManager(
         }
 
         @OptIn(UnsafeEpisodeSessionApi::class)
-        override suspend fun switchEpisode(newEpisodeId: Int) {
+        override suspend fun switchEpisode(newEpisodeId: Int, trigger: EpisodeSwitchTrigger) {
             if (getCurrentEpisodeId() == newEpisodeId) {
                 error("Cannot switch to the same episode: $newEpisodeId")
             }
 
-            state.switchEpisode(newEpisodeId)
+            state.switchEpisode(newEpisodeId, trigger)
         }
 
         override suspend fun broadcast(event: PlayerExtensionEvent) {

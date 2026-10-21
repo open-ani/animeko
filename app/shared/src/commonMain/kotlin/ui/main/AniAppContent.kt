@@ -119,6 +119,7 @@ import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsV
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.episode.EpisodeScreen
+import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowDebugFloatingWindow
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
 import me.him188.ani.app.ui.subject.person.CharacterDetailsScreen
 import me.him188.ani.app.ui.subject.person.CharacterDetailsViewModel
@@ -153,6 +154,8 @@ fun AniAppContent(aniNavigator: AniNavigator) {
     // 只有在 APP 首次启动的时候使用 initialNavRoute, 之后 back stack 自己维护并跨进程恢复
     val backStack = rememberAniBackStack(appState.initialNavRoute)
     aniNavigator.setBackStack(backStack)
+    // 调试用的播放流程悬浮窗, 从设置的调试页打开, 盖在所有页面之上
+    var playFlowDebugWindowVisible by rememberSaveable { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         CompositionLocalProvider(
@@ -166,6 +169,7 @@ fun AniAppContent(aniNavigator: AniNavigator) {
                     backStack,
                     appState.mainSceneInitialPage,
                     Modifier.fillMaxSize(),
+                    onOpenPlayFlowDebugWindow = { playFlowDebugWindowVisible = true },
                 )
                 BangumiSessionExpiredPromptHost(
                     viewModel = aniAppViewModel,
@@ -181,6 +185,9 @@ fun AniAppContent(aniNavigator: AniNavigator) {
                 PikPakNotEnoughSpaceDialogHost(aniAppViewModel.pikPakNotEnoughSpace)
                 val notificationBadgeManager = remember { KoinPlatform.getKoin().get<NotificationBadgeManager>() }
                 NotificationForegroundObserver(notificationBadgeManager)
+                if (playFlowDebugWindowVisible) {
+                    PlayFlowDebugFloatingWindow(onClose = { playFlowDebugWindowVisible = false })
+                }
             }
         }
     }
@@ -192,6 +199,7 @@ private fun AniAppContentImpl(
     backStack: List<NavRoutes>,
     mainSceneInitialPage: MainScreenPage,
     modifier: Modifier = Modifier,
+    onOpenPlayFlowDebugWindow: () -> Unit,
 ) {
     // 必须传给所有 Scaffold 和 TopAppBar. 注意, 如果你不传, 你的 UI 很可能会在 macOS 不工作.
     val windowInsetsWithoutTitleBar = ScaffoldDefaults.contentWindowInsets
@@ -418,6 +426,7 @@ private fun AniAppContentImpl(
                     onNavigateToQrLogin = if (isQrCodeScannerSupported) {
                         { aniNavigator.navigateQrLoginScan() }
                     } else null,
+                    onOpenPlayFlowDebugWindow = onOpenPlayFlowDebugWindow,
                     navigationIcon = {
                         BackNavigationIconButton(
                             {
