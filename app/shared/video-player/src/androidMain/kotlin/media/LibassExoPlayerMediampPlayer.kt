@@ -26,9 +26,10 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.extractor.DefaultExtractorsFactory
+import androidx.media3.extractor.ExtractorsFactory
+import androidx.media3.extractor.mkv.MatroskaExtractor
 import io.github.peerless2012.ass.media.AssHandler
 import io.github.peerless2012.ass.media.AssHandlerConfig
-import io.github.peerless2012.ass.media.kt.withAssMkvSupport
 import io.github.peerless2012.ass.media.parser.AssSubtitleParserFactory
 import io.github.peerless2012.ass.media.type.AssRenderType
 import kotlinx.coroutines.CoroutineScope
@@ -298,8 +299,15 @@ private class LibassMediaSourcePipeline(
         config = AssHandlerConfig(maxRenderPixels = 1920 * 1080),
     )
     private val subtitleParserFactory = AssSubtitleParserFactory(assHandler)
-    private val extractorsFactory = DefaultExtractorsFactory()
-        .withAssMkvSupport(subtitleParserFactory, assHandler)
+    private val extractorsFactory = ExtractorsFactory {
+        DefaultExtractorsFactory().createExtractors().map { extractor ->
+            if (extractor is MatroskaExtractor) {
+                CompressedSubtitleMatroskaExtractor(subtitleParserFactory, assHandler)
+            } else {
+                extractor
+            }
+        }.toTypedArray()
+    }
 
     fun intercept(defaultSource: MediaSource, data: MediaData): MediaSource =
         createLibassMediaSource(data) ?: defaultSource
