@@ -158,7 +158,7 @@ class SaveMediaPreferenceExtensionTest : AbstractPlayerExtensionTest() {
 
         val session = state.mediaFetchSessionFlow.filterNotNull().first()
         val selector = state.mediaSelectorFlow.filterNotNull().first()
-        val selected = MediaAutoSelector(selector).select(session)
+        val selected = MediaAutoSelector(selector).select(session).selectedMedia
         assertEquals(myMedia, selected)
 
         // PINNED: SAVE-01 自动选择 (selectDefault, updatePreference=false) 不广播 onChangePreference, 不触发保存

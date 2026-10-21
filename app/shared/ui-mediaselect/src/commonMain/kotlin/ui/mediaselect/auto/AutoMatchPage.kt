@@ -23,6 +23,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
@@ -64,7 +65,7 @@ fun AutoMatchPage(
         onRefresh = { onRestartSource(it.instanceId) },
         onResolveCaptcha = { source ->
             scope.launch {
-                if (state.resolveCaptcha(source)) {
+                if (state.resolveCaptcha(source) == SolveOutcome.Solved) {
                     onRestartSource(source.instanceId)
                 }
             }

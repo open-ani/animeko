@@ -41,6 +41,7 @@ import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
+import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.app.domain.media.selector.isPerfectMatch
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
@@ -145,7 +146,7 @@ suspend fun <T : Any> MediaPreferenceItemState<T>.preferOrRemove(value: T?) {
  *
  * @param btFilterState BT 页会话内 UI 状态 (集号开关 / 源过滤). 由宿主持有并在每次重建 state 时传同一实例, 因此不随 fetchSelect bundle 重建丢失;
  * 默认值只给测试与下载对话框 ([rememberMediaSelectorState] 内 `remember { BtFilterState() }`).
- * @param onUserSelect 用户在选择器里点选一项 ([select]) 后调用. 播放页用它结束本条目的浏览记忆: 用户在自动匹配或 BT 页手动换了源, 说明不想再按记忆走.
+ * @param listener 宿主观察用户在选择器里的操作: 点选 ([select]) 与处理验证码 ([resolveCaptcha]).
  */
 @Stable
 class MediaSelectorState(
@@ -156,7 +157,7 @@ class MediaSelectorState(
     private val backgroundScope: CoroutineScope,
     private val webSessionManager: WebSessionManager,
     val btFilterState: BtFilterState = BtFilterState(),
-    private val onUserSelect: suspend (Media) -> Unit = {},
+    private val listener: MediaSelectorStateListener = MediaSelectorStateListener.Noop,
 ) {
     @Immutable
     data class Presentation(
@@ -376,13 +377,15 @@ class MediaSelectorState(
     }
 
     /**
-     * 用户点选. 之后调用 onUserSelect.
+     * 用户点选. 之后调用 [MediaSelectorStateListener.onUserSelect].
+     *
+     * @param trigger 用户从哪个页面点选的, 记入 [me.him188.ani.app.domain.media.selector.SelectEvent.trigger].
      * @see MediaSelector.select
      */
-    fun select(candidate: Media) {
+    fun select(candidate: Media, trigger: SelectTrigger = SelectTrigger.MANUAL_OTHER) {
         backgroundScope.launch {
-            mediaSelector.select(candidate)
-            onUserSelect(candidate)
+            mediaSelector.select(candidate, trigger)
+            listener.onUserSelect(candidate, trigger)
         }
     }
 
@@ -402,16 +405,24 @@ class MediaSelectorState(
         }
     }
 
-    suspend fun resolveCaptcha(instanceId: String): Boolean {
-        val source = presentationFlow.value.webSources.find { it.instanceId == instanceId } ?: return false
+    /**
+     * 交互式处理 [instanceId] 数据源的验证码. 该源没有待处理的验证码时返回 `null`.
+     */
+    suspend fun resolveCaptcha(instanceId: String): SolveOutcome? {
+        val source = presentationFlow.value.webSources.find { it.instanceId == instanceId } ?: return null
         return resolveCaptcha(source)
     }
 
-    suspend fun resolveCaptcha(source: WebSource): Boolean {
-        val request = source.captchaRequest ?: return false
+    /**
+     * 交互式处理 [source] 的验证码, 结束后通知 [MediaSelectorStateListener.onCaptchaResolved]. 该源没有待处理的验证码时返回 `null`.
+     */
+    suspend fun resolveCaptcha(source: WebSource): SolveOutcome? {
+        val request = source.captchaRequest ?: return null
         resolvingCaptchaInstanceIds.value = resolvingCaptchaInstanceIds.value + source.instanceId
         return try {
-            webSessionManager.solve(request, interactive = true) == SolveOutcome.Solved
+            webSessionManager.solve(request, interactive = true).also { outcome ->
+                listener.onCaptchaResolved(source.instanceId, source.mediaSourceId, outcome)
+            }
         } finally {
             resolvingCaptchaInstanceIds.value = resolvingCaptchaInstanceIds.value - source.instanceId
         }
@@ -454,5 +465,7 @@ fun createTestMediaSelectorState(
     backgroundScope,
     createTestWebSessionManager(backgroundScope),
     btFilterState,
-    onUserSelect,
+    object : MediaSelectorStateListener {
+        override suspend fun onUserSelect(media: Media, trigger: SelectTrigger) = onUserSelect(media)
+    },
 )
