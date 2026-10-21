@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.foundation.layout
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
+import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
 import androidx.compose.runtime.Stable
 
@@ -52,3 +53,21 @@ sealed class ThreePaneScaffoldValueConverter {
 fun ThreePaneScaffoldValue.convert(
     converter: ThreePaneScaffoldValueConverter,
 ): ThreePaneScaffoldValue = converter.convert(this@convert)
+
+/**
+ * 关闭 `adaptive 1.3` 默认开启的 [PaneScaffoldDirective.shouldAutoFocusCurrentDestination].
+ *
+ * 开启该项会在进入或切换 pane 时对整个 pane 调用 `requestFocus()`;
+ * 触摸模式下 `clickable`/`Switch` 等控件不可聚焦, 焦点会跳过页面上方内容落到首个 `Slider`/`RangeSlider`/`TextField` 上并触发滚屏或弹键盘.
+ */
+@Stable
+fun PaneScaffoldDirective.withoutAutoFocus(): PaneScaffoldDirective = PaneScaffoldDirective(
+    maxHorizontalPartitions = maxHorizontalPartitions,
+    horizontalPartitionSpacerSize = horizontalPartitionSpacerSize,
+    maxVerticalPartitions = maxVerticalPartitions,
+    verticalPartitionSpacerSize = verticalPartitionSpacerSize,
+    defaultPanePreferredWidth = defaultPanePreferredWidth,
+    defaultPanePreferredHeight = defaultPanePreferredHeight,
+    excludedBounds = excludedBounds,
+    shouldAutoFocusCurrentDestination = false,
+)
