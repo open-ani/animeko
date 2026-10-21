@@ -1,4 +1,5 @@
 """Exercise the qa job's deterministic shell steps with a local fake gh, without GitHub writes.
+Also checks that the other agent jobs' prompts carry the test account.
 
 Run: uv run --with pyyaml python .github/workflows/test_qa_review.py
 """
@@ -80,6 +81,9 @@ class QaReviewTest(unittest.TestCase):
             "PR_AUTHOR": "contributor",
             "AUTHOR_PERMISSION": "none",
             "CHECKOUT_POLICY": "pinned",
+            # Explicitly empty: the developer's shell may carry a real test account.
+            "ANI_TEST_ACCOUNT_EMAIL": "",
+            "ANI_TEST_ACCOUNT_OTP": "", "ANI_SERVER_PROD_MONGODB_CONNECTION_STRING": "", "ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL": "",
             "PATH": f"{self.root}{os.pathsep}{os.environ['PATH']}",
         }
         gh = self.root / "gh"
@@ -151,6 +155,97 @@ class QaReviewTest(unittest.TestCase):
         prompt = (self.root / "prompt.txt").read_text()
         self.assertIn("has write access to example/app", prompt)
         self.assertNotIn("pinned to the commit", prompt)
+
+    def test_prompt_without_test_account_says_login_is_impossible(self):
+        self.run_step("Build prompt")
+        prompt = (self.root / "prompt.txt").read_text()
+        self.assertIn("No test account is configured", prompt)
+        self.assertNotIn("Test account: sign in", prompt)
+        self.assertNotIn("Production database:", prompt)
+        self.assertIn("test-sandbox/local-test-account.json", prompt)
+
+    def test_prompt_carries_the_production_database_hint_but_not_the_secret(self):
+        uri = "mongodb://agent:pw@db.example.com:1234/?authSource=admin"
+        self.env.update({"ANI_SERVER_PROD_MONGODB_CONNECTION_STRING": uri, "ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL": uri})
+        self.run_step("Build prompt")
+        prompt = (self.root / "prompt.txt").read_text()
+        self.assertIn("Production database:", prompt)
+        self.assertIn("--server-db production --animedb production", prompt)
+        self.assertNotIn("db.example.com", prompt)
+        self.assertNotIn("agent:pw", prompt)
+
+    def test_prompt_carries_the_test_account(self):
+        self.env.update({"ANI_TEST_ACCOUNT_EMAIL": "qa-bot@example.com", "ANI_TEST_ACCOUNT_OTP": "246810"})
+        self.run_step("Build prompt")
+        prompt = (self.root / "prompt.txt").read_text()
+        self.assertIn("Test account: sign in to the app with email login as qa-bot@example.com", prompt)
+        self.assertIn("the verification code is always\n246810", prompt)
+        self.assertIn("never write them into the report", prompt)
+        self.assertNotIn("No test account is configured", prompt)
+
+    def test_half_configured_test_account_counts_as_none(self):
+        for env in [{"ANI_TEST_ACCOUNT_EMAIL": "qa-bot@example.com"}, {"ANI_TEST_ACCOUNT_OTP": "246810"}]:
+            with self.subTest(env=env):
+                self.env.update({"ANI_TEST_ACCOUNT_EMAIL": "", "ANI_TEST_ACCOUNT_OTP": "", **env})
+                self.run_step("Build prompt")
+                prompt = (self.root / "prompt.txt").read_text()
+                self.assertIn("No test account is configured", prompt)
+                self.assertNotIn("qa-bot@example.com", prompt)
+                self.assertNotIn("246810", prompt)
+
+    # --- Test account in the other agent jobs' prompts -------------------------
+
+    OTHER_JOB_ENVS = {
+        "implement": {"ISSUE_NUMBER": "7", "ISSUE_URL": "https://github.com/example/app/issues/7"},
+        "iterate": {
+            "CROSS": "false", "PUSH_REMOTE": "origin", "HEAD_REF": "feature/x", "HEAD_REPO": "example/app",
+            "TRIGGER_URL": "https://github.com/example/app/pull/42#issuecomment-1",
+        },
+        "respond": {
+            "ISSUE_NUMBER": "7", "ISSUE_URL": "https://github.com/example/app/issues/7",
+            "COMMENT_URL": "https://github.com/example/app/issues/7#issuecomment-1",
+        },
+    }
+
+    def build_prompt_of(self, job, extra_env):
+        step = next(s for s in self.workflow["jobs"][job]["steps"] if s.get("name") == "Build prompt")
+        result = subprocess.run(
+            ["bash", "-c", step["run"]], env={**self.env, **extra_env}, cwd=self.root,
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return (self.root / "prompt.txt").read_text()
+
+    def test_other_agent_jobs_carry_the_test_account(self):
+        account = {"ANI_TEST_ACCOUNT_EMAIL": "qa-bot@example.com", "ANI_TEST_ACCOUNT_OTP": "246810"}
+        for job, env in self.OTHER_JOB_ENVS.items():
+            with self.subTest(job=job):
+                prompt = self.build_prompt_of(job, env)
+                self.assertIn("No test account is configured", prompt)
+                self.assertNotIn("246810", prompt)
+                prompt = self.build_prompt_of(job, {**env, **account})
+                self.assertIn("email login as qa-bot@example.com", prompt)
+                self.assertIn("code is always 246810", prompt)
+                self.assertIn("The email and the code are secrets", prompt)
+                self.assertNotIn("No test account is configured", prompt)
+                self.assertIn("test-sandbox/local-test-account.json", prompt)
+                self.assertNotIn("Production database:", prompt)
+                uri = "mongodb://agent:pw@db.example.com:1234/?authSource=admin"
+                prompt = self.build_prompt_of(job, {**env, "ANI_SERVER_PROD_MONGODB_CONNECTION_STRING": uri})
+                self.assertIn("Production database:", prompt)
+                self.assertNotIn("db.example.com", prompt)
+
+    def test_other_agent_jobs_receive_the_test_account_env(self):
+        for job in ["implement", "iterate", "qa", "respond"]:
+            with self.subTest(job=job):
+                env = self.workflow["jobs"][job]["env"]
+                self.assertEqual(env["ANI_TEST_ACCOUNT_EMAIL"], "${{ secrets.ANI_TEST_ACCOUNT_EMAIL }}")
+                self.assertEqual(env["ANI_TEST_ACCOUNT_OTP"], "${{ secrets.ANI_TEST_ACCOUNT_OTP }}")
+                for name in ["ANI_SERVER_PROD_MONGODB_CONNECTION_STRING", "ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL"]:
+                    self.assertEqual(env[name], "${{ secrets.ANI_SERVER_PROD_MONGODB_CONNECTION_STRING }}")
+        for job in ["classify", "authorize"]:
+            with self.subTest(job=job):
+                self.assertNotIn("ANI_TEST_ACCOUNT_EMAIL", self.workflow["jobs"][job].get("env", {}))
 
     # --- Ensure the review was submitted ---------------------------------------
 
