@@ -83,7 +83,7 @@ class QaReviewTest(unittest.TestCase):
             "CHECKOUT_POLICY": "pinned",
             # Explicitly empty: the developer's shell may carry a real test account.
             "ANI_TEST_ACCOUNT_EMAIL": "",
-            "ANI_TEST_ACCOUNT_OTP": "",
+            "ANI_TEST_ACCOUNT_OTP": "", "ANI_SERVER_PROD_MONGODB_CONNECTION_STRING": "", "ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL": "",
             "PATH": f"{self.root}{os.pathsep}{os.environ['PATH']}",
         }
         gh = self.root / "gh"
@@ -161,6 +161,18 @@ class QaReviewTest(unittest.TestCase):
         prompt = (self.root / "prompt.txt").read_text()
         self.assertIn("No test account is configured", prompt)
         self.assertNotIn("Test account: sign in", prompt)
+        self.assertNotIn("Production database:", prompt)
+        self.assertIn("test-sandbox/local-test-account.json", prompt)
+
+    def test_prompt_carries_the_production_database_hint_but_not_the_secret(self):
+        uri = "mongodb://agent:pw@db.example.com:1234/?authSource=admin"
+        self.env.update({"ANI_SERVER_PROD_MONGODB_CONNECTION_STRING": uri, "ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL": uri})
+        self.run_step("Build prompt")
+        prompt = (self.root / "prompt.txt").read_text()
+        self.assertIn("Production database:", prompt)
+        self.assertIn("--server-db production --animedb production", prompt)
+        self.assertNotIn("db.example.com", prompt)
+        self.assertNotIn("agent:pw", prompt)
 
     def test_prompt_carries_the_test_account(self):
         self.env.update({"ANI_TEST_ACCOUNT_EMAIL": "qa-bot@example.com", "ANI_TEST_ACCOUNT_OTP": "246810"})
@@ -216,6 +228,12 @@ class QaReviewTest(unittest.TestCase):
                 self.assertIn("code is always 246810", prompt)
                 self.assertIn("The email and the code are secrets", prompt)
                 self.assertNotIn("No test account is configured", prompt)
+                self.assertIn("test-sandbox/local-test-account.json", prompt)
+                self.assertNotIn("Production database:", prompt)
+                uri = "mongodb://agent:pw@db.example.com:1234/?authSource=admin"
+                prompt = self.build_prompt_of(job, {**env, "ANI_SERVER_PROD_MONGODB_CONNECTION_STRING": uri})
+                self.assertIn("Production database:", prompt)
+                self.assertNotIn("db.example.com", prompt)
 
     def test_other_agent_jobs_receive_the_test_account_env(self):
         for job in ["implement", "iterate", "qa", "respond"]:
@@ -223,6 +241,8 @@ class QaReviewTest(unittest.TestCase):
                 env = self.workflow["jobs"][job]["env"]
                 self.assertEqual(env["ANI_TEST_ACCOUNT_EMAIL"], "${{ secrets.ANI_TEST_ACCOUNT_EMAIL }}")
                 self.assertEqual(env["ANI_TEST_ACCOUNT_OTP"], "${{ secrets.ANI_TEST_ACCOUNT_OTP }}")
+                for name in ["ANI_SERVER_PROD_MONGODB_CONNECTION_STRING", "ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL"]:
+                    self.assertEqual(env[name], "${{ secrets.ANI_SERVER_PROD_MONGODB_CONNECTION_STRING }}")
         for job in ["classify", "authorize"]:
             with self.subTest(job=job):
                 self.assertNotIn("ANI_TEST_ACCOUNT_EMAIL", self.workflow["jobs"][job].get("env", {}))
