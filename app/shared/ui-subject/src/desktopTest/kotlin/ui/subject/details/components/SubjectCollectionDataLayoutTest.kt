@@ -49,8 +49,8 @@ class SubjectCollectionDataLayoutTest {
             }
         }
 
-        assertTrue(hasText("1.5k"), "窄宽度下 1555 应缩写为 1.5k")
-        assertTrue(!hasText("1555"), "窄宽度下不应再显示完整数字")
+        assertTrue(hasText("1.5k"), "1555 should be abbreviated to 1.5k when the row is narrow")
+        assertTrue(!hasText("1555"), "the exact count should not be shown when the row is narrow")
     }
 
     @Test
@@ -63,8 +63,8 @@ class SubjectCollectionDataLayoutTest {
             }
         }
 
-        assertTrue(hasText("1555"), "宽宽度下应保留完整数字")
-        assertTrue(!hasText("1.5k"), "宽宽度下不应缩写")
+        assertTrue(hasText("1555"), "the exact count should be kept when the row is wide")
+        assertTrue(!hasText("1.5k"), "counts should not be abbreviated when the row is wide")
     }
 
     /** 千以内的数字任何宽度都不缩写. */
@@ -80,7 +80,7 @@ class SubjectCollectionDataLayoutTest {
             }
         }
 
-        assertTrue(hasText("42"), "42 应原样显示")
-        assertTrue(hasText("7"), "7 应原样显示")
+        assertTrue(hasText("42"), "42 should be shown as is")
+        assertTrue(hasText("7"), "7 should be shown as is")
     }
 }
