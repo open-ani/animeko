@@ -673,7 +673,7 @@ class ScheduleViewModelTest {
      * 偏好以时区 ID 字符串持久化, 因此这里同时校验 ID 能重新解析回来.
      */
     @Test
-    fun `selectable offsets are sorted, unique and resolvable`() {
+    fun `selectable offsets are sorted and unique`() {
         val minutes = ScheduleSelectableUtcOffsetMinutes
         assertTrue(minutes.isNotEmpty())
         assertEquals(minutes.sorted(), minutes, "应当按偏移升序排列")
@@ -875,6 +875,101 @@ class ScheduleViewModelTest {
             tokyo,
             awaitReal { vm.scheduleTimeZone.first { it == tokyo } },
             "refresh 后应重新解析系统时区",
+        )
+    }
+
+    /**
+     * 回到前台也要重新解析系统时区, 并且用新时区重新请求服务端.
+     *
+     * 覆盖"应用在后台期间改了系统时区, 直接切回来"的场景: 页面一直存活, 不会重新创建 ViewModel.
+     */
+    @Test
+    fun `returning to the foreground reloads the schedule in the new system time zone`() = runTest {
+        val tokyo = TimeZone.of("Asia/Tokyo")
+        val losAngeles = TimeZone.of("America/Los_Angeles")
+        var current = tokyo
+
+        val settings = FakeSettingsRepository() // 未选择过 = 跟随系统
+        val useCase = FakeGetAnimeScheduleFlowUseCase { day, _ -> flow { emit(scheduleFor(day)) } }
+        val vm = newViewModelReadingTimeZoneSetting(
+            useCase,
+            OffsetClock(Instant.parse("2026-09-30T10:00:00Z")),
+            settings,
+            systemTimeZone = { current },
+        )
+
+        val subscription = backgroundScope.launch { vm.presentationFlow.collect {} }
+        awaitReal { useCase.timeZones.first { tokyo in it } }
+
+        // 模拟用户在应用进入后台期间改掉了系统时区
+        current = losAngeles
+        vm.onReturnedToForeground()
+
+        assertEquals(
+            losAngeles,
+            awaitReal { vm.scheduleTimeZone.first { it == losAngeles } },
+            "回到前台后应按新的系统时区解析",
+        )
+        awaitReal { useCase.timeZones.first { losAngeles in it } }
+
+        subscription.cancel()
+    }
+
+    /**
+     * 固定时区时, 回到前台不重新解析系统时区, 因此页面时区不受系统设置影响.
+     */
+    @Test
+    fun `returning to the foreground keeps a fixed time zone`() = runTest {
+        val shanghai = TimeZone.of("Asia/Shanghai")
+        val tokyo = TimeZone.of("Asia/Tokyo")
+        val losAngeles = TimeZone.of("America/Los_Angeles")
+        var current = tokyo
+
+        val settings = FakeSettingsRepository(UISettings(scheduleTimeZoneId = shanghai.id))
+        val useCase = FakeGetAnimeScheduleFlowUseCase { day, _ -> flow { emit(emptyList()) } }
+        val vm = newViewModelReadingTimeZoneSetting(
+            useCase,
+            OffsetClock(Instant.parse("2026-09-30T10:00:00Z")),
+            settings,
+            systemTimeZone = { current },
+        )
+
+        assertEquals(shanghai, awaitReal { vm.scheduleTimeZone.first() })
+
+        current = losAngeles
+        vm.onReturnedToForeground()
+
+        assertEquals(shanghai, vm.scheduleTimeZone.value, "固定时区不应跟随系统时区变化")
+    }
+
+    /**
+     * 再次选择"跟随系统"时立即重新解析系统时区, 不必等下次回到前台.
+     */
+    @Test
+    fun `selecting follow system again re-reads the system time zone`() = runTest {
+        val tokyo = TimeZone.of("Asia/Tokyo")
+        val losAngeles = TimeZone.of("America/Los_Angeles")
+        var current = tokyo
+
+        val settings = FakeSettingsRepository() // 未选择过 = 跟随系统
+        val useCase = FakeGetAnimeScheduleFlowUseCase { day, _ -> flow { emit(emptyList()) } }
+        val vm = newViewModelReadingTimeZoneSetting(
+            useCase,
+            OffsetClock(Instant.parse("2026-09-30T10:00:00Z")),
+            settings,
+            systemTimeZone = { current },
+        )
+
+        assertEquals(tokyo, awaitReal { vm.scheduleTimeZone.first() })
+
+        current = losAngeles
+        // 用户再次点击已选中的"跟随系统"
+        vm.setScheduleTimeZone(null)
+
+        assertEquals(
+            losAngeles,
+            awaitReal { vm.scheduleTimeZone.first { it == losAngeles } },
+            "再次选择跟随系统应立即重新解析",
         )
     }
 

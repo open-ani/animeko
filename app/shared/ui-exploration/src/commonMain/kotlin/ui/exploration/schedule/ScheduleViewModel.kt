@@ -138,11 +138,27 @@ open class ScheduleViewModel(
 
     /**
      * 修改时区. 传 `null` 表示跟随系统时区.
+     *
+     * 选择跟随系统时立即重新解析系统时区: 页面存活期间系统时区可能已被改动, 再次点击该项应当直接生效.
      */
     fun setScheduleTimeZone(timeZone: TimeZone?) {
         backgroundScope.launch {
             settingsRepository.uiSettings.update { copy(scheduleTimeZoneId = timeZone?.id) }
         }
+        if (timeZone == null) {
+            systemTimeZoneRefresh.tryEmit(Unit)
+        }
+    }
+
+    /**
+     * 应用回到前台时调用: 重新解析系统时区.
+     *
+     * 时间表页面没有系统时区变化的观察源, 因此跟随系统模式依赖这个时机重新读取: 系统时区改变后
+     * [scheduleTimeZone] 发出新值, 进而用新时区[重新请求][airingSchedulesFlow].
+     * 系统时区未变时不会发出新值, 也就不会产生多余请求; 固定时区时同样不产生请求.
+     */
+    fun onReturnedToForeground() {
+        systemTimeZoneRefresh.tryEmit(Unit)
     }
 
     private fun currentToday(): LocalDate = clock.now().toLocalDateTime(scheduleTimeZone.value).date
