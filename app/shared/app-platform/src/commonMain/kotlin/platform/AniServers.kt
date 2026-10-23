@@ -10,7 +10,6 @@
 package me.him188.ani.app.platform
 
 import io.ktor.http.Url
-import kotlinx.datetime.TimeZone
 import kotlinx.datetime.UtcOffset
 import kotlinx.datetime.offsetAt
 import kotlin.time.Clock
@@ -59,6 +58,6 @@ object AniServers {
     }
 
     fun shouldUseGlobalServer(): Boolean {
-        return TimeZone.currentSystemDefault().offsetAt(Clock.System.now()) != UtcOffset(8)
+        return currentSystemTimeZone().offsetAt(Clock.System.now()) != UtcOffset(8)
     }
 }

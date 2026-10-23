@@ -14,6 +14,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format.DateTimeFormat
 import kotlinx.datetime.format.char
 import kotlinx.datetime.toLocalDateTime
+import me.him188.ani.app.platform.currentSystemTimeZone
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -30,10 +31,16 @@ private val yyyyMMdd = LocalDateTime.Format {
 }
 
 /**
+ * 绝对时间的格式化. 相对时间 (例如"5 分钟前") 与时区无关, 超出相对时间窗口后按 [timeZone] 输出日期时间.
+ *
+ * @param timeZone 显示用的时区. App 内由 `LocalTimeZone` 提供用户选择的时区;
+ * 默认值只用于预览与测试.
+ *
  * @see formatDateTime
  */
 // TimeFormatterTest
 class TimeFormatter(
+    private val timeZone: TimeZone = currentSystemTimeZone(),
     private val formatterWithTime: DateTimeFormat<LocalDateTime> = yyyyMMdd,
     private val formatterWithoutTime: DateTimeFormat<LocalDateTime> = yyyyMMdd,
     private val getTimeNow: () -> Instant = { Clock.System.now() },
@@ -56,7 +63,7 @@ class TimeFormatter(
             in -86400..<-3600 -> "${-differenceInSeconds / 3600} 小时后"
             in 86400..<86400 * 2 -> "${differenceInSeconds / 86400} 天前"
             in -86400 * 2..<-86400 -> "${-differenceInSeconds / 86400} 天后"
-            else -> getFormatter(showTime).format(instant.toLocalDateTime(TimeZone.currentSystemDefault()))
+            else -> getFormatter(showTime).format(instant.toLocalDateTime(timeZone))
         }
     }
 

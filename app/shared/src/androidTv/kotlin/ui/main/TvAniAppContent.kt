@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -39,6 +40,7 @@ import me.him188.ani.app.navigation.PersonDetailRole
 import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.app.tools.LocalTimeFormatter
+import me.him188.ani.app.tools.LocalTimeZone
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.tv.ui.collection.TvCollectionRoute
 import me.him188.ani.tv.ui.collection.TvCollectionViewModel
@@ -109,6 +111,11 @@ fun TvAniAppContent(
             aniNavigator.navigateEpisodeDetails(event.subjectId, event.episodeId, force = true)
         }
     }
+    val timeZoneProvider = dependencies.timeZoneProvider
+    val timeZone by timeZoneProvider.timeZone.collectAsStateWithLifecycle()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        timeZoneProvider.refresh()
+    }
     val updateViewModel = tvViewModel { TvUpdateViewModel(dependencies.versionExpiryService) }
     val updateState by updateViewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(updateViewModel) { updateViewModel.onIntent(TvUpdateIntent.AutoCheck) }
@@ -147,7 +154,8 @@ fun TvAniAppContent(
     }
     CompositionLocalProvider(
         LocalNavigator provides aniNavigator,
-        LocalTimeFormatter provides remember { TimeFormatter() },
+        LocalTimeZone provides timeZone,
+        LocalTimeFormatter provides remember(timeZone) { TimeFormatter(timeZone) },
     ) {
         // tv MaterialTheme 不绘制窗口背景, 根部铺一层 Surface (深色 surface + content color)
         Surface(modifier.fillMaxSize()) {
