@@ -14,6 +14,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
@@ -29,6 +30,7 @@ import me.him188.ani.test.DisabledOnNative
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
@@ -53,7 +55,28 @@ class MediaAutoSelectorTest {
         testScope().runCurrent()
         assertEquals(sources.bt1.instance.mediaSourceId, selection.await()?.mediaSourceId)
         assertEquals(1, sources.web1.fetchCount)
-        assertNull(MediaAutoSelector(selector).select(session))
+        assertEquals(
+            MediaAutoSelectOutcome.Exhausted(MediaAutoSelectExhaustCause.PRECONDITION_SELECTED),
+            MediaAutoSelector(selector).select(session),
+        )
+    }
+
+    @Test
+    fun `outcome carries the structured reason of a completed BT selection`() = runFetchMediaSelectorTestSuite {
+        initSelection()
+        val (_, session, sources) = configureFetchSession(startInBackground = false) {
+            object {
+                val bt1 by bt()
+            }
+        }
+        val selection = testScope().async { MediaAutoSelector(selector).select(session) }
+        sources.bt1.complete(media(kind = BitTorrent, subjectName = "Example Series"))
+        testScope().advanceUntilIdle()
+
+        val selected = assertIs<MediaAutoSelectOutcome.Selected>(selection.await())
+        assertEquals(selector.selected.value?.mediaId, selected.media.mediaId)
+        assertEquals(MediaAutoSelectReason.PREFERRED_KIND_COMPLETED, selected.reason)
+        assertEquals(MediaAutoSelectStage.PREFERRED_SOURCE, selected.stage)
     }
 
     @Test
@@ -206,7 +229,7 @@ class MediaAutoSelectorTest {
         sources.cached.complete(media(kind = LocalCache, subjectName = "Example Series"))
         testScope().runCurrent()
         assertEquals(sources.cached.instance.mediaSourceId, selection.await()?.mediaSourceId)
-        assertNull(MediaAutoSelector(selector).select(session))
+        assertNull(MediaAutoSelector(selector).select(session).selectedMedia)
     }
 
     @Test
@@ -331,7 +354,7 @@ class MediaAutoSelectorTest {
         session: MediaFetchSession,
         preferredSourceId: String? = null,
     ): Deferred<Media?> = scope.async(start = CoroutineStart.UNDISPATCHED) {
-        MediaAutoSelector(selector).select(session, MediaAutoSelector.Config(preferredSourceId = preferredSourceId))
+        MediaAutoSelector(selector).select(session, MediaAutoSelector.Config(preferredSourceId = preferredSourceId)).selectedMedia
     }
 
     context(scope: TestScope)

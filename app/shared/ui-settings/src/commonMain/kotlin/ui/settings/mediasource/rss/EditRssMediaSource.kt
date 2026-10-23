@@ -74,6 +74,7 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.only
 import me.him188.ani.app.ui.foundation.layout.panePadding
+import me.him188.ani.app.ui.foundation.layout.withoutAutoFocus
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -273,7 +274,7 @@ fun EditRssMediaSourceScreen(
         val panePadding = currentWindowAdaptiveInfo1().windowSizeClass.panePadding
         val panePaddingVertical = panePadding.only(PaddingValuesSides.Vertical)
         ListDetailPaneScaffold(
-            navigator.scaffoldDirective,
+            remember(navigator.scaffoldDirective) { navigator.scaffoldDirective.withoutAutoFocus() },
             navigator.scaffoldValue.convert(ExtraPaneForNestedDetails),
             listPane = {
                 ListDetailAnimatedPane {

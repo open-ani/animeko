@@ -31,6 +31,9 @@ import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.media.selector.SelectEvent
 import me.him188.ani.app.domain.media.selector.SelectOrigin
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
+import me.him188.ani.app.domain.player.analytics.PlayFlowEpisode
+import me.him188.ani.app.domain.player.analytics.tierOf
+import me.him188.ani.app.domain.player.analytics.toPlayFlowMatch
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.isLocalCache
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -75,7 +78,7 @@ class MediaFetchAnalyticsExtension(
     private val sourceTiers = MutableStateFlow<MediaSelectorSourceTiers?>(null)
 
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
-        val stats = MediaFetchStats(episodeSession.episodeId)
+        val stats = MediaFetchStats(episodeSession.playFlowEpisode)
         currentStats.value = stats
 
         backgroundTaskScope.launch("MediaFetchAnalyticsSourceTiers") {
@@ -154,7 +157,8 @@ class MediaFetchAnalyticsExtension(
 
             buildMap<String, Any?> {
                 put("subject_id", context.subjectId.toLong())
-                put("episode_id", stats.episodeId.toLong())
+                put("episode_id", stats.episode.episodeId.toLong())
+                putAll(context.playFlow.legacyProperties(stats.episode))
                 put("outcome", outcome)
                 if (sourceStates != null) {
                     put("sources_total", sourceStates.size.toLong())
@@ -178,12 +182,12 @@ class MediaFetchAnalyticsExtension(
                 put("selected_by", stats.selectOrigin.value?.toAnalyticsValue())
                 put("selected_source_id", selected?.mediaSourceId?.take(100))
                 if (selected != null && !selected.isLocalCache()) {
-                    put("selected_tier", tiers?.effectiveTierOf(selected)?.value?.toLong())
+                    put("selected_tier", tiers?.tierOf(selected))
                 }
                 put(
                     "selected_match",
                     availableMedia.firstOrNull { it.result.mediaId == selected?.mediaId }
-                        ?.metadata?.subjectMatchKind?.toAnalyticsValue(),
+                        ?.metadata?.subjectMatchKind?.toPlayFlowMatch(),
                 )
                 put("is_cached", selected?.isLocalCache()?.toAnalyticsFlag())
             }
@@ -209,11 +213,6 @@ class MediaFetchAnalyticsExtension(
         SelectOrigin.BROWSE_MEMORY -> "browse_memory"
     }
 
-    private fun SubjectMatchKind.toAnalyticsValue(): String = when (this) {
-        SubjectMatchKind.EXACT -> "exact"
-        SubjectMatchKind.FUZZY -> "fuzzy"
-    }
-
     companion object : EpisodePlayerExtensionFactory<MediaFetchAnalyticsExtension> {
         private val CANDIDATES_CATCH_UP_TIMEOUT = 2.seconds
 
@@ -232,7 +231,7 @@ class MediaFetchAnalyticsExtension(
  * 一个 [EpisodeSession] 内的查询与选择统计. 时间都是相对首次拿到查询会话的时长.
  */
 private class MediaFetchStats(
-    val episodeId: Int,
+    val episode: PlayFlowEpisode,
 ) {
     private var fetchStart: TimeMark? = null
 

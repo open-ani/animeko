@@ -112,6 +112,23 @@
     <string name="settings_debug_dev_builds">CI builds</string>
     <string name="settings_debug_dev_builds_install_commit">Install a commit, PR or package</string>
     <string name="settings_debug_dev_builds_install_commit_description">List the latest commits on the main branch with their CI build status, or paste a commit, PR or artifact link or a package URL, then download and install the package CI built for this platform</string>
+
+    <string name="settings_debug_play_flow">Play flow</string>
+    <string name="settings_debug_play_flow_open">Open play flow window</string>
+    <string name="settings_debug_play_flow_open_description">A floating window that shows each step of play loading in real time and keeps the recent play sessions of this run for review</string>
+    <string name="play_flow_debug_title">Play flow</string>
+    <string name="play_flow_debug_tab_live">Live</string>
+    <string name="play_flow_debug_tab_history">History</string>
+    <string name="play_flow_debug_empty">No play session yet</string>
+    <string name="play_flow_debug_follow">Jump to latest</string>
+    <string name="play_flow_debug_close">Close</string>
+    <string name="play_flow_debug_back">Back</string>
+    <string name="play_flow_debug_session_summary">Subject %1$d · %2$d events</string>
+    <string name="play_flow_debug_attempt">Attempt %1$d · Episode %2$d</string>
+
+    <string name="play_flow_debug_minimize">Minimize</string>
+    <string name="play_flow_debug_restore">Expand play flow window</string>
+    <string name="play_flow_debug_copy">Copy as JSON</string>
     <string name="settings_debug_dev_builds_unsupported_platform">CI does not produce a package that can be installed on this platform</string>
     <string name="settings_debug_dev_builds_token">GitHub token</string>
     <string name="settings_debug_dev_builds_token_description">Downloading GitHub Actions artifacts requires a token. A fine-grained token needs Actions read access; a classic token needs the public_repo scope. Listing works without a token but is rate limited.</string>

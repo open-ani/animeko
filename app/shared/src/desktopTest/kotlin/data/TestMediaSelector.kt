@@ -24,7 +24,7 @@ import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorEvents
 import me.him188.ani.app.domain.media.selector.MutableMediaSelectorEvents
 import me.him188.ani.app.domain.media.selector.OptionalPreference
-import me.him188.ani.app.domain.media.selector.SelectOrigin
+import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.app.domain.media.selector.filter.MediaSelectorFilterSortAlgorithm
 import me.him188.ani.app.domain.media.selector.orElse
 import me.him188.ani.datasources.api.Media
@@ -72,7 +72,7 @@ open class TestMediaSelector(
         throw UnsupportedOperationException()
     }
 
-    override suspend fun selectAutomatically(candidate: Media, expectedSelection: Media?): Media? {
+    override suspend fun selectAutomatically(candidate: Media, expectedSelection: Media?, trigger: SelectTrigger): Media? {
         throw UnsupportedOperationException()
     }
 
@@ -111,13 +111,13 @@ open class TestMediaSelector(
         get() = throw UnsupportedOperationException()
     final override val events: MediaSelectorEvents = MutableMediaSelectorEvents()
 
-    override suspend fun select(candidate: Media, origin: SelectOrigin): Boolean {
+    override suspend fun select(candidate: Media, trigger: SelectTrigger): Boolean {
         if (this.selected.value == candidate) return false
         this.selected.value = candidate
         return true
     }
 
-    override suspend fun selectTemporarily(candidate: Media): Boolean = select(candidate)
+    override suspend fun selectTemporarily(candidate: Media, trigger: SelectTrigger): Boolean = select(candidate, trigger)
 
     override fun unselect() {
         this.selected.value = null

@@ -24,8 +24,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import me.him188.ani.datasources.api.source.FactoryId
-import me.him188.ani.utils.analytics.Analytics
-import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeEnter
 
 /**
  * Supports navigation to any page in the app.
@@ -107,10 +105,6 @@ interface AniNavigator {
         // 避免同一个剧集在栈中重复出现
         popBackStack(NavRoutes.EpisodeDetail(subjectId, episodeId), inclusive = true)
         navigate(NavRoutes.EpisodeDetail(subjectId, episodeId))
-        Analytics.recordEvent(
-            EpisodeEnter,
-            mapOf("subject_id" to subjectId, "episode_id" to episodeId),
-        )
     }
 
     /**

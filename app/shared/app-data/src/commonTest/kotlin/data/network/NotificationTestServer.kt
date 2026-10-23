@@ -21,12 +21,13 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import me.him188.ani.client.apis.AnnouncementsAniApi
+import me.him188.ani.client.apis.FeatureFlagsAniApi
 import me.him188.ani.client.apis.NotificationsAniApi
 import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.EmptyCoroutineContext
 
 /**
- * 用 [MockEngine] 模拟通知和公告接口. 与生产的 HTTP 客户端一样, 4xx/5xx 抛出 `ClientRequestException` / `ServerResponseException`.
+ * 用 [MockEngine] 模拟通知、公告和功能开关接口. 与生产的 HTTP 客户端一样, 4xx/5xx 抛出 `ClientRequestException` / `ServerResponseException`.
  */
 internal class NotificationTestServer(
     var handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData = { respond("", HttpStatusCode.NoContent) },
@@ -58,8 +59,19 @@ internal class NotificationTestServer(
         override suspend fun <R> invoke(action: suspend AnnouncementsAniApi.() -> R): R = action(client)
     }
 
+    private val featureFlagsApi = object : ApiInvoker<FeatureFlagsAniApi> {
+        private val client = FeatureFlagsAniApi(
+            baseUrl = "http://test",
+            httpClientEngine = engine,
+            httpClientConfig = { it.expectSuccess = true },
+        )
+
+        override suspend fun <R> invoke(action: suspend FeatureFlagsAniApi.() -> R): R = action(client)
+    }
+
     val notificationService = AniNotificationService(notificationsApi, EmptyCoroutineContext)
     val announcementService = AniAnnouncementService(announcementsApi, EmptyCoroutineContext)
+    val featureFlagService = AniFeatureFlagService(featureFlagsApi, EmptyCoroutineContext)
 }
 
 internal fun MockRequestHandleScope.respondJson(
