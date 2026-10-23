@@ -655,6 +655,7 @@
     <string name="exploration_schedule_episode">第 %1$s 話</string>
     <string name="exploration_schedule_episode_ep_and_sort">第 %1$s (%2$s) 話</string>
     <string name="exploration_schedule_time_unknown">時間未定</string>
+    <string name="exploration_schedule_time_zone_settings">時區設定</string>
     <string name="exploration_schedule_weekday_monday">一</string>
     <string name="exploration_schedule_weekday_tuesday">二</string>
     <string name="exploration_schedule_weekday_wednesday">三</string>

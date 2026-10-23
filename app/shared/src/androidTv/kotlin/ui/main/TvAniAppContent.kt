@@ -148,6 +148,7 @@ fun TvAniAppContent(
                 ),
             )
 
+            is TvNavigationEvent.Settings -> aniNavigator.navigateSettings(event.tab)
             TvNavigationEvent.LoggedIn -> Unit // handled by the Main entry
             TvNavigationEvent.Login -> aniNavigator.navigateBangumiAuthorize()
         }
@@ -224,7 +225,7 @@ fun TvAniAppContent(
                         }
                     }
                 }
-                entry<NavRoutes.Settings> {
+                entry<NavRoutes.Settings> { route ->
                     TvScreenView("settings")
                     val viewModel = tvViewModel {
                         TvSettingsViewModel(
@@ -235,7 +236,11 @@ fun TvAniAppContent(
                             loadLibraries = ::loadOpenSourceLibrariesJsons,
                         )
                     }
-                    TvSettingsRoute(viewModel, onCheckUpdate = { updateViewModel.onIntent(TvUpdateIntent.Check) })
+                    TvSettingsRoute(
+                        viewModel,
+                        onCheckUpdate = { updateViewModel.onIntent(TvUpdateIntent.Check) },
+                        initialTab = route.tab,
+                    )
                 }
 
 

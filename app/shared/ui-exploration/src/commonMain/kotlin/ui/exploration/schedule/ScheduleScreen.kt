@@ -33,6 +33,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -81,6 +85,7 @@ import me.him188.ani.app.ui.lang.exploration_schedule
 import me.him188.ani.app.ui.lang.exploration_schedule_last_weekday
 import me.him188.ani.app.ui.lang.exploration_schedule_next_weekday
 import me.him188.ani.app.ui.lang.exploration_schedule_this_weekday
+import me.him188.ani.app.ui.lang.exploration_schedule_time_zone_settings
 import me.him188.ani.app.ui.lang.exploration_schedule_weekday_friday
 import me.him188.ani.app.ui.lang.exploration_schedule_weekday_monday
 import me.him188.ani.app.ui.lang.exploration_schedule_weekday_saturday
@@ -148,6 +153,10 @@ fun ScheduleScreen(
     navigationIcon: @Composable () -> Unit = {},
     state: ScheduleScreenState = remember { ScheduleScreenState { presentation.days } },
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    /**
+     * 打开设置页的时区二级页. 时间表按全局时区渲染, 入口放在这里方便用户就地改动.
+     */
+    onOpenTimeZoneSettings: () -> Unit = {},
 ) {
     Scaffold(
         modifier,
@@ -156,6 +165,14 @@ fun ScheduleScreen(
                 title = { Text(stringResource(Lang.exploration_schedule)) },
                 Modifier.fillMaxWidth(),
                 navigationIcon = navigationIcon,
+                actions = {
+                    IconButton(onClick = onOpenTimeZoneSettings) {
+                        Icon(
+                            Icons.Rounded.Public,
+                            contentDescription = stringResource(Lang.exploration_schedule_time_zone_settings),
+                        )
+                    }
+                },
                 windowInsets = windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
             )
         },

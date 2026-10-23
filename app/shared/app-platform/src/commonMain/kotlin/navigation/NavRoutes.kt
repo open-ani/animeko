@@ -68,6 +68,12 @@ sealed class NavRoutes : NavKey {
          * 如果为 `null`, 则正常打开设置页的导航.
          */
         val tab: SettingsTab? = null,
+        /**
+         * 打开设置页后直接进入的二级页的 key (见 `DetailPaneRoutes`). 未知的 key 会被忽略, 停留在 [tab] 对应的分节.
+         *
+         * 如果为 `null`, 则停留在 [tab] 对应的分节. TV 没有二级页, 忽略该参数.
+         */
+        val detail: String? = null,
     ) : NavRoutes()
 
     @Serializable
