@@ -16,8 +16,6 @@ import kotlinx.serialization.Transient
 
 /**
  * 播放器里可以用键盘触发的操作. 每个操作可以绑定零个或多个 [PlayerShortcut].
- *
- * 顺序即设置页中的展示顺序.
  */
 @Serializable
 enum class PlayerShortcutAction {
@@ -60,9 +58,7 @@ data class PlayerShortcut(
     val shift: Boolean = false,
     val alt: Boolean = false,
     val meta: Boolean = false,
-) {
-    val hasModifier: Boolean get() = ctrl || shift || alt || meta
-}
+)
 
 /**
  * 播放器键盘快捷键配置.
@@ -94,11 +90,6 @@ data class PlayerShortcutConfig(
         get() = PlayerShortcutAction.entries.associateWith { shortcutsFor(it) }
 
     /**
-     * [action] 是否在使用默认快捷键.
-     */
-    fun isDefault(action: PlayerShortcutAction): Boolean = shortcutsFor(action) == DEFAULT_BINDINGS.getValue(action)
-
-    /**
      * 当前绑定了 [shortcut] 的操作, 没有则为 `null`.
      */
     fun actionFor(shortcut: PlayerShortcut): PlayerShortcutAction? =
@@ -120,17 +111,10 @@ data class PlayerShortcutConfig(
             }
         }
         newOverrides[action] = distinct
-        return PlayerShortcutConfig(newOverrides.normalized())
+        return PlayerShortcutConfig(
+            newOverrides.filter { (other, shortcuts) -> shortcuts != DEFAULT_BINDINGS.getValue(other) },
+        )
     }
-
-    /**
-     * 恢复 [action] 的默认快捷键. 默认按键组合若正被其他操作占用, 会从那些操作中移除.
-     */
-    fun reset(action: PlayerShortcutAction): PlayerShortcutConfig =
-        withShortcuts(action, DEFAULT_BINDINGS.getValue(action))
-
-    private fun Map<PlayerShortcutAction, List<PlayerShortcut>>.normalized(): Map<PlayerShortcutAction, List<PlayerShortcut>> =
-        filter { (action, shortcuts) -> shortcuts != DEFAULT_BINDINGS.getValue(action) }
 
     companion object {
         @Stable

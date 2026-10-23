@@ -28,9 +28,6 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.PlayerShortcut
 import me.him188.ani.app.data.models.preference.PlayerShortcutAction
 import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
@@ -51,13 +48,39 @@ class ResolvedPlayerShortcut(
  * 按 [PlayerShortcutConfig] 把按键解析成操作.
  *
  * 修饰键必须正好匹配, 所以 Ctrl+Space 不会触发只绑定了 Space 的操作, 页面上的其他快捷键可以安全地使用带修饰键的组合.
- * 唯一的例外是音量: 绑定本身不含 Shift 时, 按住 Shift 也能命中, 由调用方把它当作微调 (见 [isFineAdjustment]).
+ * 唯一的例外是音量: 绑定本身不含 Shift 时, 按住 Shift 也能命中, 由调用方把它当作微调.
  * 精确匹配优先, 因此把 Shift+↑ 绑定到别的操作后, 它不再被音量命中.
  */
 class PlayerShortcutResolver(config: PlayerShortcutConfig) {
     private val bindings: Map<PlayerShortcutAction, List<PlayerShortcut>> = config.bindings
 
-    fun resolve(key: Key, ctrl: Boolean, shift: Boolean, alt: Boolean, meta: Boolean): ResolvedPlayerShortcut? {
+    /**
+     * RTL 布局下, 绑定在左右方向键上的前进 / 后退互换, 让「后退」始终在视觉上的后方; 其他绑定不受布局方向影响.
+     */
+    fun resolve(
+        key: Key,
+        ctrl: Boolean,
+        shift: Boolean,
+        alt: Boolean,
+        meta: Boolean,
+        layoutDirection: LayoutDirection = LayoutDirection.Ltr,
+    ): ResolvedPlayerShortcut? {
+        val resolved = resolveExact(key, ctrl, shift, alt, meta) ?: return null
+        if (layoutDirection != LayoutDirection.Rtl || (key != Key.DirectionLeft && key != Key.DirectionRight)) {
+            return resolved
+        }
+        val mirrored = when (resolved.action) {
+            PlayerShortcutAction.SEEK_BACKWARD -> PlayerShortcutAction.SEEK_FORWARD
+            PlayerShortcutAction.SEEK_FORWARD -> PlayerShortcutAction.SEEK_BACKWARD
+            else -> return resolved
+        }
+        return ResolvedPlayerShortcut(mirrored, resolved.shortcut)
+    }
+
+    fun resolve(event: KeyEvent, layoutDirection: LayoutDirection): ResolvedPlayerShortcut? =
+        resolve(event.key, event.isCtrlPressed, event.isShiftPressed, event.isAltPressed, event.isMetaPressed, layoutDirection)
+
+    private fun resolveExact(key: Key, ctrl: Boolean, shift: Boolean, alt: Boolean, meta: Boolean): ResolvedPlayerShortcut? {
         for ((action, shortcuts) in bindings) {
             for (shortcut in shortcuts) {
                 if (shortcut.matches(key, ctrl, shift, alt, meta)) return ResolvedPlayerShortcut(action, shortcut)
@@ -75,30 +98,8 @@ class PlayerShortcutResolver(config: PlayerShortcutConfig) {
         return null
     }
 
-    /**
-     * RTL 布局下左右方向键互换, 让「后退」始终在视觉上的后方.
-     */
-    fun resolve(event: KeyEvent, layoutDirection: LayoutDirection): ResolvedPlayerShortcut? {
-        val key = if (layoutDirection == LayoutDirection.Rtl) {
-            when (event.key) {
-                Key.DirectionLeft -> Key.DirectionRight
-                Key.DirectionRight -> Key.DirectionLeft
-                else -> event.key
-            }
-        } else {
-            event.key
-        }
-        return resolve(key, event.isCtrlPressed, event.isShiftPressed, event.isAltPressed, event.isMetaPressed)
-    }
-
-    companion object {
-        private val VOLUME_ACTIONS = listOf(PlayerShortcutAction.VOLUME_UP, PlayerShortcutAction.VOLUME_DOWN)
-
-        /**
-         * 音量操作里, 按住 Shift 且绑定本身不含 Shift 时为微调.
-         */
-        fun isFineAdjustment(resolved: ResolvedPlayerShortcut, event: KeyEvent): Boolean =
-            event.isShiftPressed && !resolved.shortcut.shift
+    private companion object {
+        val VOLUME_ACTIONS = listOf(PlayerShortcutAction.VOLUME_UP, PlayerShortcutAction.VOLUME_DOWN)
     }
 }
 
@@ -179,23 +180,24 @@ internal fun rememberPlayerKeyboardShortcuts(
  * 不触发它松开时的动作; 之后这个按键属于新解析到的操作, 或者 (没有命中时) 交还给作用域处理.
  */
 private class PlayerShortcutHandler(
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     private val layoutDirection: LayoutDirection,
     private val resolver: PlayerShortcutResolver,
-    private val fastSkipState: FastSkipState?,
+    fastSkipState: FastSkipState?,
     private val callbacks: () -> PlayerShortcutCallbacks,
 ) : PlayerKeyboardHandler {
     private val held = mutableMapOf<Key, ResolvedPlayerShortcut>()
-    private var forwardPressed = false
-    private var forwardJob: Job? = null
-    private var fastSkipTicket: Int? = null
+    private val forwardHold = FastSkipHold(scope, fastSkipState)
 
     override fun invoke(event: KeyEvent): Boolean {
         val callbacks = callbacks()
         val resolved = when (event.type) {
             KeyEventType.KeyDown -> {
                 val resolved = resolver.resolve(event, layoutDirection)?.takeIf { callbacks.isAvailable(it.action) }
-                held.remove(event.key)?.takeIf { it.action != resolved?.action }?.let { endHold(it) }
+                val previous = held.remove(event.key)
+                if (previous?.action == PlayerShortcutAction.SEEK_FORWARD && resolved?.action != previous.action) {
+                    forwardHold.cancel()
+                }
                 resolved?.also { held[event.key] = it }
             }
 
@@ -203,69 +205,56 @@ private class PlayerShortcutHandler(
             else -> null
         } ?: return false
 
-        return when (resolved.action) {
-            PlayerShortcutAction.SEEK_FORWARD -> {
-                when (event.type) {
-                    KeyEventType.KeyDown -> {
-                        if (!forwardPressed) {
-                            forwardPressed = true
-                            forwardJob = scope.launch {
-                                delay(200)
-                                fastSkipTicket = fastSkipState?.startSkipping(SkipDirection.FORWARD)
-                            }
-                        }
-                        true
-                    }
-
-                    KeyEventType.KeyUp -> {
-                        if (!forwardPressed) return false
-                        val wasSkipping = fastSkipTicket != null
-                        cancelForward()
-                        if (!wasSkipping) callbacks.onSeekForward()
-                        true
-                    }
-
-                    else -> false
-                }
-            }
-
-            PlayerShortcutAction.VOLUME_UP, PlayerShortcutAction.VOLUME_DOWN -> {
-                if (event.type == KeyEventType.KeyDown) {
-                    val fine = PlayerShortcutResolver.isFineAdjustment(resolved, event)
-                    if (resolved.action == PlayerShortcutAction.VOLUME_UP) {
-                        callbacks.onVolumeUp(fine)
+        val isKeyUp = event.type == KeyEventType.KeyUp
+        return with(callbacks) {
+            when (resolved.action) {
+                PlayerShortcutAction.SEEK_FORWARD -> {
+                    if (isKeyUp) {
+                        if (!forwardHold.isPressed) return false
+                        if (!forwardHold.release()) onSeekForward()
                     } else {
-                        callbacks.onVolumeDown(fine)
+                        forwardHold.press()
                     }
+                    true
                 }
-                true
-            }
 
-            else -> {
-                if (event.type == KeyEventType.KeyUp) callbacks.perform(resolved.action)
-                true
+                // 绑定不含 Shift 时按住 Shift 为微调
+                PlayerShortcutAction.VOLUME_UP -> onKeyDown(isKeyUp) { onVolumeUp(event.isShiftPressed && !resolved.shortcut.shift) }
+                PlayerShortcutAction.VOLUME_DOWN -> onKeyDown(isKeyUp) { onVolumeDown(event.isShiftPressed && !resolved.shortcut.shift) }
+
+                PlayerShortcutAction.TOGGLE_PAUSE_RESUME -> onKeyUp(isKeyUp, onTogglePauseResume)
+                PlayerShortcutAction.TOGGLE_FULLSCREEN -> onKeyUp(isKeyUp, onToggleFullscreen)
+                PlayerShortcutAction.TOGGLE_DANMAKU -> onKeyUp(isKeyUp, onToggleDanmaku)
+                PlayerShortcutAction.TOGGLE_PLAYER_STATS -> onKeyUp(isKeyUp, onTogglePlayerStats)
+                PlayerShortcutAction.SEEK_BACKWARD -> onKeyUp(isKeyUp, onSeekBackward)
+                PlayerShortcutAction.PLAYBACK_SPEED_DOWN -> onKeyUp(isKeyUp) { changeSpeed { nextPlaybackSpeed(it, playbackSpeedRange, -1) } }
+                PlayerShortcutAction.PLAYBACK_SPEED_UP -> onKeyUp(isKeyUp) { changeSpeed { nextPlaybackSpeed(it, playbackSpeedRange, 1) } }
+                PlayerShortcutAction.PLAYBACK_SPEED_RESET, PlayerShortcutAction.PLAYBACK_SPEED_1X -> onKeyUp(isKeyUp) { changeSpeed { 1f } }
+                PlayerShortcutAction.PLAYBACK_SPEED_2X -> onKeyUp(isKeyUp) { changeSpeed { 2f } }
+                PlayerShortcutAction.PLAYBACK_SPEED_3X -> onKeyUp(isKeyUp) { changeSpeed { 3f } }
             }
         }
     }
 
-    /**
-     * 按键还没松开, 但它已经不再属于 [previous]: 结束该操作按住期间的效果, 不触发松开时的动作.
-     */
-    private fun endHold(previous: ResolvedPlayerShortcut) {
-        if (previous.action == PlayerShortcutAction.SEEK_FORWARD) cancelForward()
-    }
-
-    private fun cancelForward() {
-        forwardJob?.cancel()
-        forwardJob = null
-        fastSkipTicket?.let { fastSkipState?.stopSkipping(it) }
-        fastSkipTicket = null
-        forwardPressed = false
-    }
-
     override fun cancel() {
         held.clear()
-        cancelForward()
+        forwardHold.cancel()
+    }
+
+    /**
+     * 松开时触发一次的操作; 按下只消费事件.
+     */
+    private inline fun onKeyUp(isKeyUp: Boolean, action: () -> Unit): Boolean {
+        if (isKeyUp) action()
+        return true
+    }
+
+    /**
+     * 每次按下都触发的操作, 按住不放持续触发; 松开只消费事件.
+     */
+    private inline fun onKeyDown(isKeyUp: Boolean, action: () -> Unit): Boolean {
+        if (!isKeyUp) action()
+        return true
     }
 
     private fun PlayerShortcutCallbacks.isAvailable(action: PlayerShortcutAction): Boolean = when (action) {
@@ -276,26 +265,6 @@ private class PlayerShortcutHandler(
         PlayerShortcutAction.PLAYBACK_SPEED_2X, PlayerShortcutAction.PLAYBACK_SPEED_3X -> currentPlaybackSpeed != null
 
         else -> true
-    }
-
-    /**
-     * 松开时触发的操作. 调用前已经通过 [isAvailable].
-     */
-    private fun PlayerShortcutCallbacks.perform(action: PlayerShortcutAction) {
-        when (action) {
-            PlayerShortcutAction.TOGGLE_PAUSE_RESUME -> onTogglePauseResume()
-            PlayerShortcutAction.TOGGLE_FULLSCREEN -> onToggleFullscreen()
-            PlayerShortcutAction.TOGGLE_DANMAKU -> onToggleDanmaku()
-            PlayerShortcutAction.TOGGLE_PLAYER_STATS -> onTogglePlayerStats()
-            PlayerShortcutAction.SEEK_BACKWARD -> onSeekBackward()
-            PlayerShortcutAction.PLAYBACK_SPEED_DOWN -> changeSpeed { nextPlaybackSpeed(it, playbackSpeedRange, -1) }
-            PlayerShortcutAction.PLAYBACK_SPEED_UP -> changeSpeed { nextPlaybackSpeed(it, playbackSpeedRange, 1) }
-            PlayerShortcutAction.PLAYBACK_SPEED_RESET, PlayerShortcutAction.PLAYBACK_SPEED_1X -> changeSpeed { 1f }
-            PlayerShortcutAction.PLAYBACK_SPEED_2X -> changeSpeed { 2f }
-            PlayerShortcutAction.PLAYBACK_SPEED_3X -> changeSpeed { 3f }
-            PlayerShortcutAction.SEEK_FORWARD, PlayerShortcutAction.VOLUME_UP, PlayerShortcutAction.VOLUME_DOWN ->
-                error("$action is handled on key down")
-        }
     }
 
     private fun PlayerShortcutCallbacks.changeSpeed(compute: (current: Float) -> Float) {

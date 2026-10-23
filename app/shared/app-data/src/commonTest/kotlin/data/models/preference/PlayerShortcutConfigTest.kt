@@ -13,7 +13,6 @@ import me.him188.ani.app.data.persistent.DataStoreJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class PlayerShortcutConfigTest {
     private val space = PlayerShortcut("Spacebar")
@@ -26,7 +25,6 @@ class PlayerShortcutConfigTest {
         val config = PlayerShortcutConfig.Default
         for (action in PlayerShortcutAction.entries) {
             assertEquals(PlayerShortcutConfig.DEFAULT_BINDINGS.getValue(action), config.shortcutsFor(action))
-            assertTrue(config.isDefault(action))
         }
         assertEquals(PlayerShortcutAction.TOGGLE_PAUSE_RESUME, config.actionFor(space))
         assertNull(config.actionFor(k))
@@ -71,14 +69,14 @@ class PlayerShortcutConfigTest {
     }
 
     @Test
-    fun `reset restores the default and takes it back from the action that borrowed it`() {
+    fun `restoring the default takes it back from the action that borrowed it`() {
         val config = PlayerShortcutConfig.Default
             .withShortcuts(PlayerShortcutAction.TOGGLE_DANMAKU, listOf(f)) // steals F from fullscreen
-            .reset(PlayerShortcutAction.TOGGLE_FULLSCREEN)
+            .withShortcuts(PlayerShortcutAction.TOGGLE_FULLSCREEN, listOf(f))
 
         assertEquals(listOf(f), config.shortcutsFor(PlayerShortcutAction.TOGGLE_FULLSCREEN))
         assertEquals(emptyList(), config.shortcutsFor(PlayerShortcutAction.TOGGLE_DANMAKU))
-        assertTrue(config.isDefault(PlayerShortcutAction.TOGGLE_FULLSCREEN))
+        assertEquals(setOf(PlayerShortcutAction.TOGGLE_DANMAKU), config.overrides.keys)
     }
 
     @Test

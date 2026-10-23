@@ -43,7 +43,6 @@ internal actual fun rememberHasPhysicalKeyboard(): Boolean {
             }
         }
         inputManager.registerInputDeviceListener(listener, Handler(Looper.getMainLooper()))
-        present = hasPhysicalKeyboard()
         onDispose {
             inputManager.unregisterInputDeviceListener(listener)
         }

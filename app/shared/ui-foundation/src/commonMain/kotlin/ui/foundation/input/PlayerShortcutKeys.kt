@@ -102,7 +102,7 @@ object PlayerShortcutKeys {
     /**
      * 单独按下时不构成快捷键的修饰键.
      */
-    val modifierKeys: Set<Key> = setOf(
+    private val modifierKeys: Set<Key> = setOf(
         Key.CtrlLeft, Key.CtrlRight,
         Key.ShiftLeft, Key.ShiftRight,
         Key.AltLeft, Key.AltRight,

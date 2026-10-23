@@ -10,6 +10,7 @@
 package me.him188.ani.app.videoplayer.ui.gesture
 
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.unit.LayoutDirection
 import me.him188.ani.app.data.models.preference.PlayerShortcut
 import me.him188.ani.app.data.models.preference.PlayerShortcutAction
 import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
@@ -77,6 +78,23 @@ class PlayerShortcutResolverTest {
         assertEquals(PlayerShortcutAction.TOGGLE_PAUSE_RESUME, resolver.resolve(Key.Spacebar))
         assertNull(resolver.resolve(Key.F))
         assertEquals(PlayerShortcutAction.TOGGLE_FULLSCREEN, resolver.resolve(Key.F, ctrl = true))
+    }
+
+    @Test
+    fun `rtl mirrors seek on the arrow keys only`() {
+        val config = PlayerShortcutConfig.Default
+            .withShortcuts(PlayerShortcutAction.TOGGLE_DANMAKU, listOf(PlayerShortcut("DirectionLeft", ctrl = true)))
+            .withShortcuts(PlayerShortcutAction.SEEK_BACKWARD, listOf(PlayerShortcut("DirectionLeft"), PlayerShortcut("J")))
+        val resolver = PlayerShortcutResolver(config)
+        fun resolveRtl(key: Key, ctrl: Boolean = false) =
+            resolver.resolve(key, ctrl, shift = false, alt = false, meta = false, layoutDirection = LayoutDirection.Rtl)?.action
+
+        assertEquals(PlayerShortcutAction.SEEK_FORWARD, resolveRtl(Key.DirectionLeft))
+        assertEquals(PlayerShortcutAction.SEEK_BACKWARD, resolveRtl(Key.DirectionRight))
+        // non-seek and non-arrow bindings are not mirrored
+        assertEquals(PlayerShortcutAction.TOGGLE_DANMAKU, resolveRtl(Key.DirectionLeft, ctrl = true))
+        assertEquals(PlayerShortcutAction.SEEK_BACKWARD, resolveRtl(Key.J))
+        assertEquals(PlayerShortcutAction.SEEK_BACKWARD, resolver.resolve(Key.DirectionLeft))
     }
 
     @Test

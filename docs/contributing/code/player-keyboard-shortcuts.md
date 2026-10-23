@@ -31,13 +31,14 @@ Enter / Escape / Tab / DPad 中键留给页面导航和输入框，修饰键只�
 - 开关类操作和后退在 KeyUp 触发，KeyDown 只消费事件。
 - 音量在每次 KeyDown 触发，按住不放持续调节。绑定本身不含 Shift 时，按住 Shift 命中同一操作并作为微调；
   精确匹配优先，所以把 Shift+↑ 绑定给别的操作后它不再属于音量。
-- 前进在 KeyDown 启动 200ms 计时进入倍速快进，提前松开则前进 5 秒。
+- 前进在 KeyDown 启动 200ms 计时进入倍速快进，提前松开则前进 5 秒。这段按住状态由 `FastSkipHold` 维护，
+  与 `Modifier.keyboardSeekAndFastForward` 共用。
 - KeyUp 沿用按下时解析到的操作，不看松开时的修饰键：Ctrl+→ 快进中先松 Ctrl 再松 → 也会结束快进。
   按住期间重复的 KeyDown 仍按当时的修饰键重新解析，结果变了就直接结束原操作，不触发它松开时的动作。
 - 修饰键必须正好匹配：Ctrl+Space 不会触发只绑定了 Space 的操作。`PlayerKeyboardState.dispatch` 会把带 Ctrl / Alt / Meta 的按下交给处理器，
   没有绑定命中时才按「交给页面控件」处理，所以 Ctrl+F 这类自定义组合可以生效，而页面上的其他快捷键不受影响。
 - 倍速操作在播放器不支持倍速时、音量操作在没有音量控制器时不消费事件，交还给页面。
-- RTL 布局下左右方向键在解析前互换。
+- RTL 布局下，绑定在左右方向键上的前进 / 后退互换，让「后退」始终在视觉上的后方；其他绑定不受布局方向影响。
 
 配置从 `EpisodeViewModel.playerShortcutConfig` 经 `EpisodeVideoImpl` 和 `LockableVideoGestureHost` 传入；
 其他调用方使用 `PlayerShortcutConfig.Default`。Android TV 使用自身的遥控器处理，不经过这里。

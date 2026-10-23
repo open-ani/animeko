@@ -104,7 +104,8 @@ import me.him188.ani.app.ui.lang.settings_player_shortcuts_unsupported_key
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
-import me.him188.ani.utils.platform.Platform
+import me.him188.ani.app.ui.settings.framework.components.TextItem
+import me.him188.ani.utils.platform.isMacOS
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -157,7 +158,11 @@ private val SHORTCUT_GROUPS = listOf(
             PlayerShortcutAction.PLAYBACK_SPEED_3X,
         ),
     ),
-)
+).also { groups ->
+    check(groups.flatMap { it.actions }.toSet() == PlayerShortcutAction.entries.toSet()) {
+        "Every PlayerShortcutAction needs a group"
+    }
+}
 
 /**
  * 播放器键盘快捷键页面: 按组列出所有操作和当前按键, 点击一项打开 [PlayerShortcutEditDialog] 修改.
@@ -168,12 +173,14 @@ fun PlayerShortcutsTab(
     modifier: Modifier = Modifier,
 ) {
     val config by state
+    val isMacOs = LocalPlatform.current.isMacOS()
     var editingAction by remember { mutableStateOf<PlayerShortcutAction?>(null) }
 
     editingAction?.let { action ->
         PlayerShortcutEditDialog(
             action = action,
             config = config,
+            isMacOs = isMacOs,
             onConfirm = { shortcuts ->
                 state.update(config.withShortcuts(action, shortcuts))
                 editingAction = null
@@ -190,6 +197,7 @@ fun PlayerShortcutsTab(
                     ShortcutItem(
                         action = action,
                         shortcuts = config.shortcutsFor(action),
+                        isMacOs = isMacOs,
                         onClick = { editingAction = action },
                     )
                 }
@@ -244,16 +252,14 @@ fun PlayerShortcutsResetAction(state: SettingsState<PlayerShortcutConfig>) {
 private fun SettingsScope.ShortcutItem(
     action: PlayerShortcutAction,
     shortcuts: List<PlayerShortcut>,
+    isMacOs: Boolean,
     onClick: () -> Unit,
 ) {
     val description = action.renderDescription()
-    Item(
-        headlineContent = { Text(action.renderName()) },
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .testTag(PlayerShortcutsTestTags.item(action)),
-        supportingContent = description?.let { { Text(it) } },
-        trailingContent = {
+    TextItem(
+        title = { Text(action.renderName()) },
+        description = description?.let { { Text(it) } },
+        action = {
             if (shortcuts.isEmpty()) {
                 Text(stringResource(Lang.settings_player_shortcuts_none))
             } else {
@@ -263,11 +269,13 @@ private fun SettingsScope.ShortcutItem(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     for (shortcut in shortcuts) {
-                        ShortcutKeyCap(shortcut.displayText(isMacOs = LocalPlatform.current is Platform.MacOS))
+                        ShortcutKeyCap(shortcut.displayText(isMacOs))
                     }
                 }
             }
         },
+        onClick = onClick,
+        modifier = Modifier.testTag(PlayerShortcutsTestTags.item(action)),
     )
 }
 
@@ -292,10 +300,6 @@ private fun ShortcutKeyCap(text: String, modifier: Modifier = Modifier) {
     }
 }
 
-private sealed class CaptureHint {
-    data object UnsupportedKey : CaptureHint()
-}
-
 /**
  * 编辑一个操作的快捷键. 点击采集区后按下按键即可添加, 点击已添加的按键将其移除; 「确认」才写入配置.
  *
@@ -308,12 +312,12 @@ private sealed class CaptureHint {
 private fun PlayerShortcutEditDialog(
     action: PlayerShortcutAction,
     config: PlayerShortcutConfig,
+    isMacOs: Boolean,
     onConfirm: (List<PlayerShortcut>) -> Unit,
     onDismissRequest: () -> Unit,
 ) {
-    val isMacOs = LocalPlatform.current is Platform.MacOS
     val pending = remember(action) { mutableStateListOf<PlayerShortcut>().apply { addAll(config.shortcutsFor(action)) } }
-    var hint by remember { mutableStateOf<CaptureHint?>(null) }
+    var showUnsupportedKeyHint by remember { mutableStateOf(false) }
     val defaults = PlayerShortcutConfig.DEFAULT_BINDINGS.getValue(action)
     val conflicts = pending.mapNotNull { shortcut ->
         config.actionFor(shortcut)?.takeIf { it != action }?.let { shortcut to it }
@@ -361,19 +365,19 @@ private fun PlayerShortcutEditDialog(
                 ShortcutCaptureField(
                     isMacOs = isMacOs,
                     onCaptured = { shortcut ->
-                        hint = null
+                        showUnsupportedKeyHint = false
                         if (shortcut !in pending) pending.add(shortcut)
                     },
-                    onUnsupportedKey = { hint = CaptureHint.UnsupportedKey },
+                    onUnsupportedKey = { showUnsupportedKeyHint = true },
                 )
-                val hintText = when (hint) {
-                    CaptureHint.UnsupportedKey -> stringResource(Lang.settings_player_shortcuts_unsupported_key)
-                    null -> null
-                }
-                if (hintText != null || conflicts.isNotEmpty()) {
+                if (showUnsupportedKeyHint || conflicts.isNotEmpty()) {
                     Column(Modifier.testTag(PlayerShortcutsTestTags.HINT)) {
-                        hintText?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        if (showUnsupportedKeyHint) {
+                            Text(
+                                stringResource(Lang.settings_player_shortcuts_unsupported_key),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
                         }
                         for ((shortcut, other) in conflicts) {
                             Text(
@@ -404,7 +408,7 @@ private fun PlayerShortcutEditDialog(
                     onClick = {
                         pending.clear()
                         pending.addAll(defaults)
-                        hint = null
+                        showUnsupportedKeyHint = false
                     },
                     enabled = pending.toList() != defaults,
                     modifier = Modifier.testTag(PlayerShortcutsTestTags.RESET),
@@ -498,10 +502,13 @@ private fun ShortcutCaptureField(
  */
 private fun heldModifiersText(event: KeyEvent, isMacOs: Boolean): String {
     val releasing = event.type == KeyEventType.KeyUp
-    val ctrl = event.isCtrlPressed && !(releasing && (event.key == Key.CtrlLeft || event.key == Key.CtrlRight))
-    val alt = event.isAltPressed && !(releasing && (event.key == Key.AltLeft || event.key == Key.AltRight))
-    val shift = event.isShiftPressed && !(releasing && (event.key == Key.ShiftLeft || event.key == Key.ShiftRight))
-    val meta = event.isMetaPressed && !(releasing && (event.key == Key.MetaLeft || event.key == Key.MetaRight))
+    fun stillHeld(pressed: Boolean, left: Key, right: Key): Boolean =
+        pressed && !(releasing && (event.key == left || event.key == right))
+
+    val ctrl = stillHeld(event.isCtrlPressed, Key.CtrlLeft, Key.CtrlRight)
+    val alt = stillHeld(event.isAltPressed, Key.AltLeft, Key.AltRight)
+    val shift = stillHeld(event.isShiftPressed, Key.ShiftLeft, Key.ShiftRight)
+    val meta = stillHeld(event.isMetaPressed, Key.MetaLeft, Key.MetaRight)
     if (!ctrl && !alt && !shift && !meta) return ""
     return shortcutDisplayText(ctrl, alt, shift, meta, keyLabel = "…", isMacOs = isMacOs)
 }
