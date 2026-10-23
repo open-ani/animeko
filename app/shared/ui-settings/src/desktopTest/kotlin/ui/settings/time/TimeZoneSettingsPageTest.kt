@@ -30,6 +30,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -152,6 +155,53 @@ class TimeZoneSettingsPageTest {
     }
 
     @Test
+    fun `narrow collapsed header puts the clock on the left and the rows on the right`() = runAniComposeUiTest {
+        setContent { ProvideCompositionLocalsForPreview { Host({}, size = DpSize(420.dp, 1600.dp)) } }
+        val expandedHeader = bounds(TimeZoneSettingsTestTags.CLOCK_AREA)
+
+        onNodeWithTag(TimeZoneSettingsTestTags.LIST).performScrollToIndex(1)
+        waitForIdle()
+
+        assertNarrowCollapsed()
+        val clock = bounds(TimeZoneSettingsTestTags.CLOCK)
+        assertTrue(clock.left < 1f, "the collapsed clock should sit at the left edge: $clock")
+        assertTrue(clock.height < expandedHeader.height / 2f, "the collapsed clock should be small: $clock")
+        val collapsedHeader = bounds(TimeZoneSettingsTestTags.CLOCK_AREA)
+        assertTrue(
+            collapsedHeader.height < expandedHeader.height,
+            "the collapsed header should be shorter: $collapsedHeader / $expandedHeader",
+        )
+    }
+
+    @Test
+    fun `narrow header collapses after the list is swiped up`() = runAniComposeUiTest {
+        setContent { ProvideCompositionLocalsForPreview { Host({}, size = DpSize(420.dp, 1600.dp)) } }
+        assertNarrowExpanded()
+
+        onNodeWithTag(TimeZoneSettingsTestTags.LIST).performTouchInput { swipeUp() }
+        waitForIdle()
+
+        assertNarrowCollapsed()
+    }
+
+    @Test
+    fun `narrow header expands only after the list is back at the top and is dragged down`() = runAniComposeUiTest {
+        setContent { ProvideCompositionLocalsForPreview { Host({}, size = DpSize(420.dp, 1600.dp)) } }
+        onNodeWithTag(TimeZoneSettingsTestTags.LIST).performTouchInput { swipeUp() }
+        waitForIdle()
+        assertNarrowCollapsed()
+
+        // 回到顶部本身不恢复, 必须再向下拖拽
+        onNodeWithTag(TimeZoneSettingsTestTags.LIST).performScrollToIndex(0)
+        waitForIdle()
+        assertNarrowCollapsed()
+
+        onNodeWithTag(TimeZoneSettingsTestTags.LIST).performTouchInput { swipeDown() }
+        waitForIdle()
+        assertNarrowExpanded()
+    }
+
+    @Test
     fun `wide layout places the date and time beside the clock`() = runAniComposeUiTest {
         setContent { ProvideCompositionLocalsForPreview { Host({}, size = DpSize(900.dp, 1600.dp)) } }
 
@@ -267,6 +317,37 @@ class TimeZoneSettingsPageTest {
 
     private fun ComposeUiTest.bounds(tag: String): Rect =
         onNodeWithTag(tag, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+
+    /**
+     * 窄屏展开态: 表盘居中, 日期与时间依次排在表盘下方且都水平居中.
+     */
+    private fun ComposeUiTest.assertNarrowExpanded() {
+        val clock = bounds(TimeZoneSettingsTestTags.CLOCK)
+        val date = bounds(TimeZoneSettingsTestTags.CLOCK_DATE)
+        val time = bounds(TimeZoneSettingsTestTags.CLOCK_TIME)
+        assertTrue(date.top >= clock.bottom, "date should be below the clock: $date / $clock")
+        assertTrue(time.top >= date.bottom, "time should be below the date: $time / $date")
+        assertTrue(abs(centerX(clock) - centerX(date)) < 2f, "date should be centered under the clock: $clock / $date")
+        assertTrue(abs(centerX(clock) - centerX(time)) < 2f, "time should be centered under the clock: $clock / $time")
+    }
+
+    /**
+     * 窄屏折叠态: 小表盘在左上, 日期与时间在表盘右侧上下两行, 两行合计占满表盘高度.
+     */
+    private fun ComposeUiTest.assertNarrowCollapsed() {
+        val clock = bounds(TimeZoneSettingsTestTags.CLOCK)
+        val date = bounds(TimeZoneSettingsTestTags.CLOCK_DATE)
+        val time = bounds(TimeZoneSettingsTestTags.CLOCK_TIME)
+        assertTrue(date.left >= clock.right, "date should be right of the clock: $date / $clock")
+        assertTrue(time.left >= clock.right, "time should be right of the clock: $time / $clock")
+        assertTrue(date.bottom <= time.top, "date should not overlap the time: $date / $time")
+        assertTrue(date.top >= clock.top - 1f, "date should start at the clock top: $date / $clock")
+        assertTrue(time.bottom <= clock.bottom + 1f, "time should end at the clock bottom: $time / $clock")
+        assertTrue(
+            abs(date.height + time.height - clock.height) <= 8f,
+            "date and time together should fill the clock height: $date / $time / $clock",
+        )
+    }
 
     /**
      * 宽屏时钟区的两行共用表盘高度: 两行都在表盘高度之内, 且至少留出 [minGap] 的间隔.

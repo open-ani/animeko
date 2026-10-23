@@ -9,7 +9,9 @@
 
 package me.him188.ani.app.ui.settings.time
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -49,11 +52,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
@@ -63,12 +72,19 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.number
 import kotlinx.datetime.offsetAt
 import kotlinx.datetime.toLocalDateTime
@@ -107,6 +123,7 @@ import me.him188.ani.app.ui.settings.framework.rememberTestSettingsState
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.stringResource
 import org.koin.mp.KoinPlatform
+import kotlin.math.roundToInt
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -117,6 +134,7 @@ import kotlin.time.Instant
 object TimeZoneSettingsTestTags {
     const val SEARCH = "time-zone-settings-search"
     const val CURRENT_ZONE = "time-zone-settings-current"
+    const val CLOCK_AREA = "time-zone-settings-clock-area"
     const val CLOCK = "time-zone-settings-clock"
     const val CLOCK_DATE = "time-zone-settings-clock-date"
     const val CLOCK_TIME = "time-zone-settings-clock-time"
@@ -137,6 +155,26 @@ object TimeZoneSettingsTestTags {
 private val ClockLayoutWidthThreshold = 600.dp
 private val ClockSize = 168.dp
 private val ItemHorizontalPadding = 16.dp
+
+/**
+ * 窄屏时钟头部折叠后的表盘尺寸.
+ */
+private val CollapsedClockSize = 72.dp
+
+/**
+ * 列表上滑超过该距离后, 窄屏时钟头部进入折叠态.
+ */
+private val ClockCollapseThreshold = 48.dp
+
+/**
+ * 时钟头部在展开与折叠之间的变形时长.
+ */
+private const val ClockCollapseDurationMillis = 300
+
+/**
+ * 窄屏展开态里表盘与日期、日期与时间之间的间距.
+ */
+private val ClockTextGap = 12.dp
 
 /**
  * 宽屏时钟区右列里日期与时间之间的间距.
@@ -264,6 +302,33 @@ fun TimeZoneSettingsPage(
         }
     }
 
+    // 窄屏时钟头部的两段式折叠: 列表上滑越过阈值即折叠, 回到顶部后继续下拉才恢复.
+    val listState = rememberLazyListState()
+    var clockCollapsed by rememberSaveable { mutableStateOf(false) }
+    val collapseThresholdPx = with(LocalDensity.current) { ClockCollapseThreshold.toPx() }
+    LaunchedEffect(listState, collapseThresholdPx) {
+        snapshotFlow {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > collapseThresholdPx
+        }.filter { it }.collect { clockCollapsed = true }
+    }
+    val clockCollapseScrollConnection = remember(listState) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // 只观察不消费, 列表与顶栏照常处理这次滚动.
+                if (source == NestedScrollSource.UserInput && available.y > 0f && !listState.canScrollBackward) {
+                    clockCollapsed = false
+                }
+                return Offset.Zero
+            }
+        }
+    }
+    // 一旦越过阈值就补间到终点, 不存在停在中间的表盘.
+    val clockCollapsedFraction by animateFloatAsState(
+        targetValue = if (clockCollapsed) 1f else 0f,
+        animationSpec = tween(durationMillis = ClockCollapseDurationMillis, easing = FastOutSlowInEasing),
+        label = "timeZoneClockCollapse",
+    )
+
     Column(modifier.fillMaxSize()) {
         TimeZoneSearchField(
             query = query,
@@ -282,6 +347,7 @@ fun TimeZoneSettingsPage(
         )
         TimeZoneClockArea(
             dateTime = localDateTime,
+            collapsedFraction = clockCollapsedFraction,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 24.dp),
@@ -298,7 +364,9 @@ fun TimeZoneSettingsPage(
             Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                .nestedScroll(clockCollapseScrollConnection)
                 .testTag(TimeZoneSettingsTestTags.LIST),
+            state = listState,
         ) {
             itemsIndexed(rows, key = { _, row -> row.key }) { index, row ->
                 val showDivider = index != rows.lastIndex
@@ -471,13 +539,15 @@ private fun TimeZoneSearchField(
 }
 
 /**
- * 时钟区. 宽度小于 [ClockLayoutWidthThreshold] 时纵向排列 (表盘、日期、时间, 整体居中),
- * 表盘紧接在页面级「当前时区」小字之下; 否则表盘在左, 右侧一列等高排布日期与时间,
- * 两行的行高受表盘高度约束, 因此始终不重叠也不越出表盘.
+ * 时钟区. 宽度小于 [ClockLayoutWidthThreshold] 时, 表盘、日期与时间在展开态里纵向居中排列,
+ * 在折叠态里排成左上角小表盘加右侧上下两行, 两种状态之间由 [collapsedFraction] 连续插值.
+ * 宽度足够时表盘在左, 右侧一列等高排布日期与时间, 两行的行高受表盘高度约束,
+ * 因此始终不重叠也不越出表盘.
  */
 @Composable
 private fun TimeZoneClockArea(
     dateTime: LocalDateTime,
+    collapsedFraction: Float,
     modifier: Modifier = Modifier,
 ) {
     val dateLabel = stringResource(
@@ -488,36 +558,20 @@ private fun TimeZoneClockArea(
     val weekdayLabel = stringResource(Lang.settings_time_zone_clock_weekday, weekdayName(dateTime.dayOfWeek))
     val dateWeekdayLabel = "$dateLabel $weekdayLabel"
     val timeLabel = formatClockTime(dateTime)
-    val dateStyle = MaterialTheme.typography.bodyMedium
-    val timeStyle = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum")
     val secondaryColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    BoxWithConstraints(modifier) {
+    BoxWithConstraints(modifier.testTag(TimeZoneSettingsTestTags.CLOCK_AREA)) {
         if (maxWidth < ClockLayoutWidthThreshold) {
-            Column(
-                Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                AnalogClock(
-                    time = dateTime.time,
-                    size = ClockSize,
-                    modifier = Modifier.testTag(TimeZoneSettingsTestTags.CLOCK),
-                )
-                Text(
-                    text = dateWeekdayLabel,
-                    modifier = Modifier.testTag(TimeZoneSettingsTestTags.CLOCK_DATE),
-                    style = dateStyle,
-                    color = secondaryColor,
-                )
-                Text(
-                    text = timeLabel,
-                    modifier = Modifier.testTag(TimeZoneSettingsTestTags.CLOCK_TIME),
-                    style = timeStyle,
-                    maxLines = 1,
-                )
-            }
+            NarrowClockArea(
+                time = dateTime.time,
+                dateText = dateWeekdayLabel,
+                timeText = timeLabel,
+                secondaryColor = secondaryColor,
+                collapsedFraction = collapsedFraction,
+                availableWidth = maxWidth,
+            )
         } else {
+            val dateStyle = MaterialTheme.typography.bodyMedium
             // 两行共用表盘高度: 日期贴表盘顶边, 时间贴表盘底边. 时间一行的字号由可用高度换算,
             // 因此数字占满日期下方到表盘底边之间的空间; 右列放不下时再按宽度收缩.
             val density = LocalDensity.current
@@ -556,6 +610,86 @@ private fun TimeZoneClockArea(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * 窄屏时钟区. [collapsedFraction] 为 0 时表盘居中、日期与时间依次排在其下; 为 1 时表盘缩到左上角,
+ * 日期与时间变成表盘右侧的上下两行, 两行的行高合计等于表盘高度.
+ *
+ * 三个元素都按插值后的位置摆放, 因此变形过程中表盘与文字不会停在中间状态.
+ */
+@Composable
+private fun NarrowClockArea(
+    time: LocalTime,
+    dateText: String,
+    timeText: String,
+    secondaryColor: Color,
+    collapsedFraction: Float,
+    availableWidth: Dp,
+) {
+    val dateStyle = MaterialTheme.typography.bodyMedium
+    val expandedTimeStyle = MaterialTheme.typography.displaySmall.copy(fontFeatureSettings = "tnum")
+    val dateHeight = with(LocalDensity.current) { dateStyle.lineHeight.toDp() }
+    // 折叠后两行合计占满表盘高度: 时间一行吃掉日期之外的全部空间.
+    val collapsedTimeHeight = (CollapsedClockSize - dateHeight)
+        .coerceAtLeast(CollapsedClockSize * ClockTimeMinHeightFraction)
+    val collapsedTimeStyle = rememberClockTimeStyle(
+        text = timeText,
+        height = collapsedTimeHeight,
+        width = availableWidth - CollapsedClockSize - ClockColumnSpacing,
+    )
+    val timeStyle = expandedTimeStyle.lerpTo(collapsedTimeStyle, collapsedFraction)
+    val clockSize = lerp(ClockSize, CollapsedClockSize, collapsedFraction)
+
+    Layout(
+        content = {
+            AnalogClock(
+                time = time,
+                size = clockSize,
+                modifier = Modifier.testTag(TimeZoneSettingsTestTags.CLOCK),
+            )
+            Text(
+                text = dateText,
+                modifier = Modifier.testTag(TimeZoneSettingsTestTags.CLOCK_DATE),
+                style = dateStyle,
+                color = secondaryColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = timeText,
+                modifier = Modifier.testTag(TimeZoneSettingsTestTags.CLOCK_TIME),
+                style = timeStyle,
+                maxLines = 1,
+            )
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) { measurables, constraints ->
+        val width = constraints.maxWidth
+        val clock = measurables[0].measure(Constraints())
+        val date = measurables[1].measure(Constraints(maxWidth = width))
+        val time = measurables[2].measure(Constraints(maxWidth = width))
+
+        val fraction = collapsedFraction.coerceIn(0f, 1f)
+        // 抬升晚于收缩: 日期与时间先跟着表盘底边留在下方, 等表盘缩小、右列让出横向空间后再上移,
+        // 变形过程中文字不会从表盘上滑过.
+        val lift = fraction * fraction
+        val textGap = ClockTextGap.toPx()
+        val clockBottom = clock.height.toFloat()
+        val clockLeft = ((width - ClockSize.toPx()) / 2f) * (1f - fraction)
+        val columnLeft = clockLeft + clock.width + ClockColumnSpacing.toPx()
+        val dateTop = lerp(clockBottom + textGap, 0f, lift)
+        val timeTop = lerp(dateTop + date.height + textGap, clockBottom - time.height, lift)
+        val dateLeft = lerp((width - date.width) / 2f, columnLeft, fraction)
+        val timeLeft = lerp((width - time.width) / 2f, columnLeft, fraction)
+        val height = maxOf(clockBottom, dateTop + date.height, timeTop + time.height).roundToInt()
+
+        layout(width, height) {
+            clock.place(clockLeft.roundToInt(), 0)
+            date.place(dateLeft.roundToInt(), dateTop.roundToInt())
+            time.place(timeLeft.roundToInt(), timeTop.roundToInt())
         }
     }
 }
@@ -613,6 +747,23 @@ private fun rememberClockTimeStyle(
         style.copy(fontSize = referenceSize * scale, lineHeight = referenceSize * scale)
     }
 }
+
+/**
+ * 在 [this] 与 [target] 之间按 [fraction] 插值字号与行高, 其余样式沿用 [this].
+ *
+ * 两个样式的字号都是同一密度下的 sp, 单位一致, 因此可以直接按数值插值.
+ */
+private fun TextStyle.lerpTo(target: TextStyle, fraction: Float): TextStyle {
+    if (fraction <= 0f) return this
+    if (fraction >= 1f) return target
+    return copy(
+        fontSize = lerpTextUnit(fontSize, target.fontSize, fraction),
+        lineHeight = lerpTextUnit(lineHeight, target.lineHeight, fraction),
+    )
+}
+
+private fun lerpTextUnit(start: TextUnit, stop: TextUnit, fraction: Float): TextUnit =
+    (start.value + (stop.value - start.value) * fraction).sp
 
 /**
  * 整块填充的定位框. 无描边; 平台不支持定位时置灰且不可点.
