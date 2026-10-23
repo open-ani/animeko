@@ -26,6 +26,20 @@ import kotlin.test.assertNull
 class SelectVideoFileAnitorrentEntryTest {
     private val json = Json { ignoreUnknownKeys = true }
 
+    // 合集种子里的 scene 命名: 没有空格和括号, 集数只出现在 S02E02 里
+    private val sceneSeasonPack = listOf(
+        "Cyberpunk.Edgerunners.S02E01.Last.Chance.for.a.Slow.Dance.1080p.NF.WEB-DL.DUAL.DDP5.1.H.264-VARYG.mkv",
+        "Cyberpunk.Edgerunners.S02E02.Give.Me.Another.Day.1080p.NF.WEB-DL.DUAL.DDP5.1.H.264-VARYG.mkv",
+        "Cyberpunk.Edgerunners.S02E03.021.1080p.NF.WEB-DL.DUAL.DDP5.1.H.264-VARYG.mkv",
+        "Cyberpunk.Edgerunners.S02E04.Someone.That.I.Used.To.Know.1080p.NF.WEB-DL.DUAL.DDP5.1.H.264-VARYG.mkv",
+        "Cyberpunk.Edgerunners.S02E05.Fades.Pass.the.Distance.1080p.NF.WEB-DL.DUAL.DDP5.1.H.264-VARYG.mkv",
+        "Cyberpunk.Edgerunners.S02E06.Everything.Hate.1080p.NF.WEB-DL.DUAL.DDP5.1.H.264-VARYG.mkv",
+        "Cyberpunk.Edgerunners.S02E07.To.the.Depths.With.You.1080p.NF.WEB-DL.DUAL.DDP5.1.H.264-VARYG.mkv",
+        "Cyberpunk.Edgerunners.S02E08.Serce.1080p.NF.WEB-DL.DUAL.DDP5.1.H.264-VARYG.mkv",
+        "Cyberpunk.Edgerunners.S02E09.Strictly.Reserved.For.You.1080p.NF.WEB-DL.DUAL.DDP5.1.H.264-VARYG.mkv",
+        "Cyberpunk.Edgerunners.S02E10.Then.Everyone.Went.Home.1080p.NF.WEB-DL.DUAL.DDP5.1.H.264-VARYG.mkv",
+    ).map { "Cyberpunk.Edgerunners.S02.1080p.NF.WEB-DL.DUAL.DDP5.1.H.264-VARYG$SystemPathSeparator$it" }
+
     @Test
     fun `can select single`() {
         val selected = TorrentMediaResolver.selectVideoFileEntry(
@@ -422,4 +436,40 @@ class SelectVideoFileAnitorrentEntryTest {
         )
         assertEquals("[Sub] Season Pack - 04 [1080p].mkv", selected)
     }
+
+    @TestFactory
+    fun `scene named season pack selects the file of each episode`() = runDynamicTests(
+        (1..10).map { episode ->
+            dynamicTest("episode $episode") {
+                val selected = TorrentMediaResolver.selectVideoFileEntry(
+                    sceneSeasonPack,
+                    { this },
+                    episodeTitles = listOf(""),
+                    episodeSort = EpisodeSort(episode),
+                    episodeEp = EpisodeSort(episode),
+                )
+                assertEquals(sceneSeasonPack[episode - 1], selected)
+            }
+        },
+    )
+
+    @TestFactory
+    fun `fallback number match ignores 1080p and the season tag`() = runDynamicTests(
+        listOf(
+            EpisodeSort(2) to "Show.S02.Clip.02.1080p.mkv",
+            EpisodeSort(8) to "Show.S02.Clip.08.1080p.mkv",
+            EpisodeSort(10) to "Show.S02.Clip.10.1080p.mkv",
+        ).map { (sort, expected) ->
+            dynamicTest(sort.toString()) {
+                val selected = TorrentMediaResolver.selectVideoFileEntry(
+                    listOf("Show.S02.Intro.1080p.mkv", expected),
+                    { this },
+                    episodeTitles = listOf(""),
+                    episodeSort = sort,
+                    episodeEp = null,
+                )
+                assertEquals(expected, selected)
+            }
+        },
+    )
 }
