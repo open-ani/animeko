@@ -59,12 +59,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
@@ -139,9 +139,24 @@ private val ClockSize = 168.dp
 private val ItemHorizontalPadding = 16.dp
 
 /**
- * 宽屏时钟区里时间一行的行高上限, 相对表盘高度. 上限之内两行之间始终留出间隔.
+ * 宽屏时钟区右列里日期与时间之间的间距.
  */
-private const val ClockTimeMaxHeightFraction = 0.45f
+private val ClockTimeGap = 8.dp
+
+/**
+ * 宽屏时钟区右列里表盘与文字之间的间距.
+ */
+private val ClockColumnSpacing = 32.dp
+
+/**
+ * 宽屏时钟区右列时间的可用高度下限, 相对表盘高度. 极端文字缩放下仍保证数字可见.
+ */
+private const val ClockTimeMinHeightFraction = 0.4f
+
+/**
+ * 宽屏右列时间字号的收缩余量, 避免亚像素误差让行盒比可用高度多出一点.
+ */
+private const val ClockTimeSafetyScale = 0.995f
 
 /**
  * 折叠的分组在重组与配置变更后保持状态; 不写入设置, 重启页面即恢复全部分组展开.
@@ -503,21 +518,24 @@ private fun TimeZoneClockArea(
                 )
             }
         } else {
-            // 两行共用表盘高度: 日期贴表盘顶边, 时间贴表盘底边. 时间行高同时受表盘高度比例与
-            // 「表盘高度 - 日期行高」约束, 文字放大时两行因此不会互相挤压, 也不会溢出表盘高度.
+            // 两行共用表盘高度: 日期贴表盘顶边, 时间贴表盘底边. 时间一行的字号由可用高度换算,
+            // 因此数字占满日期下方到表盘底边之间的空间; 右列放不下时再按宽度收缩.
             val density = LocalDensity.current
-            val timeMaxLineHeight = minOf(
-                ClockSize * ClockTimeMaxHeightFraction,
-                ClockSize - with(density) { dateStyle.lineHeight.toDp() },
+            val dateHeight = with(density) { dateStyle.lineHeight.toDp() }
+            val timeHeight = (ClockSize - dateHeight - ClockTimeGap)
+                .coerceAtLeast(ClockSize * ClockTimeMinHeightFraction)
+            val wideTimeStyle = rememberClockTimeStyle(
+                text = timeLabel,
+                height = timeHeight,
+                width = maxWidth - ClockSize - ClockColumnSpacing,
             )
-            val wideTimeStyle = timeStyle.limitLineHeight(timeMaxLineHeight, density)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 AnalogClock(
                     time = dateTime.time,
                     size = ClockSize,
                     modifier = Modifier.testTag(TimeZoneSettingsTestTags.CLOCK),
                 )
-                Spacer(Modifier.width(32.dp))
+                Spacer(Modifier.width(ClockColumnSpacing))
                 Column(
                     Modifier.height(ClockSize).weight(1f),
                     verticalArrangement = Arrangement.SpaceBetween,
@@ -562,16 +580,38 @@ private fun formatClockTime(dateTime: LocalDateTime): String = buildString(8) {
 }
 
 /**
- * 把行高限制在 [maxLineHeight] 之内, 字号按同一比例缩小, 使一行文字既不超出给定高度, 也不被裁切.
+ * 宽屏右列时间一行的样式: 字号按 [height] 定, 使一整行（含字体自身的上下留白）正好占满 [height];
+ * [width] 放不下这一行时再按同一比例缩小, 保证不横向溢出, 也不换行.
+ *
+ * 行盒高度与文字宽度都与字号成正比, 因此先按参考字号量一次, 再按比例换算即可一步到位.
  */
-private fun TextStyle.limitLineHeight(maxLineHeight: Dp, density: Density): TextStyle {
-    if (!lineHeight.isSp || !fontSize.isSp) return this
-    val maxLineHeightSp = with(density) { maxLineHeight.toSp() }.value.coerceAtLeast(0f)
-    if (lineHeight.value <= maxLineHeightSp) return this
-    return copy(
-        fontSize = fontSize * (maxLineHeightSp / lineHeight.value),
-        lineHeight = maxLineHeightSp.sp,
-    )
+@Composable
+private fun rememberClockTimeStyle(
+    text: String,
+    height: Dp,
+    width: Dp,
+): TextStyle {
+    val density = LocalDensity.current
+    val textMeasurer = rememberTextMeasurer()
+    val baseStyle = MaterialTheme.typography.displaySmall
+    return remember(text, height, width, baseStyle, density, textMeasurer) {
+        val referenceSize = with(density) { height.toSp() }
+        val style = baseStyle.copy(
+            fontSize = referenceSize,
+            lineHeight = referenceSize,
+            fontFeatureSettings = "tnum",
+            lineHeightStyle = LineHeightStyle(
+                alignment = LineHeightStyle.Alignment.Center,
+                trim = LineHeightStyle.Trim.None,
+            ),
+        )
+        val measured = textMeasurer.measure(text, style).size
+        val heightScale = if (measured.height == 0) 1f else with(density) { height.toPx() } / measured.height
+        val widthScale = if (measured.width == 0) 1f else with(density) { width.toPx() } / measured.width
+        // 留一点余量: 行盒若比可用高度多出不足一像素, 列布局会把它压扁并吃掉间距
+        val scale = minOf(heightScale, widthScale) * ClockTimeSafetyScale
+        style.copy(fontSize = referenceSize * scale, lineHeight = referenceSize * scale)
+    }
 }
 
 /**

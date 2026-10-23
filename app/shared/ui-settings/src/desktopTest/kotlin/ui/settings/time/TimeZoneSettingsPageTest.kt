@@ -11,7 +11,7 @@ package me.him188.ani.app.ui.settings.time
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -182,6 +182,28 @@ class TimeZoneSettingsPageTest {
     }
 
     @Test
+    fun `wide layout time fills the right column at 150 percent display scale`() = runAniComposeUiTest {
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                Host({}, size = DpSize(900.dp, 1600.dp), density = 1.5f)
+            }
+        }
+
+        assertClockTimeFillsRightColumn()
+    }
+
+    @Test
+    fun `wide layout time fills the right column at enlarged text scale`() = runAniComposeUiTest {
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                Host({}, size = DpSize(900.dp, 1600.dp), density = 1.5f, fontScale = 1.5f)
+            }
+        }
+
+        assertClockTimeFillsRightColumn()
+    }
+
+    @Test
     fun `collapsing a region hides its entries until the header is clicked again`() = runAniComposeUiTest {
         setContent { ProvideCompositionLocalsForPreview { Host({}) } }
         val region = catalog.first().region
@@ -258,6 +280,24 @@ class TimeZoneSettingsPageTest {
         assertTrue(time.top - date.bottom >= minGap, "date and time should not crowd each other: $date / $time")
     }
 
+    /**
+     * 宽屏右列的时间占满日期下方到表盘底边之间的空间: 高度接近表盘高度, 不重叠, 不越界, 不横向溢出.
+     */
+    private fun ComposeUiTest.assertClockTimeFillsRightColumn() {
+        val clock = bounds(TimeZoneSettingsTestTags.CLOCK)
+        val date = bounds(TimeZoneSettingsTestTags.CLOCK_DATE)
+        val time = bounds(TimeZoneSettingsTestTags.CLOCK_TIME)
+        val content = bounds(TimeZoneSettingsTestTags.LIST)
+        assertTrue(date.bottom <= time.top, "date should not overlap the time: $date / $time")
+        assertTrue(time.bottom <= clock.bottom, "time should stay inside the clock height: $time / $clock")
+        assertTrue(time.left >= clock.right, "time should stay right of the clock: $time / $clock")
+        assertTrue(time.right <= content.right, "time should stay inside the right column: $time / $content")
+        assertTrue(
+            time.height >= clock.height * 0.7f,
+            "time should fill most of the clock height: $time / $clock",
+        )
+    }
+
     private fun centerX(bounds: Rect): Float = (bounds.left + bounds.right) / 2f
 
     /**
@@ -267,6 +307,7 @@ class TimeZoneSettingsPageTest {
     private fun Host(
         onState: (SettingsState<UISettings>) -> Unit,
         size: DpSize = DpSize(420.dp, 1600.dp),
+        density: Float = 1f,
         fontScale: Float = 1f,
     ) {
         val state = rememberTestSettingsState(UISettings.Default)
@@ -276,12 +317,11 @@ class TimeZoneSettingsPageTest {
         val timeZone = remember(uiSettings.timeZoneId, currentSystemZone) {
             uiSettings.timeZoneId.toTimeZoneOrNull() ?: currentSystemZone
         }
-        Box(Modifier.size(size)) {
-            val density = LocalDensity.current
-            CompositionLocalProvider(
-                LocalTimeZone provides timeZone,
-                LocalDensity provides Density(density.density, fontScale),
-            ) {
+        CompositionLocalProvider(
+            LocalTimeZone provides timeZone,
+            LocalDensity provides Density(density, fontScale),
+        ) {
+            Box(Modifier.requiredSize(size)) {
                 TimeZoneSettingsPage(
                     state = state,
                     modifier = Modifier.fillMaxSize(),
