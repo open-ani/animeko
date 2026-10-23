@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +53,7 @@ import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.getIcon
 import me.him188.ani.app.navigation.getText
 import me.him188.ani.app.platform.currentAniBuildConfig
+import me.him188.ani.app.platform.currentSystemTimeZone
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.SteppedSlider
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
@@ -78,8 +80,10 @@ import me.him188.ani.app.ui.lang.settings_app_nsfw_display
 import me.him188.ani.app.ui.lang.settings_app_nsfw_hide
 import me.him188.ani.app.ui.lang.settings_app_search
 import me.him188.ani.app.ui.lang.settings_app_subject_title
+import me.him188.ani.app.ui.lang.settings_app_time_zone
 import me.him188.ani.app.ui.lang.settings_app_use_original_title
 import me.him188.ani.app.ui.lang.settings_app_use_original_title_description
+import me.him188.ani.app.ui.lang.settings_time_zone_follow_system
 import me.him188.ani.app.ui.lang.settings_player
 import me.him188.ani.app.ui.lang.settings_player_audio_time_stretch
 import me.him188.ani.app.ui.lang.settings_player_audio_time_stretch_description
@@ -206,11 +210,12 @@ fun AppSettingsTab(
     danmakuFilterConfig: SettingsState<DanmakuFilterConfig>,
     danmakuRegexFilterState: DanmakuRegexFilterState,
     showDebug: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigateToTimeZone: () -> Unit = {},
 ) {
     SettingsTab(modifier) {
         SoftwareUpdateGroup(softwareUpdateGroupState)
-        AppearanceGroup(uiSettings)
+        AppearanceGroup(uiSettings, onNavigateToTimeZone)
         ThemeGroup(themeSettings)
         PlayerGroup(
             videoScaffoldConfig,
@@ -240,10 +245,21 @@ fun SettingsScope.WatchTogetherGroup(state: SettingsState<WatchTogetherSettings>
 @Composable
 fun SettingsScope.AppearanceGroup(
     state: SettingsState<UISettings>,
+    onNavigateToTimeZone: () -> Unit,
 ) {
     val uiSettings by state
 
     LanguageSettingsPlatform(state)
+
+    val systemTimeZone = remember { currentSystemTimeZone() }
+    TextItem(
+        onClick = onNavigateToTimeZone,
+        icon = { Icon(Icons.Outlined.Schedule, contentDescription = null) },
+        title = { Text(stringResource(Lang.settings_app_time_zone)) },
+        description = {
+            Text(uiSettings.timeZoneId ?: stringResource(Lang.settings_time_zone_follow_system, systemTimeZone.id))
+        },
+    )
 
     DropdownItem(
         selected = { uiSettings.mainSceneInitialPage },

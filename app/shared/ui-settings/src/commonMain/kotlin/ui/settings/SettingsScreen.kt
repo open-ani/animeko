@@ -129,6 +129,7 @@ import me.him188.ani.app.ui.lang.settings_about_build_info
 import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_title
 import me.him188.ani.app.ui.lang.settings_account_github_title
+import me.him188.ani.app.ui.lang.settings_app_time_zone
 import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
 import me.him188.ani.app.ui.lang.settings_category_app_ui
 import me.him188.ani.app.ui.lang.settings_category_data_playback
@@ -184,6 +185,7 @@ import me.him188.ani.app.ui.settings.tabs.media.source.rememberMediaSourceSelect
 import me.him188.ani.app.ui.settings.tabs.network.ConfigureProxyGroup
 import me.him188.ani.app.ui.settings.tabs.network.ServerSelectionGroup
 import me.him188.ani.app.ui.settings.tabs.theme.ThemeGroup
+import me.him188.ani.app.ui.settings.time.TimeZoneSettingsPage
 import me.him188.ani.app.ui.update.devbuild.DevBuildsTab
 import me.him188.ani.utils.platform.hasScrollingBug
 import org.jetbrains.compose.resources.getString
@@ -376,7 +378,10 @@ fun SettingsScreen(
                                 onNavigateToQrLogin = onNavigateToQrLogin,
                             )
 
-                            SettingsTab.APPEARANCE -> AppearanceGroup(vm.uiSettings)
+                            SettingsTab.APPEARANCE -> AppearanceGroup(
+                                vm.uiSettings,
+                                onNavigateToTimeZone = { navigateTo(DetailPaneRoutes.TimeZone) },
+                            )
                             SettingsTab.THEME -> ThemeGroup(vm.themeSettings)
                             SettingsTab.UPDATE -> SoftwareUpdateGroup(vm.softwareUpdateGroupState)
                             SettingsTab.PLAYER -> {
@@ -465,6 +470,9 @@ fun SettingsScreen(
                 vm.editMediaSourceState,
             )
         },
+        timeZonePageContent = {
+            TimeZoneSettingsPage(vm.uiSettings)
+        },
         subscriptionPageContent = { subscriptionId ->
             MediaSourceSubscriptionPageContent(
                 subscriptionId,
@@ -496,6 +504,8 @@ internal fun SettingsPageLayout(
     subscriptionPageTitle: @Composable (subscriptionId: String) -> String = { "" },
     subscriptionPageActions: @Composable (subscriptionId: String) -> Unit = {},
     subscriptionPageContent: @Composable SettingsDetailPaneScope.(subscriptionId: String) -> Unit = {},
+    // [DetailPaneRoutes.TimeZone] 页面. 由调用方提供, 因为它依赖设置页的状态.
+    timeZonePageContent: @Composable SettingsDetailPaneScope.() -> Unit = {},
     modifier: Modifier = Modifier,
     contentWindowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
@@ -958,6 +968,28 @@ internal fun SettingsPageLayout(
                             }
                         }
                     }
+                    entry<DetailPaneRoutes.TimeZone> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings_app_time_zone)) },
+                                    navigationIcon = {
+                                        BackNavigationIconButton(navigateUp)
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            // 页面自带 LazyColumn, 不能套在 verticalScroll 里
+                            RouteContent(scrollable = false) {
+                                timeZonePageContent()
+                            }
+                        }
+                    }
                     },
                 )
             }
@@ -1093,6 +1125,9 @@ sealed class DetailPaneRoutes : NavKey {
     data object DevBuilds : DetailPaneRoutes()
 
     @Serializable
+    data object TimeZone : DetailPaneRoutes()
+
+    @Serializable
     data class MediaSourceSubscription(val subscriptionId: String) : DetailPaneRoutes()
 }
 
@@ -1126,6 +1161,7 @@ private val DetailPaneBackStackSaver: Saver<SnapshotStateList<DetailPaneRoutes>,
                     "BangumiSync" -> DetailPaneRoutes.BangumiSync
                     "GithubAccount" -> DetailPaneRoutes.GithubAccount
                     "DevBuilds" -> DetailPaneRoutes.DevBuilds
+                    "TimeZone" -> DetailPaneRoutes.TimeZone
                     else -> DetailPaneRoutes.Main
                 }
             }.toMutableStateList()
