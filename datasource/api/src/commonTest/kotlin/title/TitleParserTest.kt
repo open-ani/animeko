@@ -113,4 +113,30 @@ class TitleParserTest : PatternBasedTitleParserTestSuite() {
         assertEquals("", r.subtitleLanguages.sortedBy { it.id }.joinToString { it.id })
         assertEquals("1080P", r.resolution.toString())
     }
+
+    @Test
+    fun `scene name with S02E02 inside a dot separated word`() {
+        val r = parse("Cyberpunk.Edgerunners.S02E02.Give.Me.Another.Day.1080p.NF.WEB-DL.DUAL.DDP5.1.H.264-VARYG")
+        assertEquals("02..02", r.episodeRange.toString())
+        assertEquals("1080P", r.resolution.toString())
+    }
+
+    @Test
+    fun `scene name with x264 tag still parses the episode`() {
+        val r = parse("Show.Name.S01E03.1080p.WEB-DL.x264-GROUP")
+        assertEquals("03..03", r.episodeRange.toString())
+    }
+
+    @Test
+    fun `scene name with lowercase s01e04v2`() {
+        val r = parse("show.name.s01e04v2.720p.web.h264-group")
+        assertEquals("04..04", r.episodeRange.toString())
+    }
+
+    @Test
+    fun `S02E01 tilde 10 is a range rather than episode 01`() {
+        val r = parse("电驭叛客：边缘行者 2「サイバーパンク：エッジランナーズ２」Cyberpunk Edgerunners S02E01~10 1080p 日英双语-多国字幕")
+        assertEquals("01..10", r.episodeRange.toString())
+        assertEquals("1080P", r.resolution.toString())
+    }
 }
