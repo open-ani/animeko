@@ -10,6 +10,8 @@
 package me.him188.ani.app.ui.settings.tabs.app
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -19,10 +21,15 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.requestFocus
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import me.him188.ani.app.data.models.preference.PlayerShortcut
 import me.him188.ani.app.data.models.preference.PlayerShortcutAction
 import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.navigation.LocalOnBackPressedDispatcherOwner
+import me.him188.ani.app.ui.foundation.navigation.OnBackPressedDispatcher
+import me.him188.ani.app.ui.foundation.navigation.OnBackPressedDispatcherOwner
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.settings.framework.SettingsState
@@ -33,17 +40,32 @@ import kotlin.test.assertEquals
 
 @OptIn(TestOnly::class)
 class PlayerShortcutsTabTest {
+    /** 系统返回 (桌面端为没有节点消费的 Escape) 经它分发; 没有启用的处理器时计入 [hostBackPresses], 相当于退出页面. */
+    private lateinit var backDispatcher: OnBackPressedDispatcher
+    private var hostBackPresses = 0
+
     private fun runTabTest(
         initial: PlayerShortcutConfig = PlayerShortcutConfig.Default,
         block: AniComposeUiTest.(state: () -> SettingsState<PlayerShortcutConfig>) -> Unit,
     ) = runAniComposeUiTest {
         lateinit var state: SettingsState<PlayerShortcutConfig>
+        hostBackPresses = 0
+        backDispatcher = OnBackPressedDispatcher(fallbackOnBackPressed = { hostBackPresses++ })
         setContent {
             ProvideCompositionLocalsForPreview {
                 state = rememberTestSettingsState(initial)
-                Column {
-                    PlayerShortcutsResetAction(state)
-                    PlayerShortcutsTab(state)
+                val lifecycleOwner = LocalLifecycleOwner.current
+                val backOwner = remember {
+                    object : OnBackPressedDispatcherOwner {
+                        override val onBackPressedDispatcher: OnBackPressedDispatcher get() = backDispatcher
+                        override val lifecycle: Lifecycle get() = lifecycleOwner.lifecycle
+                    }
+                }
+                CompositionLocalProvider(LocalOnBackPressedDispatcherOwner provides backOwner) {
+                    Column {
+                        PlayerShortcutsResetAction(state)
+                        PlayerShortcutsTab(state)
+                    }
                 }
             }
         }
@@ -114,6 +136,21 @@ class PlayerShortcutsTabTest {
     }
 
     @Test
+    fun `navigation keys are not captured and show no hint`() = runTabTest { state ->
+        openEditor(PlayerShortcutAction.TOGGLE_FULLSCREEN)
+
+        onNodeWithTag(PlayerShortcutsTestTags.CAPTURE).requestFocus()
+        onNodeWithTag(PlayerShortcutsTestTags.CAPTURE).performKeyInput {
+            pressKey(Key.Back)
+            pressKey(Key.Escape)
+            pressKey(Key.Tab)
+        }
+        waitForIdle()
+        onNodeWithTag(PlayerShortcutsTestTags.HINT).assertDoesNotExist()
+        assertEquals(PlayerShortcutConfig.Default, state().value)
+    }
+
+    @Test
     fun `cancel discards pending changes`() = runTabTest { state ->
         openEditor(PlayerShortcutAction.TOGGLE_FULLSCREEN)
 
@@ -124,6 +161,41 @@ class PlayerShortcutsTabTest {
         waitForIdle()
 
         assertEquals(PlayerShortcutConfig.Default, state().value)
+    }
+
+    @Test
+    fun `back closes the editor without saving and without leaving the page`() = runTabTest { state ->
+        openEditor(PlayerShortcutAction.TOGGLE_FULLSCREEN)
+
+        onNodeWithTag(PlayerShortcutsTestTags.CAPTURE).requestFocus()
+        onNodeWithTag(PlayerShortcutsTestTags.CAPTURE).performKeyInput { pressKey(Key.K) }
+        waitForIdle()
+        runOnIdle { backDispatcher.onBackPressed() }
+        waitForIdle()
+
+        onNodeWithTag(PlayerShortcutsTestTags.CAPTURE).assertDoesNotExist()
+        assertEquals(PlayerShortcutConfig.Default, state().value)
+        assertEquals(0, hostBackPresses)
+
+        // without a dialog, back goes to the host as usual
+        runOnIdle { backDispatcher.onBackPressed() }
+        runOnIdle { assertEquals(1, hostBackPresses) }
+    }
+
+    @Test
+    fun `back closes the reset all confirmation without leaving the page`() = runTabTest(
+        initial = PlayerShortcutConfig.Default.withShortcuts(PlayerShortcutAction.TOGGLE_FULLSCREEN, listOf(PlayerShortcut("K"))),
+    ) { state ->
+        onNodeWithTag(PlayerShortcutsTestTags.RESET_ALL).performClick()
+        waitForIdle()
+        onNodeWithTag(PlayerShortcutsTestTags.RESET_ALL_CONFIRM).assertIsDisplayed()
+
+        runOnIdle { backDispatcher.onBackPressed() }
+        waitForIdle()
+
+        onNodeWithTag(PlayerShortcutsTestTags.RESET_ALL_CONFIRM).assertDoesNotExist()
+        assertEquals(0, hostBackPresses)
+        assertEquals(listOf(PlayerShortcut("K")), state().value.shortcutsFor(PlayerShortcutAction.TOGGLE_FULLSCREEN))
     }
 
     @Test

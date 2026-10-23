@@ -177,6 +177,29 @@ class PlayerKeyboardShortcutsTest {
     }
 
     @Test
+    fun `releasing the modifier before the key still completes the shortcut`() = runShortcutTest { fixture ->
+        runOnIdle {
+            fixture.config.value = PlayerShortcutConfig.Default
+                .withShortcuts(PlayerShortcutAction.SEEK_FORWARD, listOf(PlayerShortcut("DirectionRight", ctrl = true)))
+                .withShortcuts(PlayerShortcutAction.TOGGLE_FULLSCREEN, listOf(PlayerShortcut("F", ctrl = true)))
+        }
+        waitForIdle()
+        mainClock.autoAdvance = false
+        val target = onNodeWithTag("target")
+        // hold Ctrl+Right into fast skip, then let go of Ctrl before the arrow
+        assertTrue(target.performKeyPress(KeyEvent(Key.DirectionRight, KeyEventType.KeyDown, isCtrlPressed = true)))
+        mainClock.advanceTimeBy(300)
+        assertEquals(1, fixture.skipStarts)
+        assertTrue(target.performKeyPress(KeyEvent(Key.DirectionRight, KeyEventType.KeyUp)))
+        assertEquals(1, fixture.skipStops)
+        assertTrue(fixture.seeks.isEmpty())
+        // a toggle bound to Ctrl+F fires although Ctrl is already up when F is released
+        assertTrue(target.performKeyPress(KeyEvent(Key.F, KeyEventType.KeyDown, isCtrlPressed = true)))
+        assertTrue(target.performKeyPress(KeyEvent(Key.F, KeyEventType.KeyUp)))
+        assertEquals(1, fixture.fullscreenToggles)
+    }
+
+    @Test
     fun `shift on volume keys requests fine adjustment`() = runShortcutTest { fixture ->
         onNodeWithTag("target").performKeyInput {
             keyDown(Key.ShiftLeft)

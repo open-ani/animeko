@@ -171,6 +171,13 @@ internal fun rememberPlayerKeyboardShortcuts(
     return handler
 }
 
+/**
+ * KeyDown 解析到的操作记在 [held] 里, KeyUp 直接沿用它而不看松开时的修饰键:
+ * Ctrl+→ 快进中先松 Ctrl 再松 →, 松开事件仍属于「前进」并结束快进.
+ *
+ * 按住期间重复的 KeyDown 仍按当时的修饰键重新解析. 解析结果和记录的不同 (修饰键变了), 原操作就直接结束,
+ * 不触发它松开时的动作; 之后这个按键属于新解析到的操作, 或者 (没有命中时) 交还给作用域处理.
+ */
 private class PlayerShortcutHandler(
     private val scope: CoroutineScope,
     private val layoutDirection: LayoutDirection,
@@ -178,14 +185,23 @@ private class PlayerShortcutHandler(
     private val fastSkipState: FastSkipState?,
     private val callbacks: () -> PlayerShortcutCallbacks,
 ) : PlayerKeyboardHandler {
+    private val held = mutableMapOf<Key, ResolvedPlayerShortcut>()
     private var forwardPressed = false
     private var forwardJob: Job? = null
     private var fastSkipTicket: Int? = null
 
     override fun invoke(event: KeyEvent): Boolean {
-        val resolved = resolver.resolve(event, layoutDirection) ?: return false
         val callbacks = callbacks()
-        if (!callbacks.isAvailable(resolved.action)) return false
+        val resolved = when (event.type) {
+            KeyEventType.KeyDown -> {
+                val resolved = resolver.resolve(event, layoutDirection)?.takeIf { callbacks.isAvailable(it.action) }
+                held.remove(event.key)?.takeIf { it.action != resolved?.action }?.let { endHold(it) }
+                resolved?.also { held[event.key] = it }
+            }
+
+            KeyEventType.KeyUp -> held.remove(event.key)
+            else -> null
+        } ?: return false
 
         return when (resolved.action) {
             PlayerShortcutAction.SEEK_FORWARD -> {
@@ -232,6 +248,13 @@ private class PlayerShortcutHandler(
         }
     }
 
+    /**
+     * 按键还没松开, 但它已经不再属于 [previous]: 结束该操作按住期间的效果, 不触发松开时的动作.
+     */
+    private fun endHold(previous: ResolvedPlayerShortcut) {
+        if (previous.action == PlayerShortcutAction.SEEK_FORWARD) cancelForward()
+    }
+
     private fun cancelForward() {
         forwardJob?.cancel()
         forwardJob = null
@@ -241,6 +264,7 @@ private class PlayerShortcutHandler(
     }
 
     override fun cancel() {
+        held.clear()
         cancelForward()
     }
 

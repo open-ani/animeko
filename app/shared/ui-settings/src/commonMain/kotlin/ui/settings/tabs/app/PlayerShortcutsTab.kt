@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.settings.tabs.app
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,6 +69,7 @@ import me.him188.ani.app.ui.foundation.input.PlayerShortcutKeys
 import me.him188.ani.app.ui.foundation.input.displayText
 import me.him188.ani.app.ui.foundation.input.shortcutDisplayText
 import me.him188.ani.app.ui.foundation.input.toPlayerShortcut
+import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_player_shortcut_seek_backward
 import me.him188.ani.app.ui.lang.settings_player_shortcut_seek_forward
@@ -197,7 +199,7 @@ fun PlayerShortcutsTab(
 }
 
 /**
- * 页面顶栏的「恢复全部默认」按钮, 没有任何自定义时禁用. 点击后需要确认.
+ * 页面顶栏的「恢复全部默认」按钮, 没有任何自定义时禁用. 点击后需要确认; 确认框注册 [BackHandler], 返回 / Escape 只关闭它.
  */
 @Composable
 fun PlayerShortcutsResetAction(state: SettingsState<PlayerShortcutConfig>) {
@@ -211,6 +213,7 @@ fun PlayerShortcutsResetAction(state: SettingsState<PlayerShortcutConfig>) {
         Icon(Icons.Rounded.RestartAlt, contentDescription = stringResource(Lang.settings_player_shortcuts_reset_all))
     }
     if (showConfirm) {
+        BackHandler { showConfirm = false }
         AlertDialog(
             onDismissRequest = { showConfirm = false },
             icon = { Icon(Icons.Rounded.RestartAlt, contentDescription = null) },
@@ -297,6 +300,8 @@ private sealed class CaptureHint {
  * 编辑一个操作的快捷键. 点击采集区后按下按键即可添加, 点击已添加的按键将其移除; 「确认」才写入配置.
  *
  * 添加的组合若正被其他操作使用, 会提示冲突; 确认后该组合改为属于本操作 (由 [PlayerShortcutConfig.withShortcuts] 处理).
+ *
+ * 对话框注册应用的 [BackHandler]: 桌面端没有节点消费的 Escape 会经应用的返回分发器到这里, 只关闭对话框, 不会退出设置页.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -314,6 +319,7 @@ private fun PlayerShortcutEditDialog(
         config.actionFor(shortcut)?.takeIf { it != action }?.let { shortcut to it }
     }
 
+    BackHandler(onBack = onDismissRequest)
     AlertDialog(
         onDismissRequest = onDismissRequest,
         icon = { Icon(Icons.Rounded.Keyboard, contentDescription = null) },
@@ -417,8 +423,11 @@ private fun PlayerShortcutEditDialog(
 }
 
 /**
- * 按键采集区. 获得焦点后监听按键, 把按下的组合交给 [onCaptured]; Escape 和 Tab 不拦截, 留给对话框关闭和焦点遍历.
- * 对话框打开时自动获得焦点.
+ * 按键采集区. 获得焦点后监听按键, 把按下的组合交给 [onCaptured]; Escape、Android 返回键和 Tab 不拦截,
+ * 留给对话框关闭和焦点遍历. 对话框打开时自动获得焦点.
+ *
+ * 焦点目标由显式的 `focusable()` 提供: `clickable` 自带的焦点目标只在键盘 / 方向键输入模式下接受焦点,
+ * Android 触摸模式下点击或自动请求焦点都会失败, 外接键盘的按键也就到不了这里.
  */
 @Composable
 private fun ShortcutCaptureField(
@@ -441,12 +450,12 @@ private fun ShortcutCaptureField(
             .heightIn(min = 56.dp)
             .focusRequester(focusRequester)
             .onFocusChanged {
-                focused = it.isFocused
-                if (!it.isFocused) heldModifiers = ""
+                focused = it.hasFocus
+                if (!it.hasFocus) heldModifiers = ""
             }
             .onPreviewKeyEvent { event ->
                 when {
-                    event.key == Key.Escape || event.key == Key.Tab -> false
+                    event.key == Key.Escape || event.key == Key.Back || event.key == Key.Tab -> false
                     PlayerShortcutKeys.isModifierKey(event.key) -> {
                         heldModifiers = heldModifiersText(event, isMacOs)
                         true
@@ -462,6 +471,7 @@ private fun ShortcutCaptureField(
                     else -> true
                 }
             }
+            .focusable()
             .clickable { focusRequester.requestFocus() }
             .testTag(PlayerShortcutsTestTags.CAPTURE),
         shape = MaterialTheme.shapes.medium,
