@@ -164,13 +164,31 @@ class TimeZoneSettingsPageTest {
 
         assertNarrowCollapsed()
         val clock = bounds(TimeZoneSettingsTestTags.CLOCK)
-        assertTrue(clock.left < 1f, "the collapsed clock should sit at the left edge: $clock")
+        val currentZone = bounds(TimeZoneSettingsTestTags.CURRENT_ZONE)
+        assertTrue(
+            abs(clock.left - currentZone.left) < 1f,
+            "the collapsed clock should align with the current zone text: $clock / $currentZone",
+        )
         assertTrue(clock.height < expandedHeader.height / 2f, "the collapsed clock should be small: $clock")
         val collapsedHeader = bounds(TimeZoneSettingsTestTags.CLOCK_AREA)
         assertTrue(
             collapsedHeader.height < expandedHeader.height,
             "the collapsed header should be shorter: $collapsedHeader / $expandedHeader",
         )
+    }
+
+    @Test
+    fun `narrow search field is inset from the page edges`() = runAniComposeUiTest {
+        setContent { ProvideCompositionLocalsForPreview { Host({}, size = DpSize(420.dp, 1600.dp)) } }
+
+        val search = bounds(TimeZoneSettingsTestTags.SEARCH)
+        val list = bounds(TimeZoneSettingsTestTags.LIST)
+        val currentZone = bounds(TimeZoneSettingsTestTags.CURRENT_ZONE)
+        assertTrue(
+            abs(search.left - currentZone.left) < 1f,
+            "narrow search should align with the current zone text: $search / $currentZone",
+        )
+        assertTrue(search.right < list.right - 1f, "narrow search should be narrower than the list: $search / $list")
     }
 
     @Test

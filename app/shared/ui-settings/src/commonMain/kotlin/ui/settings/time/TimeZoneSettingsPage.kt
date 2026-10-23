@@ -330,13 +330,18 @@ fun TimeZoneSettingsPage(
     )
 
     Column(modifier.fillMaxSize()) {
-        TimeZoneSearchField(
-            query = query,
-            onQueryChange = { query = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-        )
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            // 窄屏的搜索框与两侧留白对齐; 宽屏保持满宽, 与时钟区、分割线同边.
+            val searchHorizontalPadding =
+                if (maxWidth < ClockLayoutWidthThreshold) ItemHorizontalPadding else 0.dp
+            TimeZoneSearchField(
+                query = query,
+                onQueryChange = { query = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = searchHorizontalPadding, vertical = 8.dp),
+            )
+        }
         Text(
             text = stringResource(Lang.settings_time_zone_current, currentZoneLabel),
             modifier = Modifier
@@ -678,8 +683,10 @@ private fun NarrowClockArea(
         val lift = fraction * fraction
         val textGap = ClockTextGap.toPx()
         val clockBottom = clock.height.toFloat()
-        val clockLeft = ((width - ClockSize.toPx()) / 2f) * (1f - fraction)
-        val columnLeft = clockLeft + clock.width + ClockColumnSpacing.toPx()
+        val centeredLeft = ((width - ClockSize.toPx()) / 2f) * (1f - fraction)
+        // 折叠完成时表盘左端与「当前时区」文案对齐; 日期与时间的左边界保持折叠前的位置.
+        val clockLeft = centeredLeft + ItemHorizontalPadding.toPx() * fraction
+        val columnLeft = centeredLeft + clock.width + ClockColumnSpacing.toPx()
         val dateTop = lerp(clockBottom + textGap, 0f, lift)
         val timeTop = lerp(dateTop + date.height + textGap, clockBottom - time.height, lift)
         val dateLeft = lerp((width - date.width) / 2f, columnLeft, fraction)
