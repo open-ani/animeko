@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -254,7 +253,6 @@ fun SettingsScope.AppearanceGroup(
     val systemTimeZone = remember { currentSystemTimeZone() }
     TextItem(
         onClick = onNavigateToTimeZone,
-        icon = { Icon(Icons.Outlined.Schedule, contentDescription = null) },
         title = { Text(stringResource(Lang.settings_app_time_zone)) },
         description = {
             Text(uiSettings.timeZoneId ?: stringResource(Lang.settings_time_zone_follow_system, systemTimeZone.id))

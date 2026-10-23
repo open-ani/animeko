@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.settings.time
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -44,18 +46,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
@@ -118,6 +127,8 @@ object TimeZoneSettingsTestTags {
     const val LIST = "time-zone-settings-list"
 
     fun zoneRow(zoneId: String) = "time-zone-settings-zone-$zoneId"
+
+    fun sectionHeader(region: String) = "time-zone-settings-section-$region"
 }
 
 /**
@@ -126,6 +137,19 @@ object TimeZoneSettingsTestTags {
 private val ClockLayoutWidthThreshold = 600.dp
 private val ClockSize = 168.dp
 private val ItemHorizontalPadding = 16.dp
+
+/**
+ * 宽屏时钟区里时间一行的行高上限, 相对表盘高度. 上限之内两行之间始终留出间隔.
+ */
+private const val ClockTimeMaxHeightFraction = 0.45f
+
+/**
+ * 折叠的分组在重组与配置变更后保持状态; 不写入设置, 重启页面即恢复全部分组展开.
+ */
+private val CollapsedRegionsSaver = listSaver<Set<String>, String>(
+    save = { it.toList() },
+    restore = { it.toSet() },
+)
 
 /**
  * 时区设置二级页.
@@ -151,6 +175,9 @@ fun TimeZoneSettingsPage(
     val catalogNow = remember { Clock.System.now() }
     val sections = remember(catalogNow, systemTimeZone) { timeZoneCatalog(catalogNow, systemTimeZone) }
     var query by rememberSaveable { mutableStateOf("") }
+    var collapsedRegions by rememberSaveable(stateSaver = CollapsedRegionsSaver) {
+        mutableStateOf(emptySet<String>())
+    }
 
     val now = rememberTickingInstant()
     val localDateTime = remember(now, timeZone) { now.toLocalDateTime(timeZone) }
@@ -181,10 +208,18 @@ fun TimeZoneSettingsPage(
         systemZoneOffsetLabel,
     )
 
-    val rows = remember(sections, query, selectedTimeZoneId, selectedPinLabel, followSystemRowLabel) {
+    val rows = remember(
+        sections,
+        query,
+        selectedTimeZoneId,
+        selectedPinLabel,
+        followSystemRowLabel,
+        collapsedRegions,
+    ) {
         buildTimeZoneRows(
             sections = filterTimeZoneSections(sections, query),
             query = query,
+            collapsedRegions = collapsedRegions,
             selectedTimeZoneId = selectedTimeZoneId,
             selectedPinLabel = selectedPinLabel,
             systemZoneId = systemTimeZone.id,
@@ -220,7 +255,7 @@ fun TimeZoneSettingsPage(
             onQueryChange = { query = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = ItemHorizontalPadding, vertical = 8.dp),
+                .padding(vertical = 8.dp),
         )
         Text(
             text = stringResource(Lang.settings_time_zone_current, currentZoneLabel),
@@ -253,7 +288,18 @@ fun TimeZoneSettingsPage(
             itemsIndexed(rows, key = { _, row -> row.key }) { index, row ->
                 val showDivider = index != rows.lastIndex
                 when (row) {
-                    is TimeZoneListRow.SectionHeader -> TimeZoneSectionHeader(row.region, showDivider)
+                    is TimeZoneListRow.SectionHeader -> TimeZoneSectionHeader(
+                        header = row,
+                        showDivider = showDivider,
+                        onToggleExpand = {
+                            collapsedRegions = if (row.region in collapsedRegions) {
+                                collapsedRegions - row.region
+                            } else {
+                                collapsedRegions + row.region
+                            }
+                        },
+                    )
+
                     is TimeZoneListRow.Entry -> TimeZoneEntryRow(
                         row = row,
                         showDivider = showDivider,
@@ -285,7 +331,10 @@ private fun initialLocateState(supported: Boolean): LocateState {
 private sealed interface TimeZoneListRow {
     val key: String
 
-    data class SectionHeader(val region: String) : TimeZoneListRow {
+    /**
+     * 分组标题. [expanded] 为 false 时该组只保留标题行.
+     */
+    data class SectionHeader(val region: String, val expanded: Boolean) : TimeZoneListRow {
         override val key: String get() = "header:$region"
     }
 
@@ -307,10 +356,13 @@ private sealed interface TimeZoneListRow {
 
 /**
  * 置顶区在前 (选中时区、跟随系统), 之后是分组列表. 置顶项与时区项都参与 [query] 过滤.
+ *
+ * 置顶区不属于任何分组, 不受 [collapsedRegions] 影响; [query] 非空时忽略折叠状态, 强制展开每个分组.
  */
 private fun buildTimeZoneRows(
     sections: List<TimeZoneSection>,
     query: String,
+    collapsedRegions: Set<String>,
     selectedTimeZoneId: String?,
     selectedPinLabel: String?,
     systemZoneId: String,
@@ -345,8 +397,11 @@ private fun buildTimeZoneRows(
         )
     }
 
+    val forceExpand = query.isNotBlank()
     for (section in sections) {
-        rows += TimeZoneListRow.SectionHeader(section.region)
+        val expanded = forceExpand || section.region !in collapsedRegions
+        rows += TimeZoneListRow.SectionHeader(section.region, expanded)
+        if (!expanded) continue
         for (option in section.options) {
             rows += TimeZoneListRow.Entry(
                 key = "zone:${option.zoneId}",
@@ -402,7 +457,8 @@ private fun TimeZoneSearchField(
 
 /**
  * 时钟区. 宽度小于 [ClockLayoutWidthThreshold] 时纵向排列 (表盘、日期、时间, 整体居中),
- * 表盘紧接在页面级「当前时区」小字之下; 否则表盘在左, 右侧一列等高排布日期与时间.
+ * 表盘紧接在页面级「当前时区」小字之下; 否则表盘在左, 右侧一列等高排布日期与时间,
+ * 两行的行高受表盘高度约束, 因此始终不重叠也不越出表盘.
  */
 @Composable
 private fun TimeZoneClockArea(
@@ -447,6 +503,14 @@ private fun TimeZoneClockArea(
                 )
             }
         } else {
+            // 两行共用表盘高度: 日期贴表盘顶边, 时间贴表盘底边. 时间行高同时受表盘高度比例与
+            // 「表盘高度 - 日期行高」约束, 文字放大时两行因此不会互相挤压, 也不会溢出表盘高度.
+            val density = LocalDensity.current
+            val timeMaxLineHeight = minOf(
+                ClockSize * ClockTimeMaxHeightFraction,
+                ClockSize - with(density) { dateStyle.lineHeight.toDp() },
+            )
+            val wideTimeStyle = timeStyle.limitLineHeight(timeMaxLineHeight, density)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 AnalogClock(
                     time = dateTime.time,
@@ -463,11 +527,13 @@ private fun TimeZoneClockArea(
                         modifier = Modifier.testTag(TimeZoneSettingsTestTags.CLOCK_DATE),
                         style = dateStyle,
                         color = secondaryColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = timeLabel,
                         modifier = Modifier.testTag(TimeZoneSettingsTestTags.CLOCK_TIME),
-                        style = timeStyle,
+                        style = wideTimeStyle,
                         maxLines = 1,
                     )
                 }
@@ -493,6 +559,19 @@ private fun formatClockTime(dateTime: LocalDateTime): String = buildString(8) {
     append(dateTime.minute.toString().padStart(2, '0'))
     append(':')
     append(dateTime.second.toString().padStart(2, '0'))
+}
+
+/**
+ * 把行高限制在 [maxLineHeight] 之内, 字号按同一比例缩小, 使一行文字既不超出给定高度, 也不被裁切.
+ */
+private fun TextStyle.limitLineHeight(maxLineHeight: Dp, density: Density): TextStyle {
+    if (!lineHeight.isSp || !fontSize.isSp) return this
+    val maxLineHeightSp = with(density) { maxLineHeight.toSp() }.value.coerceAtLeast(0f)
+    if (lineHeight.value <= maxLineHeightSp) return this
+    return copy(
+        fontSize = fontSize * (maxLineHeightSp / lineHeight.value),
+        lineHeight = maxLineHeightSp.sp,
+    )
 }
 
 /**
@@ -586,15 +665,45 @@ private fun LocationTimeZoneBox(
     }
 }
 
+/**
+ * 可点击的分组标题: 点击折叠或展开该组. 右侧箭头指向当前状态, 展开朝下, 折叠朝右.
+ *
+ * @param header 该组的标题行状态, 折叠时列表里不会出现该组的条目.
+ */
 @Composable
-private fun TimeZoneSectionHeader(region: String, showDivider: Boolean) {
+private fun TimeZoneSectionHeader(
+    header: TimeZoneListRow.SectionHeader,
+    showDivider: Boolean,
+    onToggleExpand: () -> Unit,
+) {
+    val indicatorRotation by animateFloatAsState(
+        targetValue = if (header.expanded) 0f else -90f,
+        label = "timeZoneSectionIndicator",
+    )
     Column(Modifier.fillMaxWidth()) {
-        Text(
-            text = region,
-            modifier = Modifier.padding(horizontal = ItemHorizontalPadding, vertical = 8.dp),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
-        )
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggleExpand)
+                .testTag(TimeZoneSettingsTestTags.sectionHeader(header.region))
+                .padding(horizontal = ItemHorizontalPadding, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = header.region,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Icon(
+                Icons.Rounded.ExpandMore,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(20.dp)
+                    .rotate(indicatorRotation),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
         if (showDivider) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }

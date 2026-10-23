@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -29,6 +30,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.TimeZone
@@ -162,6 +164,65 @@ class TimeZoneSettingsPageTest {
     }
 
     @Test
+    fun `wide layout keeps the clock rows inside the clock height`() = runAniComposeUiTest {
+        setContent { ProvideCompositionLocalsForPreview { Host({}, size = DpSize(900.dp, 1600.dp)) } }
+
+        assertClockRowsInsideClockHeight()
+    }
+
+    @Test
+    fun `wide layout keeps a gap between the clock rows when text is enlarged`() = runAniComposeUiTest {
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                Host({}, size = DpSize(900.dp, 1600.dp), fontScale = 2.8f)
+            }
+        }
+
+        assertClockRowsInsideClockHeight(minGap = 1f)
+    }
+
+    @Test
+    fun `collapsing a region hides its entries until the header is clicked again`() = runAniComposeUiTest {
+        setContent { ProvideCompositionLocalsForPreview { Host({}) } }
+        val region = catalog.first().region
+        val zoneId = catalog.first().options.first().zoneId
+
+        onNodeWithTag(TimeZoneSettingsTestTags.zoneRow(zoneId)).assertExists()
+        onNodeWithTag(TimeZoneSettingsTestTags.sectionHeader(region)).performClick()
+        onNodeWithTag(TimeZoneSettingsTestTags.zoneRow(zoneId)).assertDoesNotExist()
+        // 置顶项不属于任何分组, 不受折叠影响
+        onNodeWithTag(TimeZoneSettingsTestTags.FOLLOW_SYSTEM_ROW).assertExists()
+
+        onNodeWithTag(TimeZoneSettingsTestTags.sectionHeader(region)).performClick()
+        onNodeWithTag(TimeZoneSettingsTestTags.zoneRow(zoneId)).assertExists()
+    }
+
+    @Test
+    fun `querying shows the entries of a collapsed region`() = runAniComposeUiTest {
+        setContent { ProvideCompositionLocalsForPreview { Host({}) } }
+        val region = catalog.first().region
+        val zoneId = catalog.first().options.first().zoneId
+
+        onNodeWithTag(TimeZoneSettingsTestTags.sectionHeader(region)).performClick()
+        onNodeWithTag(TimeZoneSettingsTestTags.zoneRow(zoneId)).assertDoesNotExist()
+
+        onNodeWithTag(TimeZoneSettingsTestTags.SEARCH).performTextInput(zoneId)
+        onNodeWithTag(TimeZoneSettingsTestTags.zoneRow(zoneId)).assertExists()
+    }
+
+    @Test
+    fun `search field spans the same width as the clock and the list`() = runAniComposeUiTest {
+        setContent { ProvideCompositionLocalsForPreview { Host({}, size = DpSize(900.dp, 1600.dp)) } }
+
+        val search = bounds(TimeZoneSettingsTestTags.SEARCH)
+        val list = bounds(TimeZoneSettingsTestTags.LIST)
+        val clock = bounds(TimeZoneSettingsTestTags.CLOCK)
+        assertTrue(abs(search.left - list.left) < 1f, "search should start at the list edge: $search / $list")
+        assertTrue(abs(search.right - list.right) < 1f, "search should end at the list edge: $search / $list")
+        assertTrue(abs(search.left - clock.left) < 1f, "search should align with the clock: $search / $clock")
+    }
+
+    @Test
     fun `desktop reports that location is unavailable and cannot be clicked`() = runAniComposeUiTest {
         var expectedLabel: String? = null
         setContent {
@@ -185,6 +246,18 @@ class TimeZoneSettingsPageTest {
     private fun ComposeUiTest.bounds(tag: String): Rect =
         onNodeWithTag(tag, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
 
+    /**
+     * 宽屏时钟区的两行共用表盘高度: 两行都在表盘高度之内, 且至少留出 [minGap] 的间隔.
+     */
+    private fun ComposeUiTest.assertClockRowsInsideClockHeight(minGap: Float = 0f) {
+        val clock = bounds(TimeZoneSettingsTestTags.CLOCK)
+        val date = bounds(TimeZoneSettingsTestTags.CLOCK_DATE)
+        val time = bounds(TimeZoneSettingsTestTags.CLOCK_TIME)
+        assertTrue(date.top >= clock.top, "date should not rise above the clock: $date / $clock")
+        assertTrue(time.bottom <= clock.bottom, "time should stay inside the clock height: $time / $clock")
+        assertTrue(time.top - date.bottom >= minGap, "date and time should not crowd each other: $date / $time")
+    }
+
     private fun centerX(bounds: Rect): Float = (bounds.left + bounds.right) / 2f
 
     /**
@@ -194,6 +267,7 @@ class TimeZoneSettingsPageTest {
     private fun Host(
         onState: (SettingsState<UISettings>) -> Unit,
         size: DpSize = DpSize(420.dp, 1600.dp),
+        fontScale: Float = 1f,
     ) {
         val state = rememberTestSettingsState(UISettings.Default)
         onState(state)
@@ -203,7 +277,11 @@ class TimeZoneSettingsPageTest {
             uiSettings.timeZoneId.toTimeZoneOrNull() ?: currentSystemZone
         }
         Box(Modifier.size(size)) {
-            CompositionLocalProvider(LocalTimeZone provides timeZone) {
+            val density = LocalDensity.current
+            CompositionLocalProvider(
+                LocalTimeZone provides timeZone,
+                LocalDensity provides Density(density.density, fontScale),
+            ) {
                 TimeZoneSettingsPage(
                     state = state,
                     modifier = Modifier.fillMaxSize(),

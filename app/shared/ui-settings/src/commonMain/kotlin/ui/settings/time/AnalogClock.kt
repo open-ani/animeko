@@ -9,14 +9,17 @@
 
 package me.him188.ani.app.ui.settings.time
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
@@ -26,18 +29,22 @@ import androidx.compose.ui.unit.Dp
 import kotlinx.datetime.LocalTime
 
 /**
+ * 时/分针的补间时长.
+ */
+private const val HAND_ANIMATION_MILLIS = 700
+
+/**
  * 秒针补间时长. 比一秒略短, 让相邻两次指针跳动之间留出静止的一小段.
  */
 private const val SECOND_HAND_ANIMATION_MILLIS = 900
 
-private const val NANOS_PER_SECOND = 1_000_000_000f
-
-private const val DEGREES_PER_SECOND = 6f
-
 /**
  * 极简模拟时钟: 圆形表盘、12/3/6/9 四个刻度点, 时/分/秒三针.
  *
- * [time] 每秒变化一次, 秒针在其基础上用匀速补间转过这一秒的角度, 因此视觉上是连续走动的.
+ * 三针都由补间动画驱动: 秒针匀速转动且只顺时针前进; 时/分针沿最短弧转向目标角度.
+ * 因此切换时区导致的时间跳变表现为指针旋转过去, 而不是瞬间换位.
+ *
+ * [time] 每秒变化一次.
  */
 @Composable
 fun AnalogClock(
@@ -46,12 +53,20 @@ fun AnalogClock(
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
-    val secondHandTarget = time.second * DEGREES_PER_SECOND +
-            time.nanosecond / NANOS_PER_SECOND * DEGREES_PER_SECOND
-    val secondHandAngle by animateFloatAsState(
-        targetValue = secondHandTarget,
+    val hourAngle = rememberAnimatedHandAngle(
+        target = hourHandTargetAngle(time.hour, time.minute),
+        animationSpec = tween(durationMillis = HAND_ANIMATION_MILLIS, easing = FastOutSlowInEasing),
+        advance = ::nearestHandAngle,
+    )
+    val minuteAngle = rememberAnimatedHandAngle(
+        target = minuteHandTargetAngle(time.minute, time.second),
+        animationSpec = tween(durationMillis = HAND_ANIMATION_MILLIS, easing = FastOutSlowInEasing),
+        advance = ::nearestHandAngle,
+    )
+    val secondAngle = rememberAnimatedHandAngle(
+        target = secondHandTargetAngle(time.second, time.nanosecond),
         animationSpec = tween(durationMillis = SECOND_HAND_ANIMATION_MILLIS, easing = LinearEasing),
-        label = "analogClockSecondHand",
+        advance = ::forwardHandAngle,
     )
 
     Canvas(modifier.size(size)) {
@@ -79,9 +94,6 @@ fun AnalogClock(
             }
         }
 
-        val hourAngle = (time.hour % 12) * 30f + time.minute * 0.5f
-        val minuteAngle = time.minute * 6f + time.second * 0.1f
-
         rotate(hourAngle, pivot = dialCenter) {
             drawLine(
                 color = colors.onSurface,
@@ -100,7 +112,7 @@ fun AnalogClock(
                 cap = StrokeCap.Round,
             )
         }
-        rotate(secondHandAngle, pivot = dialCenter) {
+        rotate(secondAngle, pivot = dialCenter) {
             drawLine(
                 color = colors.primary,
                 start = dialCenter + Offset(0f, radius * 0.12f),
@@ -111,4 +123,23 @@ fun AnalogClock(
         }
         drawCircle(color = colors.primary, radius = radius * 0.035f, center = dialCenter)
     }
+}
+
+/**
+ * 把指针补间到 [target] 换算出的角度. [advance] 决定从当前角度到目标的走法:
+ * 秒针只前进, 时/分针走最短弧.
+ *
+ * 目标每次变化都从当前动画值重新起步, 所以连续变化不会积累误差, 也不会回跳.
+ */
+@Composable
+private fun rememberAnimatedHandAngle(
+    target: Float,
+    animationSpec: AnimationSpec<Float>,
+    advance: (current: Float, target: Float) -> Float,
+): Float {
+    val angle = remember { Animatable(target) }
+    LaunchedEffect(target) {
+        angle.animateTo(advance(angle.value, target), animationSpec)
+    }
+    return angle.value
 }
