@@ -52,19 +52,24 @@ sealed interface PackageOutput {
     }
 
     /**
-     * 解压好的新版本目录, 发布包顶层的应用目录这一层已去掉. 安装器可以把整个目录换进安装目录, 省掉再解压一次.
+     * 解压好的新版本目录. 安装器可以把它整个换进安装目录, 省掉再解压一次; 用户点「重启更新」后只剩交换目录.
+     *
+     * @param stripTopLevel 是否去掉发布包顶层的应用目录这一层. Windows 更新器要的是安装目录的内容, 去掉;
+     * macOS 的安装脚本要的是 `.app` 本身, 保留, 拼出的目录下就是 `Ani.app`.
      */
-    data object Directory : PackageOutput {
-        const val SUFFIX = ".staging"
-
+    data class Directory(val stripTopLevel: Boolean) : PackageOutput {
         override fun targetName(packageName: String): String = packageName + SUFFIX
 
         override fun verify(target: File, manifest: DesktopPackageManifest) =
-            StagingDirectoryWriter.verify(target, manifest)
+            StagingDirectoryWriter.verify(target, manifest, stripTopLevel)
+
+        companion object {
+            const val SUFFIX = ".staging"
+        }
     }
 }
 
 internal fun PackageOutput.createWriter(target: File): PackageWriter = when (this) {
     PackageOutput.Zip -> PackageZipWriter(target.outputStream())
-    PackageOutput.Directory -> StagingDirectoryWriter(target.apply { mkdirs() })
+    is PackageOutput.Directory -> StagingDirectoryWriter(target.apply { mkdirs() }, stripTopLevel)
 }
