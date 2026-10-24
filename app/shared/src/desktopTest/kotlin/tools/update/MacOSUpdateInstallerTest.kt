@@ -9,13 +9,20 @@
 
 package me.him188.ani.app.tools.update
 
+import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.io.RandomAccessFile
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
 import java.util.concurrent.TimeUnit
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
@@ -68,6 +75,90 @@ class MacOSUpdateInstallerTest {
         assertEquals(listOf(targetApp.absolutePath), openLog.readLines())
     }
 
+    @Test
+    fun `prepared directory is moved into place and launched`() {
+        createSignedApp(targetApp, version = "old")
+        val stagingDir = createPreparedDirectory { createSignedApp(it, version = "new") }
+        val stagedVersionKey = stagingDir.resolve("Ani.app/Contents/Resources/version").fileKey()
+        val process = runUpdateScript(stagingDir)
+        assertEquals(0, process.exitValue(), process.errorStream.bufferedReader().readText())
+        assertEquals("new", targetApp.resolve("Contents/Resources/version").readText())
+        // 移动而不是复制: 文件还是原来的 inode.
+        assertEquals(stagedVersionKey, targetApp.resolve("Contents/Resources/version").fileKey())
+        assertFalse(stagingDir.exists(), "the emptied staging directory should be removed")
+        assertTrue(codesignVerify(targetApp))
+        assertEquals(listOf("Ani.app"), appsDir.list().orEmpty().toList())
+        assertEquals(listOf(targetApp.absolutePath), openLog.readLines())
+    }
+
+    @Test
+    fun `prepared directory without a launcher keeps and relaunches the current app`() {
+        createSignedApp(targetApp, version = "old")
+        val stagingDir = createPreparedDirectory {
+            createSignedApp(it, version = "new")
+            assertTrue(it.resolve("Contents/MacOS/Ani").delete())
+        }
+        val process = runUpdateScript(stagingDir)
+        assertNotEquals(0, process.exitValue())
+        assertEquals("old", targetApp.resolve("Contents/Resources/version").readText())
+        assertEquals(listOf("Ani.app"), appsDir.list().orEmpty().toList())
+        assertEquals(listOf(targetApp.absolutePath), openLog.readLines())
+    }
+
+    @Test
+    fun `preparing a zip extracts and verifies the app`() {
+        val zip = createReleaseShapedZipPackage { createSignedApp(it, version = "new") }
+        val staging = runBlocking { DesktopPackagePreparation.prepareMacPackage(zip, "Ani.app") }
+        assertEquals(File(zip.path + ".staging"), staging)
+        val app = staging.resolve("Ani.app")
+        assertEquals("new", app.resolve("Contents/Resources/version").readText())
+        assertTrue(app.resolve("Contents/MacOS/Ani").canExecute())
+        assertTrue(codesignVerify(app))
+        assertEquals(emptyList(), leftoverPartDirectories())
+    }
+
+    @Test
+    fun `preparing a ditto zip extracts and verifies the app`() {
+        val zip = createZipPackage { createSignedApp(it, version = "new") }
+        val staging = runBlocking { DesktopPackagePreparation.prepareMacPackage(zip, "Ani.app") }
+        val app = staging.resolve("Ani.app")
+        assertTrue(app.resolve("Contents/MacOS/Ani").canExecute())
+        assertTrue(codesignVerify(app))
+    }
+
+    @Test
+    fun `preparing a zip with an invalid signature fails`() {
+        val zip = createReleaseShapedZipPackage {
+            createSignedApp(it, version = "new")
+            it.resolve("Contents/Resources/version").writeText("tampered")
+        }
+        assertFailsWith<PackagePreparationException> {
+            runBlocking { DesktopPackagePreparation.prepareMacPackage(zip, "Ani.app") }
+        }
+        assertFalse(File(zip.path + ".staging").exists())
+        assertEquals(emptyList(), leftoverPartDirectories())
+    }
+
+    private fun leftoverPartDirectories(): List<String> =
+        tempDir.list().orEmpty().filter { it.startsWith("Ani.zip.staging.part") }
+
+    @Test
+    fun `preparing a zip without the app fails`() {
+        val zip = createZipPackage { createSignedApp(it, version = "new") }
+        assertFailsWith<PackagePreparationException> {
+            runBlocking { DesktopPackagePreparation.prepareMacPackage(zip, "Other.app") }
+        }
+    }
+
+    /**
+     * 应用在下载阶段准备好的目录: `<包名>.staging/Ani.app`.
+     */
+    private fun createPreparedDirectory(createApp: (File) -> Unit): File {
+        val stagingDir = tempDir.resolve("updates/Ani.zip.staging").apply { mkdirs() }
+        createApp(stagingDir.resolve("Ani.app"))
+        return stagingDir
+    }
+
     private fun runUpdateScript(packageFile: File): Process {
         val script = tempDir.resolve("macos-update.command").apply {
             writeText(MACOS_UPDATE_SCRIPT)
@@ -106,6 +197,61 @@ class MacOSUpdateInstallerTest {
         val zip = tempDir.resolve("Ani.zip")
         exec("ditto", "-c", "-k", "--keepParent", app.absolutePath, zip.absolutePath)
         return zip
+    }
+
+    /**
+     * 与 Gradle 打的发布包同形的 zip: 顶层是 `Ani.app`, 外部属性里只有 unix 权限位 (没有文件类型位), 主机系统 UNIX.
+     * `ditto -x -k` 不认这样的权限, 解出来的启动器不可执行; 解压工具必须按权限位恢复.
+     */
+    private fun createReleaseShapedZipPackage(createApp: (File) -> Unit): File {
+        val packageDir = tempDir.resolve("package").apply { mkdirs() }
+        val app = packageDir.resolve("Ani.app")
+        createApp(app)
+        val zip = tempDir.resolve("Ani.zip")
+        val modes = LinkedHashMap<String, Int>()
+        ZipOutputStream(zip.outputStream()).use { out ->
+            for (file in app.walkTopDown().sortedBy { it.path }) {
+                val relative = file.relativeTo(packageDir).invariantSeparatorsPath
+                val name = if (file.isDirectory) "$relative/" else relative
+                modes[name] = when {
+                    file.isDirectory -> "755".toInt(8)
+                    file.canExecute() -> "755".toInt(8)
+                    else -> "644".toInt(8)
+                }
+                out.putNextEntry(ZipEntry(name))
+                if (file.isFile) file.inputStream().use { it.copyTo(out) }
+                out.closeEntry()
+            }
+        }
+        patchCentralDirectory(zip, modes)
+        return zip
+    }
+
+    /**
+     * 把 central directory 里每个 entry 的 "version made by" 改成 UNIX, 外部属性改成 `mode shl 16`.
+     */
+    private fun patchCentralDirectory(zip: File, modes: Map<String, Int>) {
+        RandomAccessFile(zip, "rw").use { file ->
+            val bytes = ByteArray(file.length().toInt())
+            file.readFully(bytes)
+            val buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+            var eocd = bytes.size - 22
+            while (buf.getInt(eocd) != 0x06054b50) eocd--
+            var position = buf.getInt(eocd + 16)
+            val count = buf.getShort(eocd + 10).toInt() and 0xFFFF
+            repeat(count) {
+                check(buf.getInt(position) == 0x02014b50)
+                val nameLength = buf.getShort(position + 28).toInt() and 0xFFFF
+                val extraLength = buf.getShort(position + 30).toInt() and 0xFFFF
+                val commentLength = buf.getShort(position + 32).toInt() and 0xFFFF
+                val name = String(bytes, position + 46, nameLength, Charsets.UTF_8)
+                bytes[position + 5] = 3 // version made by: UNIX
+                buf.putInt(position + 38, modes.getValue(name) shl 16)
+                position += 46 + nameLength + extraLength + commentLength
+            }
+            file.seek(0)
+            file.write(bytes)
+        }
     }
 
     private fun createSignedApp(app: File, version: String) {

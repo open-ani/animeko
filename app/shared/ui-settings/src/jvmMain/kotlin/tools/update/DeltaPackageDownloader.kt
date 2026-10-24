@@ -28,18 +28,22 @@ import kotlin.coroutines.cancellation.CancellationException
  * 下载地址必须是 zip 发布包的地址, 清单地址由它派生 ([DesktopPackageManifest.manifestUrlOf]). 清单不存在、
  * 镜像不支持 Range、本地目录不符等任何一步失败, 都回退到 [fallback] 整包下载, 状态与进度也随之切到 [fallback] 的.
  *
- * [assembler] 决定拼出来的是 zip 还是解压好的目录; 回退的整包下载总是 zip, 所以安装器两种都要能装.
+ * 拼好或整包下载完成后, 交给 [prepare] 整理成安装时开销最小的形态 (通常是 [UpdateInstaller.prepareForInstallation]:
+ * 把 zip 解压成目录), 整理期间对外仍是下载中, 整理好才算下载成功. 这样用户点「重启更新」时安装器只剩交换目录.
+ * [prepare] 抛 [PackagePreparationException] 说明包本身不可用, 换源和整包下载都没用, 直接算下载失败.
  */
 class DeltaPackageDownloader(
     private val assembler: DeltaPackageAssembler,
     private val fallback: FileDownloader,
+    private val prepare: suspend (SystemPath) -> SystemPath = { it },
 ) : FileDownloader {
     constructor(
         client: ScopedHttpClient,
         installRoot: File,
         output: PackageOutput = PackageOutput.Zip,
         fallback: FileDownloader = DefaultFileDownloader(client),
-    ) : this(DesktopDeltaPackageAssembler(client, installRoot, output), fallback)
+        prepare: suspend (SystemPath) -> SystemPath = { it },
+    ) : this(DesktopDeltaPackageAssembler(client, installRoot, output), fallback, prepare)
 
     override val state = MutableStateFlow<FileDownloaderState>(FileDownloaderState.Idle)
 
@@ -69,12 +73,17 @@ class DeltaPackageDownloader(
                     saveDir = saveDir,
                     onProgress = { _progress.value = it.fraction },
                 )
+                val prepared = prepare(target)
                 _progress.value = 1f
-                state.value = FileDownloaderState.Succeed(url, target, checked = true)
-                return target
+                state.value = FileDownloaderState.Succeed(url, prepared, checked = true)
+                return prepared
             } catch (e: CancellationException) {
                 state.value = FileDownloaderState.Cancelled(e)
                 throw e
+            } catch (e: PackagePreparationException) {
+                logger.warn(e) { "Package from $url is unusable, giving up" }
+                state.value = FileDownloaderState.Failed(e)
+                return null
             } catch (e: Throwable) {
                 logger.warn(e) { "Delta download from $url failed, trying the next source" }
             }
@@ -88,18 +97,42 @@ class DeltaPackageDownloader(
         alternativeUrls: List<String>,
         filenameProvider: (url: String) -> String,
         saveDir: SystemPath,
-    ): SystemPath? = coroutineScope {
-        val progressMirror = launch {
-            fallback.progress.collect { _progress.value = it }
-        }
-        try {
-            fallback.download(alternativeUrls, filenameProvider, saveDir)
-        } finally {
-            progressMirror.cancel()
-            // download 返回或抛出时 [fallback] 已经处于最终状态 (成功、失败或取消); 进度的最后一次更新可能还没被收集到.
+    ): SystemPath? {
+        val file = try {
+            coroutineScope {
+                val progressMirror = launch {
+                    fallback.progress.collect { _progress.value = it }
+                }
+                try {
+                    fallback.download(alternativeUrls, filenameProvider, saveDir)
+                } finally {
+                    progressMirror.cancel()
+                }
+            }
+        } catch (e: Throwable) {
+            // download 抛出时 [fallback] 已经处于失败或取消状态.
             state.value = fallback.state.value
-            if (state.value is FileDownloaderState.Succeed) _progress.value = 1f
+            throw e
         }
+        val fallbackState = fallback.state.value
+        if (file == null || fallbackState !is FileDownloaderState.Succeed) {
+            state.value = fallbackState
+            return null
+        }
+        // 整包下载完成, 整理成能直接安装的形态; 进度的最后一次更新可能还没被收集到, 整理好后补到 1.
+        val prepared = try {
+            prepare(file)
+        } catch (e: CancellationException) {
+            state.value = FileDownloaderState.Cancelled(e)
+            throw e
+        } catch (e: Throwable) {
+            logger.warn(e) { "Failed to prepare the downloaded package $file for installation" }
+            state.value = FileDownloaderState.Failed(e)
+            return null
+        }
+        _progress.value = 1f
+        state.value = FileDownloaderState.Succeed(fallbackState.url, prepared, fallbackState.checked)
+        return prepared
     }
 
     private companion object {
