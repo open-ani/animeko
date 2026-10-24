@@ -40,15 +40,20 @@ class ServerListFeatureHandlerTest {
     private fun buildTestClient(
         aniServerUrlsFlow: MutableStateFlow<List<Url>>,
         featureConfig: ServerListFeatureConfig,
+        errorCode: (url: Url) -> String? = { null },
         respondBlock: suspend (url: Url) -> Pair<HttpStatusCode, String>
     ): HttpClient {
         val mockEngine = MockEngine { request ->
             // We'll look at request.url to decide how to respond.
             val (status, body) = respondBlock(request.url)
+            val headers = HeadersBuilder().apply {
+                append(HttpHeaders.ContentType, "text/plain")
+                errorCode(request.url)?.let { append(ServerListFeatureHandler.ERROR_CODE_HEADER, it) }
+            }.build()
             respond(
                 content = body,
                 status = status,
-                headers = headersOf(HttpHeaders.ContentType, "text/plain"),
+                headers = headers,
             )
         }
 
@@ -165,6 +170,90 @@ class ServerListFeatureHandlerTest {
         assertEquals(1, fail1Requests, "First server tried exactly once")
         assertEquals(1, fail2Requests, "Second server tried exactly once")
         assertEquals(1, okRequests, "Third server tried once - success, so we stop further retries")
+    }
+
+    @Test
+    fun `application errors are returned without trying other servers`() = runTest {
+        for (status in listOf(
+            HttpStatusCode.Conflict,
+            HttpStatusCode.UnprocessableEntity,
+            HttpStatusCode.TooManyRequests,
+        )) {
+            val aniServerUrls = MutableStateFlow(
+                listOf(
+                    Url("https://server1.com"),
+                    Url("https://server2.com"),
+                ),
+            )
+            val attempts = mutableListOf<String>()
+            val client = buildTestClient(aniServerUrls, defaultConfig()) { url ->
+                attempts += url.host
+                when (url.host) {
+                    "server1.com" -> status to "COMMENT_IMAGE_PENDING_LIMIT"
+                    else -> HttpStatusCode.OK to "should not be reached"
+                }
+            }
+
+            val response = client.post("https://${ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST}/v2/comments/images")
+            assertEquals(status, response.status)
+            assertEquals("COMMENT_IMAGE_PENDING_LIMIT", response.bodyAsText())
+            assertEquals(listOf("server1.com"), attempts, "$status must not be sent to another server")
+        }
+    }
+
+    @Test
+    fun `server error with an error code is returned without trying other servers`() = runTest {
+        val aniServerUrls = MutableStateFlow(
+            listOf(
+                Url("https://server1.com"),
+                Url("https://server2.com"),
+            ),
+        )
+        val attempts = mutableListOf<String>()
+        val client = buildTestClient(
+            aniServerUrls,
+            defaultConfig(),
+            errorCode = { url -> "COMMENT_IMAGE_UNAVAILABLE".takeIf { url.host == "server1.com" } },
+        ) { url ->
+            attempts += url.host
+            when (url.host) {
+                "server1.com" -> HttpStatusCode.ServiceUnavailable to "HTTP 503: COMMENT_IMAGE_UNAVAILABLE"
+                else -> HttpStatusCode.OK to "should not be reached"
+            }
+        }
+
+        val response = client.post("https://${ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST}/v2/comments/images")
+        assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
+        assertEquals("HTTP 503: COMMENT_IMAGE_UNAVAILABLE", response.bodyAsText())
+        assertEquals(listOf("server1.com"), attempts)
+    }
+
+    @Test
+    fun `server that answered with an application error is tried first next time`() = runTest {
+        val aniServerUrls = MutableStateFlow(
+            listOf(
+                Url("https://server1.com"),
+                Url("https://server2.com"),
+            ),
+        )
+        val attempts = mutableListOf<String>()
+        val client = buildTestClient(aniServerUrls, defaultConfig()) { url ->
+            attempts += url.host
+            when (url.host) {
+                "server1.com" -> HttpStatusCode.ServiceUnavailable to "unavailable"
+                else -> HttpStatusCode.UnprocessableEntity to "rejected"
+            }
+        }
+
+        assertEquals(
+            HttpStatusCode.UnprocessableEntity,
+            client.post("https://${ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST}/a").status,
+        )
+        assertEquals(
+            HttpStatusCode.UnprocessableEntity,
+            client.post("https://${ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST}/b").status,
+        )
+        assertEquals(listOf("server1.com", "server2.com", "server2.com"), attempts)
     }
 
     @Test
