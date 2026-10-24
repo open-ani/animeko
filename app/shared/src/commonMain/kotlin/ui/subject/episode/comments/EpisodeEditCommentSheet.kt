@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.subject.episode.comments
 
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -16,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.domain.comment.CommentImageStatusResult
+import me.him188.ani.app.domain.comment.CommentImageUploadResult
 import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentMapperContext
@@ -45,28 +48,47 @@ fun EpisodeEditCommentSheet(
 @Composable
 fun PreviewEditComment() {
     ProvideCompositionLocalsForPreview {
-        val scope = rememberBackgroundScope()
+        EditComment(state = rememberPreviewCommentEditorState())
+    }
+}
+
+@Preview
+@Composable
+fun PreviewEditCommentWithImages() {
+    ProvideCompositionLocalsForPreview {
         EditComment(
-            state = remember {
-                CommentEditorState(
-                    showExpandEditCommentButton = true,
-                    initialEditExpanded = false,
-                    panelTitle = mutableStateOf("评论：我心里危险的东西 第二季"),
-                    stickers = mutableStateOf(
-                        (0..64)
-                            .map { EditCommentSticker(it, null) }
-                            .toList(),
-                    ),
-                    onSend = { _, _ -> CommentSendResult.Ok },
-                    richTextRenderer = {
-                        withContext(Dispatchers.Default) {
-                            with(CommentMapperContext) { parseBBCode(it) }
-                        }
-                    },
-                    backgroundScope = scope.backgroundScope,
-                )
-            },
+            state = rememberPreviewCommentEditorState(
+                initialText = "看这个 [img]https://example.com/1.webp[/img] 还有 [img]https://example.com/2.webp[/img]",
+            ),
         )
+    }
+}
+
+@Composable
+private fun rememberPreviewCommentEditorState(initialText: String = ""): CommentEditorState {
+    val scope = rememberBackgroundScope()
+    return remember {
+        CommentEditorState(
+            showExpandEditCommentButton = true,
+            initialEditExpanded = false,
+            panelTitle = mutableStateOf("评论：我心里危险的东西 第二季"),
+            stickers = mutableStateOf(
+                (0..64)
+                    .map { EditCommentSticker(it, null) }
+                    .toList(),
+            ),
+            onSend = { _, _ -> CommentSendResult.Ok },
+            onUploadImage = { CommentImageUploadResult.Ready("https://example.com/image.webp") },
+            onCheckImageStatus = { CommentImageStatusResult.Ok(emptyMap()) },
+            richTextRenderer = {
+                withContext(Dispatchers.Default) {
+                    with(CommentMapperContext) { parseBBCode(it) }
+                }
+            },
+            backgroundScope = scope.backgroundScope,
+        ).apply {
+            textFieldState.setTextAndPlaceCursorAtEnd(initialText)
+        }
     }
 }
 
