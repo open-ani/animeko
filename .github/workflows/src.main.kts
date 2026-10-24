@@ -1238,7 +1238,9 @@ workflow(
                 $$"""
                   set -euo pipefail
 
-                  export RELEASE_NOTES="$(ci-helper/generate-release-notes-with-codex.sh "$${expr { gitTag.tagExpr }}" "$${expr { gitTag.tagVersionExpr }}")"
+                  # 先赋值再 export: `export VAR="$(cmd)"` 的退出码是 export 自己的 0, 脚本失败会被吞掉, 导致用空 notes 建 release.
+                  RELEASE_NOTES="$(ci-helper/generate-release-notes-with-codex.sh "$${expr { gitTag.tagExpr }}" "$${expr { gitTag.tagVersionExpr }}")"
+                  export RELEASE_NOTES
 
                   python3 - <<'PY' > "$RUNNER_TEMP/release-body.md"
                   import os
