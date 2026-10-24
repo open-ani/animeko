@@ -20,6 +20,8 @@ import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.person.PersonCommentTarget
 import me.him188.ani.app.domain.comment.CommentContext
+import me.him188.ani.app.domain.comment.CommentImageStatusResult
+import me.him188.ani.app.domain.comment.CommentImageUploadResult
 import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentItemTestTags
@@ -56,6 +58,8 @@ class PersonCommentsSheetTest {
                 stickers = stateOf(emptyList()),
                 richTextRenderer = { UIRichText(emptyList()) },
                 onSend = { _, _ -> CommentSendResult.Ok },
+                onUploadImage = { CommentImageUploadResult.Ready("https://example.com/image.webp") },
+                onCheckImageStatus = { CommentImageStatusResult.Ok(emptyMap()) },
                 backgroundScope = scope,
             ),
             originalCommentsUrl = "https://bgm.tv/person/42",
