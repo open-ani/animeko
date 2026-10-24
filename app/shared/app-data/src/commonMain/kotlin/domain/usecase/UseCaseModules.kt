@@ -9,15 +9,21 @@
 
 package me.him188.ani.app.domain.usecase
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeSubjectRepository
 import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCase
 import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCaseImpl
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCaseImpl
+import me.him188.ani.app.data.repository.subject.SyncSubjectCollectionTypesByProgressUseCase
+import me.him188.ani.app.data.repository.subject.SyncSubjectCollectionTypesByProgressUseCaseImpl
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.comment.PostCommentUseCaseImpl
+import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCaseImpl
 import me.him188.ani.app.domain.episode.CreateMediaFetchSelectBundleFlowUseCase
@@ -37,7 +43,6 @@ import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCaseImpl
 import me.him188.ani.app.domain.episode.ResolveEpisodeLinkUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCaseImpl
-import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.DeleteCacheUseCaseImpl
 import me.him188.ani.app.domain.media.cache.GetMediaCacheUseCase
@@ -75,7 +80,7 @@ import org.koin.core.KoinApplication
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
 
-fun KoinApplication.useCaseModules() = module {
+fun KoinApplication.useCaseModules(backgroundScope: CoroutineScope) = module {
     single {
         val episodes = get<EpisodeCollectionRepository>()
         val subjects = get<EpisodeSubjectRepository>()
@@ -94,11 +99,19 @@ fun KoinApplication.useCaseModules() = module {
     single<GetVideoScaffoldConfigUseCase> { GetVideoScaffoldConfigUseCaseImpl }
     single<SetDanmakuEnabledUseCase> { SetDanmakuEnabledUseCaseImpl(koin) }
     single<SetSubjectCollectionTypeOrDeleteUseCase> { SetSubjectCollectionTypeOrDeleteUseCaseImpl(get(), get(), get()) }
+    single<SyncSubjectCollectionTypesByProgressUseCase> {
+        SyncSubjectCollectionTypesByProgressUseCaseImpl(
+            subjectCollectionRepository = get(),
+            setSubjectCollectionTypeOrDeleteUseCase = get(),
+            episodeCollectionRepository = get(),
+            autoAdvanceEnabled = get<SettingsRepository>().uiSettings.flow.map { it.myCollections.autoAdvanceCollectionType },
+            backgroundScope = backgroundScope,
+        )
+    }
     single<SetEpisodeCollectionTypeUseCase> { SetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetEpisodeCollectionTypeUseCase> { GetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetAnimeScheduleFlowUseCase> { GetAnimeScheduleFlowUseCaseImpl(get()) }
     single<GetAnimeSeasonIdsFlowUseCase> { GetAnimeSeasonIdsFlowUseCaseImpl(get()) }
-    // 上游(人物评论服务)将 PostCommentUseCase 改为双依赖,保留上游版本
     single<PostCommentUseCase> { PostCommentUseCaseImpl(get(), get()) }
     single<GetPreferredMediaSourceSortingUseCase> { GetPreferredMediaSourceSortingUseCaseImpl(get()) }
     single<GetMediaSelectorSourceTiersUseCase> { GetMediaSelectorSourceTiersUseCaseImpl(get()) }

@@ -61,4 +61,14 @@ interface EpisodeCollectionPendingOpDao {
         deletePendingOpsByEpisodeIds(ops.map { it.episodeId })
         return ops.map { insertPendingOp(it) }
     }
+
+    /** 新操作使用新的 id, 以免被仍在进行的旧同步删除. */
+    @Query(
+        """
+        INSERT OR REPLACE INTO episode_collection_pending_op (subjectId, episodeId, collectionType, updatedAtMillis)
+        SELECT subjectId, episodeId, selfCollectionType, :updatedAtMillis FROM episode_collection
+        WHERE subjectId = :subjectId AND selfCollectionType = 'DONE'
+        """,
+    )
+    suspend fun requeueWatchedEpisodes(subjectId: Int, updatedAtMillis: Long)
 }
