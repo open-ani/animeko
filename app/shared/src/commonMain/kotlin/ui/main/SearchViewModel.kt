@@ -158,7 +158,7 @@ open class SearchViewModel(
     }
 
     fun suggestionsPager(query: String): Flow<PagingData<String>> {
-        return subjectSearchCompletionRepository.completionsFlow(query.trim())
+        return subjectSearchCompletionRepository.completionsFlow(query)
     }
 
     fun onSearchPageIntent(intent: SearchPageIntent) {
