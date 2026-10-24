@@ -66,6 +66,16 @@ data class SelectorResolveEpisodeInput(
      */
     val maxSubjectsPerName: Int = 3,
     /**
+     * 只展开这些条目 (与搜索结果的 fullUrl 或 partialUrl 精确匹配), 非空时忽略 [maxSubjectsPerName].
+     * 评测时先用 [listSubjectsOnly] 列出搜索结果, 由人或 agent 选定正确条目后再传入,
+     * 避免引擎的模糊匹配把续季 / 剧场版 / 总集篇当成候选.
+     */
+    val subjectUrls: List<String>? = null,
+    /**
+     * 只跑到 selectSubjects, 把各搜索词搜到的全部条目放进 [SelectorResolveEpisodeResult.subjects] 返回, 不访问详情页.
+     */
+    val listSubjectsOnly: Boolean = false,
+    /**
      * 是否用 WebView (CEF) 把播放页解析成最终视频 URL
      */
     val extractVideo: Boolean = true,
@@ -90,6 +100,10 @@ data class SelectorResolveEpisodeResult(
      * selectMedia 之后的最终候选 (filteredList)
      */
     val medias: List<WebMediaCandidate> = emptyList(),
+    /**
+     * 各搜索词搜到的全部条目 (selectSubjects 之后、展开详情页之前), 按引擎自动匹配的顺序.
+     */
+    val subjects: List<WebSubjectCandidate> = emptyList(),
     val extractResults: List<ChannelTestResult> = emptyList(),
     val errors: List<String> = emptyList(),
     val totalDurationMillis: Long? = null,
@@ -111,6 +125,18 @@ data class WebMediaCandidate(
     val episodeName: String,
     val episodeSort: String? = null,
     val playUrl: String,
+)
+
+/**
+ * 搜索结果里的一个条目. [order] 是该搜索词结果里引擎自动匹配的顺序 (从 0 起).
+ */
+@Serializable
+data class WebSubjectCandidate(
+    val keyword: String,
+    val name: String,
+    val fullUrl: String,
+    val partialUrl: String,
+    val order: Int,
 )
 
 @Serializable
