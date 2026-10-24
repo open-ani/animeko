@@ -27,6 +27,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.ktor.asScopedHttpClient
@@ -120,7 +121,10 @@ class DeltaPackageDownloaderTest {
         }
     }
 
-    private fun ApplicationTestBuilder.downloader(output: PackageOutput = PackageOutput.Zip): DeltaPackageDownloader =
+    private fun ApplicationTestBuilder.downloader(
+        output: PackageOutput = PackageOutput.Zip,
+        prepare: suspend (SystemPath) -> SystemPath = { it },
+    ): DeltaPackageDownloader =
         DeltaPackageDownloader(
             createClient {
                 expectSuccess = true
@@ -128,6 +132,7 @@ class DeltaPackageDownloaderTest {
             }.asScopedHttpClient(),
             installRoot = installRoot,
             output = output,
+            prepare = prepare,
         )
 
     private val stagingDir: File get() = saveDir.resolve("pkg.zip" + PackageOutput.Directory.SUFFIX)
@@ -273,7 +278,7 @@ class DeltaPackageDownloaderTest {
     fun `directory output stages the unpacked new version`() = testApplication {
         setupServer()
         installOldVersion("Ani/app/b.jar", "Ani/app/c.jar")
-        val downloader = downloader(PackageOutput.Directory)
+        val downloader = downloader(PackageOutput.Directory(stripTopLevel = true))
 
         val result = assertNotNull(downloader.downloadPackage())
 
@@ -288,10 +293,10 @@ class DeltaPackageDownloaderTest {
     fun `directory output reuses an existing staging directory`() = testApplication {
         setupServer()
         installOldVersion("Ani/app/b.jar")
-        assertNotNull(downloader(PackageOutput.Directory).downloadPackage())
+        assertNotNull(downloader(PackageOutput.Directory(stripTopLevel = true)).downloadPackage())
         rangeRequests.clear()
 
-        val downloader = downloader(PackageOutput.Directory)
+        val downloader = downloader(PackageOutput.Directory(stripTopLevel = true))
         assertNotNull(downloader.downloadPackage())
 
         assertEquals(emptyList<String?>(), rangeRequests)
@@ -303,7 +308,7 @@ class DeltaPackageDownloaderTest {
     fun `directory output rebuilds a staging directory that no longer matches`() = testApplication {
         setupServer()
         installOldVersion("Ani/app/b.jar")
-        assertNotNull(downloader(PackageOutput.Directory).downloadPackage())
+        assertNotNull(downloader(PackageOutput.Directory(stripTopLevel = true)).downloadPackage())
         // 暂存目录里的文件可能是安装目录文件的硬链接, 先删再写, 不能原地改写
         stagingDir.resolve("app/a.jar").apply {
             delete()
@@ -311,7 +316,7 @@ class DeltaPackageDownloaderTest {
         }
         rangeRequests.clear()
 
-        assertNotNull(downloader(PackageOutput.Directory).downloadPackage())
+        assertNotNull(downloader(PackageOutput.Directory(stripTopLevel = true)).downloadPackage())
 
         assertEquals(listOf<String?>(rangeOf("Ani/app/b.jar")), rangeRequests)
         assertStagedPackage()
@@ -323,7 +328,7 @@ class DeltaPackageDownloaderTest {
         corruptRanges = true
         installOldVersion("Ani/app/b.jar")
 
-        val downloader = downloader(PackageOutput.Directory)
+        val downloader = downloader(PackageOutput.Directory(stripTopLevel = true))
         val result = assertNotNull(downloader.downloadPackage())
 
         assertEquals(target.path, result.toString())
@@ -331,6 +336,86 @@ class DeltaPackageDownloaderTest {
         assertFalse(stagingDir.exists())
         assertFalse(File(stagingDir.path + ".part").exists())
         assertEquals(packageBytes.toList(), target.readBytes().toList())
+    }
+
+    @Test
+    fun `directory output can keep the top-level directory`() = testApplication {
+        setupServer()
+        installOldVersion("Ani/app/b.jar")
+        val downloader = downloader(PackageOutput.Directory(stripTopLevel = false))
+        val result = assertNotNull(downloader.downloadPackage())
+        assertEquals(stagingDir.path, result.toString())
+        assertEquals(listOf("Ani"), stagingDir.list().orEmpty().toList())
+        for (entry in released) {
+            val file = stagingDir.resolve(entry.name)
+            if (entry.content == null) assertTrue(file.isDirectory, entry.name)
+            else assertEquals(entry.content.toList(), file.readBytes().toList(), entry.name)
+        }
+    }
+
+    @Test
+    fun `assembled package is prepared before the download succeeds`() = testApplication {
+        setupServer()
+        installOldVersion("Ani/app/b.jar")
+        val prepared = saveDir.resolve("prepared").toKtPath().inSystem
+        val preparedFrom = mutableListOf<String>()
+        var stateWhilePreparing: FileDownloaderState? = null
+        lateinit var downloader: DeltaPackageDownloader
+        downloader = downloader(PackageOutput.Directory(stripTopLevel = true)) { file ->
+            preparedFrom += file.toString()
+            stateWhilePreparing = downloader.state.value
+            prepared
+        }
+        assertEquals(prepared, downloader.downloadPackage())
+        assertEquals(listOf(stagingDir.path), preparedFrom)
+        assertEquals(FileDownloaderState.Downloading, stateWhilePreparing)
+        assertEquals(prepared, assertIs<FileDownloaderState.Succeed>(downloader.state.value).file)
+        assertEquals(1f, downloader.progress.first())
+    }
+
+    @Test
+    fun `full download is prepared before the download succeeds`() = testApplication {
+        setupServer()
+        serveManifest = false
+        installOldVersion("Ani/app/b.jar")
+        val prepared = saveDir.resolve("prepared").toKtPath().inSystem
+        val preparedFrom = mutableListOf<String>()
+        var stateWhilePreparing: FileDownloaderState? = null
+        lateinit var downloader: DeltaPackageDownloader
+        downloader = downloader { file ->
+            preparedFrom += file.toString()
+            stateWhilePreparing = downloader.state.value
+            prepared
+        }
+        assertEquals(prepared, downloader.downloadPackage())
+        assertEquals(listOf(target.path), preparedFrom)
+        assertEquals(FileDownloaderState.Downloading, stateWhilePreparing)
+        val state = assertIs<FileDownloaderState.Succeed>(downloader.state.value)
+        assertEquals(prepared, state.file)
+        assertTrue(state.checked)
+        assertEquals(1f, downloader.progress.first())
+    }
+
+    @Test
+    fun `unusable package fails the download without a full download`() = testApplication {
+        setupServer()
+        installOldVersion("Ani/app/b.jar")
+        val failure = PackagePreparationException("signature invalid")
+        val downloader = downloader(PackageOutput.Directory(stripTopLevel = true)) { throw failure }
+        assertEquals(null, downloader.downloadPackage())
+        assertEquals(failure, assertIs<FileDownloaderState.Failed>(downloader.state.value).throwable)
+        assertTrue(rangeRequests.none { it == null }, "no full download expected, got $rangeRequests")
+    }
+
+    @Test
+    fun `failing to prepare the full download fails the download`() = testApplication {
+        setupServer()
+        serveManifest = false
+        installOldVersion("Ani/app/b.jar")
+        val failure = IllegalStateException("disk full")
+        val downloader = downloader { throw failure }
+        assertEquals(null, downloader.downloadPackage())
+        assertEquals(failure, assertIs<FileDownloaderState.Failed>(downloader.state.value).throwable)
     }
 
     @Test

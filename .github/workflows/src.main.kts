@@ -2292,7 +2292,7 @@ class WithMatrix(
             env = mapOf("DEV_BUILD_PACKAGE_NAME" to packageName),
         )
         if (matrix.isMacOS) {
-            // macOS 的更新脚本解压后要先通过签名校验才替换 .app. 打包后改动过 .app 而没有重签时这里会失败.
+            // macOS 的应用在下载阶段解压或拼好 .app 后要先通过签名校验才会安装. 打包后改动过 .app 而没有重签时这里会失败.
             run(
                 name = "Verify code signature in $packageName",
                 shell = Shell.Bash,
