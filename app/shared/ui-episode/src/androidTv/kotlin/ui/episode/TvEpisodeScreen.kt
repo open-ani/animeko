@@ -157,10 +157,10 @@ import org.openani.mediamp.MediaStatus
  *
  * 播放控制按键收敛在根部 onPreviewKeyEvent 路由 (§8.2); 纯 UI 导航由对应组件处理:
  * - HIDDEN: 确认短按=播↔停 (暂停时唤出控制层), 长按 (系统连发判定, 同 tvLongPressKey
- *   判据) = 配置的倍速, 松开还原; ←→ 按住调整进度 (只显示时间轴, 按住越久步长越大), 松键跳转; ↑↓ 唤出控制层.
- * - CONTROLS: 焦点在进度条时 ←→ 按住调整进度、松键跳转, 确认=播停, 其余按键交给焦点系统;
+ *   判据) = 配置的倍速, 松开还原; ←→ 按住调整进度 (只显示时间轴, 按住越久步长越大), 松键后短暂空闲即跳转; ↑↓ 唤出控制层.
+ * - CONTROLS: 焦点在进度条时 ←→ 按住调整进度、松键后短暂空闲即跳转, 确认=播停, 其余按键交给焦点系统;
  *   选集按钮展开药丸上方的横向剧照条; 任意按键刷新 5s 自动隐藏 (暂停/拖拽/弹窗不隐藏).
- * - 拖拽预览: ←→ 移动预览点 (按住越久步长越大), 松键跳转; 手势结束后精简时间轴停留 1s 收起, ↑↓ 取消并展开完整控制层.
+ * - 拖拽预览: ←→ 移动预览点 (按住越久步长越大), 松键后短暂空闲即跳转; 手势结束后精简时间轴停留 1s 收起, ↑↓ 取消并展开完整控制层.
  * - 全局: MediaPlayPause 播停 / MediaFastForward 下一集 / MediaRewind 上一集.
  * - 底部按钮按下进入推荐横排, 标题栏保持显示; 按上/返回恢复底部控制器并将焦点归还进度条.
  * - 返回逐层: 弹窗 → 推荐/拖拽 → 选集条 → 控制层 → 退出 (BackHandler 分层).
@@ -228,6 +228,14 @@ internal fun TvEpisodeScreen(
         if (state.canAutoHide && uiState.playerState.isPlaying) {
             delay(5_000)
             presentationState.autoHide()
+        }
+    }
+    // 松键后等短暂空闲再提交 seek: 输入链路可能把长按拆成连续的按下事件,
+    // 空闲期内再次按下方向键会取消提交, 继续本次调整.
+    LaunchedEffect(presentationState.pendingScrubCommitMillis) {
+        if (presentationState.pendingScrubCommitMillis != null) {
+            delay(TvPlayerPresentationState.SCRUB_INPUT_IDLE_MILLIS)
+            presentationState.commitPendingScrub()
         }
     }
     // 精简时间轴是调整进度的即时反馈: 手势结束后短暂停留即收起 (对齐其它端的 seek 指示);

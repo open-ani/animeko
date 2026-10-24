@@ -126,6 +126,10 @@ internal class TvPlayerPresentationState(
     var danmakuAdjustment by mutableStateOf<TvDanmakuAdjustment?>(null)
     var matchReturnSource by mutableStateOf<DanmakuServiceId?>(null)
     var statsVisible by mutableStateOf(false)
+
+    /** 松键后的待提交目标; 空闲期 (见 [SCRUB_INPUT_IDLE_MILLIS]) 内再次按下方向键会取消它, 继续本次调整. */
+    var pendingScrubCommitMillis by mutableStateOf<Long?>(null)
+        private set
     private var episodeId: Int? = null
     private var roomIdentity: Pair<Boolean, String>? = null
     private var trackingConfirm = false
@@ -133,6 +137,7 @@ internal class TvPlayerPresentationState(
     private var lastScrubAdvanceMillis = Long.MIN_VALUE
     private var scrubHoldStartMillis = Long.MIN_VALUE
     private var scrubHoldForward: Boolean? = null
+    private var lastScrubKeyEventMillis = Long.MIN_VALUE
 
     /** Correlation is opaque to the VM: only this originating surface may consume its result. */
     fun tagRequest(intent: TvEpisodeIntent): TvEpisodeIntent = when (intent) {
@@ -289,6 +294,7 @@ internal class TvPlayerPresentationState(
     }
 
     private fun clearPreview() {
+        cancelPendingScrubCommit()
         if (state.value.scrubMillis != null) execute(TvPlaybackCommand.PreviewSeek(null))
     }
 
@@ -373,14 +379,19 @@ internal class TvPlayerPresentationState(
     }
 
     /**
-     * 按住 ←/→ 期间推进预览点: 系统连发约 50ms 一次, 这里节流到 [SCRUB_REPEAT_INTERVAL_MILLIS] 一次;
+     * 按住 ←/→ 期间推进预览点: 方向键事件节流到 [SCRUB_REPEAT_INTERVAL_MILLIS] 一次;
      * 步长按按住时长加大, 单击 (首次按下) 永远是一档基础步长.
      *
-     * 新的一轮按住或换方向都会把加速重置到基础步长, 让过度快进后能立刻精细回退.
+     * 遥控器/输入链路可能把长按拆成连续的按下事件 (repeatCount 恒为 0), 因此用事件间隔
+     * 判断是否同一次按住: 间隔不超过 [SCRUB_INPUT_IDLE_MILLIS] 视为继续, 否则从基础步长重新开始.
+     * 换方向同样重置, 让过度快进后能立刻精细回退.
      */
     private fun moveScrubByKey(forward: Boolean, event: TvPlayerAction.RemoteKey) {
         val now = event.eventTimeMillis
-        if (event.repeatCount == 0 || forward != scrubHoldForward) {
+        cancelPendingScrubCommit()
+        val continuing = forward == scrubHoldForward && now - lastScrubKeyEventMillis <= SCRUB_INPUT_IDLE_MILLIS
+        lastScrubKeyEventMillis = now
+        if (!continuing) {
             scrubHoldForward = forward
             scrubHoldStartMillis = now
             advanceScrub(forward, stepForHold(heldMillis = 0), now)
@@ -404,15 +415,28 @@ internal class TvPlayerPresentationState(
     }
 
     /**
-     * 松开 ←/→: 提交按住期间移动的预览位置.
+     * 松开 ←/→: 记录提交目标, 等短暂空闲再真正 seek.
      *
-     * 预览点保留到播放位置追上目标 (由 VM 清除): seek 是异步的而界面位置采样有延迟,
-     * 立即清除会让指示器与时间先回跳到旧位置再跳到目标.
+     * 输入链路可能把长按拆成"按下-松开"的连续事件, 立即提交会导致连发期间不停 seek;
+     * 空闲期 (见 [SCRUB_INPUT_IDLE_MILLIS]) 内再次按下方向键会取消提交, 继续本次调整.
+     * 提交后预览点保留到界面位置追上目标 (由 VM 清除), 避免指示器与时间回跳.
      */
-    private fun commitScrub() {
-        val preview = state.value.scrubMillis ?: return
+    private fun scheduleScrubCommit(event: TvPlayerAction.RemoteKey) {
+        lastScrubKeyEventMillis = event.eventTimeMillis
+        pendingScrubCommitMillis = state.value.scrubMillis ?: return
+    }
+
+    /** 空闲窗口结束: 提交松键时记录的目标位置. */
+    fun commitPendingScrub() {
+        val preview = pendingScrubCommitMillis ?: return
+        pendingScrubCommitMillis = null
+        if (state.value.scrubMillis != preview) return
         execute(TvPlaybackCommand.SeekTo(preview))
         bump()
+    }
+
+    private fun cancelPendingScrubCommit() {
+        pendingScrubCommitMillis = null
     }
 
     private fun togglePause() {
@@ -524,13 +548,13 @@ internal class TvPlayerPresentationState(
             if (isDown) bump()
             return !event.sidebarFocused && key in navigationKeys
         }
-        // 画面预览: ←/→ 按住期间移动预览点, 松开提交; 返回/↑↓ 取消, 确认=播停.
+        // 画面预览: ←/→ 按住期间移动预览点, 松键后短暂空闲即提交; 返回/↑↓ 取消, 确认=播停.
         if (state.value.scrubMillis != null) {
             when (key) {
                 TvRemoteKey.Left, TvRemoteKey.Right -> if (isDown) {
                     moveScrubByKey(forward = key == TvRemoteKey.Right, event)
                 } else {
-                    commitScrub()
+                    scheduleScrubCommit(event)
                 }
 
                 TvRemoteKey.Confirm -> if (isNewPress) togglePause()
@@ -658,6 +682,13 @@ internal class TvPlayerPresentationState(
 
         /** 按住方向键调整进度时预览点的最小推进间隔 (系统按键连发约 50ms 一次, 全量处理会让数字闪烁). */
         private const val SCRUB_REPEAT_INTERVAL_MILLIS = 200L
+
+        /**
+         * 方向键事件间隔不超过该值视为同一次按住; 松键后空闲同样时长再提交 seek.
+         *
+         * 部分遥控器/输入链路把长按拆成连续的按下事件 (repeatCount 恒为 0), 不能依赖连发计数.
+         */
+        internal const val SCRUB_INPUT_IDLE_MILLIS = 300L
     }
 }
 

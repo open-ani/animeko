@@ -143,6 +143,8 @@ class TvPlaybackSemanticsUiTest {
         assertTrue(seeks.isEmpty())
         onNodeWithTag("tv-player-seekbar").assertIsFocused()
         upKey(Key.DirectionRight)
+        // 松键后等待短暂空闲再提交.
+        waitUntil(timeoutMillis = 5_000) { seeks.isNotEmpty() }
         assertEquals(listOf(target), seeks)
         assertNull(interaction.scrubMillis)
         onNodeWithTag("tv-player-seekbar").assertIsFocused()
@@ -198,8 +200,9 @@ class TvPlaybackSemanticsUiTest {
         val target = checkNotNull(interaction.scrubMillis)
         assertTrue(target > 20_000)
         assertTrue(seeks.isEmpty())
-        // 松键提交
+        // 松键后等待短暂空闲再提交
         upKey(Key.DirectionRight)
+        waitUntil(timeoutMillis = 5_000) { seeks.isNotEmpty() }
         assertEquals(listOf(target), seeks)
         assertNull(interaction.scrubMillis)
         // 手势结束后精简时间轴短暂停留并自动收起

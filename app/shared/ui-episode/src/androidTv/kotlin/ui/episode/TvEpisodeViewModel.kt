@@ -121,6 +121,7 @@ class TvEpisodeViewModel(
 
     /** 已提交 seek 的目标; 播放位置追上后清除预览点, 避免指示器与时间回跳. */
     private var committedSeekTarget: Long? = null
+    private var committedSeekWaitJob: Job? = null
     private var committedSeekTimeout: Job? = null
     private val sourceSelection = MutableStateFlow(TvSourceSelectionState())
     private val events = Channel<TvEpisodeEvent>(Channel.BUFFERED)
@@ -254,20 +255,27 @@ class TvEpisodeViewModel(
         player.togglePlayWhenReady()
     }
 
-    private fun seekTo(positionMillis: Long) {
-        if (!canControlPlayback()) return
+    private fun seekTo(positionMillis: Long): Boolean {
+        if (!canControlPlayback()) return false
         val duration = player.mediaProperties.value?.durationMillis?.takeIf { it > 0 } ?: Long.MAX_VALUE
         player.seekTo(positionMillis.coerceIn(0, duration))
+        return true
     }
 
     /**
-     * 提交 seek 后保留预览点, 等播放位置追上目标 (或超时) 再清除.
+     * 提交 seek 后保留预览点, 等界面显示的位置追上目标 (或超时) 再清除.
      *
-     * seek 是异步的而界面位置采样有延迟, 立即清除会让指示器与时间先回跳到旧位置再跳到目标.
+     * seek 是异步的; 而界面位置来自 [positionFlow] 的 500ms 采样, 会在 seek 落地后仍短暂停留在旧值.
+     * 必须以 [positionFlow] (界面实际显示的位置) 为准, 否则预览点会先被清除, 时间和指示器回跳约半秒.
      */
     private fun trackCommittedSeek(targetMillis: Long) {
         committedSeekTarget = targetMillis
+        committedSeekWaitJob?.cancel()
         committedSeekTimeout?.cancel()
+        committedSeekWaitJob = backgroundScope.launch(Dispatchers.Main) {
+            positionFlow.first { position -> abs(position - targetMillis) <= COMMITTED_SEEK_SETTLE_DISTANCE_MILLIS }
+            clearCommittedSeekPreview(targetMillis)
+        }
         committedSeekTimeout = backgroundScope.launch(Dispatchers.Main) {
             delay(COMMITTED_SEEK_GRACE_TIMEOUT_MILLIS)
             clearCommittedSeekPreview(targetMillis)
@@ -282,6 +290,8 @@ class TvEpisodeViewModel(
 
     private fun cancelCommittedSeekPreview() {
         committedSeekTarget = null
+        committedSeekWaitJob?.cancel()
+        committedSeekWaitJob = null
         committedSeekTimeout?.cancel()
         committedSeekTimeout = null
     }
@@ -427,8 +437,13 @@ class TvEpisodeViewModel(
                 playbackInteraction.setPreview(intent.positionMillis?.coerceIn(0, duration.coerceAtLeast(0)))
             }
             is TvEpisodeIntent.SeekTo -> {
-                seekTo(intent.positionMillis)
-                trackCommittedSeek(intent.positionMillis)
+                if (seekTo(intent.positionMillis)) {
+                    trackCommittedSeek(intent.positionMillis)
+                } else {
+                    // 播放器未接受 seek: 预览点立即清除, 不阻塞界面.
+                    cancelCommittedSeekPreview()
+                    playbackInteraction.setPreview(null)
+                }
             }
             is TvEpisodeIntent.SwitchNeighbor -> switchToNeighborEpisode(intent.offset)
             TvEpisodeIntent.NextEpisode -> switchToNeighborEpisode(1)
@@ -874,13 +889,6 @@ class TvEpisodeViewModel(
         backgroundScope.launch(Dispatchers.Main) {
             player.state.collect { danmakuHostState.setPaused(!it.isPlaying) }
         }
-        // seek 落地后播放位置才追上目标; 追上即清除预览点, 让时间轴回到跟随播放.
-        backgroundScope.launch(Dispatchers.Main) {
-            player.currentPositionMillis.collect { position ->
-                val target = committedSeekTarget ?: return@collect
-                if (abs(position - target) <= COMMITTED_SEEK_SETTLE_DISTANCE_MILLIS) clearCommittedSeekPreview(target)
-            }
-        }
         backgroundScope.launch(Dispatchers.Main) {
             uiDanmakuEventFlow.collect { event ->
                 when (event) {
@@ -925,6 +933,6 @@ class TvEpisodeViewModel(
         private const val COMMITTED_SEEK_SETTLE_DISTANCE_MILLIS = 1_000L
 
         /** seek 迟迟未落地时的兜底时长: 超时无条件清除预览点. */
-        private const val COMMITTED_SEEK_GRACE_TIMEOUT_MILLIS = 2_000L
+        private const val COMMITTED_SEEK_GRACE_TIMEOUT_MILLIS = 5_000L
     }
 }

@@ -155,15 +155,19 @@ class TvPlayerPresentationStateTest {
     }
 
     @Test
-    fun `arrows preview while held and commit on release once`() {
+    fun `arrows preview while held and commit when input goes idle`() {
         val f = Fixture()
         f.key(TvRemoteKey.Right, time = 100) // Includes events near boot; no phantom previous press.
         assertTrue(f.commands.isEmpty())
         assertEquals(25_000L, f.state.scrubMillis)
-        f.key(TvRemoteKey.Right, repeats = 1, time = 500) // 按住连发继续移动预览点.
+        f.key(TvRemoteKey.Right, time = 400) // 同一次按住: 继续移动预览点.
         assertEquals(30_000L, f.state.scrubMillis)
         assertTrue(f.commands.isEmpty())
-        f.key(TvRemoteKey.Right, down = false, time = 600)
+        f.key(TvRemoteKey.Right, down = false, time = 500)
+        // 松键后先等空闲, 期间不提交.
+        assertTrue(f.commands.isEmpty())
+        assertEquals(30_000L, f.machine.pendingScrubCommitMillis)
+        f.machine.commitPendingScrub()
         assertEquals(listOf<TvPlaybackCommand>(TvPlaybackCommand.SeekTo(30_000)), f.commands)
         // 预览保留到播放位置追上目标, 期间指示器不回跳.
         assertEquals(30_000L, f.state.scrubMillis)
@@ -176,16 +180,16 @@ class TvPlayerPresentationStateTest {
         val f = Fixture()
         f.key(TvRemoteKey.Right, time = 1_000)
         assertEquals(25_000L, f.state.scrubMillis)
-        // 节流窗口内的连发被丢弃, 时间数字不会以系统连发频率闪烁.
-        f.key(TvRemoteKey.Right, repeats = 1, time = 1_050)
+        // 节流窗口内的按键被丢弃, 时间数字不会以输入事件频率闪烁.
+        f.key(TvRemoteKey.Right, time = 1_050)
         assertEquals(25_000L, f.state.scrubMillis)
-        f.key(TvRemoteKey.Right, repeats = 2, time = 1_100)
+        f.key(TvRemoteKey.Right, time = 1_100)
         assertEquals(25_000L, f.state.scrubMillis)
-        f.key(TvRemoteKey.Right, repeats = 3, time = 1_200)
+        f.key(TvRemoteKey.Right, time = 1_200)
         assertEquals(30_000L, f.state.scrubMillis)
-        f.key(TvRemoteKey.Right, repeats = 4, time = 1_250)
+        f.key(TvRemoteKey.Right, time = 1_250)
         assertEquals(30_000L, f.state.scrubMillis)
-        f.key(TvRemoteKey.Right, repeats = 5, time = 1_400)
+        f.key(TvRemoteKey.Right, time = 1_400)
         assertEquals(35_000L, f.state.scrubMillis)
     }
 
@@ -193,33 +197,61 @@ class TvPlayerPresentationStateTest {
     fun `held arrows advance with a growing step`() {
         val f = Fixture()
         f.playback = TvPlaybackSnapshot(PlayerState(MediaStatus.Ready, true, false), positionMillis = 0, durationMillis = 3_600_000)
-        f.key(TvRemoteKey.Right, time = 1_000)
+        fun advanceAt(time: Long): Long {
+            val before = f.state.scrubMillis ?: 0L
+            f.key(TvRemoteKey.Right, time = time)
+            return (f.state.scrubMillis ?: 0L) - before
+        }
+
+        f.key(TvRemoteKey.Right, time = 0)
         assertEquals(5_000L, f.state.scrubMillis)
-        f.key(TvRemoteKey.Right, repeats = 1, time = 1_200)
-        assertEquals(10_000L, f.state.scrubMillis)
-        f.key(TvRemoteKey.Right, repeats = 2, time = 1_800)
-        assertEquals(15_000L, f.state.scrubMillis) // 按住第 1 秒内仍是 5s 步长.
-        f.key(TvRemoteKey.Right, repeats = 3, time = 2_000)
-        assertEquals(25_000L, f.state.scrubMillis) // 超过 1s 进入 10s 档.
-        f.key(TvRemoteKey.Right, repeats = 4, time = 2_400)
-        assertEquals(35_000L, f.state.scrubMillis)
-        f.key(TvRemoteKey.Right, repeats = 5, time = 4_000)
-        assertEquals(65_000L, f.state.scrubMillis) // 超过 3s 进入 30s 档.
-        f.key(TvRemoteKey.Right, repeats = 6, time = 7_000)
-        assertEquals(125_000L, f.state.scrubMillis) // 超过 6s 进入 60s 档.
+        var time = 0L
+        // 按住第 1 秒内: 每步 5 秒.
+        while (time < 800) {
+            time += 200
+            assertEquals(5_000L, advanceAt(time))
+        }
+        // 1 秒后进入 10 秒档.
+        time += 200
+        assertEquals(10_000L, advanceAt(time))
+        while (time < 2_800) {
+            time += 200
+            assertEquals(10_000L, advanceAt(time))
+        }
+        // 3 秒后进入 30 秒档.
+        time += 200
+        assertEquals(30_000L, advanceAt(time))
+        while (time < 5_800) {
+            time += 200
+            assertEquals(30_000L, advanceAt(time))
+        }
+        // 6 秒后进入 60 秒档.
+        time += 200
+        assertEquals(60_000L, advanceAt(time))
+        while (time < 6_800) {
+            time += 200
+            assertEquals(60_000L, advanceAt(time))
+        }
     }
 
     @Test
     fun `reversing direction restarts acceleration from the base step`() {
         val f = Fixture()
         f.playback = TvPlaybackSnapshot(PlayerState(MediaStatus.Ready, true, false), positionMillis = 0, durationMillis = 3_600_000)
-        f.key(TvRemoteKey.Right, time = 1_000)
-        f.key(TvRemoteKey.Right, repeats = 1, time = 4_000)
-        assertEquals(35_000L, f.state.scrubMillis)
-        f.key(TvRemoteKey.Left, time = 4_200)
-        assertEquals(30_000L, f.state.scrubMillis)
-        f.key(TvRemoteKey.Left, repeats = 1, time = 4_400)
-        assertEquals(25_000L, f.state.scrubMillis)
+        var time = 0L
+        f.key(TvRemoteKey.Right, time = time)
+        // 连续按住 3 秒以上, 让步长进入 30 秒档.
+        while (time < 3_400) {
+            time += 200
+            f.key(TvRemoteKey.Right, time = time)
+        }
+        val accelerated = checkNotNull(f.state.scrubMillis)
+        time += 200
+        f.key(TvRemoteKey.Left, time = time)
+        assertEquals(accelerated - 5_000, f.state.scrubMillis) // 换方向从 5s 档重新开始.
+        time += 200
+        f.key(TvRemoteKey.Left, time = time)
+        assertEquals(accelerated - 10_000, f.state.scrubMillis) // 首秒内仍是 5s 步长.
     }
 
     @Test
@@ -237,10 +269,14 @@ class TvPlayerPresentationStateTest {
     fun `preview stays inside video duration`() {
         val f = Fixture()
         f.playback = f.playback.copy(positionMillis = 55_000)
-        f.key(TvRemoteKey.Right)
-        f.key(TvRemoteKey.Right, time = 1_100)
+        f.key(TvRemoteKey.Right, time = 1_000)
+        f.key(TvRemoteKey.Right, time = 1_200)
         assertEquals(60_000L, f.state.scrubMillis)
-        repeat(20) { f.key(TvRemoteKey.Left) }
+        var time = 1_200L
+        repeat(20) {
+            time += 200
+            f.key(TvRemoteKey.Left, time = time)
+        }
         assertEquals(0L, f.state.scrubMillis)
     }
 
@@ -460,6 +496,10 @@ class TvPlayerPresentationStateTest {
         assertTrue(f.state.controlsVisible)
         assertTrue(f.state.timelineOnly)
         f.key(TvRemoteKey.Left, down = false)
+        // 松键后等待空闲时提交; 空闲期间不提交.
+        assertTrue(f.commands.isEmpty())
+        assertEquals(15_000L, f.machine.pendingScrubCommitMillis)
+        f.machine.commitPendingScrub()
         assertEquals(listOf<TvPlaybackCommand>(TvPlaybackCommand.SeekTo(15_000)), f.commands)
         // 预览保留到播放位置追上目标, 期间不自动隐藏.
         assertEquals(15_000L, f.state.scrubMillis)
@@ -483,8 +523,10 @@ class TvPlayerPresentationStateTest {
         f.machine.autoHideTimeline()
         assertTrue(f.state.controlsVisible)
         f.key(TvRemoteKey.Right, down = false)
+        // 松键后等待空闲提交, 预览仍未清除.
         f.machine.autoHideTimeline()
         assertTrue(f.state.controlsVisible)
+        f.machine.commitPendingScrub()
         f.playerSettled()
         f.machine.autoHideTimeline()
         assertFalse(f.state.controlsVisible)
