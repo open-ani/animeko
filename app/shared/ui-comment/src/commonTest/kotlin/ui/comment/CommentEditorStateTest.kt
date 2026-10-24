@@ -33,6 +33,7 @@ import me.him188.ani.app.domain.comment.UploadCommentImageUseCase
 import me.him188.ani.app.ui.foundation.getClipEntryText
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.test.DisabledOnAndroid
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -278,7 +279,9 @@ class CommentEditorStateTest {
             assertEquals("[img]$IMAGE_URL[/img]", sent)
         }
 
+    // 用到剪贴板的测试只在桌面端运行: Android 的 ClipEntry 读写依赖 ClipData, 本地单元测试里的 android.jar 没有实现
     @Test
+    @DisabledOnAndroid
     fun `queued image whose tag was cut is uploaded after the tag is pasted back`() = runTest {
         val uploads = ControlledUploads()
         val clipboard = FakeClipboard()
@@ -473,7 +476,7 @@ class CommentEditorStateTest {
             CommentImageUploadResult.RateLimited,
             CommentImageUploadResult.NetworkError,
         )
-        val state = createState { results.removeFirst() }
+        val state = createState { results.removeAt(0) }
         val notices = noticesOf(state)
         state.addImages(listOf(image(PNG), image(PNG_2)))
         settle()
@@ -1000,7 +1003,7 @@ class CommentEditorStateTest {
         val checks = statusChecks()
         val ids = mutableListOf(IMAGE_ID, IMAGE_ID_2)
         val state = createState(onCheckImageStatus = checks::check) {
-            CommentImageUploadResult.Processing(ids.removeFirst(), IMAGE_URL)
+            CommentImageUploadResult.Processing(ids.removeAt(0), IMAGE_URL)
         }
         state.addImages(listOf(image()))
         // 查询间隔已增长到最长
@@ -1024,7 +1027,7 @@ class CommentEditorStateTest {
             CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL),
             CommentImageUploadResult.Processing(IMAGE_ID_2, IMAGE_URL_2),
         )
-        val state = createState(onCheckImageStatus = checks::check) { uploads.removeFirst() }
+        val state = createState(onCheckImageStatus = checks::check) { uploads.removeAt(0) }
         state.addImages(listOf(image(PNG), image(PNG_2)))
         settle()
         val ids = state.uploadIds
@@ -1101,7 +1104,7 @@ class CommentEditorStateTest {
             CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL),
             CommentImageUploadResult.Ready(IMAGE_URL),
         )
-        val state = createState(onCheckImageStatus = checks::check) { uploads.removeFirst() }
+        val state = createState(onCheckImageStatus = checks::check) { uploads.removeAt(0) }
         state.addImages(listOf(image()))
         settle()
 
@@ -1176,7 +1179,7 @@ class CommentEditorStateTest {
             CommentImageUploadResult.Processing(IMAGE_ID, IMAGE_URL),
             CommentImageUploadResult.Processing(IMAGE_ID_2, IMAGE_URL_2),
         )
-        val state = createState(onCheckImageStatus = checks::check) { uploads.removeFirst() }
+        val state = createState(onCheckImageStatus = checks::check) { uploads.removeAt(0) }
         state.addImages(listOf(image(PNG), image(PNG_2)))
         settle()
         state.removeImageChip(1)
@@ -1325,6 +1328,7 @@ class CommentEditorStateTest {
     }
 
     @Test
+    @DisabledOnAndroid
     fun `copy puts the selected bbcode on the clipboard and keeps the selection`() = runTest {
         val state = createState()
         val clipboard = FakeClipboard()
@@ -1337,6 +1341,7 @@ class CommentEditorStateTest {
     }
 
     @Test
+    @DisabledOnAndroid
     fun `cut and paste move an image as one undo step each`() = runTest {
         val state = createState()
         val clipboard = FakeClipboard()
@@ -1356,6 +1361,7 @@ class CommentEditorStateTest {
     }
 
     @Test
+    @DisabledOnAndroid
     fun `paste links urls and restores image labels`() = runTest {
         val state = createState()
         val clipboard = FakeClipboard()
