@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.tools.LocalWeekFormatter
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_load_failed
 import me.him188.ani.app.ui.lang.exploration_loading
@@ -246,7 +247,8 @@ internal fun TvExplorationHero(
                         )
                     }
                     val progressInfo = rememberUpdatedState(collection?.progressInfo ?: followedSubject?.subjectProgressInfo)
-                    val watching = remember { SubjectProgressState(progressInfo) }
+                    val weekFormatter = LocalWeekFormatter.current
+                    val watching = remember(weekFormatter) { SubjectProgressState(progressInfo, weekFormatter) }
                     if (followedSubject != null) {
                         Spacer(Modifier.height(14.dp))
                         HomeWatchingProgress(

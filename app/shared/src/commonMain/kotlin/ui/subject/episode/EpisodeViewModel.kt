@@ -144,6 +144,8 @@ import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentMapperContext
 import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
 import me.him188.ani.app.ui.comment.CommentMapperContext.toCommentVoteValue
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_group_title
 import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.EditCommentSticker
@@ -225,6 +227,7 @@ import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.getString
 import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -651,7 +654,7 @@ open class EpisodeViewModel(
             val startEp = groupIndex * 100 + 1
             val endEp = startEp + chunk.size - 1
             PaginatedGroup(
-                title = "第 $startEp-$endEp 话",
+                title = getString(Lang.subject_episode_group_title, startEp, endEp),
                 items = chunk,
                 startIndex = startItemIndex,
                 groupIndex = groupIndex,

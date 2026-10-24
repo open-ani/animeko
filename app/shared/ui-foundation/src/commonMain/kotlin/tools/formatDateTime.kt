@@ -22,6 +22,10 @@ val LocalTimeFormatter = androidx.compose.runtime.compositionLocalOf<TimeFormatt
     error("No TimeFormatter provided")
 }
 
+val LocalWeekFormatter = androidx.compose.runtime.compositionLocalOf<WeekFormatter> {
+    WeekFormatter.System
+}
+
 /**
  * @see TimeFormatter
  * @see LocalTimeFormatter
@@ -61,8 +65,9 @@ fun formatDateAsWeek(
     timestamp: Long, // millis
     showTime: Boolean = true,
 ): String {
-    return remember(timestamp, showTime) {
+    val formatter by rememberUpdatedState(LocalWeekFormatter.current)
+    return remember(timestamp, showTime, formatter) {
         if (timestamp == 0L) ""
-        else WeekFormatter.System.format(Instant.fromEpochMilliseconds(timestamp))
+        else formatter.format(Instant.fromEpochMilliseconds(timestamp))
     }
 }

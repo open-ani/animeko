@@ -38,8 +38,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_blacklist_add
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_blacklist_description
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_blacklist_remove
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_blacklist_title
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import org.jetbrains.compose.resources.stringResource
 import kotlin.random.Random
 import kotlin.random.nextInt
 
@@ -58,13 +64,13 @@ fun BlackListEditPane(
     SettingsTab(modifier) {
         AniAnimatedVisibility(visible = showTitle) {
             Group(
-                title = { Text("黑名单") },
-                description = { Text("黑名单中的 Peer 总是被屏蔽，无论是否匹配过滤规则") },
+                title = { Text(stringResource(Lang.settings_media_torrent_peer_blacklist_title)) },
+                description = { Text(stringResource(Lang.settings_media_torrent_peer_blacklist_description)) },
                 content = { },
             )
         }
         TextItem(
-            title = { if (!showTitle) Text("添加黑名单 IP 地址") },
+            title = { if (!showTitle) Text(stringResource(Lang.settings_media_torrent_peer_blacklist_add)) },
             action = {
                 if (showTitle) {
                     OutlinedButton({ showAddBlackIpDialog = true }) {
@@ -72,8 +78,11 @@ fun BlackListEditPane(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "添加黑名单 IP 地址")
-                            Text("添加黑名单 IP 地址")
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = stringResource(Lang.settings_media_torrent_peer_blacklist_add),
+                            )
+                            Text(stringResource(Lang.settings_media_torrent_peer_blacklist_add))
                         }
                     }
                 } else {
@@ -82,7 +91,10 @@ fun BlackListEditPane(
                             showAddBlackIpDialog = true
                         },
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "添加黑名单 IP 地址")
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = stringResource(Lang.settings_media_torrent_peer_blacklist_add),
+                        )
                     }
                 }
             },
@@ -97,7 +109,10 @@ fun BlackListEditPane(
                     headlineContent = { Text(item) },
                     trailingContent = {
                         IconButton({ onRemove(item) }) {
-                            Icon(Icons.Default.Close, contentDescription = "移除此黑名单 IP")
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(Lang.settings_media_torrent_peer_blacklist_remove),
+                            )
                         }
                     },
                     colors = listItemColors,

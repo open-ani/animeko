@@ -44,7 +44,11 @@ import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.tools.LocalTimeFormatter
+import me.him188.ani.app.tools.LocalWeekFormatter
 import me.him188.ani.app.tools.TimeFormatter
+import me.him188.ani.app.tools.TimeFormatterStrings
+import me.him188.ani.app.tools.WeekFormatter
+import me.him188.ani.app.tools.WeekFormatterStrings
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalPlatformFontFamily
@@ -62,12 +66,36 @@ import me.him188.ani.app.ui.foundation.rememberAniSketchInstance
 import me.him188.ani.app.ui.foundation.rememberPlatformFontFamily
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
+import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.LocaleZhCN
+import me.him188.ani.app.ui.lang.time_days_ago
+import me.him188.ani.app.ui.lang.time_days_later
+import me.him188.ani.app.ui.lang.time_hours_ago
+import me.him188.ani.app.ui.lang.time_hours_later
+import me.him188.ani.app.ui.lang.time_just_now
+import me.him188.ani.app.ui.lang.time_minutes_ago
+import me.him188.ani.app.ui.lang.time_minutes_later
+import me.him188.ani.app.ui.lang.time_seconds_ago
+import me.him188.ani.app.ui.lang.time_seconds_later
+import me.him188.ani.app.ui.lang.week_day_after_tomorrow
+import me.him188.ani.app.ui.lang.week_friday
+import me.him188.ani.app.ui.lang.week_monday
+import me.him188.ani.app.ui.lang.week_next
+import me.him188.ani.app.ui.lang.week_other_year_date
+import me.him188.ani.app.ui.lang.week_same_year_date
+import me.him188.ani.app.ui.lang.week_saturday
+import me.him188.ani.app.ui.lang.week_sunday
+import me.him188.ani.app.ui.lang.week_thursday
+import me.him188.ani.app.ui.lang.week_today
+import me.him188.ani.app.ui.lang.week_tomorrow
+import me.him188.ani.app.ui.lang.week_tuesday
+import me.him188.ani.app.ui.lang.week_wednesday
 import me.him188.ani.torrent.pikpak.PikPakNotEnoughSpaceException
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isMobile
+import org.jetbrains.compose.resources.stringResource
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -151,9 +179,38 @@ fun AniApp(
     // 主题读好再进入 APP, 防止黑白背景闪烁
     val appState = viewModel.appState.collectAsStateWithLifecycle(null).value ?: return
 
+    val timeFormatterStrings = TimeFormatterStrings(
+        justNow = stringResource(Lang.time_just_now),
+        secondsAgo = stringResource(Lang.time_seconds_ago),
+        secondsLater = stringResource(Lang.time_seconds_later),
+        minutesAgo = stringResource(Lang.time_minutes_ago),
+        minutesLater = stringResource(Lang.time_minutes_later),
+        hoursAgo = stringResource(Lang.time_hours_ago),
+        hoursLater = stringResource(Lang.time_hours_later),
+        daysAgo = stringResource(Lang.time_days_ago),
+        daysLater = stringResource(Lang.time_days_later),
+    )
+
+    val weekFormatterStrings = WeekFormatterStrings(
+        today = stringResource(Lang.week_today),
+        tomorrow = stringResource(Lang.week_tomorrow),
+        dayAfterTomorrow = stringResource(Lang.week_day_after_tomorrow),
+        monday = stringResource(Lang.week_monday),
+        tuesday = stringResource(Lang.week_tuesday),
+        wednesday = stringResource(Lang.week_wednesday),
+        thursday = stringResource(Lang.week_thursday),
+        friday = stringResource(Lang.week_friday),
+        saturday = stringResource(Lang.week_saturday),
+        sunday = stringResource(Lang.week_sunday),
+        nextWeek = stringResource(Lang.week_next),
+        sameYearDateFormat = stringResource(Lang.week_same_year_date),
+        otherYearDateFormat = stringResource(Lang.week_other_year_date),
+    )
+
     CompositionLocalProvider(
         LocalSketch provides rememberAniSketchInstance(appState.imageLoaderClient),
-        LocalTimeFormatter provides remember { TimeFormatter() },
+        LocalTimeFormatter provides remember(timeFormatterStrings) { TimeFormatter(strings = timeFormatterStrings) },
+        LocalWeekFormatter provides remember(weekFormatterStrings) { WeekFormatter(strings = weekFormatterStrings) },
         LocalThemeSettings provides appState.themeSettings,
         LocalEpisodeProgressSettings provides appState.episodeProgressSettings,
         LocalSubjectAppearanceSettings provides appState.subjectAppearanceSettings,

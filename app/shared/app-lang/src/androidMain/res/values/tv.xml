@@ -55,6 +55,7 @@
     <string name="foundation_empty_content">No content</string>
     <string name="foundation_loading">Loading…</string>
     <string name="foundation_anonymous">Anonymous</string>
+    <string name="tv_collection_empty">Nothing here yet. Find anime on the Explore page</string>
 
     <!-- Comments -->
     <string name="comment_read_full">Read full comment</string>
@@ -115,6 +116,13 @@
     <string name="tv_settings_scan_link">Scan with your phone to open this page</string>
     <string name="tv_exploration_more_details">More details</string>
     <string name="tv_nav_schedule">Schedule</string>
+    <string name="tv_schedule_load_failed">Failed to load. Check your network and try again</string>
+    <string name="tv_schedule_retry">Retry</string>
+    <string name="tv_schedule_empty">No anime on this day</string>
+    <string name="tv_schedule_subject_cover">Cover of %1$s</string>
+    <string name="tv_search_hint">Enter a keyword and press Search on the keyboard</string>
+    <string name="tv_search_empty">No anime found</string>
+    <string name="tv_search_placeholder">Search anime…</string>
     <string name="tv_login_or">or</string>
     <string name="tv_login_qr_title">Sign in with your phone</string>
     <string name="tv_login_qr_hint">Use “Scan to sign in” in Animeko on your phone, or scan with the phone camera</string>
@@ -128,6 +136,21 @@
     <string name="tv_login_qr_rejected">Declined on your phone</string>
     <string name="tv_login_qr_failed">Couldn’t load the QR code. Check your network</string>
     <string name="tv_login_qr_refresh">Refresh QR code</string>
+    <string name="tv_login_title">Sign in to Animeko</string>
+    <string name="tv_login_email_subtitle">Enter your email and we’ll send a 6-digit code</string>
+    <string name="tv_login_sending">Sending…</string>
+    <string name="tv_login_resend_countdown">Resend (%1$ds)</string>
+    <string name="tv_login_send_code">Send code</string>
+    <string name="tv_login_sent_to">Sent to %1$s</string>
+    <string name="tv_login_existing_account">Sign in to an existing account</string>
+    <string name="tv_login_new_account">Create a new account</string>
+    <string name="tv_login_otp_placeholder">6-digit code</string>
+    <string name="tv_login_verifying">Verifying…</string>
+    <string name="tv_login_reenter_email">Re-enter email</string>
+    <string name="tv_login_error_invalid_otp">The verification code is incorrect</string>
+    <string name="tv_login_error_rate_limited">Too many requests. Try again later</string>
+    <string name="tv_login_error_send_failed">Failed to send. Check your email address and network</string>
+    <string name="tv_login_error_sign_in_failed">Sign-in failed. Try again</string>
     <string name="tv_settings_network">Network</string>
     <string name="tv_settings_proxy_address_invalid">Enter a valid HTTP(S) or SOCKS proxy address</string>
     <string name="tv_update_download">Download update</string>

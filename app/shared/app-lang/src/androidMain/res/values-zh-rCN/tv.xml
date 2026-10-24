@@ -55,6 +55,7 @@
     <string name="foundation_empty_content">暂无内容</string>
     <string name="foundation_loading">正在加载…</string>
     <string name="foundation_anonymous">匿名</string>
+    <string name="tv_collection_empty">这里空空如也，去探索页找些番剧吧</string>
 
     <!-- Comments -->
     <string name="comment_read_full">查看全文</string>
@@ -115,6 +116,13 @@
     <string name="tv_settings_scan_link">使用手机扫码打开此页面</string>
     <string name="tv_exploration_more_details">更多详情</string>
     <string name="tv_nav_schedule">时间表</string>
+    <string name="tv_schedule_load_failed">加载失败了，请检查网络后重试</string>
+    <string name="tv_schedule_retry">重试</string>
+    <string name="tv_schedule_empty">这一天没有新番</string>
+    <string name="tv_schedule_subject_cover">%1$s 封面</string>
+    <string name="tv_search_hint">输入关键词，按软键盘搜索键开始</string>
+    <string name="tv_search_empty">没有找到相关番剧</string>
+    <string name="tv_search_placeholder">搜索番剧…</string>
     <string name="tv_login_or">或</string>
     <string name="tv_login_qr_title">手机扫码登录</string>
     <string name="tv_login_qr_hint">用手机 Animeko 的“扫码登录”或系统相机扫描</string>
@@ -128,6 +136,21 @@
     <string name="tv_login_qr_rejected">已在手机上拒绝</string>
     <string name="tv_login_qr_failed">二维码加载失败, 请检查网络</string>
     <string name="tv_login_qr_refresh">刷新二维码</string>
+    <string name="tv_login_title">登录 Animeko</string>
+    <string name="tv_login_email_subtitle">输入邮箱，我们将发送 6 位验证码</string>
+    <string name="tv_login_sending">发送中…</string>
+    <string name="tv_login_resend_countdown">重新发送 (%1$ds)</string>
+    <string name="tv_login_send_code">发送验证码</string>
+    <string name="tv_login_sent_to">已发送至 %1$s</string>
+    <string name="tv_login_existing_account">登录已有账号</string>
+    <string name="tv_login_new_account">将注册新账号</string>
+    <string name="tv_login_otp_placeholder">6 位验证码</string>
+    <string name="tv_login_verifying">验证中…</string>
+    <string name="tv_login_reenter_email">重新输入邮箱</string>
+    <string name="tv_login_error_invalid_otp">验证码不正确</string>
+    <string name="tv_login_error_rate_limited">发送太频繁，请稍后再试</string>
+    <string name="tv_login_error_send_failed">发送失败，请检查邮箱地址与网络</string>
+    <string name="tv_login_error_sign_in_failed">登录失败，请重试</string>
     <string name="tv_settings_network">网络</string>
     <string name="tv_settings_proxy_address_invalid">请输入有效的 HTTP(S) 或 SOCKS 代理地址</string>
     <string name="tv_update_download">下载更新</string>
