@@ -232,7 +232,7 @@ class TvAccountNavigationUiTest {
         return fixture
     }
 
-    private fun AniComposeUiTest.navigationBounds() = listOf("Search", "Explore", "Schedule", "Collection", "Settings")
+    private fun AniComposeUiTest.navigationBounds() = listOf("Search", "Explore", "Schedule", "Collection", "Playback History", "Settings")
         .map { label ->
             onNode(hasText(label) and hasAnyAncestor(hasTestTag("tv-main-navigation"))).getUnclippedBoundsInRoot()
         } + onNodeWithTag("tv-navigation-avatar").getUnclippedBoundsInRoot()

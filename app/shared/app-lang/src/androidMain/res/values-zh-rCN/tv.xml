@@ -139,6 +139,9 @@
     <string name="tv_update_install_hint">如果没有出现安装界面，请在系统设置中允许 Animeko TV 安装未知应用，然后再次选择安装。</string>
     <string name="tv_update_expired_message">当前版本已停止支持，请更新后继续使用。也可以前往 https://myani.org 下载最新版本。</string>
     <string name="tv_update_expired_message_with_latest">当前版本已停止支持，请更新到 %1$s 后继续使用。也可以前往 https://myani.org 下载。</string>
+    <string name="tv_playback_history_refresh">刷新</string>
+    <string name="tv_playback_history_select">选择</string>
+    <string name="tv_playback_history_close">关闭</string>
 </resources>
 
 <!--@formatter:on-->
