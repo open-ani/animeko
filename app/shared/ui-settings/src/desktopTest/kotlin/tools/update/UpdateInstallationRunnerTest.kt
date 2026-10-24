@@ -55,4 +55,23 @@ class UpdateInstallationRunnerTest {
         runner.dismissFailure()
         assertEquals(UpdateInstallationState.Idle, runner.state.value)
     }
+
+    @Test
+    fun `prepares the package before installing it`() = runTest {
+        val installed = mutableListOf<SystemPath>()
+        val runner = UpdateInstallationRunner(
+            object : UpdateInstaller {
+                override suspend fun prepareForInstallation(file: SystemPath): SystemPath =
+                    Path(file.toString() + ".staging").inSystem
+
+                override fun install(file: SystemPath, context: Context): InstallationResult {
+                    installed += file
+                    return InstallationResult.Succeed
+                }
+            },
+        )
+        runner.install(Path("update.zip").inSystem, emptyList(), object : Context() {})
+        assertEquals(listOf(Path("update.zip.staging").inSystem), installed)
+        assertEquals(UpdateInstallationState.Succeed, runner.state.value)
+    }
 }
