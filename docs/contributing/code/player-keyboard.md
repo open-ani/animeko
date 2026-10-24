@@ -8,8 +8,9 @@ Space、方向键和其他播放快捷键仍作用于视频。嵌套 scope 的�
 `PlayerGestureHost` 组装并通过 `DisposableEffect` 注册快捷键处理器，使用当前 seek、快进、音量、倍速和切换回调。
 最后一次注册生效；只有当前处理器的注销才能清除注册。播放器节点负责 Enter / NumPadEnter 拦截、焦点和手势。
 Enter 激活页面内其他控件，Tab 保持焦点遍历。
-快捷键只接受未按住 Ctrl、Alt 或 Meta 的 KeyDown；Shift 可用于音量微调。
-被拒绝的按键直到 KeyUp 都交给页面控件，提前松开修饰键也不会触发播放器快捷键。
+处理器按用户配置的按键组合精确匹配修饰键（见 [播放器键盘快捷键](player-keyboard-shortcuts.md)）；
+没有绑定命中的 Ctrl、Alt 或 Meta 组合直到 KeyUp 都交给页面控件，提前松开修饰键也不会触发播放器快捷键。
+Shift 可用于音量微调。
 
 scope 使用 `InterceptPlatformTextInput` 统计正在运行的输入法会话，进入会话前增加计数，结束时在 `finally` 中减少。
 计数由同一 controller 的 scope 共享，内部输入框的会话也能阻止外层 scope 分发快捷键。

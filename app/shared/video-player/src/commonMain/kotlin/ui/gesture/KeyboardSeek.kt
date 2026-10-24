@@ -26,9 +26,6 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.effects.ComposeKey
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.videoplayer.ui.PlayerKeyboardHandler
@@ -105,9 +102,9 @@ internal fun rememberKeyboardSeekHandler(
 }
 
 private class KeyboardSeekHandler(
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     layoutDirection: LayoutDirection,
-    private val fastSkipState: FastSkipState?,
+    fastSkipState: FastSkipState?,
     private val onBackward: () -> Unit,
     private val onForward: () -> Unit,
 ) : PlayerKeyboardHandler {
@@ -122,9 +119,7 @@ private class KeyboardSeekHandler(
         ComposeKey.DirectionLeft
     }
     private var backwardPressed = false
-    private var forwardPressed = false
-    private var job: Job? = null
-    private var ticket: Int? = null
+    private val forwardHold = FastSkipHold(scope, fastSkipState)
 
     override fun invoke(event: KeyEvent): Boolean {
         if (event.key == backwardKey) {
@@ -140,35 +135,19 @@ private class KeyboardSeekHandler(
         }
         if (event.key == forwardKey) {
             if (event.type == KeyEventType.KeyDown) {
-                if (!forwardPressed) {
-                    forwardPressed = true
-                    job = scope.launch {
-                        delay(200)
-                        ticket = fastSkipState?.startSkipping(SkipDirection.FORWARD)
-                    }
-                }
+                forwardHold.press()
                 return true
             }
-            if (event.type == KeyEventType.KeyUp && forwardPressed) {
-                val wasSkipping = ticket != null
-                cancelForward()
-                if (!wasSkipping) onForward()
+            if (event.type == KeyEventType.KeyUp && forwardHold.isPressed) {
+                if (!forwardHold.release()) onForward()
                 return true
             }
         }
         return false
     }
 
-    private fun cancelForward() {
-        job?.cancel()
-        job = null
-        ticket?.let { fastSkipState?.stopSkipping(it) }
-        ticket = null
-        forwardPressed = false
-    }
-
     override fun cancel() {
         backwardPressed = false
-        cancelForward()
+        forwardHold.cancel()
     }
 }
