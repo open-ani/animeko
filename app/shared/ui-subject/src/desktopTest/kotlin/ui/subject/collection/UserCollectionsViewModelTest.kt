@@ -39,6 +39,7 @@ import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
 import me.him188.ani.app.data.models.preference.DebugSettings
+import me.him188.ani.app.data.models.preference.LocalVideoLibrarySettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
@@ -200,6 +201,7 @@ class UserCollectionsViewModelTest {
         override val profileSettings: Settings<ProfileSettings> by lazy { error("not implemented") }
         override val proxySettings: Settings<ProxySettings> by lazy { error("not implemented") }
         override val mediaCacheSettings: Settings<MediaCacheSettings> by lazy { error("not implemented") }
+        override val localVideoLibrarySettings: Settings<LocalVideoLibrarySettings> by lazy { error("not implemented") }
         override val danmakuSettings: Settings<DanmakuSettings> by lazy { error("not implemented") }
         override val themeSettings: Settings<ThemeSettings> by lazy { error("not implemented") }
         override val updateSettings: Settings<UpdateSettings> by lazy { error("not implemented") }

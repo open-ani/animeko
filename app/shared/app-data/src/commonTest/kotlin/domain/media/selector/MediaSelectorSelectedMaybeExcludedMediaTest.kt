@@ -11,7 +11,7 @@ package me.him188.ani.app.domain.media.selector
 
 import kotlinx.coroutines.flow.first
 import kotlinx.io.files.Path
-import me.him188.ani.app.domain.media.DroppedFileMedia
+import me.him188.ani.app.domain.media.LocalFileMedia
 import me.him188.ani.app.domain.media.selector.MatchMetadata.EpisodeMatchKind
 import me.him188.ani.app.domain.media.selector.MatchMetadata.SubjectMatchKind
 import me.him188.ani.app.domain.media.selector.testFramework.SimpleMediaSelectorTestSuite
@@ -95,9 +95,9 @@ class MediaSelectorSelectedMaybeExcludedMediaTest {
         }
 
     @Test
-    fun `dropped file is not a perfect match`() = runSimpleMediaSelectorTestSuite {
+    fun `local file is not a perfect match`() = runSimpleMediaSelectorTestSuite {
         initMottoToLoveRu()
-        selector.selectTemporarily(DroppedFileMedia.create(Path("/videos/出包王女第二季 03.mkv").inSystem))
+        selector.selectTemporarily(LocalFileMedia.create(Path("/videos/出包王女第二季 03.mkv").inSystem))
 
         assertFalse(selector.selectedMaybeExcludedMedia.first()!!.isPerfectMatch())
     }

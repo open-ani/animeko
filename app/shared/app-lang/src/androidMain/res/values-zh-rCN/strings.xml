@@ -468,6 +468,12 @@
     <string name="settings_storage_title">存储设置</string>
     <string name="settings_storage_bt_cache_location">BT 视频缓存位置</string>
     <string name="settings_storage_bt_cache_location_description">修改后不会自动迁移数据，也不会自动删除旧数据。\n如需删除旧数据，请在修改之前点击 "打开 BT 缓存目录" 并删除该目录下的所有文件。\n\n重启生效</string>
+    <string name="settings_storage_local_video_library_title">本地视频库</string>
+    <string name="settings_storage_local_video_library_description">选择本地视频所在目录。目前仅用作选择本地视频文件时的默认位置，后续将用于扫描本地视频。</string>
+    <string name="settings_storage_local_video_library_path">目录</string>
+    <string name="settings_storage_local_video_library_not_set">未设置</string>
+    <string name="settings_storage_local_video_library_choose">选择文件夹</string>
+    <string name="settings_storage_local_video_library_clear">清除路径</string>
     <string name="settings_storage_choose_directory">选择视频保存目录</string>
     <string name="settings_storage_open_directory_chooser">打开目录选择</string>
     <string name="settings_storage_open_bt_cache_directory">打开 BT 缓存目录</string>
@@ -1343,6 +1349,8 @@
     <string name="media_selector_retry">重试</string>
     <string name="media_selector_load_failed">加载失败</string>
     <string name="media_selector_auto_rescue">找不到想看的？手动查找</string>
+    <string name="media_selector_use_local_file">使用本地视频文件</string>
+    <string name="media_selector_select_local_file">选择本地视频文件</string>
     <string name="media_selector_manual_no_sources">没有支持浏览的数据源</string>
     <string name="media_selector_manual_captcha_unsupported">需要网页验证，当前平台不支持</string>
     <string name="media_selector_manual_result_count">共 %1$d 条结果</string>

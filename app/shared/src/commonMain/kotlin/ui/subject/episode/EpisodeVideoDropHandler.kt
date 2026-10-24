@@ -15,7 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import me.him188.ani.app.domain.media.DroppedFileMedia
+import me.him188.ani.app.domain.media.LocalFileMedia
 import me.him188.ani.app.ui.foundation.DragAndDropContent
 import me.him188.ani.app.ui.foundation.WindowDropCardContent
 import me.him188.ani.app.ui.foundation.WindowDropHandler
@@ -35,7 +35,7 @@ import org.jetbrains.compose.resources.stringResource
  * 只接管含有视频文件的文件列表, 以及拖动阶段读不到内容的拖放 (松手后再判断); 其他内容交给后续处理者.
  * 拖入多个文件时播放其中首个视频文件.
  *
- * @see EpisodeViewModel.playDroppedFile
+ * @see EpisodeViewModel.playLocalFile
  */
 class EpisodeVideoDropHandler(
     private val onPlay: (SystemPath) -> Unit,
@@ -43,7 +43,7 @@ class EpisodeVideoDropHandler(
     override fun onDragStarted(content: DragAndDropContent?): WindowDropPreview? {
         val file = when (content) {
             null -> null
-            is DragAndDropContent.FileList -> DroppedFileMedia.findVideoFile(content.files) ?: return null
+            is DragAndDropContent.FileList -> LocalFileMedia.findVideoFile(content.files) ?: return null
             is DragAndDropContent.PlainText, DragAndDropContent.Unsupported -> return null
         }
         return WindowDropPreview { EpisodeVideoDropCard(file) }
@@ -51,7 +51,7 @@ class EpisodeVideoDropHandler(
 
     override fun onDrop(content: DragAndDropContent): Boolean {
         if (content !is DragAndDropContent.FileList) return false
-        val file = DroppedFileMedia.findVideoFile(content.files) ?: return false
+        val file = LocalFileMedia.findVideoFile(content.files) ?: return false
         onPlay(file)
         return true
     }
