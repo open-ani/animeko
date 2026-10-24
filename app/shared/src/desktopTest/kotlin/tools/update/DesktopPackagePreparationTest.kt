@@ -60,7 +60,7 @@ class DesktopPackagePreparationTest {
         assertEquals("exe", staging.resolve("Ani.exe").readText())
         assertEquals(windowsPackage.getValue("Ani/app/a.jar")!!.toList(), staging.resolve("app/a.jar").readBytes().toList())
         assertFalse(staging.resolve("Ani").exists())
-        assertFalse(tempDir.resolve("pkg.zip.staging.part").exists())
+        assertEquals(emptyList(), leftoverPartDirectories())
     }
 
     @Test
@@ -70,8 +70,27 @@ class DesktopPackagePreparationTest {
             runBlocking { DesktopPackagePreparation.prepareWindowsPackage(zip, "Ani.exe") }
         }
         assertFalse(tempDir.resolve("pkg.zip.staging").exists())
-        assertFalse(tempDir.resolve("pkg.zip.staging.part").exists())
+        assertEquals(emptyList(), leftoverPartDirectories())
     }
+
+    @Test
+    fun `part directories left by earlier attempts are removed`() {
+        val zip = zip("pkg.zip", windowsPackage)
+        // 增量拼包失败留下的目录, 以及上次整理到一半留下的目录
+        for (name in listOf("pkg.zip.staging.part", "pkg.zip.staging.part-123")) {
+            tempDir.resolve("$name/app/stale.jar").apply {
+                parentFile.mkdirs()
+                writeText("stale")
+            }
+        }
+        val staging = runBlocking { DesktopPackagePreparation.prepareWindowsPackage(zip, "Ani.exe") }
+        assertTrue(staging.resolve("Ani.exe").isFile)
+        assertFalse(staging.resolve("app/stale.jar").exists())
+        assertEquals(emptyList(), leftoverPartDirectories())
+    }
+
+    private fun leftoverPartDirectories(): List<String> =
+        tempDir.list().orEmpty().filter { it.startsWith("pkg.zip.staging.part") }
 
     @Test
     fun `an existing staging directory is replaced`() {

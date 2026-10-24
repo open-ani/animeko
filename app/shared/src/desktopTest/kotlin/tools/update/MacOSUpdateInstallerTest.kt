@@ -114,7 +114,7 @@ class MacOSUpdateInstallerTest {
         assertEquals("new", app.resolve("Contents/Resources/version").readText())
         assertTrue(app.resolve("Contents/MacOS/Ani").canExecute())
         assertTrue(codesignVerify(app))
-        assertFalse(File(staging.path + ".part").exists())
+        assertEquals(emptyList(), leftoverPartDirectories())
     }
 
     @Test
@@ -136,8 +136,11 @@ class MacOSUpdateInstallerTest {
             runBlocking { DesktopPackagePreparation.prepareMacPackage(zip, "Ani.app") }
         }
         assertFalse(File(zip.path + ".staging").exists())
-        assertFalse(File(zip.path + ".staging.part").exists())
+        assertEquals(emptyList(), leftoverPartDirectories())
     }
+
+    private fun leftoverPartDirectories(): List<String> =
+        tempDir.list().orEmpty().filter { it.startsWith("Ani.zip.staging.part") }
 
     @Test
     fun `preparing a zip without the app fails`() {

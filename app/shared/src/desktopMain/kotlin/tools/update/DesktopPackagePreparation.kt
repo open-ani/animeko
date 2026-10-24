@@ -10,22 +10,32 @@
 package me.him188.ani.app.tools.update
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import java.io.File
+import java.nio.file.Files
 import java.util.zip.CRC32
 import java.util.zip.ZipFile
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 /**
  * 把下载好的 zip 安装包解压成安装器能直接换进安装目录的目录, 实现桌面端的 [UpdateInstaller.prepareForInstallation].
  *
  * 解到 zip 旁边的 `<zip>.staging`, 与增量拼包的目录同名同形: 自动更新的 zip 在更新目录里, 按名字清理旧安装包时顺带覆盖它;
- * 安装器安装时把目录整个移走. 先解到 `.part` 目录, 核对通过后再改名, 不留下看起来完整的半成品. 已有的同名目录直接
- * 删掉重解: 没有清单无法判断它是否完整, 重新解一次只要几秒.
+ * 安装器安装时把目录整个移走. 先解到 `<zip>.staging.part-*` 临时目录, 核对通过后再改名, 不留下看起来完整的半成品.
+ * 已有的同名目录直接删掉重解: 没有清单无法判断它是否完整, 重新解一次只要几秒.
+ *
+ * 临时目录每次用新名字, 不复用增量拼包的 `<zip>.staging.part`: 走到这里往往是增量拼包刚失败, Windows 上它留下的目录里
+ * 刚建的几百个文件可能还被别的进程 (比如杀毒软件) 占用着, 删不掉, 同名目录也就建不回来, 等它不如绕开它. 删旧目录和改名
+ * 也会重试一会儿, 原因相同, 更新器 `tools/ani-update` 对它的重命名也是这么做的.
  */
 internal object DesktopPackagePreparation {
     private val logger = logger<DesktopPackagePreparation>()
@@ -79,18 +89,49 @@ internal object DesktopPackagePreparation {
 
     private suspend fun stage(zip: File, fill: suspend (File) -> Unit): File = withContext(Dispatchers.IO_) {
         val staging = stagingDirOf(zip)
-        val part = File(staging.path + ".part")
-        part.deleteRecursively()
-        staging.deleteRecursively()
-        check(part.mkdirs()) { "Cannot create $part" }
+        deleteLeftovers(staging)
+        deleteDirectoryRetrying(staging)
+        val part = Files.createTempDirectory(staging.absoluteFile.parentFile.toPath(), staging.name + PART_SUFFIX).toFile()
         try {
             fill(part)
-            check(part.renameTo(staging)) { "Failed to move $part to $staging" }
+            renameRetrying(part, staging)
         } finally {
             part.deleteRecursively()
         }
         logger.info { "Prepared ${zip.name} for installation: $staging" }
         staging
+    }
+
+    /**
+     * 删除以前没整理完留下的临时目录: 这里的 `.staging.part-*` 和增量拼包的 `.staging.part`. 删不掉的留给下次;
+     * 它们的名字里有安装包名, 更新管理器清理旧安装包时会一并清掉.
+     */
+    private fun deleteLeftovers(staging: File) {
+        staging.absoluteFile.parentFile.listFiles()
+            ?.filter { it.name.startsWith(staging.name + ".part") }
+            ?.forEach { leftover ->
+                if (!leftover.deleteRecursively()) {
+                    logger.warn { "Cannot delete $leftover now, leaving it behind" }
+                }
+            }
+    }
+
+    private suspend fun deleteDirectoryRetrying(dir: File) {
+        val start = TimeSource.Monotonic.markNow()
+        while (true) {
+            dir.deleteRecursively()
+            if (!dir.exists()) return
+            check(start.elapsedNow() < RETRY_TIMEOUT) { "Cannot delete $dir" }
+            delay(RETRY_INTERVAL)
+        }
+    }
+
+    private suspend fun renameRetrying(from: File, to: File) {
+        val start = TimeSource.Monotonic.markNow()
+        while (!from.renameTo(to)) {
+            check(start.elapsedNow() < RETRY_TIMEOUT) { "Failed to move $from to $to" }
+            delay(RETRY_INTERVAL)
+        }
     }
 
     /**
@@ -141,6 +182,11 @@ internal object DesktopPackagePreparation {
         }
         return root
     }
+
+    /** 临时目录名: staging 目录名 + 这个后缀 + 随机数. */
+    private const val PART_SUFFIX = ".part-"
+    private val RETRY_TIMEOUT = 30.seconds
+    private val RETRY_INTERVAL = 500.milliseconds
 
     class CommandResult(val exitCode: Int, val output: String)
 
