@@ -17,15 +17,19 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
+import kotlinx.datetime.TimeZone
 import me.him188.ani.app.data.models.preference.EpisodeProgressSettings
 import me.him188.ani.app.data.models.preference.SubjectAppearanceSettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -39,11 +43,13 @@ import me.him188.ani.app.domain.mediasource.web.captcha.WebCaptchaDialogHost
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.app.domain.settings.TimeZoneProvider
 import me.him188.ani.app.domain.torrent.engines.PikPakEngine
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.tools.LocalTimeFormatter
+import me.him188.ani.app.tools.LocalTimeZone
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -92,6 +98,16 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val userRepository: UserRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
     private val pikPakEngine: PikPakEngine by inject()
+    private val timeZoneProvider: TimeZoneProvider by inject()
+
+    val timeZone: StateFlow<TimeZone> get() = timeZoneProvider.timeZone
+
+    /**
+     * 设备系统时区可能已变化时重新解析, 见 [AniApp] 的前台回调.
+     */
+    fun refreshTimeZone() {
+        timeZoneProvider.refresh()
+    }
 
     private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
 
@@ -150,10 +166,17 @@ fun AniApp(
     val viewModel = viewModel { AniAppViewModel() }
     // 主题读好再进入 APP, 防止黑白背景闪烁
     val appState = viewModel.appState.collectAsStateWithLifecycle(null).value ?: return
+    val timeZone by viewModel.timeZone.collectAsStateWithLifecycle()
+
+    // 设备时区可能在后台被修改, 回到前台时重新解析一次
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.refreshTimeZone()
+    }
 
     CompositionLocalProvider(
         LocalSketch provides rememberAniSketchInstance(appState.imageLoaderClient),
-        LocalTimeFormatter provides remember { TimeFormatter() },
+        LocalTimeZone provides timeZone,
+        LocalTimeFormatter provides remember(timeZone) { TimeFormatter(timeZone) },
         LocalThemeSettings provides appState.themeSettings,
         LocalEpisodeProgressSettings provides appState.episodeProgressSettings,
         LocalSubjectAppearanceSettings provides appState.subjectAppearanceSettings,

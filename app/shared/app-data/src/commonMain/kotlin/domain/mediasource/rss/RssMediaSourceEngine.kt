@@ -30,6 +30,7 @@ import me.him188.ani.app.domain.rss.RssItem
 import me.him188.ani.app.domain.rss.RssParser
 import me.him188.ani.app.domain.rss.getMediaSize
 import me.him188.ani.app.domain.rss.guessResourceLocation
+import me.him188.ani.app.platform.currentSystemTimeZone
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaProperties
@@ -53,6 +54,12 @@ import kotlin.coroutines.cancellation.CancellationException
  * @see DefaultRssMediaSourceEngine
  */
 abstract class RssMediaSourceEngine {
+    /**
+     * 解析 [RssItem.pubDate] 时使用的时区. RSS 发布时间不带偏移量, 显示时用同一个时区换回绝对时间,
+     * 因此它与显示时区保持一致.
+     */
+    protected open val timeZone: TimeZone = currentSystemTimeZone()
+
     data class Result(
         val encodedUrl: Url,
         val query: RssSearchQuery,
@@ -103,6 +110,7 @@ abstract class RssMediaSourceEngine {
         fun convertItemToMedia(
             item: RssItem,
             mediaSourceId: String,
+            timeZone: TimeZone = currentSystemTimeZone(),
         ): Media? {
             val details = RawTitleParser.getDefault().parse(item.title, null)
 
@@ -112,7 +120,7 @@ abstract class RssMediaSourceEngine {
                 originalUrl = item.link.takeIf { it.isNotBlank() } ?: item.guid,
                 download = item.guessResourceLocation() ?: return null,
                 originalTitle = item.title,
-                publishedTime = item.pubDate?.toInstant(TimeZone.currentSystemDefault())
+                publishedTime = item.pubDate?.toInstant(timeZone)
                     ?.toEpochMilliseconds() ?: 0,
                 properties = MediaProperties(
                     subjectName = null,
@@ -238,7 +246,7 @@ class DefaultRssMediaSourceEngine(
 
             val filters = config.createFilters()
 
-            val allItems = channel.items.mapNotNull { rssItem -> convertItemToMedia(rssItem, mediaSourceId) }
+            val allItems = channel.items.mapNotNull { rssItem -> convertItemToMedia(rssItem, mediaSourceId, timeZone) }
             val matchedItems = with(query.toFilterContext()) {
                 allItems.filter { media -> filters.applyOn(media.asCandidate()) }
             }

@@ -29,6 +29,7 @@ import kotlinx.datetime.format.char
 import kotlinx.datetime.minus
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
+import me.him188.ani.app.tools.LocalTimeZone
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.notification_time_date
@@ -47,14 +48,12 @@ import kotlin.time.Instant
 /**
  * 通知和公告的时间所用的当前时间与时区. 预览和测试中固定, 让列表中的相对时间不随运行时刻变化.
  *
- * @param timeZoneOverride 为 `null` 时使用系统时区.
+ * @param timeZoneOverride 固定的时区. 为 `null` 时使用 App 全局时区 (见 `LocalTimeZone`).
  */
 class NotificationTimeContext(
     val clock: Clock = Clock.System,
-    private val timeZoneOverride: TimeZone? = null,
-) {
-    val timeZone: TimeZone get() = timeZoneOverride ?: TimeZone.currentSystemDefault()
-}
+    val timeZoneOverride: TimeZone? = null,
+)
 
 val LocalNotificationTimeContext = staticCompositionLocalOf { NotificationTimeContext() }
 
@@ -200,8 +199,9 @@ private fun dateArgs(date: LocalDate): List<NotificationText> = listOf(
 fun formatNotificationRowTime(timeMillis: Long): String {
     val context = LocalNotificationTimeContext.current
     val now = LocalNotificationNow.current
-    val time = remember(timeMillis, context, now) {
-        notificationRowTime(timeMillis, now ?: context.clock.now(), context.timeZone)
+    val timeZone = context.timeZoneOverride ?: LocalTimeZone.current
+    val time = remember(timeMillis, now, timeZone) {
+        notificationRowTime(timeMillis, now ?: context.clock.now(), timeZone)
     }
     return notificationRowTimeText(time).resolve()
 }
@@ -212,8 +212,9 @@ fun formatNotificationRowTime(timeMillis: Long): String {
 @Composable
 fun formatAnnouncementRowTime(timeMillis: Long): String {
     val context = LocalNotificationTimeContext.current
-    val time = remember(timeMillis, context) {
-        announcementRowTime(timeMillis, context.clock.now(), context.timeZone)
+    val timeZone = context.timeZoneOverride ?: LocalTimeZone.current
+    val time = remember(timeMillis, timeZone) {
+        announcementRowTime(timeMillis, context.clock.now(), timeZone)
     }
     return notificationRowTimeText(time).resolve()
 }
@@ -265,8 +266,9 @@ fun notificationDetailTimeText(time: NotificationDetailTime): NotificationText =
 @Composable
 fun formatNotificationDetailTime(timeMillis: Long): String {
     val context = LocalNotificationTimeContext.current
-    val time = remember(timeMillis, context) {
-        notificationDetailTime(timeMillis, context.clock.now(), context.timeZone)
+    val timeZone = context.timeZoneOverride ?: LocalTimeZone.current
+    val time = remember(timeMillis, timeZone) {
+        notificationDetailTime(timeMillis, context.clock.now(), timeZone)
     }
     return notificationDetailTimeText(time).resolve()
 }

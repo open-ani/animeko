@@ -9,6 +9,7 @@
 
 package me.him188.ani.tv.ui.schedule
 
+import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 import me.him188.ani.tv.ui.foundation.TvNavigationEvents
@@ -20,6 +21,9 @@ import org.koin.core.Koin
 sealed interface TvScheduleIntent {
     data object Refresh : TvScheduleIntent
     data class OpenSubject(val subjectId: Int) : TvScheduleIntent
+
+    /** 打开设置页的「界面」分节: 时区偏好在那里修改. */
+    data object OpenTimeZoneSettings : TvScheduleIntent
 }
 
 class TvScheduleViewModel(koin: Koin) : ScheduleViewModel(koin) {
@@ -29,6 +33,7 @@ class TvScheduleViewModel(koin: Koin) : ScheduleViewModel(koin) {
     fun onIntent(intent: TvScheduleIntent) {
         when (intent) {
             TvScheduleIntent.Refresh -> refresh()
+            TvScheduleIntent.OpenTimeZoneSettings -> navigation.emit(TvNavigationEvent.Settings(SettingsTab.APPEARANCE))
             is TvScheduleIntent.OpenSubject -> {
                 Analytics.recordEvent(SubjectEnter) {
                     put("source", "schedule")
