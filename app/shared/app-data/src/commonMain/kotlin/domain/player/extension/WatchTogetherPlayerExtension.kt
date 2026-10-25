@@ -11,12 +11,17 @@ package me.him188.ani.app.domain.player.extension
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.models.episode.displayName
@@ -33,6 +38,7 @@ import me.him188.ani.client.models.AniWatchTogetherWatchingInfo
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import org.koin.core.Koin
 import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.PlaybackEvent
 import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.isMediaLoaded
 import kotlin.math.abs
@@ -44,13 +50,59 @@ class WatchTogetherPlayerExtension(
     private val bridge: LocalPlaybackBridge by koin.inject()
     private val manager: WatchTogetherManager by koin.inject()
     private val owner = Any()
+    private val playbackMutex = Mutex()
+    private var alignmentJob: Job? = null
+    private val alignmentExecutor by lazy { HostAlignmentExecutor(context.player, bridge, manager) }
+
+    /** Commits a live fix on the same dispatcher as playback commands. */
+    private suspend fun publishCurrentWatching() = withContext(Dispatchers.Main.immediate) {
+        if (!bridge.isLocalOwner(owner)) return@withContext
+        val previous = bridge.localWatching.value ?: return@withContext
+        val state = context.player.state.value
+        if (!state.isMediaLoaded) return@withContext
+        bridge.updateLocalWatching(
+            owner,
+            previous.copy(
+                positionMillis = context.player.currentPositionMillis.value.coerceAtLeast(0L),
+                positionAtMillis = manager.serverNowMillis(),
+                paused = !state.playWhenReady,
+                buffering = state.isBuffering,
+            ),
+        )
+    }
 
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
+        val initialAlignmentCooldown = bridge.alignmentCooldownUntil.value
+        backgroundTaskScope.launch("HostSeekReporter") {
+            withContext(context.player.mainDispatcher) {
+                context.player.events.filterIsInstance<PlaybackEvent.SeekCompleted>().collect { event ->
+                    val session = (manager.state.value as? WatchTogetherState.InRoom)?.session
+                    bridge.notifySeekCompleted(owner, event.positionMillis, manager.serverNowMillis(), session?.isHost == true)
+                }
+            }
+        }
         val mediaLoaded = CompletableDeferred<Unit>()
         // Completed once the hold-first-play decision has settled (paused, or not applicable);
         // until then the reporter suppresses PLAYING fixes so the transient auto-play between
         // load and hold never reaches the room.
         val holdSettled = CompletableDeferred<Unit>()
+        alignmentJob = backgroundTaskScope.launch("HostAlignment") {
+            bridge.alignmentRequest.collectLatest { request ->
+                if (request == null || request.owner !== owner) return@collectLatest
+                try {
+                    mediaLoaded.await()
+                    holdSettled.await()
+                    playbackMutex.withLock {
+                        alignmentExecutor.run(request, context.subjectId, episodeSession.episodeId)
+                    }
+                } finally {
+                    withContext(NonCancellable) {
+                        publishCurrentWatching()
+                        bridge.finishAlignment(request)
+                    }
+                }
+            }
+        }
         backgroundTaskScope.launch("MediaLoadedListener") {
             context.subscribeEvents<EpisodeFetchSelectPlayState.MediaLoadedEvent>().collectLatest { event ->
                 if (event.episodeId == episodeSession.episodeId && mediaLoaded.isActive) mediaLoaded.complete(Unit)
@@ -124,7 +176,7 @@ class WatchTogetherPlayerExtension(
             val firstStable = context.player.state
                 .filter { it.isPlaying || (it.mediaStatus == MediaStatus.Ready && !it.playWhenReady) }
                 .first()
-            if (firstStable.isPlaying && isRoomSyncActive()) {
+            if (firstStable.isPlaying && isRoomSyncActive() && !bridge.isAligning) {
                 withContext(Dispatchers.Main.immediate) { context.player.pause() }
                 // Wait for the pause to take effect so the reporter's playing suppression covers
                 // the whole transient; bounded in case the player ignores the pause.
@@ -143,6 +195,8 @@ class WatchTogetherPlayerExtension(
             context.player.state
                 .filter { it.isPlaying || (it.mediaStatus == MediaStatus.Ready && !it.playWhenReady) }
                 .first()
+            // A manual request takes precedence over the deferred first-load sync.
+            if (bridge.alignmentCooldownUntil.value != initialAlignmentCooldown) return@launch
             bridge.targetPlayback.value?.let { applyPlayback(episodeSession, it, forceSeek = true) }
         }
 
@@ -169,34 +223,38 @@ class WatchTogetherPlayerExtension(
         playback: AniWatchTogetherPlayback,
         forceSeek: Boolean,
     ) {
-        val host = playback.info
-        if (host.subjectId != context.subjectId || host.episodeId != episodeSession.episodeId) return
-        if (host.buffering == true) {
-            delay(BUFFERING_DEBOUNCE_MILLIS)
-            val latest = bridge.targetPlayback.value?.info
-            if (latest?.subjectId != host.subjectId || latest.episodeId != host.episodeId || latest.buffering != true) return
-        }
+        if (bridge.isAligning) return
+        playbackMutex.withLock {
+            if (bridge.isAligning) return@withLock
+            val host = playback.info
+            if (host.subjectId != context.subjectId || host.episodeId != episodeSession.episodeId) return@withLock
+            if (host.buffering == true) {
+                delay(BUFFERING_DEBOUNCE_MILLIS)
+                val latest = bridge.targetPlayback.value?.info
+                if (latest?.subjectId != host.subjectId || latest.episodeId != host.episodeId || latest.buffering != true) return@withLock
+            }
 
-        val targetPosition = host.positionAt(manager.serverNowMillis())
-        val appliedDelta = withContext(Dispatchers.Main.immediate) {
-            val player = context.player
-            var delta: Long? = null
-            val localPosition = player.currentPositionMillis.value
-            if (forceSeek || abs(localPosition - targetPosition) > POSITION_CORRECTION_THRESHOLD_MILLIS) {
-                player.seekTo(targetPosition)
-                delta = targetPosition - localPosition
+            val targetPosition = host.positionAt(manager.serverNowMillis())
+            val appliedDelta = withContext(Dispatchers.Main.immediate) {
+                val player = context.player
+                var delta: Long? = null
+                val localPosition = player.currentPositionMillis.value
+                if (forceSeek || abs(localPosition - targetPosition) > POSITION_CORRECTION_THRESHOLD_MILLIS) {
+                    player.seekTo(targetPosition)
+                    delta = targetPosition - localPosition
+                }
+                player.features[PlaybackSpeed]?.set(host.playbackRate ?: 1f)
+                // Sync the play intent (playWhenReady), not the momentary clock state: pausing must
+                // stick even mid-buffer, and play() at Ended replays so followers stay in sync.
+                if (host.paused) {
+                    if (player.state.value.playWhenReady) player.pause()
+                } else if (!player.state.value.playWhenReady) {
+                    player.play()
+                }
+                delta
             }
-            player.features[PlaybackSpeed]?.set(host.playbackRate ?: 1f)
-            // Sync the play intent (playWhenReady), not the momentary clock state: pausing must
-            // stick even mid-buffer, and play() at Ended replays so followers stay in sync.
-            if (host.paused) {
-                if (player.state.value.playWhenReady) player.pause()
-            } else if (!player.state.value.playWhenReady) {
-                player.play()
-            }
-            delta
+            if (appliedDelta != null && !forceSeek) bridge.notifyCorrectionApplied(appliedDelta)
         }
-        if (appliedDelta != null && !forceSeek) bridge.notifyCorrectionApplied(appliedDelta)
     }
 
     /** Host and following members participate in room sync; free-watching members do not. */
@@ -212,10 +270,14 @@ class WatchTogetherPlayerExtension(
     }
 
     override suspend fun onBeforeSwitchEpisode(newEpisodeId: Int) {
+        alignmentJob?.cancel()
+        alignmentJob?.join()
         bridge.clearLocalWatching(owner)
     }
 
     override suspend fun onClose() {
+        alignmentJob?.cancel()
+        alignmentJob?.join()
         bridge.clearLocalWatching(owner)
     }
 

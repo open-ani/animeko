@@ -1752,6 +1752,14 @@
     <string name="watch_together_guidance_playing">Following the host: %1$s · Ep %2$s</string>
     <string name="watch_together_resynced_forward">Re-synced with the host (skipped ahead %1$d s)</string>
     <string name="watch_together_resynced_backward">Re-synced with the host (went back %1$d s)</string>
+    <string name="watch_together_align_to_host">Align to host</string>
+    <string name="watch_together_align_no_host">The host is not watching anything</string>
+    <string name="watch_together_align_different_episode">Open the same episode as the host</string>
+    <string name="watch_together_align_host_not_ready">The host is loading or buffering</string>
+    <string name="watch_together_align_local_not_ready">Wait for the local video to load</string>
+    <string name="watch_together_align_in_progress">Aligning to host…</string>
+    <string name="watch_together_align_cooldown">Please wait before aligning again</string>
+    <string name="watch_together_align_failed">Could not align to host. Please try again.</string>
     <string name="watch_together_got_it">Got it</string>
     <!-- Image viewer -->
     <string name="image_viewer_window_title">Image</string>
