@@ -42,7 +42,12 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.media_selector_querying
+import me.him188.ani.app.ui.lang.media_selector_summary_select_source
+import me.him188.ani.app.ui.lang.media_selector_summary_switch_source
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -95,7 +100,7 @@ fun MediaSelectorSummaryBanner(
                         ) {
                             LoadingIndicator(Modifier.size(20.dp))
                             Text(
-                                "正在查询数据源",
+                                stringResource(Lang.media_selector_querying),
                                 style = MaterialTheme.typography.titleSmall,
                                 softWrap = false,
                             )
@@ -114,7 +119,7 @@ fun MediaSelectorSummaryBanner(
                                     Modifier.size(20.dp),
                                 )
                                 Text(
-                                    "请选择数据源",
+                                    stringResource(Lang.media_selector_summary_select_source),
                                     style = MaterialTheme.typography.titleSmall,
                                     softWrap = false,
                                 )
@@ -156,7 +161,7 @@ fun MediaSelectorSummaryBanner(
 
             Icon(
                 Icons.Rounded.SyncAlt,
-                contentDescription = "切换数据源",
+                contentDescription = stringResource(Lang.media_selector_summary_switch_source),
                 Modifier.size(20.dp),
             )
         }

@@ -53,6 +53,7 @@ import me.him188.ani.app.data.models.subject.listCoverUrl
 import me.him188.ani.app.data.models.subject.hasNewEpisodeToPlay
 import me.him188.ani.app.data.models.subject.preferredDisplayName
 import me.him188.ani.app.data.models.subject.subjectInfo
+import me.him188.ani.app.tools.LocalWeekFormatter
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
@@ -196,8 +197,9 @@ private fun FollowedSubjectItem(
         supportingText = {
             if (item != null) {
                 val strings = rememberSubjectStatusStrings()
-                val airingState = remember(item) {
-                    SubjectProgressState(stateOf(item.subjectProgressInfo))
+                val weekFormatter = LocalWeekFormatter.current
+                val airingState = remember(item, weekFormatter) {
+                    SubjectProgressState(stateOf(item.subjectProgressInfo), weekFormatter)
                 }
                 Text(airingState.buttonText(strings), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }

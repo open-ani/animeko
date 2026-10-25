@@ -42,6 +42,14 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.flow.first
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_collection_doing
+import me.him188.ani.app.ui.lang.subject_collection_done
+import me.him188.ani.app.ui.lang.subject_collection_dropped
+import me.him188.ani.app.ui.lang.subject_collection_on_hold
+import me.him188.ani.app.ui.lang.subject_collection_uncollected
+import me.him188.ani.app.ui.lang.subject_collection_wish
+import me.him188.ani.app.ui.lang.tv_collection_empty
 import me.him188.ani.app.ui.subject.collection.COLLECTION_TABS_SORTED
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
@@ -57,6 +65,7 @@ import me.him188.ani.tv.ui.foundation.focus.tvGridEdgeSwitchKeys
 import me.him188.ani.tv.ui.foundation.focus.tvGridFocusItem
 import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
+import org.jetbrains.compose.resources.stringResource
 
 /** 追番页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvCollectionFocus : TvFocusKey {
@@ -235,7 +244,7 @@ private fun TvCollectionEmptyPlaceholder(
     }
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
-            "这里空空如也，去探索页找些番剧吧",
+            stringResource(Lang.tv_collection_empty),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -292,11 +301,12 @@ private object TvCollectionDefaults {
 
 }
 
+@Composable
 private fun UnifiedCollectionType.displayText(): String = when (this) {
-    UnifiedCollectionType.WISH -> "想看"
-    UnifiedCollectionType.DOING -> "在看"
-    UnifiedCollectionType.ON_HOLD -> "搁置"
-    UnifiedCollectionType.DONE -> "看过"
-    UnifiedCollectionType.DROPPED -> "抛弃"
-    UnifiedCollectionType.NOT_COLLECTED -> "未收藏"
+    UnifiedCollectionType.WISH -> stringResource(Lang.subject_collection_wish)
+    UnifiedCollectionType.DOING -> stringResource(Lang.subject_collection_doing)
+    UnifiedCollectionType.ON_HOLD -> stringResource(Lang.subject_collection_on_hold)
+    UnifiedCollectionType.DONE -> stringResource(Lang.subject_collection_done)
+    UnifiedCollectionType.DROPPED -> stringResource(Lang.subject_collection_dropped)
+    UnifiedCollectionType.NOT_COLLECTED -> stringResource(Lang.subject_collection_uncollected)
 }
