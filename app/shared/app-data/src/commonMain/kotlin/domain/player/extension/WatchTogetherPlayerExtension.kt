@@ -42,17 +42,19 @@ import org.openani.mediamp.PlaybackEvent
 import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.isMediaLoaded
 import kotlin.math.abs
+import kotlin.time.TimeSource
 
 class WatchTogetherPlayerExtension(
     private val context: PlayerExtensionContext,
     koin: Koin,
+    private val timeSource: TimeSource = TimeSource.Monotonic,
 ) : PlayerExtension("WatchTogether") {
     private val bridge: LocalPlaybackBridge by koin.inject()
     private val manager: WatchTogetherManager by koin.inject()
     private val owner = Any()
     private val playbackMutex = Mutex()
     private var alignmentJob: Job? = null
-    private val alignmentExecutor by lazy { HostAlignmentExecutor(context.player, bridge, manager) }
+    private val alignmentExecutor by lazy { HostAlignmentExecutor(context.player, bridge, manager, timeSource) }
 
     /** Commits a live fix on the same dispatcher as playback commands. */
     private suspend fun publishCurrentWatching() = withContext(Dispatchers.Main.immediate) {
