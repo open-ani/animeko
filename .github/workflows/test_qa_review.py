@@ -149,6 +149,15 @@ class QaReviewTest(unittest.TestCase):
         self.assertIn("pinned to the commit", prompt)
         self.assertIn("b" * 40, prompt)
 
+    def test_prompt_verdict_does_not_block_approval_on_untestable_scenarios(self):
+        self.run_step("Build prompt")
+        prompt = (self.root / "prompt.txt").read_text()
+        self.assertIn("Not-tested rows never block an approve", prompt)
+        self.assertIn("--comment          the core claims could not be verified at runtime", prompt)
+        self.assertIn("a real remote control", prompt)
+        self.assertNotIn("every in-scope scenario was tested", prompt)
+        self.assertNotIn("platform not available", prompt)
+
     def test_prompt_for_write_author_uses_latest_head(self):
         self.env.update({"CHECKOUT_POLICY": "latest", "AUTHOR_PERMISSION": "write"})
         self.run_step("Build prompt")
