@@ -20,8 +20,7 @@ import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.repository.media.ManualBrowseMemory
 import me.him188.ani.app.data.repository.media.ManualBrowseMemoryRepository
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
-import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiMediaSource
-import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
+import me.him188.ani.app.domain.mediasource.playbackConfigurationIdOrNull
 import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.WebMediaRoute
@@ -156,11 +155,7 @@ class ReplayBrowseMemoryUseCaseImpl(
                 instance.isEnabled && instance.mediaSourceId == memory.mediaSourceId && instance.source.supportsBrowsing
             }?.source ?: return ReplayResult.NotFound(ReplayMissReason.SOURCE_UNAVAILABLE)
 
-            val configuration = when (source) {
-                is SelectorMediaSource -> source.playbackConfigurationId
-                is JsonApiMediaSource -> source.playbackConfigurationId
-                else -> null
-            }
+            val configuration = source.playbackConfigurationIdOrNull
             if (configuration != null && PlaybackSourceMemory.Route(
                     memory.mediaSourceId, WebMediaRoute(memory.subject.url, memory.channelName.orEmpty(), configuration),
                 ) in playbackMemory.failures

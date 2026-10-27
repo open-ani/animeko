@@ -49,8 +49,7 @@ import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
-import me.him188.ani.app.domain.mediasource.jsonapi.JsonApiMediaSource
-import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
+import me.him188.ani.app.domain.mediasource.playbackConfigurationIdOrNull
 import me.him188.ani.app.domain.player.ExtensionException
 import me.him188.ani.app.domain.player.PlaybackSourceObserver
 import me.him188.ani.app.domain.player.PlayerExtensionManager
@@ -321,11 +320,7 @@ class EpisodeFetchSelectPlayState(
                 backgroundScope.launch {
                     manager.allInstances.collect { instances ->
                         playbackSourceMemory.retainConfigurations(instances.associate { instance ->
-                            instance.mediaSourceId to when (val source = instance.source) {
-                                is SelectorMediaSource -> source.playbackConfigurationId
-                                is JsonApiMediaSource -> source.playbackConfigurationId
-                                else -> null
-                            }
+                            instance.mediaSourceId to instance.source.playbackConfigurationIdOrNull
                         })
                     }
                 }
