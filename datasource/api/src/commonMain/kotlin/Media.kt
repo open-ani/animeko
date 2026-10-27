@@ -299,6 +299,8 @@ data class MediaProperties @SerializationOnly constructor(
      * @since 3.7
      */
     val subtitleKind: SubtitleKind? = null, // #615
+    /** 在线资源的跨集线路身份。缺失时只允许按单个资源记录播放失败。 */
+    val webRoute: WebMediaRoute? = null,
     @Suppress("unused")
     @Transient private val _primaryConstructorMarker: Unit = Unit,
 ) {
@@ -312,8 +314,10 @@ data class MediaProperties @SerializationOnly constructor(
         alliance: String,
         size: FileSize,
         subtitleKind: SubtitleKind?,
+        webRoute: WebMediaRoute? = null,
     ) : this(
         subjectName, episodeName, subtitleLanguageIds, resolution, alliance, size, subtitleKind,
+        webRoute,
         _primaryConstructorMarker = Unit,
     )
 
@@ -321,6 +325,17 @@ data class MediaProperties @SerializationOnly constructor(
         return "MediaProperties(subtitleLanguageIds=$subtitleLanguageIds, resolution='$resolution', alliance='$alliance', size=$size)"
     }
 }
+
+/**
+ * 站点内同一条目的一条播放线路。不包含剧集地址或有时效的媒体直链。
+ * [configuration] 用于隔离不同解析规则下的运行记录。
+ */
+@Serializable
+data class WebMediaRoute(
+    val subjectUrl: String,
+    val channel: String,
+    val configuration: String,
+)
 
 /**
  * 视频字幕类型

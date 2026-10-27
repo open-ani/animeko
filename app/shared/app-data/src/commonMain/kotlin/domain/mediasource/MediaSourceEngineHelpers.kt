@@ -11,12 +11,20 @@ package me.him188.ani.app.domain.mediasource
 
 import io.ktor.http.URLBuilder
 import io.ktor.http.appendPathSegments
+import kotlinx.io.Buffer
+import kotlinx.io.writeString
+import me.him188.ani.utils.io.DigestAlgorithm
+import me.him188.ani.utils.io.readAndDigest
 import me.him188.ani.utils.logging.Logger
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 
 object MediaSourceEngineHelpers {
+    /** 运行记录只保存配置摘要，不把请求头或凭据复制进资源元数据。 */
+    fun playbackConfigurationId(serializedConfig: String): String =
+        Buffer().apply { writeString(serializedConfig) }.readAndDigest(DigestAlgorithm.SHA256).toHexString()
+
     fun encodeUrlSegment(value: String) =
         URLBuilder().appendPathSegments(value).encodedPathSegments.first()
 
