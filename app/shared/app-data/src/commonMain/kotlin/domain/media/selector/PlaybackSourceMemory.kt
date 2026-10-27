@@ -44,6 +44,7 @@ class PlaybackSourceMemory(private val clock: Clock = Clock.System) {
         val generation: Long = 0,
         val recentSuccess: Route? = null,
         val failures: Map<Route, Failure> = emptyMap(),
+        /** true 表示系统已验证联网，false 表示已知断网，null 表示未确定。 */
         val networkAvailable: Boolean? = null,
     ) {
         fun allows(media: Media): Boolean = routeOf(media) !in failures
@@ -126,7 +127,11 @@ class PlaybackSourceMemory(private val clock: Clock = Clock.System) {
                 snapshot = it.snapshot.copy(
                     generation = it.snapshot.generation + if (changed) 1 else 0,
                     failures = if (changed) emptyMap() else it.snapshot.failures,
-                    networkAvailable = environment.isConnected,
+                    networkAvailable = when {
+                        !environment.isConnected -> false
+                        environment.isValidated -> true
+                        else -> null
+                    },
                 ),
                 networkIdentity = if (environment.isConnected) environment.identity else it.networkIdentity,
                 active = if (changed) null else it.active,

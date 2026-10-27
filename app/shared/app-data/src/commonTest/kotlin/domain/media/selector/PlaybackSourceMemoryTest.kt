@@ -119,6 +119,16 @@ class PlaybackSourceMemoryTest {
     }
 
     @Test
+    fun `connected unvalidated networks are unknown rather than offline`() {
+        val memory = PlaybackSourceMemory()
+        memory.updateEnvironment(NetworkEnvironment("vpn", isConnected = true, isValidated = false))
+        assertNull(memory.snapshot().networkAvailable)
+        memory.updateEnvironment(NetworkEnvironment("vpn", isConnected = true, isValidated = true))
+        assertEquals(true, memory.snapshot().networkAvailable)
+        assertEquals(0L, memory.snapshot().generation)
+    }
+
+    @Test
     fun `configuration replacement and source removal invalidate only related records`() {
         val memory = PlaybackSourceMemory()
         memory.recordFailure(memory.beginAttempt(1, media()), PlaybackSourceMemory.FailureReason.RESOLUTION)

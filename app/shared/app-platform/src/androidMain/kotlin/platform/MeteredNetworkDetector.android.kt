@@ -48,6 +48,7 @@ private class AndroidMeteredNetworkDetector(
         val capabilities = connectivityManager.getNetworkCapabilities(network)
         return NetworkEnvironment(
             network.networkHandle.toString(),
+            capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true,
             capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true,
         )
     }
