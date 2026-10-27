@@ -9,7 +9,10 @@
 
 package me.him188.ani.app.domain.media.selector
 
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -28,6 +31,7 @@ import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.WebMediaRoute
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.EpisodeRange
+import me.him188.ani.test.DisabledOnNative
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -36,6 +40,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 /** 在真实选择器和查询流上验证跨集承接及失败换源，运行记录不改写用户偏好。 */
+@DisabledOnNative // Native 测试运行器不支持此上下文参数夹具。
 class PlaybackMemoryAutoSelectTest {
     private fun FetchMediaSelectorTestSuite.initWeb() {
         initSubject("Example Series")
@@ -241,5 +246,55 @@ class PlaybackMemoryAutoSelectTest {
         assertTrue(handler.blacklist.isEmpty())
         assertTrue(memory.snapshot().failures.isEmpty())
         assertEquals(current.mediaId, selector.selected.value?.mediaId)
+    }
+
+    @Test
+    fun `recent fuzzy route waits for fuzzy permission and then wins over another fuzzy route`() = runFetchMediaSelectorTestSuite {
+        initWeb()
+        val (_, session, sources) = configureFetchSession {
+            object {
+                val recent by web { tier = 2 }
+                val other by web { tier = 0 }
+                val pending by web { tier = 0 }
+            }
+        }
+        val old = media(kind = MediaSourceKind.WEB, subjectName = "Example Series Special").withRoute()
+        sources.recent.complete(old)
+        sources.other.complete(old.copy(mediaId = "other-1"))
+        val memory = PlaybackSourceMemory()
+        memory.recordSuccess(memory.beginAttempt(1, old.copy(mediaSourceId = "recent")))
+        val selection = implicit<TestScope>().async { choose(session, selector, memory) }
+        implicit<TestScope>().advanceTimeBy(14_999)
+        implicit<TestScope>().runCurrent()
+        assertFalse(selection.isCompleted)
+        implicit<TestScope>().advanceTimeBy(1)
+        implicit<TestScope>().runCurrent()
+        assertEquals("recent", assertIs<MediaAutoSelectOutcome.Selected>(selection.await()).media.mediaSourceId)
+    }
+
+    @Test
+    fun `retry generation clears failures but preserves resources the user manually left`() = runFetchMediaSelectorTestSuite {
+        initWeb()
+        val (_, session, sources) = configureFetchSession { object { val webA by web { tier = 0 } } }
+        val left = media(kind = MediaSourceKind.WEB, subjectName = initApi.subjectName).withRoute()
+        val current = media(kind = MediaSourceKind.WEB, subjectName = initApi.subjectName).withRoute("line-2")
+        val remaining = media(kind = MediaSourceKind.WEB, subjectName = initApi.subjectName).withRoute("line-3")
+        sources.webA.complete(left, current, remaining)
+        val memory = PlaybackSourceMemory()
+        val handler = PlayerLoadErrorHandler({ MediaSourceKind.WEB }, { preferenceApi.sourceTiers!! }, memory)
+        val observation = implicit<TestScope>().backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            handler.observeMediaSelectorBlacklist(flowOf(selector))
+        }
+        // collectLatest 的内层事件订阅就绪后，模拟用户从当前资源手动切换。
+        implicit<TestScope>().runCurrent()
+        selector.selectAutomatically(left, expectedSelection = null)
+        selector.select(current)
+        implicit<TestScope>().runCurrent()
+        assertTrue(left.mediaId in handler.blacklist)
+        memory.retryFailures()
+        handler.handleError(session, selector)
+        assertEquals(remaining.mediaId, selector.selected.value?.mediaId)
+        assertTrue(memory.snapshot().failures.isEmpty())
+        observation.cancel()
     }
 }

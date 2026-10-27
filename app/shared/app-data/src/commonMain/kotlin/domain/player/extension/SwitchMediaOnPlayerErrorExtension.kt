@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.player.extension
 
 import androidx.annotation.VisibleForTesting
 import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
+import me.him188.ani.app.domain.media.selector.SelectOrigin
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.collections.immutable.persistentHashSetOf
 import kotlinx.coroutines.coroutineScope
@@ -214,7 +215,9 @@ internal class PlayerLoadErrorHandler(
     private val getSourceTiers: suspend () -> MediaSelectorSourceTiers,
     private val playbackSourceMemory: PlaybackSourceMemory? = null,
 ) {
-    private var blacklistedMediaIds = persistentHashSetOf<String>()
+    /** 失败资源随环境代次重建，用户主动离开的资源在本集内保留。 */
+    private var failedMediaIds = persistentHashSetOf<String>()
+    private var manuallyLeftMediaIds = persistentHashSetOf<String>()
     private var generation = playbackSourceMemory?.snapshot()?.generation
 
     suspend fun observeMediaSelectorBlacklist(
@@ -222,8 +225,9 @@ internal class PlayerLoadErrorHandler(
     ) {
         mediaSelectorFlow.collectLatest { selector ->
             selector.events.onSelect.collect { event ->
+                if (event.origin != SelectOrigin.MANUAL) return@collect
                 event.previousMedia?.let {
-                    blacklistedMediaIds = blacklistedMediaIds.add(it.mediaId)
+                    manuallyLeftMediaIds = manuallyLeftMediaIds.add(it.mediaId)
                 }
             }
         }
@@ -241,7 +245,7 @@ internal class PlayerLoadErrorHandler(
         if (playbackSourceMemory?.snapshot()?.networkAvailable == false) return PlayerLoadErrorHandling.SkippedNetworkUnavailable
         val currentGeneration = playbackSourceMemory?.snapshot()?.generation
         if (generation != currentGeneration) {
-            blacklistedMediaIds = persistentHashSetOf()
+            failedMediaIds = persistentHashSetOf()
             generation = currentGeneration
         }
         val failedMedia = mediaSelector.selected.value
@@ -256,7 +260,7 @@ internal class PlayerLoadErrorHandler(
 
         // 将当前播放的 mediaId 加入黑名单
         failedMedia?.let {
-            blacklistedMediaIds = blacklistedMediaIds.add(it.mediaId) // thread-safe
+            failedMediaIds = failedMediaIds.add(it.mediaId)
         }
 
         delay(1.seconds) // 稍等让用户看到播放出错
@@ -278,7 +282,7 @@ internal class PlayerLoadErrorHandler(
             MediaAutoSelector.Config(
                 trigger = SelectTrigger.AUTO_ERROR_SWITCH,
                 selectCache = false,
-                blacklist = blacklistedMediaIds,
+                blacklist = blacklist,
                 playbackMemory = playbackSourceMemory?.snapshot() ?: PlaybackSourceMemory.Snapshot(),
                 web = MediaAutoSelector.Web(
                     sourceTiers = sourceTiers,
@@ -308,7 +312,7 @@ internal class PlayerLoadErrorHandler(
     }
 
     @VisibleForTesting
-    val blacklist: Set<String> get() = blacklistedMediaIds
+    val blacklist: Set<String> get() = failedMediaIds + manuallyLeftMediaIds
 }
 
 /**

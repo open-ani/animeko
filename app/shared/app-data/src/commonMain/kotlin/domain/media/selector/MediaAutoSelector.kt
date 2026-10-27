@@ -296,6 +296,18 @@ internal class MediaAutoSelector(
                 MediaAutoSelectStage.PREFERRED_SOURCE -> error("Handled before Web fallback")
             }
         }
+        val recent = eligible.filter { config.playbackMemory.isRecentSuccess(it.result) }
+            .filter { candidate ->
+                candidate.metadata.subjectMatchKind == SubjectMatchKind.EXACT ||
+                    eligible.none { it.metadata.subjectMatchKind == SubjectMatchKind.EXACT }
+            }
+        findWebCandidate(snapshot, recent, relax = true)?.let { media ->
+            val candidate = recent.first { it.result == media }
+            return Decision.Select(
+                media, MediaAutoSelectReason.RECENT_PLAYBACK, candidate.metadata.subjectMatchKind,
+                web.sourceTiers.get(media.mediaSourceId, media.properties.alliance),
+            )
+        }
         // Preferences apply within each match/tier group, never ahead of match quality or tier.
         val groups = eligible.groupBy {
             Pair(
