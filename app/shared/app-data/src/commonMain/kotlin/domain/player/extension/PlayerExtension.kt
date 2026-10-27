@@ -19,8 +19,8 @@ import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.EpisodeSwitchTrigger
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
-import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.player.MediaLoadResult
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.player.analytics.PlayFlowRecorder
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer

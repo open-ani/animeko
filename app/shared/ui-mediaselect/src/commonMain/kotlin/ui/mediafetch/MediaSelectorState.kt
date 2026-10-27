@@ -41,8 +41,8 @@ import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
-import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
 import me.him188.ani.app.domain.media.selector.PlaybackAutoSelectionState
+import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
 import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.app.domain.media.selector.isPerfectMatch
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome

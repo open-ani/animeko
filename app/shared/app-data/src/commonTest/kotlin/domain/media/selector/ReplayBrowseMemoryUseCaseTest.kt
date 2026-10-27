@@ -21,8 +21,6 @@ import me.him188.ani.app.data.repository.media.ManualBrowseMemory
 import me.him188.ani.app.data.repository.media.ManualBrowseMemoryRepositoryImpl
 import me.him188.ani.app.domain.media.createTestDefaultMedia
 import me.him188.ani.app.domain.media.createTestMediaProperties
-import me.him188.ani.app.domain.media.selector.testFramework.RecordedMediaSelectorEvent.OnBeforeSelect
-import me.him188.ani.app.domain.media.selector.testFramework.RecordedMediaSelectorEvent.OnSelect
 import me.him188.ani.app.domain.media.selector.testFramework.collectEvents
 import me.him188.ani.app.domain.media.selector.testFramework.runSimpleMediaSelectorTestSuite
 import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance

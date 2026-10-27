@@ -38,21 +38,21 @@ import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.mediaFetchSessionFlow
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
-import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.DroppedFileMedia
-import me.him188.ani.app.domain.media.resolver.MediaResolver
+import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolutionException
+import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.ResolutionFailures
-import me.him188.ani.app.domain.media.player.data.MediaDataProvider
-import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.media.selector.MediaAutoSelectOutcome
+import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
-import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
 import me.him188.ani.app.domain.media.selector.PlaybackAutoSelectionState
+import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
 import me.him188.ani.app.domain.media.selector.ReplayBrowseMemoryUseCase
 import me.him188.ani.app.domain.media.selector.ReplayMissReason
 import me.him188.ani.app.domain.media.selector.ReplayResult
@@ -77,8 +77,8 @@ import kotlin.contracts.contract
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertNull
 import kotlin.test.assertNotSame
+import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 

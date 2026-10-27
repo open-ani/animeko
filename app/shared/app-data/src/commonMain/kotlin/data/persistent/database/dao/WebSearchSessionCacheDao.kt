@@ -9,8 +9,8 @@
 
 package me.him188.ani.app.data.persistent.database.dao
 
-import androidx.room.Dao
 import androidx.room.ColumnInfo
+import androidx.room.Dao
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.Insert

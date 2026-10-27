@@ -31,12 +31,11 @@ class PlaybackSourceMemory(private val clock: Clock = Clock.System) {
     enum class FailureReason { RESOLUTION, PLAYBACK }
     data class Failure(val reason: FailureReason, val recordedAt: Instant)
 
-    /** 剧集、资源和尝试序号一起绑定到环境代次，旧加载回调只能更新自己的尝试。 */
+    /** 每次加载持有独立实例，并绑定剧集、资源和环境代次；旧回调只能更新自己的尝试。 */
     class Attempt internal constructor(
         val episodeId: Int,
         val mediaId: String,
         val generation: Long,
-        val sequence: Long,
         val route: Route?,
     )
 
@@ -53,7 +52,6 @@ class PlaybackSourceMemory(private val clock: Clock = Clock.System) {
 
     private data class State(
         val snapshot: Snapshot = Snapshot(),
-        val sequence: Long = 0,
         val active: Attempt? = null,
         val renewable: Attempt? = null,
         val networkIdentity: String? = null,
@@ -65,8 +63,8 @@ class PlaybackSourceMemory(private val clock: Clock = Clock.System) {
     fun beginAttempt(episodeId: Int, media: Media): Attempt {
         while (true) {
             val before = state.value
-            val attempt = Attempt(episodeId, media.mediaId, before.snapshot.generation, before.sequence + 1, routeOf(media))
-            if (state.compareAndSet(before, before.copy(sequence = attempt.sequence, active = attempt, renewable = null))) return attempt
+            val attempt = Attempt(episodeId, media.mediaId, before.snapshot.generation, routeOf(media))
+            if (state.compareAndSet(before, before.copy(active = attempt, renewable = null))) return attempt
         }
     }
 
@@ -81,8 +79,8 @@ class PlaybackSourceMemory(private val clock: Clock = Clock.System) {
         while (true) {
             val before = state.value
             if (before.renewable != attempt || before.active != null) return null
-            val renewed = Attempt(attempt.episodeId, attempt.mediaId, before.snapshot.generation, before.sequence + 1, attempt.route)
-            if (state.compareAndSet(before, before.copy(sequence = renewed.sequence, active = renewed, renewable = null))) return renewed
+            val renewed = Attempt(attempt.episodeId, attempt.mediaId, before.snapshot.generation, attempt.route)
+            if (state.compareAndSet(before, before.copy(active = renewed, renewable = null))) return renewed
         }
     }
 
@@ -154,7 +152,7 @@ class PlaybackSourceMemory(private val clock: Clock = Clock.System) {
     }
 
     fun clear() {
-        state.update { State(snapshot = Snapshot(generation = it.snapshot.generation + 1), sequence = it.sequence) }
+        state.update { State(snapshot = Snapshot(generation = it.snapshot.generation + 1)) }
     }
 
     companion object {

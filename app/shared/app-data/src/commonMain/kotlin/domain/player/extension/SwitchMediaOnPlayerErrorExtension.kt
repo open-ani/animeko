@@ -10,9 +10,6 @@
 package me.him188.ani.app.domain.player.extension
 
 import androidx.annotation.VisibleForTesting
-import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
-import me.him188.ani.app.domain.media.selector.SelectOrigin
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.collections.immutable.persistentHashSetOf
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -34,13 +31,15 @@ import me.him188.ani.app.domain.media.selector.MediaAutoSelectOutcome
 import me.him188.ani.app.domain.media.selector.MediaAutoSelector
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
+import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
+import me.him188.ani.app.domain.media.selector.SelectOrigin
 import me.him188.ani.app.domain.media.selector.SelectTrigger
-import me.him188.ani.app.domain.player.analytics.PlayFlowEpisode
-import me.him188.ani.app.domain.player.analytics.PlayFlowStep
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
-import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.player.MediaLoadResult
 import me.him188.ani.app.domain.player.PlaybackRecoveryPolicy
+import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.domain.player.analytics.PlayFlowEpisode
+import me.him188.ani.app.domain.player.analytics.PlayFlowStep
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.datasources.api.Media
@@ -50,6 +49,7 @@ import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlayerState
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * 当播放失败时, 自动切换到下一个可选择的 media.
@@ -173,7 +173,7 @@ class SwitchMediaOnPlayerErrorExtension(
     private fun recordAutoSwitch(
         episode: PlayFlowEpisode,
         trigger: PlayerErrorTrigger,
-        failedMedia: Media?,
+        failedMedia: Media,
         handling: PlayerLoadErrorHandling,
         blacklistSize: Int,
     ) {
@@ -182,7 +182,7 @@ class SwitchMediaOnPlayerErrorExtension(
                 put("outcome", "skipped")
                 put("reason", reason)
             }
-            put("sel_no", failedMedia?.let { episode.selectionNoOf(it.mediaId) })
+            put("sel_no", episode.selectionNoOf(failedMedia.mediaId))
             put("trigger", trigger)
             when (handling) {
                 is PlayerLoadErrorHandling.Attempted -> when (val outcome = handling.outcome) {

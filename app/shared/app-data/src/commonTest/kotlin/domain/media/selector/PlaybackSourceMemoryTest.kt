@@ -49,6 +49,25 @@ class PlaybackSourceMemoryTest {
     }
 
     @Test
+    fun `retrying the same episode and resource keeps callbacks isolated by attempt identity`() {
+        val memory = PlaybackSourceMemory()
+        val resource = media()
+        val old = memory.beginAttempt(1, resource)
+        val current = memory.beginAttempt(1, resource)
+
+        memory.recordFailure(old, PlaybackSourceMemory.FailureReason.RESOLUTION)
+        memory.recordSuccess(old)
+        memory.finishAttempt(old)
+        assertTrue(memory.snapshot().failures.isEmpty())
+        assertNull(memory.snapshot().recentSuccess)
+
+        memory.recordSuccess(current)
+        assertTrue(memory.snapshot().isRecentSuccess(resource))
+        memory.recordFailure(current, PlaybackSourceMemory.FailureReason.PLAYBACK)
+        assertFalse(memory.snapshot().allows(resource))
+    }
+
+    @Test
     fun `successful retry restores only that route and records the latest success`() {
         val memory = PlaybackSourceMemory()
         memory.recordFailure(memory.beginAttempt(1, media(source = "web-a")), PlaybackSourceMemory.FailureReason.PLAYBACK)
