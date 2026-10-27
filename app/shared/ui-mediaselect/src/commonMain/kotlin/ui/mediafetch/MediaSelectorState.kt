@@ -42,6 +42,7 @@ import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
 import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
+import me.him188.ani.app.domain.media.selector.PlaybackAutoSelectionState
 import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.app.domain.media.selector.isPerfectMatch
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
@@ -161,6 +162,7 @@ class MediaSelectorState(
     private val listener: MediaSelectorStateListener = MediaSelectorStateListener.Noop,
     playbackSourceMemory: PlaybackSourceMemory? = null,
     private val onRetryFailedPlaybackSources: suspend () -> Unit = {},
+    val autoSelectionState: Flow<PlaybackAutoSelectionState.State> = flowOf(PlaybackAutoSelectionState.State.Idle),
 ) {
     val playbackMemorySnapshots = playbackSourceMemory?.snapshots ?: flowOf(PlaybackSourceMemory.Snapshot())
 
@@ -464,6 +466,7 @@ fun createTestMediaSelectorState(
     onUserSelect: suspend (Media) -> Unit = {},
     playbackSourceMemory: PlaybackSourceMemory? = null,
     onRetryFailedPlaybackSources: suspend () -> Unit = {},
+    autoSelectionState: Flow<PlaybackAutoSelectionState.State> = flowOf(PlaybackAutoSelectionState.State.Idle),
 ) = MediaSelectorState(
     DefaultMediaSelector(
         mediaSelectorContextNotCached = flowOf(MediaSelectorContext.EmptyForPreview),
@@ -483,4 +486,5 @@ fun createTestMediaSelectorState(
     },
     playbackSourceMemory = playbackSourceMemory,
     onRetryFailedPlaybackSources = onRetryFailedPlaybackSources,
+    autoSelectionState = autoSelectionState,
 )

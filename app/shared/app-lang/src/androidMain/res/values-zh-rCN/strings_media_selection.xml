@@ -71,4 +71,8 @@
     <string name="media_selector_runtime_failures">本次暂不可用的 %1$d 条线路将自动跳过，可手动切换或重新检测。</string>
     <string name="media_selector_retry_failed_routes">重新检测失败线路</string>
     <string name="media_selector_web_route_failed">本次暂不可用</string>
+    <string name="media_selector_auto_exhausted">本轮自动选源已结束</string>
+    <string name="media_selector_auto_no_candidates">没有本集可继续尝试的候选资源，可重新尝试或手动选源。</string>
+    <string name="media_selector_auto_no_preference_match">没有符合当前偏好的资源，可调整偏好或手动选源。</string>
+    <string name="media_selector_auto_wait_expired">等待时间内没有找到可继续尝试的资源，可重新尝试或手动选源。</string>
 </resources>

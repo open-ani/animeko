@@ -71,4 +71,8 @@
     <string name="media_selector_runtime_failures">Skipping %1$d temporarily unavailable routes in this viewing session. Select another route or retry unavailable routes.</string>
     <string name="media_selector_retry_failed_routes">Retry unavailable routes</string>
     <string name="media_selector_web_route_failed">Temporarily unavailable</string>
+    <string name="media_selector_auto_exhausted">Automatic selection has stopped for this round</string>
+    <string name="media_selector_auto_no_candidates">No more resources are available to try for this episode. Retry or select a source manually.</string>
+    <string name="media_selector_auto_no_preference_match">No resources match your preferences. Adjust them or select a source manually.</string>
+    <string name="media_selector_auto_wait_expired">No more resources became available within the waiting period. Retry or select a source manually.</string>
 </resources>

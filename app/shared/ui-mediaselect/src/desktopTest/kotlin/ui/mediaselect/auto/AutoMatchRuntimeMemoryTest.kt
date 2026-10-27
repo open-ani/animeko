@@ -16,6 +16,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
+import me.him188.ani.app.domain.media.selector.PlaybackAutoSelectionState
+import me.him188.ani.app.domain.media.selector.MediaAutoSelectOutcome
+import me.him188.ani.app.domain.media.selector.MediaAutoSelectExhaustCause
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.mediafetch.createTestMediaSelectorState
@@ -27,6 +30,25 @@ import kotlin.test.assertTrue
 
 @OptIn(TestOnly::class)
 class AutoMatchRuntimeMemoryTest {
+    @Test
+    fun `exhaustion is visible without route failures and clears for another attempt`() = runAniComposeUiTest {
+        val selection = PlaybackAutoSelectionState()
+        selection.finish(selection.begin(), MediaAutoSelectOutcome.Exhausted(MediaAutoSelectExhaustCause.NO_WEB_CANDIDATES))
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                val scope = rememberCoroutineScope()
+                val state = remember {
+                    createTestMediaSelectorState(scope, mediaList = emptyList(), autoSelectionState = selection.state)
+                }
+                AutoMatchPage(state, onClickItem = {}, onRestartSource = {}, onRequestManualSearch = null)
+            }
+        }
+
+        onNodeWithTag(AutoMatchPageTestTags.EXHAUSTED).assertIsDisplayed()
+        runOnIdle { selection.begin() }
+        onNodeWithTag(AutoMatchPageTestTags.EXHAUSTED).assertDoesNotExist()
+    }
+
     @Test
     fun `retry action clears session failures while retaining successful route`() = runAniComposeUiTest {
         val memory = PlaybackSourceMemory()

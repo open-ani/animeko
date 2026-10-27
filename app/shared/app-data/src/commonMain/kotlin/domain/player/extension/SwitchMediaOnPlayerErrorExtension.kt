@@ -150,9 +150,17 @@ class SwitchMediaOnPlayerErrorExtension(
             }.distinctUntilChanged()
                 .collectLatest { trigger ->
                     if (trigger != null) {
-                        val failedMedia = bundle.mediaSelector.selected.value
-                        val handling = handleError(bundle.mediaFetchSession, bundle.mediaSelector)
-                        recordAutoSwitch(episode, trigger, failedMedia, handling, blacklist.size)
+                        val failedMedia = bundle.mediaSelector.selected.value ?: return@collectLatest
+                        val selectionAttempt = bundle.autoSelectionState.begin()
+                        try {
+                            val handling = handleError(bundle.mediaFetchSession, bundle.mediaSelector)
+                            if (handling is PlayerLoadErrorHandling.Attempted) {
+                                bundle.autoSelectionState.finish(selectionAttempt, handling.outcome)
+                            }
+                            recordAutoSwitch(episode, trigger, failedMedia, handling, blacklist.size)
+                        } finally {
+                            bundle.autoSelectionState.cancel(selectionAttempt)
+                        }
                     } // else: cancel selection
                 }
         }

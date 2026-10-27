@@ -48,6 +48,7 @@ import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
+import me.him188.ani.app.domain.media.selector.PlaybackAutoSelectionState
 import me.him188.ani.app.domain.media.selector.ReplayBrowseMemoryUseCase
 import me.him188.ani.app.domain.media.selector.ReplayMissReason
 import me.him188.ani.app.domain.media.selector.ReplayResult
@@ -452,6 +453,23 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
+    fun `exhausted automatic selection is cleared when a manually chosen resource loads`() = runTest {
+        val (testScope, suite, state) = createCase { _, suite ->
+            suite.mediaSelectorTestBuilder.delayedMediaSource("web", kind = MediaSourceKind.WEB).complete(emptyList())
+        }
+        initializeTest(suite, defaultSettings.copy(preferKind = MediaSourceKind.WEB))
+        val bundle = state.episodeSessionFlow.value.fetchSelectFlow.filterNotNull().first()
+        assertIs<PlaybackAutoSelectionState.State.Exhausted>(bundle.autoSelectionState.state.value)
+
+        bundle.mediaSelector.select(suite.mediaSelectorTestBuilder.createMedia("manual", kind = MediaSourceKind.WEB))
+        advanceUntilIdle()
+
+        assertSame(PlaybackAutoSelectionState.State.Idle, bundle.autoSelectionState.state.value)
+        assertEquals(MediaStatus.Ready, suite.player.state.value.mediaStatus)
+        testScope.cancel()
+    }
+
+    @Test
     fun `retry failed routes restarts selection after inherited failures exhaust the episode`() = runTest {
         val web: CompletableDeferred<List<Media>>
         val (testScope, suite, state) = createCase { _, suite ->
@@ -472,6 +490,9 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
         web.complete(listOf(media))
         advanceUntilIdle()
         state.assertSelected(null, suite)
+        assertIs<PlaybackAutoSelectionState.State.Exhausted>(
+            state.episodeSessionFlow.value.fetchSelectFlow.filterNotNull().first().autoSelectionState.state.value,
+        )
         val callsBeforeRetry = autoSelectCalls
 
         state.retryFailedPlaybackSources()
@@ -513,6 +534,9 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
         suite.player.injectError(PlaybackException(PlaybackErrorCode.IO, "old network"))
         advanceUntilIdle()
         assertEquals(1, state.playbackSourceMemory.snapshot().failures.size)
+        assertIs<PlaybackAutoSelectionState.State.Exhausted>(
+            state.episodeSessionFlow.value.fetchSelectFlow.filterNotNull().first().autoSelectionState.state.value,
+        )
         network.value = NetworkEnvironment("wifi-2", true)
         advanceUntilIdle()
 

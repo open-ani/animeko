@@ -453,6 +453,7 @@ class EpisodeFetchSelectPlayState(
 
                         // `filterNotNull()` is needed. Even when media is unselect, we should not stop the player.
                         fetchSelect.mediaSelector.selected.filterNotNull().collectLatest { media ->
+                            fetchSelect.autoSelectionState.reset()
                             val episodeInfo = episodeSession.infoBundleFlow
                                 .filterNotNull()
                                 .first()

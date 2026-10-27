@@ -35,6 +35,7 @@ import me.him188.ani.app.domain.media.resolver.ResolutionFailures
 import me.him188.ani.app.domain.media.resolver.TorrentBackedMediaDataProvider
 import me.him188.ani.app.domain.media.resolver.UnsupportedMediaException
 import me.him188.ani.app.domain.media.selector.MediaSelector
+import me.him188.ani.app.domain.media.selector.PlaybackAutoSelectionState
 import me.him188.ani.app.domain.mediasource.MediaSourceTags
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
 import me.him188.ani.app.domain.player.VideoLoadingState
@@ -56,7 +57,9 @@ import kotlin.time.TimeSource
 class MediaFetchSelectBundle(
     val mediaFetchSession: MediaFetchSession,
     val mediaSelector: MediaSelector,
-)
+) {
+    val autoSelectionState = PlaybackAutoSelectionState()
+}
 
 // episodeId 改变, 需要全部清空
 // 如果 episodeId 不变, 但是 EpisodeCollectionInfo 变了, 只需要更新一些信息.
