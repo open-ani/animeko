@@ -41,6 +41,7 @@ import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
+import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
 import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.app.domain.media.selector.isPerfectMatch
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
@@ -158,7 +159,15 @@ class MediaSelectorState(
     private val webSessionManager: WebSessionManager,
     val btFilterState: BtFilterState = BtFilterState(),
     private val listener: MediaSelectorStateListener = MediaSelectorStateListener.Noop,
+    playbackSourceMemory: PlaybackSourceMemory? = null,
+    private val onRetryFailedPlaybackSources: suspend () -> Unit = {},
 ) {
+    val playbackMemorySnapshots = playbackSourceMemory?.snapshots ?: flowOf(PlaybackSourceMemory.Snapshot())
+
+    fun retryFailedPlaybackSources() {
+        backgroundScope.launch { onRetryFailedPlaybackSources() }
+    }
+
     @Immutable
     data class Presentation(
         val filteredCandidates: List<MaybeExcludedMedia>,
@@ -333,10 +342,12 @@ class MediaSelectorState(
         myMediaList: Sequence<Media>,
         delayToOvercomeCacheIssue: Boolean,
         resolvingCaptchaInstanceIds: Set<String>,
-    ) = source.state.combine(preferredWebMediaSource) { a, b -> a to b }.map { (state, preferred) ->
+    ) = combine(source.state, preferredWebMediaSource, playbackMemorySnapshots) { state, preferred, memory ->
+        Triple(state, preferred, memory)
+    }.map { (state, preferred, memory) ->
         // 每条线路一个芯片: 同一线路的多个资源取排序靠前的一个.
         val channels = myMediaList.distinctBy { it.properties.alliance }.map { media ->
-            WebSourceChannel(media.properties.alliance, original = media)
+            WebSourceChannel(media.properties.alliance, original = media, isTemporarilyUnavailable = !memory.allows(media))
         }.toList()
         val captchaRequest = (state as? MediaSourceFetchState.CaptchaRequired)?.request
         val rateLimitedUntil = (state as? MediaSourceFetchState.RateLimited)?.retryAt
@@ -451,6 +462,8 @@ fun createTestMediaSelectorState(
     btFilterState: BtFilterState = BtFilterState(),
     mediaList: List<Media> = TestMediaList,
     onUserSelect: suspend (Media) -> Unit = {},
+    playbackSourceMemory: PlaybackSourceMemory? = null,
+    onRetryFailedPlaybackSources: suspend () -> Unit = {},
 ) = MediaSelectorState(
     DefaultMediaSelector(
         mediaSelectorContextNotCached = flowOf(MediaSelectorContext.EmptyForPreview),
@@ -468,4 +481,6 @@ fun createTestMediaSelectorState(
     object : MediaSelectorStateListener {
         override suspend fun onUserSelect(media: Media, trigger: SelectTrigger) = onUserSelect(media)
     },
+    playbackSourceMemory = playbackSourceMemory,
+    onRetryFailedPlaybackSources = onRetryFailedPlaybackSources,
 )

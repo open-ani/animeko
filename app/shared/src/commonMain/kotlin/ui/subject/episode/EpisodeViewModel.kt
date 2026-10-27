@@ -1129,6 +1129,8 @@ open class EpisodeViewModel(
                             currentEpisode = { currentPlayFlowEpisode },
                             onUserSelect = { _, _ -> forgetBrowseMemory() },
                         ),
+                        playbackSourceMemory = fetchPlayState.playbackSourceMemory,
+                        onRetryFailedPlaybackSources = { fetchPlayState.retryFailedPlaybackSources() },
                     )
                 } else {
                     // TODO: 2025/1/22 We should not use createTestMediaSelectorState
