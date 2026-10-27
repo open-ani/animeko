@@ -75,4 +75,5 @@
     <string name="media_selector_auto_no_candidates">No more resources are available to try for this episode. Retry or select a source manually.</string>
     <string name="media_selector_auto_no_preference_match">No resources match your preferences. Adjust them or select a source manually.</string>
     <string name="media_selector_auto_wait_expired">No more resources became available within the waiting period. Retry or select a source manually.</string>
+    <string name="media_selector_retry_auto_selection">Retry selection</string>
 </resources>

@@ -31,6 +31,36 @@ import kotlin.test.assertTrue
 @OptIn(TestOnly::class)
 class AutoMatchRuntimeMemoryTest {
     @Test
+    fun `exhausted selection can retry when there are no cross episode route failures`() = runAniComposeUiTest {
+        val selection = PlaybackAutoSelectionState()
+        val memory = PlaybackSourceMemory()
+        var retries = 0
+        selection.finish(selection.begin(), MediaAutoSelectOutcome.Exhausted(MediaAutoSelectExhaustCause.NO_WEB_CANDIDATES))
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                val scope = rememberCoroutineScope()
+                val state = remember {
+                    createTestMediaSelectorState(
+                        scope, mediaList = emptyList(), playbackSourceMemory = memory, autoSelectionState = selection.state,
+                        onRetryFailedPlaybackSources = {
+                            retries++
+                            selection.reset()
+                        },
+                    )
+                }
+                AutoMatchPage(state, onClickItem = {}, onRestartSource = {}, onRequestManualSearch = null)
+            }
+        }
+
+        onNodeWithTag(AutoMatchPageTestTags.EXHAUSTED).assertIsDisplayed()
+        onNodeWithTag(AutoMatchPageTestTags.RETRY_FAILED_ROUTES).assertIsDisplayed().performClick()
+        waitUntil { retries == 1 }
+        onNodeWithTag(AutoMatchPageTestTags.EXHAUSTED).assertDoesNotExist()
+        onNodeWithTag(AutoMatchPageTestTags.RETRY_FAILED_ROUTES).assertDoesNotExist()
+        assertTrue(memory.snapshot().failures.isEmpty())
+    }
+
+    @Test
     fun `exhaustion is visible without route failures and clears for another attempt`() = runAniComposeUiTest {
         val selection = PlaybackAutoSelectionState()
         selection.finish(selection.begin(), MediaAutoSelectOutcome.Exhausted(MediaAutoSelectExhaustCause.NO_WEB_CANDIDATES))

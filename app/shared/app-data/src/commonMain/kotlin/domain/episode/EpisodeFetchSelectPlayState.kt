@@ -377,6 +377,7 @@ class EpisodeFetchSelectPlayState(
     /** 明确重新检测失败线路。正常播放只恢复候选资格；报错或尚未选中资源时重建当前集尝试。 */
     suspend fun retryFailedPlaybackSources() {
         val session = episodeSessionFlow.value
+        session.fetchSelectFlow.replayCache.lastOrNull()?.autoSelectionState?.reset()
         playbackSourceMemory.retryFailures()
         restartPlaybackIfNeeded(session)
     }

@@ -40,6 +40,7 @@ import me.him188.ani.app.ui.lang.media_selector_auto_exhausted
 import me.him188.ani.app.ui.lang.media_selector_auto_no_candidates
 import me.him188.ani.app.ui.lang.media_selector_auto_no_preference_match
 import me.him188.ani.app.ui.lang.media_selector_auto_wait_expired
+import me.him188.ani.app.ui.lang.media_selector_retry_auto_selection
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.mediaselect.selector.MediaSelectorWebSourcesColumn
@@ -92,11 +93,13 @@ fun AutoMatchPage(
         }
         if (playbackMemory.failures.isNotEmpty()) {
             Text(stringResource(Lang.media_selector_runtime_failures, playbackMemory.failures.size), Modifier.padding(16.dp))
+        }
+        if (exhausted != null || playbackMemory.failures.isNotEmpty()) {
             TextButton(
                 onClick = state::retryFailedPlaybackSources,
                 modifier = Modifier.testTag(AutoMatchPageTestTags.RETRY_FAILED_ROUTES),
             ) {
-                Text(stringResource(Lang.media_selector_retry_failed_routes))
+                Text(stringResource(if (exhausted != null) Lang.media_selector_retry_auto_selection else Lang.media_selector_retry_failed_routes))
             }
         }
         MediaSelectorWebSourcesColumn(

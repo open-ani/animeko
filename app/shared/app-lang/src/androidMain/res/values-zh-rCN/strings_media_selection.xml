@@ -75,4 +75,5 @@
     <string name="media_selector_auto_no_candidates">没有本集可继续尝试的候选资源，可重新尝试或手动选源。</string>
     <string name="media_selector_auto_no_preference_match">没有符合当前偏好的资源，可调整偏好或手动选源。</string>
     <string name="media_selector_auto_wait_expired">等待时间内没有找到可继续尝试的资源，可重新尝试或手动选源。</string>
+    <string name="media_selector_retry_auto_selection">重新尝试选源</string>
 </resources>

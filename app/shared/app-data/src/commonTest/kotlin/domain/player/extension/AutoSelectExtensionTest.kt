@@ -505,6 +505,47 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
+    fun `exhausted playback retries single episode failures and resources without route identity`() = runTest {
+        for (hasRoute in listOf(true, false)) {
+            mediaSelectorSettings.value = defaultSettings.copy(preferKind = MediaSourceKind.WEB)
+            val media: Media
+            val (testScope, suite, state) = createCase(listOf(AutoSelectExtension, SwitchMediaOnPlayerErrorExtension)) { _, suite ->
+                suite.mediaSelectorTestBuilder.savedUserPreference.value = MediaPreference.Any
+                suite.registerComponent<GetVideoScaffoldConfigUseCase> {
+                    GetVideoScaffoldConfigUseCase { flowOf(VideoScaffoldConfig.AllDisabled.copy(autoSwitchMediaOnPlayerError = true)) }
+                }
+                val original = suite.mediaSelectorTestBuilder.createMedia("web", kind = MediaSourceKind.WEB)
+                media = original.copy(properties = original.properties.copy(
+                    webRoute = if (hasRoute) WebMediaRoute("https://site/subject/1", "line-1", "config") else null,
+                ))
+                suite.mediaSelectorTestBuilder.delayedMediaSource("web", kind = MediaSourceKind.WEB).complete(listOf(media))
+            }
+            val oldSession = state.episodeSessionFlow.value
+            val oldMediaData = suite.player.mediaData.value
+            suite.player.injectError(PlaybackException(if (hasRoute) PlaybackErrorCode.DECODING else PlaybackErrorCode.IO, "test"))
+            advanceUntilIdle()
+            // 只有本集资源黑名单，没有可用于显示按钮的跨集失败记录。
+            assertTrue(state.playbackSourceMemory.snapshot().failures.isEmpty())
+            assertIs<PlaybackAutoSelectionState.State.Exhausted>(
+                oldSession.fetchSelectFlow.filterNotNull().first().autoSelectionState.state.value,
+            )
+
+            state.retryFailedPlaybackSources()
+            advanceUntilIdle()
+
+            assertNotSame(oldSession, state.episodeSessionFlow.value)
+            assertNotSame(oldMediaData, suite.player.mediaData.value)
+            assertEquals(MediaStatus.Ready, suite.player.state.value.mediaStatus)
+            assertEquals(media, state.mediaSelectorFlow.filterNotNull().first().selected.value)
+            assertSame(
+                PlaybackAutoSelectionState.State.Idle,
+                state.episodeSessionFlow.value.fetchSelectFlow.filterNotNull().first().autoSelectionState.state.value,
+            )
+            testScope.cancel()
+        }
+    }
+
+    @Test
     fun `network change retries the current failed route and preserves healthy paused playback`() = runTest {
         mediaSelectorSettings.value = defaultSettings.copy(preferKind = MediaSourceKind.WEB)
         val network = MutableStateFlow<NetworkEnvironment?>(NetworkEnvironment("wifi", true))
