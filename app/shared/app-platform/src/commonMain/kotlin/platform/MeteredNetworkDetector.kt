@@ -20,11 +20,16 @@ import kotlinx.coroutines.flow.flowOf
 interface MeteredNetworkDetector {
     val isMeteredNetworkFlow: Flow<Boolean>
 
+    /** 可识别的默认网络身份与连通状态；平台无法判断时为 null。 */
+    val networkEnvironmentFlow: Flow<NetworkEnvironment?> get() = flowOf(null)
+
     /**
      * Dispose listeners or callbacks which may be created at initializing detector.
      */
     fun dispose()
 }
+
+data class NetworkEnvironment(val identity: String?, val isConnected: Boolean)
 
 object NoopMeteredNetworkDetector : MeteredNetworkDetector {
     override val isMeteredNetworkFlow: Flow<Boolean> = flowOf(false)
