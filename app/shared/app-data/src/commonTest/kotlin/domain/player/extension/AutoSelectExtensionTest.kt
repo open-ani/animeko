@@ -43,6 +43,7 @@ import me.him188.ani.app.domain.media.selector.MediaAutoSelectOutcome
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
+import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
 import me.him188.ani.app.domain.media.selector.ReplayBrowseMemoryUseCase
 import me.him188.ani.app.domain.media.selector.ReplayMissReason
 import me.him188.ani.app.domain.media.selector.ReplayResult
@@ -102,9 +103,13 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
         suite.registerComponent<MediaSelectorAutoSelectUseCase> {
             val impl = MediaSelectorAutoSelectUseCaseImpl(koin)
             object : MediaSelectorAutoSelectUseCase {
-                override suspend fun invoke(session: MediaFetchSession, mediaSelector: MediaSelector): MediaAutoSelectOutcome {
+                override suspend fun invoke(
+                    session: MediaFetchSession,
+                    mediaSelector: MediaSelector,
+                    playbackMemory: PlaybackSourceMemory.Snapshot,
+                ): MediaAutoSelectOutcome {
                     autoSelectCalls++
-                    return impl(session, mediaSelector)
+                    return impl(session, mediaSelector, playbackMemory)
                 }
             }
         }

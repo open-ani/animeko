@@ -29,6 +29,7 @@ import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstan
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.WebMediaRoute
 import me.him188.ani.datasources.api.source.BrowseChannel
 import me.him188.ani.datasources.api.source.BrowseEpisode
 import me.him188.ani.datasources.api.source.BrowseSubject
@@ -94,7 +95,7 @@ class ReplayBrowseMemoryUseCaseTest {
             properties = createTestMediaProperties(
                 alliance = channelName ?: "",
                 subtitleLanguageIds = listOf(SubtitleLanguage.ChineseSimplified.id),
-            ),
+            ).copy(webRoute = WebMediaRoute(subject.url, channelName.orEmpty(), "test-config")),
             episodeRange = episodeSort?.let { EpisodeRange.single(it) },
             location = MediaSourceLocation.Online,
             kind = MediaSourceKind.WEB,
@@ -141,6 +142,30 @@ class ReplayBrowseMemoryUseCaseTest {
     }
 
     // region 按位置
+
+    @Test
+    fun `failed browse route is skipped without removing the saved memory`() = runSimpleMediaSelectorTestSuite {
+        initSubject("孤独摇滚")
+        val saved = memory()
+        val fixture = fixture(memory = saved)
+        val runtime = PlaybackSourceMemory()
+        val failed = fixture.source.createMedia(
+            saved.subject,
+            saved.channelName,
+            BrowseEpisode("第1集", "https://example.com/play/old", EpisodeSort(1)),
+            EpisodeSort(1),
+        )
+        runtime.recordFailure(runtime.beginAttempt(1, failed), PlaybackSourceMemory.FailureReason.PLAYBACK)
+        val events = selector.collectEvents {
+            assertEquals(
+                ReplayResult.NotFound(ReplayMissReason.PLAYBACK_FAILED),
+                fixture.useCase(SUBJECT_ID, episodeInfo(2), selector, runtime.snapshot()),
+            )
+        }
+        events.expectNoEvents()
+        assertNull(selector.selected.value)
+        assertEquals(saved, fixture.repository.get(SUBJECT_ID))
+    }
 
     @Test
     fun `next episode takes the next item formally and chains memory`() = runSimpleMediaSelectorTestSuite {

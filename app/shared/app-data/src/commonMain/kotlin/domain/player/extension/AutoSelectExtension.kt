@@ -81,7 +81,9 @@ class AutoSelectExtension(
                             && !hasLocalCacheForEpisode(fetchSelect.mediaFetchSession, fetchSelect.mediaSelector)
                             && replayBrowseMemory(episodeInfo, fetchSelect.mediaSelector, report)
                     if (!replayed) {
-                        report.onAutoSelected(mediaSelectorAutoSelectUseCase(fetchSelect.mediaFetchSession, fetchSelect.mediaSelector))
+                        report.onAutoSelected(mediaSelectorAutoSelectUseCase(
+                            fetchSelect.mediaFetchSession, fetchSelect.mediaSelector, context.playbackSourceMemory.snapshot(),
+                        ))
                     }
                 } finally {
                     report.recordIfNeeded()
@@ -96,7 +98,7 @@ class AutoSelectExtension(
         report: AutoSelectReport,
     ): Boolean {
         return try {
-            val result = replayBrowseMemory(context.subjectId, episodeInfo, mediaSelector)
+            val result = replayBrowseMemory(context.subjectId, episodeInfo, mediaSelector, context.playbackSourceMemory.snapshot())
             when (result) {
                 ReplayResult.Selected -> report.onBrowseMemorySelected(mediaSelector.selected.value)
                 is ReplayResult.NotFound -> report.replayMiss = result.reason
@@ -217,6 +219,7 @@ class AutoSelectExtension(
         private fun MediaAutoSelectReason.toMethod(): String = when (this) {
             MediaAutoSelectReason.LOCAL_CACHE -> "local_cache"
             MediaAutoSelectReason.PREFERRED_SOURCE -> "preferred_source"
+            MediaAutoSelectReason.RECENT_PLAYBACK -> "recent_playback"
             MediaAutoSelectReason.PREFERRED_KIND_COMPLETED -> "bt"
             MediaAutoSelectReason.WEB_INSTANT -> "instant"
             MediaAutoSelectReason.WEB_EXACT -> "exact"

@@ -25,7 +25,11 @@ interface MediaSelectorAutoSelectUseCase : UseCase {
     /**
      * @return 这次自动选择的结果.
      */
-    suspend operator fun invoke(session: MediaFetchSession, mediaSelector: MediaSelector): MediaAutoSelectOutcome
+    suspend operator fun invoke(
+        session: MediaFetchSession,
+        mediaSelector: MediaSelector,
+        playbackMemory: PlaybackSourceMemory.Snapshot = PlaybackSourceMemory.Snapshot(),
+    ): MediaAutoSelectOutcome
 }
 
 class MediaSelectorAutoSelectUseCaseImpl(
@@ -35,7 +39,11 @@ class MediaSelectorAutoSelectUseCaseImpl(
     private val getMediaSelectorSourceTiers: GetMediaSelectorSourceTiersUseCase by inject()
     private val getPreferredWebMediaSource: GetPreferredWebMediaSourceUseCase by inject()
 
-    override suspend fun invoke(session: MediaFetchSession, mediaSelector: MediaSelector): MediaAutoSelectOutcome {
+    override suspend fun invoke(
+        session: MediaFetchSession,
+        mediaSelector: MediaSelector,
+        playbackMemory: PlaybackSourceMemory.Snapshot,
+    ): MediaAutoSelectOutcome {
         val settings = getMediaSelectorSettingsFlow().first()
         // #355 Restore a temporarily enabled source using the merged media preference.
         // Enable it before selecting: a disabled source counts as finished, and once every Web source has finished
@@ -49,6 +57,7 @@ class MediaSelectorAutoSelectUseCaseImpl(
         return MediaAutoSelector(mediaSelector).select(
             session,
             MediaAutoSelector.Config(
+                playbackMemory = playbackMemory,
                 preferredSourceId = subjectId?.let { getPreferredWebMediaSource(it).first() },
                 web = if (settings.preferKind == MediaSourceKind.WEB) MediaAutoSelector.Web(
                     sourceTiers = getMediaSelectorSourceTiers().first(),
