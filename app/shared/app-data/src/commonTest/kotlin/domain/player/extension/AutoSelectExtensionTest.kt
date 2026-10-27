@@ -41,6 +41,10 @@ import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.resolver.MediaResolver
+import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
+import me.him188.ani.app.domain.media.resolver.MediaResolutionException
+import me.him188.ani.app.domain.media.resolver.ResolutionFailures
+import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.media.selector.MediaAutoSelectOutcome
@@ -449,6 +453,38 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
         state.assertSelected(cachedMedia, suite) // 本地缓存由自动选择选中
         assertEquals(0, replayCalls, "有本集的本地缓存时不回放")
 
+        testScope.cancel()
+    }
+
+    @Test
+    fun `consecutive immediate identical load failures continue to the next candidate`() = runTest {
+        mediaSelectorSettings.value = defaultSettings.copy(preferKind = MediaSourceKind.WEB)
+        val attempted = mutableListOf<String>()
+        val (testScope, suite, state) = createCase(listOf(AutoSelectExtension, SwitchMediaOnPlayerErrorExtension)) { _, suite ->
+            suite.mediaSelectorTestBuilder.savedUserPreference.value = MediaPreference.Any
+            suite.registerComponent<GetVideoScaffoldConfigUseCase> {
+                GetVideoScaffoldConfigUseCase { flowOf(VideoScaffoldConfig.AllDisabled.copy(autoSwitchMediaOnPlayerError = true)) }
+            }
+            suite.registerComponent<MediaResolver> {
+                object : MediaResolver {
+                    override fun supports(media: Media) = true
+                    override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> {
+                        attempted += media.mediaSourceId
+                        if (attempted.size < 3) throw MediaResolutionException(ResolutionFailures.NO_MATCHING_RESOURCE)
+                        return TestUniversalMediaResolver.resolve(media, episode)
+                    }
+                }
+            }
+            for (name in listOf("web-a", "web-b", "web-c")) {
+                suite.mediaSelectorTestBuilder.delayedMediaSource(name, kind = MediaSourceKind.WEB)
+                    .complete(listOf(suite.mediaSelectorTestBuilder.createMedia(name, kind = MediaSourceKind.WEB)))
+            }
+        }
+
+        assertEquals(3, attempted.size)
+        assertEquals(3, attempted.distinct().size)
+        assertEquals(attempted.last(), state.mediaSelectorFlow.filterNotNull().first().selected.value?.mediaSourceId)
+        assertEquals(MediaStatus.Ready, suite.player.state.value.mediaStatus)
         testScope.cancel()
     }
 

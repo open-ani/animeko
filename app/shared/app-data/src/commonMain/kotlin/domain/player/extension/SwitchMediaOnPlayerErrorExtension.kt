@@ -39,6 +39,7 @@ import me.him188.ani.app.domain.player.analytics.PlayFlowEpisode
 import me.him188.ani.app.domain.player.analytics.PlayFlowStep
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.domain.player.MediaLoadResult
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.datasources.api.Media
@@ -71,7 +72,7 @@ class SwitchMediaOnPlayerErrorExtension(
             context.sessionFlow.collectLatest { session ->
                 invoke(
                     session.fetchSelectFlow,
-                    context.videoLoadingStateFlow,
+                    context.mediaLoadResultFlow,
                     context.player.state,
                     session.playFlowEpisode,
                 )
@@ -87,7 +88,7 @@ class SwitchMediaOnPlayerErrorExtension(
      */
     private suspend fun invoke(
         mediaFetchSessionFlow: Flow<MediaFetchSelectBundle?>,
-        videoLoadingStateFlow: Flow<VideoLoadingState>,
+        mediaLoadResultFlow: Flow<MediaLoadResult?>,
         playerStateFlow: Flow<PlayerState>,
         episode: PlayFlowEpisode,
     ) {
@@ -116,7 +117,7 @@ class SwitchMediaOnPlayerErrorExtension(
                     launch {
                         handler.observeLoadErrorAndHandle(
                             mediaFetchSessionFlow,
-                            videoLoadingStateFlow,
+                            mediaLoadResultFlow,
                             playerStateFlow,
                             episode,
                         )
@@ -127,7 +128,7 @@ class SwitchMediaOnPlayerErrorExtension(
 
     private suspend fun PlayerLoadErrorHandler.observeLoadErrorAndHandle(
         mediaFetchSessionFlow: Flow<MediaFetchSelectBundle?>,
-        videoLoadingStateFlow: Flow<VideoLoadingState>,
+        mediaLoadResultFlow: Flow<MediaLoadResult?>,
         playerStateFlow: Flow<PlayerState>,
         episode: PlayFlowEpisode,
     ) {
@@ -135,29 +136,31 @@ class SwitchMediaOnPlayerErrorExtension(
             if (bundle == null) return@collectLatest
 
             combine(
-                videoLoadingStateFlow, // 解析链接出错 (未匹配到链接)
+                mediaLoadResultFlow,
                 playerStateFlow, // 解析成功, 但播放器出错 (无法链接到链接, 例如链接错误)
                 context.playbackSourceMemory.snapshots,
-            ) { videoLoadingState, playerState, memory ->
-                when {
+            ) { loadResult, playerState, memory ->
+                val trigger = when {
                     memory.networkAvailable == false -> null
-                    videoLoadingState is VideoLoadingState.Failed &&
-                            PlayerLoadErrorHandler.canRecoverBySwitching(videoLoadingState) -> PlayerErrorTrigger.LOAD_FAILED
+                    loadResult is MediaLoadResult.Failed &&
+                            PlayerLoadErrorHandler.canRecoverBySwitching(loadResult.state) -> PlayerErrorTrigger.LOAD_FAILED
 
-                    playerState.mediaStatus is MediaStatus.Error -> PlayerErrorTrigger.PLAYER_ERROR
+                    loadResult is MediaLoadResult.Ready && playerState.mediaStatus is MediaStatus.Error -> PlayerErrorTrigger.PLAYER_ERROR
                     else -> null
                 }
+                trigger?.let { ErrorSignal(it, checkNotNull(loadResult)) }
             }.distinctUntilChanged()
                 .collectLatest { trigger ->
                     if (trigger != null) {
                         val failedMedia = bundle.mediaSelector.selected.value ?: return@collectLatest
+                        if (failedMedia.mediaId != trigger.loadResult.mediaId) return@collectLatest
                         val selectionAttempt = bundle.autoSelectionState.begin()
                         try {
                             val handling = handleError(bundle.mediaFetchSession, bundle.mediaSelector)
                             if (handling is PlayerLoadErrorHandling.Attempted) {
                                 bundle.autoSelectionState.finish(selectionAttempt, handling.outcome)
                             }
-                            recordAutoSwitch(episode, trigger, failedMedia, handling, blacklist.size)
+                            recordAutoSwitch(episode, trigger.trigger, failedMedia, handling, blacklist.size)
                         } finally {
                             bundle.autoSelectionState.cancel(selectionAttempt)
                         }
@@ -213,6 +216,8 @@ class SwitchMediaOnPlayerErrorExtension(
             return SwitchMediaOnPlayerErrorExtension(context, koin)
         }
     }
+
+    private data class ErrorSignal(val trigger: PlayerErrorTrigger, val loadResult: MediaLoadResult)
 }
 
 internal class PlayerLoadErrorHandler(

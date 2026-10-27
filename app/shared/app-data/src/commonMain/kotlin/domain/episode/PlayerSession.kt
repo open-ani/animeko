@@ -39,6 +39,7 @@ import me.him188.ani.app.domain.media.selector.PlaybackAutoSelectionState
 import me.him188.ani.app.domain.mediasource.MediaSourceTags
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.domain.player.MediaLoadResult
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.utils.logging.error
@@ -102,6 +103,10 @@ class PlayerSession(
      */
     val videoLoadingState: StateFlow<VideoLoadingState> get() = _videoLoadingStateFlow.asStateFlow()
 
+    private val mutableMediaLoadResult = MutableStateFlow<MediaLoadResult?>(null)
+    /** 加载期间为 null，成功或失败结果始终关联实际加载的资源。 */
+    val mediaLoadResult = mutableMediaLoadResult.asStateFlow()
+
     init {
         backgroundScope.launch {
             // 打开失败由 loadMedia 记录, 这里记录媒体加载成功后播放过程中的错误
@@ -130,6 +135,7 @@ class PlayerSession(
         listener: MediaLoadListener = MediaLoadListener.Noop,
     ) = coroutineScope {
         val backgroundScope = this
+        mutableMediaLoadResult.value = null
         _videoLoadingStateFlow.value = VideoLoadingState.Initial // 避免一直显示已取消 (.Cancelled)
         stopPlayback()
         if (media == null) {
@@ -140,6 +146,7 @@ class PlayerSession(
         var phase = MediaLoadPhase.RESOLVE
         fun fail(state: VideoLoadingState.Failed) {
             _videoLoadingStateFlow.value = state
+            mutableMediaLoadResult.value = MediaLoadResult.Failed(media.mediaId, state)
             listener.onFailed(phase, state, start.elapsedNow())
         }
 
@@ -181,6 +188,7 @@ class PlayerSession(
             preparedHlsPlaybackProxySession = null
 
             _videoLoadingStateFlow.value = VideoLoadingState.Succeed(engineKey = openedEngineKey)
+            mutableMediaLoadResult.value = MediaLoadResult.Ready(media.mediaId)
             listener.onReady(start.elapsedNow())
         } catch (e: UnsupportedMediaException) {
             logger.warn { IllegalStateException("Failed to resolve video source, unsupported media", e) }

@@ -45,6 +45,8 @@ class PlayerExtensionManager(
             get() = state.player
         override val videoLoadingStateFlow: Flow<VideoLoadingState>
             get() = state.playerSession.videoLoadingState
+        override val mediaLoadResultFlow: Flow<MediaLoadResult?>
+            get() = state.playerSession.mediaLoadResult
         override val sessionFlow: Flow<EpisodeSession>
             get() = state.episodeSessionFlow
 
