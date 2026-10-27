@@ -13,8 +13,6 @@ package me.him188.ani.app.domain.mediasource.web
 import io.ktor.client.request.get
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -40,6 +38,7 @@ import me.him188.ani.app.domain.mediasource.web.format.SelectedChannelEpisodes
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.WebMediaRoute
 import me.him188.ani.datasources.api.matcher.WebVideoMatcher
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherContext
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherProvider
@@ -169,7 +168,6 @@ class SelectorMediaSource(
     }
 
     private val engine by lazy { EngineType(client) }
-    private val ambiguousBrowseChannels = MutableStateFlow<Map<String, Set<String?>>>(emptyMap())
 
     override val location: MediaSourceLocation get() = MediaSourceLocation.Online
 
@@ -327,7 +325,6 @@ class SelectorMediaSource(
             for (cache in caches) {
                 val episodes = cache.webEpisodeInfos
                 val ambiguous = cache.unreliableChannelNames + episodes.ambiguousChannelNames()
-                ambiguousBrowseChannels.update { it + (cache.webSubjectInfo.fullUrl to ambiguous) }
                 if (episodes.findMatchingEpisodeOrNull(probe.episodeSort, probe.episodeEp, probe.episodeName) == null) {
                     continue
                 }
@@ -396,7 +393,6 @@ class SelectorMediaSource(
                 val episodes = selected.episodes
                 val ambiguous = selected.channelGroups.orEmpty().groupBy { it.name }.filterValues { it.size > 1 }.keys +
                     episodes.ambiguousChannelNames()
-                ambiguousBrowseChannels.update { it + (subjectInfo.fullUrl to ambiguous) }
                 repository.addCache(
                     subjectId, mediaSourceId, query.subjectName, subjectInfo, episodes,
                     sourceCacheTtl = searchConfig.searchCacheTtl,
@@ -483,10 +479,13 @@ class SelectorMediaSource(
         val selected = fetchPageOrThrow(subject.url, PageExpectation.SubjectDetails(searchConfig, subject.url))
             ?: return emptyList()
         val channels = selected.toBrowseChannels()
-        ambiguousBrowseChannels.update { known ->
-            known + (subject.url to channels.groupBy { it.name }.filterValues { it.size > 1 }.keys)
+        val ambiguous = channels.groupBy { it.name }.filterValues { it.size > 1 }.keys +
+            selected.episodes.ambiguousChannelNames()
+        return channels.map { channel ->
+            val route = if (channel.name in ambiguous) null
+            else WebMediaRoute(subject.url, channel.name.orEmpty(), playbackConfigurationId)
+            channel.copy(episodes = channel.episodes.map { it.copy(webRoute = route) })
         }
-        return channels
     }
 
     override fun createMedia(
@@ -505,9 +504,9 @@ class SelectorMediaSource(
         searchConfig,
         mediaSourceId,
         subjectName = subject.name,
-        subjectUrl = subject.url.takeIf {
-            it in ambiguousBrowseChannels.value && channelName !in ambiguousBrowseChannels.value[it].orEmpty()
-        },
+        subjectUrl = episode.webRoute?.takeIf {
+            it.subjectUrl == subject.url && it.channel == channelName.orEmpty() && it.configuration == playbackConfigurationId
+        }?.subjectUrl,
         configurationId = playbackConfigurationId,
     )
 

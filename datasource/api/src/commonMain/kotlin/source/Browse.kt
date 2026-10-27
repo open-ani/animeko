@@ -11,6 +11,7 @@ package me.him188.ani.datasources.api.source
 
 import kotlinx.serialization.Serializable
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.WebMediaRoute
 
 /**
  * 浏览到的站点条目 (搜索结果中的一项).
@@ -65,4 +66,6 @@ data class BrowseEpisode(
      * 数据源从 [name] 解析出的集号, 仅供展示时提示. 解析不出为 `null`.
      */
     val episodeSort: EpisodeSort? = null,
+    /** 本次浏览结果确认的跨集线路身份。缺少可靠分组证据时为 null。 */
+    val webRoute: WebMediaRoute? = null,
 )

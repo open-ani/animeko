@@ -14,8 +14,8 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.headersOf
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.persistent.database.createTestAniDatabase
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
@@ -52,6 +52,60 @@ class SelectorMediaSourceRouteCacheTest {
         ),
         autoMatch = SelectorAutoMatchConfig(filterByEpisodeSort = false),
     )
+
+    @Test
+    fun `browsed route identity belongs to its result across later page queries`() = runTest {
+        val unique = """<div class="tabs"><a>线路</a></div><div class="list"><a href="/play/a1">第1集</a></div>"""
+        val duplicate = """
+            <div class="tabs"><a>线路1</a><a>线路2</a></div>
+            <div class="list"><a href="/play/a1">第1集</a></div>
+            <div class="list"><a href="/play/b1">第1集</a></div>
+        """.trimIndent()
+        for (initiallyReliable in listOf(false, true)) {
+            var html = if (initiallyReliable) unique else duplicate
+            val engine = MockEngine {
+                respond(html, headers = headersOf(HttpHeaders.ContentType, ContentType.Text.Html.toString()))
+            }
+            val source = createTestSelectorMediaSource(config, engine)
+            val original = source.browseSubject(subject).first()
+            html = if (initiallyReliable) duplicate else unique
+            val latest = source.browseSubject(subject).first()
+
+            // 用户仍可从原来的浏览结果点选，可靠性只取决于产生该结果的页面。
+            val originalMedia = source.createMedia(subject, original.name, original.episodes.first(), EpisodeSort(1))
+            val latestMedia = source.createMedia(subject, latest.name, latest.episodes.first(), EpisodeSort(1))
+            assertEquals(initiallyReliable, originalMedia.properties.webRoute != null)
+            assertEquals(!initiallyReliable, latestMedia.properties.webRoute != null)
+
+            // 重新构造的剧集缺少分组证据，不能借用之前浏览的判定。
+            val detached = source.createMedia(
+                subject, "线路", BrowseEpisode("第1集", "https://example.com/play/a1", EpisodeSort(1)), EpisodeSort(1),
+            )
+            assertNull(detached.properties.webRoute)
+        }
+    }
+
+    @Test
+    fun `browsed route identity cannot be reused for another subject channel or configuration`() = runTest {
+        val engine = MockEngine {
+            respond(
+                """<div class="tabs"><a>线路</a></div><div class="list"><a href="/play/a1">第1集</a></div>""",
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Text.Html.toString()),
+            )
+        }
+        val source = createTestSelectorMediaSource(config, engine)
+        val channel = source.browseSubject(subject).single()
+        val episode = channel.episodes.single()
+        assertNotNull(source.createMedia(subject, channel.name, episode, EpisodeSort(1)).properties.webRoute)
+        assertNull(
+            source.createMedia(subject.copy(url = "https://example.com/subject/2"), channel.name, episode, EpisodeSort(1)).properties.webRoute,
+        )
+        assertNull(source.createMedia(subject, "备用", episode, EpisodeSort(1)).properties.webRoute)
+        val reconfigured = createTestSelectorMediaSource(
+            config.copy(searchUrl = "https://example.com/find?wd={keyword}"), engine,
+        )
+        assertNull(reconfigured.createMedia(subject, channel.name, episode, EpisodeSort(1)).properties.webRoute)
+    }
 
     @Test
     fun `cached duplicate channel names keep uncertain identities after conflicting episodes are replaced`() = runTest {
