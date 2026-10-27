@@ -18,6 +18,7 @@ import me.him188.ani.app.domain.episode.EpisodeSwitchTrigger
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.getCurrentEpisodeId
 import me.him188.ani.app.domain.episode.player
+import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
 import me.him188.ani.app.domain.player.analytics.PlayFlowRecorder
 import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
 import me.him188.ani.app.domain.player.extension.PlayerExtension
@@ -33,6 +34,7 @@ class PlayerExtensionManager(
     koin: Koin,
 ) {
     private val context = object : PlayerExtensionContext {
+        override val playbackSourceMemory: PlaybackSourceMemory = state.playbackSourceMemory
         override val subjectId: Int
             get() = state.subjectId
 
