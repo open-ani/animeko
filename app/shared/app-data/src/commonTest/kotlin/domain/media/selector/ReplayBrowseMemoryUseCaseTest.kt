@@ -156,15 +156,20 @@ class ReplayBrowseMemoryUseCaseTest {
             EpisodeSort(1),
         )
         runtime.recordFailure(runtime.beginAttempt(1, failed), PlaybackSourceMemory.FailureReason.PLAYBACK)
+        val useCase: ReplayBrowseMemoryUseCase = fixture.useCase
         val events = selector.collectEvents {
             assertEquals(
                 ReplayResult.NotFound(ReplayMissReason.PLAYBACK_FAILED),
-                fixture.useCase(SUBJECT_ID, episodeInfo(2), selector, runtime.snapshot()),
+                useCase(SUBJECT_ID, episodeInfo(2), selector, runtime.snapshot()),
             )
         }
         events.expectNoEvents()
         assertNull(selector.selected.value)
         assertEquals(saved, fixture.repository.get(SUBJECT_ID))
+
+        runtime.retryFailures()
+        assertEquals(ReplayResult.Selected, useCase(SUBJECT_ID, episodeInfo(2), selector, runtime.snapshot()))
+        assertNotNull(selector.selected.value)
     }
 
     @Test

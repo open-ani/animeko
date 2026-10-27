@@ -146,7 +146,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
             GetPreferredWebMediaSourceUseCase { preferredWebMediaSource }
         }
         suite.registerComponent<ReplayBrowseMemoryUseCase> {
-            ReplayBrowseMemoryUseCase { _, _, _ -> ReplayResult.NotFound(ReplayMissReason.NO_MEMORY) }
+            ReplayBrowseMemoryUseCase { _, _, _, _ -> ReplayResult.NotFound(ReplayMissReason.NO_MEMORY) }
         }
         // 与生产的 CreateMediaFetchSelectBundleFlowUseCaseImpl 同形: bundle 由 infoBundleFlow 派生,
         // 因此扩展拿到 bundle 时 infoBundleFlow.replayCache 已有本集信息, 回放才会被调用.
@@ -168,6 +168,39 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
         state.onUIReady()
         advanceUntilIdle()
         return Context(testScope, suite, state)
+    }
+
+    @Test
+    fun `browse replay receives current route failures when the next episode starts`() = runTest {
+        mediaSelectorSettings.value = defaultSettings.copy(preferKind = MediaSourceKind.WEB)
+        val received = mutableListOf<PlaybackSourceMemory.Snapshot>()
+        val (testScope, suite, state) = createCase { _, suite ->
+            suite.registerComponent<ReplayBrowseMemoryUseCase> {
+                ReplayBrowseMemoryUseCase { _, _, _, memory ->
+                    received += memory
+                    ReplayResult.NotFound(ReplayMissReason.NO_MEMORY)
+                }
+            }
+            suite.mediaSelectorTestBuilder.delayedMediaSource("web", kind = MediaSourceKind.WEB)
+                .complete(listOf(suite.mediaSelectorTestBuilder.createMedia("web", kind = MediaSourceKind.WEB)))
+        }
+        assertTrue(received.single().failures.isEmpty())
+        val original = suite.mediaSelectorTestBuilder.createMedia("failed", kind = MediaSourceKind.WEB)
+        val failed = original.copy(properties = original.properties.copy(
+            webRoute = WebMediaRoute("https://site/subject/1", "line", "config"),
+        ))
+        val attempt = state.playbackSourceMemory.beginAttempt(initialEpisodeId, failed)
+        state.playbackSourceMemory.recordFailure(attempt, PlaybackSourceMemory.FailureReason.RESOLUTION)
+        state.playbackSourceMemory.finishAttempt(attempt)
+        val expected = state.playbackSourceMemory.snapshot()
+
+        state.switchEpisode(initialEpisodeId + 1)
+        advanceUntilIdle()
+
+        assertEquals(2, received.size)
+        assertEquals(expected, received.last())
+        assertEquals(1, received.last().failures.size)
+        testScope.cancel()
     }
 
     @Test
@@ -368,7 +401,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
             suite.mediaSelectorTestBuilder.savedUserPreference.value = MediaPreference.Any
             memoryMedia = suite.mediaSelectorTestBuilder.createMedia("web-memory")
             suite.registerComponent<ReplayBrowseMemoryUseCase> {
-                ReplayBrowseMemoryUseCase { _, _, mediaSelector ->
+                ReplayBrowseMemoryUseCase { _, _, mediaSelector, _ ->
                     mediaSelector.select(memoryMedia)
                     ReplayResult.Selected
                 }
@@ -397,7 +430,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
         val context = createCase { _, suite ->
             web1 = suite.mediaSelectorTestBuilder.delayedMediaSource("web1")
             suite.registerComponent<ReplayBrowseMemoryUseCase> {
-                ReplayBrowseMemoryUseCase { subjectId, episodeInfo, mediaSelector ->
+                ReplayBrowseMemoryUseCase { subjectId, episodeInfo, mediaSelector, _ ->
                     replayCalls += subjectId to episodeInfo
                     selectedAtReplay = mediaSelector.selected.value
                     ReplayResult.NotFound(ReplayMissReason.NO_MEMORY)
@@ -434,7 +467,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
             web1 = suite.mediaSelectorTestBuilder.delayedMediaSource("web1")
             suite.mediaSelectorTestBuilder.savedUserPreference.value = MediaPreference.Any
             suite.registerComponent<ReplayBrowseMemoryUseCase> {
-                ReplayBrowseMemoryUseCase { _, _, _ ->
+                ReplayBrowseMemoryUseCase { _, _, _, _ ->
                     replayCalls++
                     ReplayResult.NotFound(ReplayMissReason.NO_MEMORY)
                 }

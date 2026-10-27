@@ -113,12 +113,13 @@ enum class ReplayMissReason {
  * 超时用 `withTimeoutOrNull` 而不是 `withTimeout`: `TimeoutCancellationException` 是 CancellationException 子类, 重抛会杀掉扩展任务.
  */
 fun interface ReplayBrowseMemoryUseCase : UseCase {
-    suspend operator fun invoke(subjectId: Int, episodeInfo: EpisodeInfo, mediaSelector: MediaSelector): ReplayResult
+    suspend operator fun invoke(subjectId: Int, episodeInfo: EpisodeInfo, mediaSelector: MediaSelector): ReplayResult =
+        invoke(subjectId, episodeInfo, mediaSelector, PlaybackSourceMemory.Snapshot())
 
     suspend operator fun invoke(
         subjectId: Int, episodeInfo: EpisodeInfo, mediaSelector: MediaSelector,
         playbackMemory: PlaybackSourceMemory.Snapshot,
-    ): ReplayResult = invoke(subjectId, episodeInfo, mediaSelector)
+    ): ReplayResult
 }
 
 /**
@@ -137,10 +138,6 @@ class ReplayBrowseMemoryUseCaseImpl(
      */
     private val recentStructuralMiss = mutableMapOf<Int, Pair<ManualBrowseMemory, Instant>>()
     private val recentStructuralMissLock = Mutex()
-
-    override suspend fun invoke(subjectId: Int, episodeInfo: EpisodeInfo, mediaSelector: MediaSelector): ReplayResult {
-        return invoke(subjectId, episodeInfo, mediaSelector, PlaybackSourceMemory.Snapshot())
-    }
 
     override suspend fun invoke(
         subjectId: Int, episodeInfo: EpisodeInfo, mediaSelector: MediaSelector,

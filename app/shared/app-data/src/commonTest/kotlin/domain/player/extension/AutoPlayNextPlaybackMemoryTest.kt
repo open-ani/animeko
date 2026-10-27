@@ -153,7 +153,7 @@ class AutoPlayNextPlaybackMemoryTest : AbstractPlayerExtensionTest() {
         }
         suite.registerComponent<GetPreferredWebMediaSourceUseCase> { GetPreferredWebMediaSourceUseCase { flowOf(null) } }
         suite.registerComponent<ReplayBrowseMemoryUseCase> {
-            ReplayBrowseMemoryUseCase { _, _, _ -> ReplayResult.NotFound(ReplayMissReason.NO_MEMORY) }
+            ReplayBrowseMemoryUseCase { _, _, _, _ -> ReplayResult.NotFound(ReplayMissReason.NO_MEMORY) }
         }
         suite.registerComponent<MediaSelectorAutoSelectUseCase> { MediaSelectorAutoSelectUseCaseImpl(koin) }
         suite.registerComponent<GetVideoScaffoldConfigUseCase> {
