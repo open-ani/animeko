@@ -10,6 +10,7 @@
 package me.him188.ani.app.data.persistent.database.dao
 
 import androidx.room.Dao
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.Insert
@@ -74,6 +75,9 @@ data class WebSearchSessionCacheEntity(
     val episodeName: String,
     val episodeSortOrEp: EpisodeSort?,
     val playUrl: String,
+    /** 页面分组能确认此线路名称唯一。缺少分组证据的缓存行不能参与跨集线路记忆。 */
+    @ColumnInfo(defaultValue = "0")
+    val hasReliableChannelIdentity: Boolean = false,
     /**
      * 缓存写入时间 (epoch millis).
      */

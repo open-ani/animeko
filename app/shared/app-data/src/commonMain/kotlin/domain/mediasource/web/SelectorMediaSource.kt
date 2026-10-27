@@ -326,7 +326,8 @@ class SelectorMediaSource(
         return buildList {
             for (cache in caches) {
                 val episodes = cache.webEpisodeInfos
-                ambiguousBrowseChannels.update { it + (cache.webSubjectInfo.fullUrl to episodes.ambiguousChannelNames()) }
+                val ambiguous = cache.unreliableChannelNames + episodes.ambiguousChannelNames()
+                ambiguousBrowseChannels.update { it + (cache.webSubjectInfo.fullUrl to ambiguous) }
                 if (episodes.findMatchingEpisodeOrNull(probe.episodeSort, probe.episodeEp, probe.episodeName) == null) {
                     continue
                 }
@@ -339,6 +340,7 @@ class SelectorMediaSource(
                         subjectName = cache.webSubjectInfo.name,
                         subjectUrl = cache.webSubjectInfo.fullUrl,
                         configurationId = playbackConfigurationId,
+                        ambiguousChannels = ambiguous,
                     ).originalList,
                 )
             }
@@ -392,11 +394,13 @@ class SelectorMediaSource(
                     null
                 } ?: continue
                 val episodes = selected.episodes
-                val ambiguous = selected.channelGroups.orEmpty().groupBy { it.name }.filterValues { it.size > 1 }.keys
-                ambiguousBrowseChannels.update { it + (subjectInfo.fullUrl to (ambiguous + episodes.ambiguousChannelNames())) }
+                val ambiguous = selected.channelGroups.orEmpty().groupBy { it.name }.filterValues { it.size > 1 }.keys +
+                    episodes.ambiguousChannelNames()
+                ambiguousBrowseChannels.update { it + (subjectInfo.fullUrl to ambiguous) }
                 repository.addCache(
                     subjectId, mediaSourceId, query.subjectName, subjectInfo, episodes,
                     sourceCacheTtl = searchConfig.searchCacheTtl,
+                    ambiguousChannelNames = ambiguous,
                 )
                 addAll(
                     selectMedia(

@@ -56,6 +56,8 @@ class SelectorMediaSourceEpisodeCacheRepository(
         subjectInfo: WebSearchSubjectInfo,
         episodeInfos: List<WebSearchEpisodeInfo>,
         sourceCacheTtl: Duration,
+        /** 已知歧义的线路名；null 表示调用方没有提供页面分组的身份判定。 */
+        ambiguousChannelNames: Set<String?>? = null,
     ) = withContext(defaultDispatcher) {
         val ttl = minOf(sourceCacheTtl, userTtl())
         if (ttl <= Duration.ZERO) {
@@ -71,6 +73,7 @@ class SelectorMediaSourceEpisodeCacheRepository(
                     requesterSubjectId, mediaSourceId, subjectName, subjectInfo,
                     cachedAt = now,
                     expiresAt = now + ttl.inWholeMilliseconds,
+                    hasReliableChannelIdentity = ambiguousChannelNames != null && it.channel !in ambiguousChannelNames,
                 )
             },
         )
@@ -132,6 +135,8 @@ class SelectorMediaSourceEpisodeCacheRepository(
                             origin = null,
                         ),
                         webEpisodeInfos = rows.map { it.toWebSearchEpisodeInfo() },
+                        unreliableChannelNames = rows.filterNot { it.hasReliableChannelIdentity }
+                            .mapTo(mutableSetOf()) { it.channel.ifEmpty { null } },
                     )
                 }
         }
@@ -140,6 +145,7 @@ class SelectorMediaSourceEpisodeCacheRepository(
 data class WebSearchCache(
     val webSubjectInfo: WebSearchSubjectInfo,
     val webEpisodeInfos: List<WebSearchEpisodeInfo>,
+    val unreliableChannelNames: Set<String?>,
 )
 
 private fun WebSearchEpisodeInfo.toEntity(
@@ -149,6 +155,7 @@ private fun WebSearchEpisodeInfo.toEntity(
     subjectInfo: WebSearchSubjectInfo,
     cachedAt: Long,
     expiresAt: Long,
+    hasReliableChannelIdentity: Boolean,
 ): WebSearchSessionCacheEntity {
     return WebSearchSessionCacheEntity(
         requesterSubjectId = requesterSubjectId,
@@ -164,6 +171,7 @@ private fun WebSearchEpisodeInfo.toEntity(
         playUrl = playUrl,
         cachedAt = cachedAt,
         expiresAt = expiresAt,
+        hasReliableChannelIdentity = hasReliableChannelIdentity,
     )
 }
 
