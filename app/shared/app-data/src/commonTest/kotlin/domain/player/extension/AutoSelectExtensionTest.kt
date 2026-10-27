@@ -24,10 +24,13 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.files.Path
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.episode.CreateMediaFetchSelectBundleFlowUseCase
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
@@ -36,6 +39,7 @@ import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.mediaFetchSessionFlow
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
@@ -50,11 +54,18 @@ import me.him188.ani.app.domain.media.selector.ReplayResult
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
+import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
+import me.him188.ani.app.platform.MeteredNetworkDetector
+import me.him188.ani.app.platform.NetworkEnvironment
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.WebMediaRoute
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.io.inSystem
+import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.PlaybackErrorCode
+import org.openani.mediamp.PlaybackException
 import org.openani.mediamp.source.UriMediaData
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -62,6 +73,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertNotSame
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
@@ -90,6 +103,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
     )
 
     private fun TestScope.createCase(
+        extensions: List<EpisodePlayerExtensionFactory<*>> = listOf(AutoSelectExtension),
         config: (scope: CoroutineScope, suite: EpisodePlayerTestSuite) -> Unit = { _, _ -> },
     ): Context {
         contract {
@@ -145,11 +159,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
         config(testScope, suite)
 
 
-        val state = suite.createState(
-            listOf(
-                AutoSelectExtension,
-            ),
-        )
+        val state = suite.createState(extensions)
         state.onUIReady()
         advanceUntilIdle()
         return Context(testScope, suite, state)
@@ -470,6 +480,125 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
         state.assertSelected(media, suite)
         assertTrue(autoSelectCalls > callsBeforeRetry)
         assertTrue(state.playbackSourceMemory.snapshot().failures.isEmpty())
+        testScope.cancel()
+    }
+
+    @Test
+    fun `network change retries the current failed route and preserves healthy paused playback`() = runTest {
+        mediaSelectorSettings.value = defaultSettings.copy(preferKind = MediaSourceKind.WEB)
+        val network = MutableStateFlow<NetworkEnvironment?>(NetworkEnvironment("wifi", true))
+        val media: Media
+        val (testScope, suite, state) = createCase(listOf(AutoSelectExtension, SwitchMediaOnPlayerErrorExtension)) { _, suite ->
+            suite.mediaSelectorTestBuilder.savedUserPreference.value = MediaPreference.Any
+            suite.configureNetworkRecovery(network, autoSwitch = true)
+            val source = suite.mediaSelectorTestBuilder.delayedMediaSource("web", kind = MediaSourceKind.WEB)
+            val original = suite.mediaSelectorTestBuilder.createMedia("web", kind = MediaSourceKind.WEB)
+            media = original.copy(properties = original.properties.copy(
+                webRoute = WebMediaRoute("https://site/subject/1", "line-1", "config"),
+            ))
+            source.complete(listOf(media))
+        }
+        state.assertSelected(media, suite)
+        val healthySession = state.episodeSessionFlow.value
+        val opened = suite.player.mediaData.value
+        suite.player.seekTo(42_000)
+        suite.player.pause()
+        network.value = NetworkEnvironment("mobile", true)
+        advanceUntilIdle()
+        assertSame(healthySession, state.episodeSessionFlow.value)
+        assertSame(opened, suite.player.mediaData.value)
+        assertEquals(42_000, suite.player.currentPositionMillis.value)
+
+        // 当前线路已在旧网络失败且候选耗尽，新网络必须允许同一资源重新加载。
+        suite.player.injectError(PlaybackException(PlaybackErrorCode.IO, "old network"))
+        advanceUntilIdle()
+        assertEquals(1, state.playbackSourceMemory.snapshot().failures.size)
+        network.value = NetworkEnvironment("wifi-2", true)
+        advanceUntilIdle()
+
+        assertNotSame(healthySession, state.episodeSessionFlow.value)
+        assertEquals(initialEpisodeId, state.episodeSessionFlow.value.episodeId)
+        assertEquals(MediaStatus.Ready, suite.player.state.value.mediaStatus)
+        assertEquals(media, state.mediaSelectorFlow.filterNotNull().first().selected.value)
+        assertTrue(state.playbackSourceMemory.snapshot().failures.isEmpty())
+
+        // 同一个网络短暂断开时的播放器错误也允许重载，断网期间不记录线路失败。
+        val beforeDisconnect = state.episodeSessionFlow.value
+        network.value = NetworkEnvironment(null, false)
+        runCurrent()
+        suite.player.injectError(PlaybackException(PlaybackErrorCode.IO, "offline"))
+        runCurrent()
+        assertTrue(state.playbackSourceMemory.snapshot().failures.isEmpty())
+        network.value = NetworkEnvironment("wifi-2", true)
+        advanceUntilIdle()
+        assertNotSame(beforeDisconnect, state.episodeSessionFlow.value)
+        assertEquals(MediaStatus.Ready, suite.player.state.value.mediaStatus)
+        assertTrue(state.playbackSourceMemory.snapshot().failures.isEmpty())
+        // 新环境里再次发生的真实失败仍需记录，不能因恢复逻辑反复重启当前集。
+        val recoveredSession = state.episodeSessionFlow.value
+        suite.player.injectError(PlaybackException(PlaybackErrorCode.IO, "new network"))
+        advanceUntilIdle()
+        assertSame(recoveredSession, state.episodeSessionFlow.value)
+        assertEquals(1, state.playbackSourceMemory.snapshot().failures.size)
+        testScope.cancel()
+    }
+
+    @Test
+    fun `network change preserves a playback error when automatic switching is disabled`() = runTest {
+        mediaSelectorSettings.value = defaultSettings.copy(preferKind = MediaSourceKind.WEB)
+        val network = MutableStateFlow<NetworkEnvironment?>(NetworkEnvironment("wifi", true))
+        val (testScope, suite, state) = createCase(listOf(AutoSelectExtension, SwitchMediaOnPlayerErrorExtension)) { _, suite ->
+            suite.mediaSelectorTestBuilder.savedUserPreference.value = MediaPreference.Any
+            suite.configureNetworkRecovery(network, autoSwitch = false)
+            suite.mediaSelectorTestBuilder.delayedMediaSource("web", kind = MediaSourceKind.WEB)
+                .complete(listOf(suite.mediaSelectorTestBuilder.createMedia("web", kind = MediaSourceKind.WEB)))
+        }
+        val session = state.episodeSessionFlow.value
+        suite.player.injectError(PlaybackException(PlaybackErrorCode.IO, "old network"))
+        advanceUntilIdle()
+        network.value = NetworkEnvironment("mobile", true)
+        advanceUntilIdle()
+
+        assertSame(session, state.episodeSessionFlow.value)
+        assertIs<MediaStatus.Error>(suite.player.state.value.mediaStatus)
+        testScope.cancel()
+    }
+
+    private fun EpisodePlayerTestSuite.configureNetworkRecovery(
+        network: MutableStateFlow<NetworkEnvironment?>,
+        autoSwitch: Boolean,
+    ) {
+        registerComponent<MeteredNetworkDetector> {
+            object : MeteredNetworkDetector {
+                override val isMeteredNetworkFlow = flowOf(false)
+                override val networkEnvironmentFlow = network
+                override fun dispose() {}
+            }
+        }
+        registerComponent<GetVideoScaffoldConfigUseCase> {
+            GetVideoScaffoldConfigUseCase { flowOf(VideoScaffoldConfig.AllDisabled.copy(autoSwitchMediaOnPlayerError = autoSwitch)) }
+        }
+    }
+
+    @Test
+    fun `network change preserves an error on a manually dropped file`() = runTest {
+        mediaSelectorSettings.value = defaultSettings.copy(preferKind = MediaSourceKind.WEB)
+        val network = MutableStateFlow<NetworkEnvironment?>(NetworkEnvironment("wifi", true))
+        val (testScope, suite, state) = createCase(listOf(AutoSelectExtension, SwitchMediaOnPlayerErrorExtension)) { _, suite ->
+            suite.configureNetworkRecovery(network, autoSwitch = true)
+        }
+        val dropped = DroppedFileMedia.create(Path("/videos/episode-01.mkv").inSystem)
+        state.mediaSelectorFlow.filterNotNull().first().selectTemporarily(dropped)
+        advanceUntilIdle()
+        val session = state.episodeSessionFlow.value
+        suite.player.injectError(PlaybackException(PlaybackErrorCode.IO, "file error"))
+        advanceUntilIdle()
+        network.value = NetworkEnvironment("mobile", true)
+        advanceUntilIdle()
+
+        assertSame(session, state.episodeSessionFlow.value)
+        assertEquals(dropped, state.mediaSelectorFlow.filterNotNull().first().selected.value)
+        assertIs<MediaStatus.Error>(suite.player.state.value.mediaStatus)
         testScope.cancel()
     }
 

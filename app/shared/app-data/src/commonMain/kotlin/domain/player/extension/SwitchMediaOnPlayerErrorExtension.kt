@@ -139,7 +139,7 @@ class SwitchMediaOnPlayerErrorExtension(
                 playerStateFlow, // 解析成功, 但播放器出错 (无法链接到链接, 例如链接错误)
                 context.playbackSourceMemory.snapshots,
             ) { videoLoadingState, playerState, memory ->
-                val trigger = when {
+                when {
                     memory.networkAvailable == false -> null
                     videoLoadingState is VideoLoadingState.Failed &&
                             PlayerLoadErrorHandler.canRecoverBySwitching(videoLoadingState) -> PlayerErrorTrigger.LOAD_FAILED
@@ -147,13 +147,12 @@ class SwitchMediaOnPlayerErrorExtension(
                     playerState.mediaStatus is MediaStatus.Error -> PlayerErrorTrigger.PLAYER_ERROR
                     else -> null
                 }
-                trigger?.let { ErrorSignal(it, memory.generation) }
             }.distinctUntilChanged()
                 .collectLatest { trigger ->
                     if (trigger != null) {
                         val failedMedia = bundle.mediaSelector.selected.value
                         val handling = handleError(bundle.mediaFetchSession, bundle.mediaSelector)
-                        recordAutoSwitch(episode, trigger.trigger, failedMedia, handling, blacklist.size)
+                        recordAutoSwitch(episode, trigger, failedMedia, handling, blacklist.size)
                     } // else: cancel selection
                 }
         }
@@ -206,8 +205,6 @@ class SwitchMediaOnPlayerErrorExtension(
             return SwitchMediaOnPlayerErrorExtension(context, koin)
         }
     }
-
-    private data class ErrorSignal(val trigger: PlayerErrorTrigger, val generation: Long)
 }
 
 internal class PlayerLoadErrorHandler(

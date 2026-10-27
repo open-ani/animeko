@@ -86,6 +86,8 @@ internal class PlaybackSourceObserver(
                 when (input) {
                     Seek -> evidence.onSeek()
                     is Generation -> if (input.value != activeAttempt.generation) {
+                        // 播放器保留的报错属于旧尝试；新环境只有重新加载后的尝试可以记失败。
+                        if (player.state.value.mediaStatus is MediaStatus.Error) return@first true
                         activeAttempt = memory.renewAttempt(activeAttempt) ?: return@first true
                         evidence = PlaybackProgressEvidence()
                         confirmed = false

@@ -72,6 +72,27 @@ class PlaybackSourceObserverTest {
     }
 
     @Test
+    fun `an old player error cannot be renewed as a failure in the new environment`() = runTest {
+        val memory = PlaybackSourceMemory()
+        memory.updateEnvironment(NetworkEnvironment("wifi", true))
+        val observer = PlaybackSourceObserver(memory, testScheduler.timeSource)
+        val player = TestMediampPlayer(StandardTestDispatcher(testScheduler))
+        player.setMediaData(UriMediaData("https://site/video"), playWhenReady = true)
+        val attempt = memory.beginAttempt(1, media)
+        val job = backgroundScope.launch { observer.observe(player, attempt) }
+        runCurrent()
+
+        // 环境已失效，但旧播放器的错误事件与环境通知仍可能在同一调度轮里到达。
+        memory.updateEnvironment(NetworkEnvironment("mobile", true))
+        player.injectError(PlaybackException(PlaybackErrorCode.IO, "old attempt"))
+        runCurrent()
+
+        assertTrue(job.isCompleted)
+        assertTrue(memory.snapshot().failures.isEmpty())
+        player.close()
+    }
+
+    @Test
     fun `cancelled unsupported and common environment failures do not poison a route`() {
         val memory = PlaybackSourceMemory()
         val observer = PlaybackSourceObserver(memory)

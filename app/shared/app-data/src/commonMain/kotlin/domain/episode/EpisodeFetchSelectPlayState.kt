@@ -40,6 +40,7 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.createFetchFetchSession
@@ -64,9 +65,12 @@ import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
 import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
 import me.him188.ani.app.domain.player.extension.PlayerExtension
 import me.him188.ani.app.domain.player.extension.PlayerExtensionEvent
+import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
+import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.platform.MeteredNetworkDetector
+import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeSwitch
 import me.him188.ani.utils.logging.info
@@ -295,7 +299,22 @@ class EpisodeFetchSelectPlayState(
         if (uiReady.complete(Unit)) {
             koin.getOrNull<MeteredNetworkDetector>()?.let { detector ->
                 backgroundScope.launch {
-                    detector.networkEnvironmentFlow.collect(playbackSourceMemory::updateEnvironment)
+                    detector.networkEnvironmentFlow.collect { environment ->
+                        val session = episodeSessionFlow.value
+                        val before = playbackSourceMemory.snapshot()
+                        playbackSourceMemory.updateEnvironment(environment)
+                        val after = playbackSourceMemory.snapshot()
+                        val networkRecovered = before.networkAvailable == false && after.networkAvailable != false
+                        if (after.generation != before.generation || networkRecovered) {
+                            // 新环境重建失败尝试，播放器里保留的旧错误不能作为新环境的失败证据。
+                            val selected = session.fetchSelectFlow.replayCache.lastOrNull()?.mediaSelector?.selected?.value
+                            val retryFailedPlayback = selected != null && selected.kind == MediaSourceKind.WEB &&
+                                !DroppedFileMedia.isDroppedFile(selected) &&
+                                koin.getOrNull<GetVideoScaffoldConfigUseCase>()?.invoke()?.first()?.autoSwitchMediaOnPlayerError == true &&
+                                koin.getOrNull<GetMediaSelectorSettingsFlowUseCase>()?.invoke()?.first()?.preferKind == MediaSourceKind.WEB
+                            restartPlaybackIfNeeded(session, retryFailedPlayback)
+                        }
+                    }
                 }
             }
             koin.getOrNull<MediaSourceManager>()?.let { manager ->
@@ -359,12 +378,17 @@ class EpisodeFetchSelectPlayState(
     suspend fun retryFailedPlaybackSources() {
         val session = episodeSessionFlow.value
         playbackSourceMemory.retryFailures()
+        restartPlaybackIfNeeded(session)
+    }
+
+    private suspend fun restartPlaybackIfNeeded(session: EpisodeSession, retryFailedPlayback: Boolean = true) {
+        if (episodeSessionFlow.value !== session) return
         val awaitingSelection = session.fetchSelectFlow.replayCache.lastOrNull()?.mediaSelector?.selected?.value == null &&
             !player.state.value.isMediaLoaded
-        if (player.state.value.mediaStatus is MediaStatus.Error ||
-            playerSession.videoLoadingState.value is VideoLoadingState.Failed || awaitingSelection
-        ) {
-            if (episodeSessionFlow.value === session) switchEpisode(session.episodeId, EpisodeSwitchTrigger.RETRY)
+        val failed = player.state.value.mediaStatus is MediaStatus.Error ||
+            playerSession.videoLoadingState.value is VideoLoadingState.Failed
+        if (awaitingSelection || retryFailedPlayback && failed) {
+            switchEpisode(session.episodeId, EpisodeSwitchTrigger.RETRY)
         }
     }
 
