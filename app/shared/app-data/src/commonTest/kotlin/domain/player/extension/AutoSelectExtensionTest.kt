@@ -682,6 +682,31 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
+    fun `network recovery reads the current type preference before retrying failed playback`() = runTest {
+        mediaSelectorSettings.value = defaultSettings.copy(preferKind = MediaSourceKind.WEB)
+        val network = MutableStateFlow<NetworkEnvironment?>(NetworkEnvironment("wifi", true))
+        val (testScope, suite, state) = createCase(listOf(AutoSelectExtension, SwitchMediaOnPlayerErrorExtension)) { _, suite ->
+            suite.mediaSelectorTestBuilder.savedUserPreference.value = MediaPreference.Any
+            suite.configureNetworkRecovery(network, autoSwitch = true)
+            suite.mediaSelectorTestBuilder.delayedMediaSource("web", kind = MediaSourceKind.WEB)
+                .complete(listOf(suite.mediaSelectorTestBuilder.createMedia("web", kind = MediaSourceKind.WEB)))
+        }
+        suite.player.injectError(PlaybackException(PlaybackErrorCode.IO, "old network"))
+        advanceUntilIdle()
+        val session = state.episodeSessionFlow.value
+
+        // 用户在报错后修改资源类型偏好，恢复网络不能沿用此前的 WEB 恢复资格。
+        mediaSelectorSettings.value = defaultSettings.copy(preferKind = MediaSourceKind.BitTorrent)
+        runCurrent()
+        network.value = NetworkEnvironment("mobile", true)
+        advanceUntilIdle()
+
+        assertSame(session, state.episodeSessionFlow.value)
+        assertIs<MediaStatus.Error>(suite.player.state.value.mediaStatus)
+        testScope.cancel()
+    }
+
+    @Test
     fun `network change preserves an error on a manually dropped file`() = runTest {
         mediaSelectorSettings.value = defaultSettings.copy(preferKind = MediaSourceKind.WEB)
         val network = MutableStateFlow<NetworkEnvironment?>(NetworkEnvironment("wifi", true))

@@ -40,7 +40,6 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.createFetchFetchSession
@@ -51,6 +50,7 @@ import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.mediasource.playbackConfigurationIdOrNull
 import me.him188.ani.app.domain.player.ExtensionException
+import me.him188.ani.app.domain.player.PlaybackRecoveryPolicy
 import me.him188.ani.app.domain.player.PlaybackSourceObserver
 import me.him188.ani.app.domain.player.PlayerExtensionManager
 import me.him188.ani.app.domain.player.VideoLoadingState
@@ -69,7 +69,6 @@ import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.platform.MeteredNetworkDetector
-import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeSwitch
 import me.him188.ani.utils.logging.info
@@ -131,6 +130,8 @@ class EpisodeFetchSelectPlayState(
     private val mediaSourceManager by koin.inject<MediaSourceManager>()
     private val playHistoryRepository by koin.inject<EpisodePlayHistoryRepository>()
     private val automationGate by koin.inject<PlaybackAutomationGate>()
+    private val getVideoScaffoldConfig by koin.inject<GetVideoScaffoldConfigUseCase>()
+    private val getMediaSelectorSettings by koin.inject<GetMediaSelectorSettingsFlowUseCase>()
     private val getSourceTiers: GetMediaSelectorSourceTiersUseCase? by lazy { koin.getOrNull<GetMediaSelectorSourceTiersUseCase>() }
 
     /**
@@ -298,22 +299,7 @@ class EpisodeFetchSelectPlayState(
         if (uiReady.complete(Unit)) {
             koin.getOrNull<MeteredNetworkDetector>()?.let { detector ->
                 backgroundScope.launch {
-                    detector.networkEnvironmentFlow.collect { environment ->
-                        val session = episodeSessionFlow.value
-                        val before = playbackSourceMemory.snapshot()
-                        playbackSourceMemory.updateEnvironment(environment)
-                        val after = playbackSourceMemory.snapshot()
-                        val networkRecovered = before.networkAvailable == false && after.networkAvailable != false
-                        if (after.generation != before.generation || networkRecovered) {
-                            // 新环境重建失败尝试，播放器里保留的旧错误不能作为新环境的失败证据。
-                            val selected = session.fetchSelectFlow.replayCache.lastOrNull()?.mediaSelector?.selected?.value
-                            val retryFailedPlayback = selected != null && selected.kind == MediaSourceKind.WEB &&
-                                !DroppedFileMedia.isDroppedFile(selected) &&
-                                koin.getOrNull<GetVideoScaffoldConfigUseCase>()?.invoke()?.first()?.autoSwitchMediaOnPlayerError == true &&
-                                koin.getOrNull<GetMediaSelectorSettingsFlowUseCase>()?.invoke()?.first()?.preferKind == MediaSourceKind.WEB
-                            restartPlaybackIfNeeded(session, retryFailedPlayback)
-                        }
-                    }
+                    observePlaybackEnvironment(detector)
                 }
             }
             koin.getOrNull<MediaSourceManager>()?.let { manager ->
@@ -347,6 +333,30 @@ class EpisodeFetchSelectPlayState(
         backgroundScope.launch {
             selectorCacheRepo.purgeExpired()
         }
+    }
+
+    private suspend fun observePlaybackEnvironment(detector: MeteredNetworkDetector) {
+        detector.networkEnvironmentFlow.collect { environment ->
+            val before = playbackSourceMemory.snapshot()
+            playbackSourceMemory.updateEnvironment(environment)
+            val after = playbackSourceMemory.snapshot()
+            val networkRecovered = before.networkAvailable == false && after.networkAvailable != false
+            if (after.generation != before.generation || networkRecovered) {
+                recoverPlaybackAfterNetworkChange()
+            }
+        }
+    }
+
+    private suspend fun recoverPlaybackAfterNetworkChange() {
+        val session = episodeSessionFlow.value
+        val selected = session.fetchSelectFlow.replayCache.lastOrNull()?.mediaSelector?.selected?.value
+        val retryFailedPlayback = if (selected == null) false else PlaybackRecoveryPolicy.canRetryAfterNetworkChange(
+            selected,
+            getMediaSelectorSettings().first().preferKind,
+            getVideoScaffoldConfig().first().autoSwitchMediaOnPlayerError,
+        )
+        // 新环境重建失败尝试，播放器里保留的旧错误不能作为新环境的失败证据。
+        restartPlaybackIfNeeded(session, retryFailedPlayback)
     }
 
     /**

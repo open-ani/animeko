@@ -40,6 +40,7 @@ import me.him188.ani.app.domain.player.analytics.PlayFlowStep
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.player.MediaLoadResult
+import me.him188.ani.app.domain.player.PlaybackRecoveryPolicy
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.datasources.api.Media
@@ -282,7 +283,7 @@ internal class PlayerLoadErrorHandler(
             getSourceTiers.asFlow(),
         ) { kind, tiers -> kind to tiers }.first()
 
-        if (preferKind != MediaSourceKind.WEB) {
+        if (!PlaybackRecoveryPolicy.canSwitchMedia(failedMedia, preferKind)) {
             logger.info { "Player errored, but preferKind is not WEB ($preferKind), skip automatic switch" }
             return PlayerLoadErrorHandling.SkippedPreferKind(preferKind)
         }
