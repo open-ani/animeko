@@ -75,6 +75,7 @@ import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.isMediaLoaded
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -354,12 +355,14 @@ class EpisodeFetchSelectPlayState(
         episodeSessionFlow.value.restartLoad()
     }
 
-    /** 明确重新检测失败线路。正常播放只恢复后续候选资格；已报错时重建当前集的播放尝试。 */
+    /** 明确重新检测失败线路。正常播放只恢复候选资格；报错或尚未选中资源时重建当前集尝试。 */
     suspend fun retryFailedPlaybackSources() {
         val session = episodeSessionFlow.value
         playbackSourceMemory.retryFailures()
+        val awaitingSelection = session.fetchSelectFlow.replayCache.lastOrNull()?.mediaSelector?.selected?.value == null &&
+            !player.state.value.isMediaLoaded
         if (player.state.value.mediaStatus is MediaStatus.Error ||
-            playerSession.videoLoadingState.value is VideoLoadingState.Failed
+            playerSession.videoLoadingState.value is VideoLoadingState.Failed || awaitingSelection
         ) {
             if (episodeSessionFlow.value === session) switchEpisode(session.episodeId, EpisodeSwitchTrigger.RETRY)
         }

@@ -52,6 +52,7 @@ import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.WebMediaRoute
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.coroutines.childScope
 import org.openani.mediamp.source.UriMediaData
@@ -61,6 +62,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
     private val defaultSettings = MediaSelectorSettings.AllVisible.copy(
@@ -436,6 +438,38 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
         state.assertSelected(cachedMedia, suite) // 本地缓存由自动选择选中
         assertEquals(0, replayCalls, "有本集的本地缓存时不回放")
 
+        testScope.cancel()
+    }
+
+    @Test
+    fun `retry failed routes restarts selection after inherited failures exhaust the episode`() = runTest {
+        val web: CompletableDeferred<List<Media>>
+        val (testScope, suite, state) = createCase { _, suite ->
+            web = suite.mediaSelectorTestBuilder.delayedMediaSource("web", kind = MediaSourceKind.WEB)
+        }
+        initializeTest(suite, defaultSettings.copy(preferKind = MediaSourceKind.WEB))
+        val original = suite.mediaSelectorTestBuilder.createMedia("web", kind = MediaSourceKind.WEB)
+        val media = original.copy(properties = original.properties.copy(
+            webRoute = WebMediaRoute("https://site/subject/1", "line-1", "config"),
+        ))
+        // 上一集的失败记录先于本集选择器创建，当前集没有发生加载错误。
+        state.playbackSourceMemory.recordFailure(
+            state.playbackSourceMemory.beginAttempt(initialEpisodeId - 1, media),
+            PlaybackSourceMemory.FailureReason.RESOLUTION,
+        )
+        state.switchEpisode(initialEpisodeId + 1)
+        startMediaFetcher(state, testScope)
+        web.complete(listOf(media))
+        advanceUntilIdle()
+        state.assertSelected(null, suite)
+        val callsBeforeRetry = autoSelectCalls
+
+        state.retryFailedPlaybackSources()
+        advanceUntilIdle()
+
+        state.assertSelected(media, suite)
+        assertTrue(autoSelectCalls > callsBeforeRetry)
+        assertTrue(state.playbackSourceMemory.snapshot().failures.isEmpty())
         testScope.cancel()
     }
 
