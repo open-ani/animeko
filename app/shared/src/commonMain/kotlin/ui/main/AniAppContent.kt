@@ -32,6 +32,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -723,7 +725,11 @@ private fun AniAppContentImpl(
             }
             entry<NavRoutes.Schedule> { route ->
                 val vm = viewModel { ScheduleViewModel() }
+                // 回到前台时重新解析系统时区: 跟随系统模式下, 期间在系统设置里改了时区也要生效
+                LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.onReturnedToForeground() }
                 val presentation by vm.presentationFlow.collectAsStateWithLifecycle()
+                val timeZone by vm.scheduleTimeZone.collectAsStateWithLifecycle()
+                val timeZonePreference by vm.scheduleTimeZonePreference.collectAsStateWithLifecycle()
                 ScheduleScreen(
                     presentation,
                     onRetry = { vm.refresh() },
@@ -739,6 +745,9 @@ private fun AniAppContentImpl(
                         )
                     },
                     Modifier.fillMaxSize(),
+                    timeZone = timeZone,
+                    timeZonePreference = timeZonePreference,
+                    onSelectTimeZone = { vm.setScheduleTimeZone(it) },
                     windowInsets = windowInsets,
                     navigationIcon = {
                         BackNavigationIconButton(
