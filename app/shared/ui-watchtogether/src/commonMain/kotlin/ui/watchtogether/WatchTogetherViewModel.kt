@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.network.WatchTogetherJoinException
 import me.him188.ani.app.data.network.WatchTogetherJoinFailure
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -62,13 +63,29 @@ open class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
         }
     }
 
+    private val hostWatching = manager.state.flatMapLatest { state ->
+        if (state is WatchTogetherState.InRoom) state.session.snapshot.map { it.playback?.info }
+        else flowOf(null)
+    }
+
+    private val alignmentLocalState = combine(
+        playbackBridge.localWatching,
+        watchTogetherAlignmentAvailabilityFlow(
+            hostWatching,
+            playbackBridge.localWatching,
+            playbackBridge.alignmentRequest.map { it != null },
+            playbackBridge.alignmentCooldownUntil,
+        ),
+    ) { local, reason -> local to reason }
+
     val uiStateFlow = combine(
         settingsRepository.watchTogetherSettings.flow,
         sessionStateProvider.stateFlow,
         roomProjection,
-        playbackBridge.localWatching,
+        alignmentLocalState,
         joinError,
-    ) { settings, sessionState, projection, localWatching, error ->
+    ) { settings, sessionState, projection, alignment, error ->
+        val (localWatching, alignmentUnavailableReason) = alignment
         WatchTogetherUiState(
             featureEnabled = settings.enabled,
             phase = projection.phase,
@@ -81,6 +98,7 @@ open class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
             isSelfHost = projection.isSelfHost,
             requiresLogin = settings.enabled && sessionState !is SessionState.Valid,
             inPlayer = localWatching != null,
+            alignmentUnavailableReason = alignmentUnavailableReason,
         )
     }.stateInBackground(WatchTogetherUiState.Initial)
 
@@ -96,6 +114,8 @@ open class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
                             ?: WatchTogetherJoinFailure.TEMPORARY.name
                     }
             }
+
+            WatchTogetherIntent.AlignToHost -> manager.alignToHost()
 
             WatchTogetherIntent.LeaveRoom -> launchInBackground {
                 joinError.value = null

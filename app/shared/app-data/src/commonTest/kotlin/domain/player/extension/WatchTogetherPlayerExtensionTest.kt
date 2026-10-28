@@ -42,10 +42,13 @@ import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.watchtogether.LocalPlaybackBridge
 import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
+import me.him188.ani.app.domain.watchtogether.PlaybackDirective
 import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
 import me.him188.ani.client.models.AniReportWatchTogetherStateRequest
 import me.him188.ani.client.models.AniWatchTogetherJoinResponse
 import me.him188.ani.client.models.AniWatchTogetherMembership
+import me.him188.ani.client.models.AniWatchTogetherPlayback
+import me.him188.ani.client.models.AniWatchTogetherWatchingInfo
 import me.him188.ani.client.models.AniWatchTogetherReportResponse
 import me.him188.ani.client.models.AniWatchTogetherRoomSnapshot
 import me.him188.ani.client.models.AniWatchTogetherRoomStatus
@@ -161,6 +164,41 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
         assertTrue(api.reports.mapNotNull { it.watching }.any { it.paused == false })
     }
 
+    @Test
+    fun `manual alignment excludes follower sync and does not report its seek`() = runTest {
+        val host = AniWatchTogetherWatchingInfo(
+            subjectId = subjectId, episodeId = initialEpisodeId, subjectName = "Subject", episodeSort = "1",
+            episodeName = "Episode", positionMillis = 10_000, positionAtMillis = NOW_MILLIS,
+            durationMillis = 100_000, paused = true, loading = false, buffering = false, playbackRate = 1f,
+        )
+        val playback = AniWatchTogetherPlayback(host, NOW_MILLIS)
+        val api = InRoomWatchTogetherApiService(isHost = false, playback = playback)
+        val (suite, bridge, manager) = createCase(api, WatchTogetherSettings(enabled = true))
+        manager.start()
+        runCurrent()
+        manager.join("Room", "password").getOrThrow()
+        val state = suite.createState(listOf(WatchTogetherPlayerExtension))
+        state.onUIReady()
+        runCurrent()
+        loadSelectedMedia(suite, state)
+        suite.player.holdSeeks = true
+        val reports = api.reports.size
+        manager.alignToHost()
+        runCurrent()
+        assertTrue(bridge.isAligning)
+        bridge.emitDirective(PlaybackDirective.Sync(playback.copy(info = host.copy(positionMillis = 80_000)), initial = true))
+        runCurrent()
+        assertEquals(10_000L, suite.player.currentPositionMillis.value)
+        suite.player.completeHeldSeek()
+        runCurrent()
+        advanceTimeBy(101)
+        runCurrent()
+        assertFalse(bridge.isAligning)
+        assertEquals(10_000L, bridge.localWatching.value?.positionMillis)
+        assertTrue(suite.player.state.value.playWhenReady == false)
+        assertEquals(reports, api.reports.size)
+    }
+
     private fun TestScope.createCase(
         api: WatchTogetherApiService = UnusedWatchTogetherApiService,
         settings: WatchTogetherSettings = WatchTogetherSettings.Default,
@@ -215,7 +253,10 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
         override val eventFlow: Flow<SessionEvent> = emptyFlow()
     }
 
-    private class InRoomWatchTogetherApiService : WatchTogetherApiService {
+    private class InRoomWatchTogetherApiService(
+        private val isHost: Boolean = true,
+        private val playback: AniWatchTogetherPlayback? = null,
+    ) : WatchTogetherApiService {
         val reports = mutableListOf<AniReportWatchTogetherStateRequest>()
 
         override suspend fun join(
@@ -225,7 +266,7 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
         ): AniWatchTogetherJoinResponse = AniWatchTogetherJoinResponse(
             roomId = "room-id",
             created = true,
-            isHost = true,
+            isHost = isHost,
             sessionNonce = "nonce",
             serverTime = NOW_MILLIS,
             snapshot = AniWatchTogetherRoomSnapshot(
@@ -236,6 +277,7 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
                 hostUserId = "host-id",
                 serverTime = NOW_MILLIS,
                 members = emptyList(),
+                playback = playback,
             ),
         )
 

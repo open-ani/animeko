@@ -22,6 +22,44 @@ import me.him188.ani.client.models.AniWatchTogetherWatchingInfo
 import kotlin.math.abs
 
 class LocalPlaybackBridge {
+    private val _alignmentRequest = MutableStateFlow<HostAlignmentRequest?>(null)
+    val alignmentRequest: StateFlow<HostAlignmentRequest?> = _alignmentRequest.asStateFlow()
+    private val _alignmentCooldownUntil = MutableStateFlow(0L)
+    val alignmentCooldownUntil: StateFlow<Long> = _alignmentCooldownUntil.asStateFlow()
+    val isAligning: Boolean get() = _alignmentRequest.value != null
+
+    internal fun requestAlignment(session: RoomSession, now: Long): Boolean {
+        if (now < _alignmentCooldownUntil.value) return false
+        if (!_alignmentRequest.compareAndSet(null, HostAlignmentRequest(session, localOwner.value))) return false
+        _alignmentCooldownUntil.value = now + HostAlignment.COOLDOWN_MILLIS
+        return true
+    }
+
+    internal fun isLocalOwner(owner: Any): Boolean = localOwner.value === owner
+
+    internal fun finishAlignment(request: HostAlignmentRequest) {
+        _alignmentRequest.compareAndSet(request, null)
+    }
+
+    /** Seek completion supplies a fresh fix even for small host seeks. */
+    internal fun notifySeekCompleted(owner: Any, position: Long, now: Long, isHost: Boolean) {
+        if (!isHost || localOwner.value !== owner) return
+        val previous = _localWatching.value ?: return
+        val delta = abs(position - previous.positionAt(now))
+        val lastDiscontinuity = lastDiscontinuityWatching.value
+        val unreportedPosition = lastDiscontinuity != null &&
+                lastDiscontinuity.subjectId == previous.subjectId && lastDiscontinuity.episodeId == previous.episodeId &&
+                abs(position - lastDiscontinuity.positionAt(now)) > SEEK_REPORT_TOLERANCE_MILLIS
+        val updated = previous.copy(positionMillis = position, positionAtMillis = now)
+        _localWatching.value = updated
+        // Small seeks can be sampled without crossing the immediate-report threshold.
+        if (!isAligning && (delta > SEEK_REPORT_TOLERANCE_MILLIS || unreportedPosition)) {
+            lastDiscontinuityWatching.value = updated
+            _discontinuities.tryEmit(Unit)
+        }
+    }
+
+    private val lastDiscontinuityWatching = atomic<AniWatchTogetherWatchingInfo?>(null)
     private val localOwner = atomic<Any?>(null)
     private val _localWatching = MutableStateFlow<AniWatchTogetherWatchingInfo?>(null)
     val localWatching: StateFlow<AniWatchTogetherWatchingInfo?> = _localWatching.asStateFlow()
@@ -67,13 +105,19 @@ class LocalPlaybackBridge {
     }
 
     internal fun clearLocalWatching(owner: Any) {
-        if (localOwner.compareAndSet(owner, null)) updateLocalWatchingValue(null)
+        if (localOwner.compareAndSet(owner, null)) {
+            _alignmentRequest.value = null
+            updateLocalWatchingValue(null)
+        }
     }
 
     private fun updateLocalWatchingValue(value: AniWatchTogetherWatchingInfo?) {
         val old = _localWatching.value
         _localWatching.value = value
-        if (isDiscontinuity(old, value)) _discontinuities.tryEmit(Unit)
+        if (!isAligning && isDiscontinuity(old, value)) {
+            lastDiscontinuityWatching.value = value
+            _discontinuities.tryEmit(Unit)
+        }
     }
 
     fun emitDirective(directive: PlaybackDirective) {
@@ -103,6 +147,7 @@ class LocalPlaybackBridge {
     }
 
     private companion object {
+        const val SEEK_REPORT_TOLERANCE_MILLIS = 50L
         const val POSITION_JUMP_MILLIS = 2_500L
     }
 }

@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.watchtogether
 
 import androidx.compose.runtime.Immutable
+import me.him188.ani.app.domain.watchtogether.HostAlignmentUnavailableReason
 
 @Immutable
 data class WatchTogetherUiState(
@@ -21,6 +22,7 @@ data class WatchTogetherUiState(
     val isSelfHost: Boolean,
     val requiresLogin: Boolean,
     val inPlayer: Boolean,
+    val alignmentUnavailableReason: HostAlignmentUnavailableReason? = HostAlignmentUnavailableReason.NO_HOST_CONTENT,
 ) {
     companion object {
         val Initial = WatchTogetherUiState(
@@ -97,6 +99,7 @@ enum class WatchTogetherMemberPresence {
 
 sealed interface WatchTogetherIntent {
     data class JoinRoom(val roomName: String, val password: String) : WatchTogetherIntent
+    data object AlignToHost : WatchTogetherIntent
     data object LeaveRoom : WatchTogetherIntent
     data class SetFollowing(val following: Boolean) : WatchTogetherIntent
     data object DisableFeature : WatchTogetherIntent

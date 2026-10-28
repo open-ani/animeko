@@ -73,6 +73,7 @@ import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.watch_together_align_failed
 import me.him188.ani.app.ui.lang.watch_together_following
 import me.him188.ani.app.ui.lang.watch_together_got_it
 import me.him188.ani.app.ui.lang.watch_together_guidance_playing
@@ -177,6 +178,13 @@ fun BoxScope.WatchTogetherOverlayHost(
                     val message = getString(Lang.watch_together_rejoin_failed)
                     launch {
                         toastHostState.showSnackbar(WatchTogetherToastVisuals(message, Icons.Rounded.Info))
+                    }
+                }
+
+                is WatchTogetherEffect.HostAlignmentFinished -> {
+                    val message = getString(if (effect.success) Lang.watch_together_resynced else Lang.watch_together_align_failed)
+                    launch {
+                        toastHostState.showSnackbar(WatchTogetherToastVisuals(message, Icons.Rounded.Sync))
                     }
                 }
 
