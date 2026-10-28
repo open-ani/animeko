@@ -227,6 +227,8 @@ fun EpisodeDetails(
     danmakuListState: DanmakuListState? = null,
     /**
      * 选中本地视频文件后的回调. 为 null 时不显示「使用本地视频文件」按钮.
+     *
+     * 播放器侧边栏、数据源容器 (手动查找顶栏) 与手机详情页的数据源卡片共用这个回调.
      */
     onLocalFilePicked: ((LocalVideoFile) -> Unit)? = null,
     /**
@@ -584,6 +586,7 @@ fun EpisodeDetails(
                     onFetchRequestChange = onFetchRequestChange,
                     onRestartSource = onRestartSource,
                     manualBrowseState = manualBrowseState,
+                    onRequestLocalFile = localFilePicker,
                 )
             }
         } else if (atLeastMedium) {
