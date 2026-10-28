@@ -41,6 +41,7 @@ import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
+import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.inSystem
@@ -52,6 +53,7 @@ import org.openani.mediamp.source.UriMediaData
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNotSame
@@ -111,6 +113,42 @@ class LoadMediaOnSelectExtensionTest : AbstractPlayerExtensionTest() {
         assertIs<UriMediaData>(suite.player.mediaData.first())
         assertEquals(0, suite.player.currentPositionMillis.value)
 
+        testScope.cancel()
+    }
+
+    @Test
+    fun `confirming current automatic media preserves playback and position`() = runTest {
+        var loadCount = 0
+        val (testScope, suite, state) = createCase(
+            extensions = listOf(
+                EpisodePlayerExtensionFactory { _, _ ->
+                    object : PlayerExtension("CountMediaLoads") {
+                        override suspend fun onBeforeLoadMedia(episodeSession: EpisodeSession) {
+                            loadCount++
+                        }
+                    }
+                },
+            ),
+        )
+        val media = TestMediaList[0].copy(kind = MediaSourceKind.WEB)
+        suite.mediaSelectorTestBuilder.delayedMediaSource("1").complete(listOf(media))
+        val selector = state.mediaSelectorFlow.filterNotNull().first()
+        selector.selectAutomatically(media, expectedSelection = null)
+        advanceUntilIdle()
+
+        suite.player.seekTo(42_000)
+        suite.player.pause()
+        val openedMedia = assertNotNull(suite.player.mediaData.value)
+        val playerState = suite.player.state.value
+
+        // 手动确认已自动选中的资源只记录偏好，不进入加载流程，也不改变暂停状态与播放进度。
+        assertFalse(selector.select(media))
+        advanceUntilIdle()
+
+        assertEquals(1, loadCount)
+        assertSame(openedMedia, suite.player.mediaData.value)
+        assertEquals(playerState, suite.player.state.value)
+        assertEquals(42_000, suite.player.currentPositionMillis.value)
         testScope.cancel()
     }
 
