@@ -1765,6 +1765,7 @@
     <string name="image_viewer_copy">Copy image</string>
     <string name="image_viewer_copied">Image copied</string>
     <string name="image_viewer_copy_failed">Failed to copy image</string>
+    <string name="image_viewer_more">More options</string>
     <string name="image_viewer_close">Close</string>
     <!-- Shared playback captcha messages -->
     <string name="media_captcha_required_message">Complete %1$s to continue</string>

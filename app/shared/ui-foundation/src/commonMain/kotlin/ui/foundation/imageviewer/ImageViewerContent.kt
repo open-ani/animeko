@@ -13,28 +13,38 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.FitScreen
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material.icons.rounded.ZoomIn
 import androidx.compose.material.icons.rounded.ZoomOut
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,9 +54,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
@@ -58,6 +71,8 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.github.panpf.sketch.LocalPlatformContext
@@ -67,9 +82,11 @@ import com.github.panpf.sketch.request.ImageRequest
 import com.github.panpf.sketch.request.LoadState
 import com.github.panpf.sketch.resize.Precision
 import com.github.panpf.zoomimage.SketchZoomAsyncImage
+import com.github.panpf.zoomimage.compose.ZoomState
 import com.github.panpf.zoomimage.compose.zoom.ZoomableState
 import com.github.panpf.zoomimage.rememberSketchZoomState
 import kotlinx.atomicfu.atomic
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.LocalContext
@@ -83,6 +100,7 @@ import me.him188.ani.app.ui.lang.image_viewer_copied
 import me.him188.ani.app.ui.lang.image_viewer_copy
 import me.him188.ani.app.ui.lang.image_viewer_copy_failed
 import me.him188.ani.app.ui.lang.image_viewer_load_failed
+import me.him188.ani.app.ui.lang.image_viewer_more
 import me.him188.ani.app.ui.lang.image_viewer_reset_zoom
 import me.him188.ani.app.ui.lang.image_viewer_save
 import me.him188.ani.app.ui.lang.image_viewer_save_failed
@@ -95,7 +113,9 @@ import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 /** 查看器内各控件的 test tag. */
 object ImageViewerTestTags {
@@ -105,6 +125,8 @@ object ImageViewerTestTags {
     const val SCALE_TEXT = "ImageViewer.ScaleText"
     const val COPY = "ImageViewer.Copy"
     const val SAVE = "ImageViewer.Save"
+    const val MORE = "ImageViewer.More"
+    const val TOOLBAR = "ImageViewer.Toolbar"
     const val CLOSE = "ImageViewer.Close"
 }
 
@@ -114,7 +136,7 @@ private const val ZOOM_STEP = 1.5f
 private val logger = logger<ImageViewerTestTags>()
 
 /**
- * 图片查看器的内容: 可缩放图片 + 底部工具栏 (缩小 / 缩放比例 / 放大 / 适应窗口 / 复制 / 保存 / 关闭).
+ * 图片查看器的内容: 可缩放图片、独立关闭按钮和随可用区域排列的工具栏. 单击图片切换控件显隐.
  *
  * 快捷键: Ctrl/Cmd+C 复制图片.
  *
@@ -122,8 +144,8 @@ private val logger = logger<ImageViewerTestTags>()
  * 图片加载成功后会在后台导出一份带扩展名的本地副本 ([ImageViewerExportedFile]), 供保存和拖拽使用.
  *
  * @param model 图片 URL. 为 `null` 时只显示黑底.
- * @param closeOnTap 单击图片是否关闭 (覆盖层模式为 `true`; 独立窗口为 `false`).
- * @param showCloseButton 工具栏是否显示关闭按钮.
+ * @param showCloseButton 是否显示独立关闭按钮.
+ * @param dismissOnSwipe 适应窗口时是否允许触屏上下滑动退出. 独立桌面窗口使用系统窗口关闭.
  * @param fileSaver 点击保存时的保存方式, 默认弹系统对话框.
  * @param imageClipboard 复制图片的方式, `null` 表示不支持复制 (隐藏按钮).
  * @param platformImageModifier 平台相关的图片层扩展: 返回附加在图片上的 [Modifier] (例如桌面端把图片拖到其他应用),
@@ -139,8 +161,8 @@ fun ImageViewerContent(
     model: String?,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
-    closeOnTap: Boolean = true,
     showCloseButton: Boolean = true,
+    dismissOnSwipe: Boolean = true,
     fileSaver: ImageFileSaver = rememberFileKitImageFileSaver(),
     imageClipboard: ImageClipboard? = rememberImageClipboard(),
     platformImageModifier: @Composable (exported: ImageViewerExportedFile?, zoomable: ZoomableState) -> Modifier =
@@ -205,13 +227,31 @@ fun ImageViewerContent(
         if (loaded) runCatching { focusRequester.requestFocus() }
     }
 
+    val dismissState = remember(model) { ImageViewerDismissState(scope) }
+    DisposableEffect(dismissState) {
+        onDispose { dismissState.cancel() }
+    }
+    val onCloseState = rememberUpdatedState(onClose)
     val imageModifier = platformImageModifier(exported, zoomState.zoomable)
-    // zoomimage 的 onTap 用 detectTapGestures 实现: 适应窗口时单指拖动没人消费, 抬起也会当成 tap 关掉查看器.
-    // 在 Initial 阶段记录这一次手势是否超过 touchSlop, 拖动过就不当 tap.
+    // zoomimage 的 onTap 使用 detectTapGestures: 适应窗口时未被消费的单指拖动可能被识别为 tap.
+    // 在 Initial 阶段记录拖动与多指输入, 这些手势不触发控件显隐.
     val tapGuard = remember { ImageViewerTapGuard() }
-    Box(
+    var controlsVisible by remember(model) { mutableStateOf(true) }
+    val scalePercent = if (loaded) zoomState.currentScalePercent() else null
+    var scaleVisible by remember(model) { mutableStateOf(false) }
+    LaunchedEffect(scalePercent) {
+        if (scalePercent != null) {
+            scaleVisible = true
+            delay(1_200.milliseconds)
+            scaleVisible = false
+        }
+    }
+    BoxWithConstraints(
         modifier
-            .background(Color.Black)
+            .drawBehind {
+                val progress = (abs(dismissState.offset.y) / size.height.coerceAtLeast(1f)).coerceIn(0f, 1f)
+                drawRect(Color.Black.copy(alpha = 1f - progress))
+            }
             .onKeyEvent { event ->
                 val isCopy = event.type == KeyEventType.KeyDown && event.key == Key.C &&
                         (event.isCtrlPressed || event.isMetaPressed)
@@ -228,15 +268,16 @@ fun ImageViewerContent(
             val request = remember(platformContext, model, decodeSize) {
                 imageViewerImageRequest(platformContext, model, decodeSize)
             }
-            SketchZoomAsyncImage(
-                request = request,
-                contentDescription = null,
-                sketch = sketch,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .testTag(IMAGE_VIEWER_TEST_TAG)
-                    .focusRequester(focusRequester)
-                    .focusable()
+            Box(
+                Modifier.fillMaxSize()
+                    .imageViewerSwipeToDismiss(
+                        state = dismissState,
+                        canDismiss = {
+                            dismissOnSwipe && loaded &&
+                                    zoomState.zoomable.transform.scaleX <= zoomState.zoomable.minScale + SCALE_EPSILON
+                        },
+                        onClose = { onCloseState.value() },
+                    )
                     .pointerInput(tapGuard) {
                         val slop = viewConfiguration.touchSlop
                         awaitEachGesture {
@@ -244,24 +285,39 @@ fun ImageViewerContent(
                             var dragged = false
                             while (true) {
                                 val event = awaitPointerEvent(PointerEventPass.Initial)
-                                if (event.changes.any { (it.position - down.position).getDistance() > slop }) {
+                                if (event.changes.size > 1 || event.changes.any { (it.position - down.position).getDistance() > slop }) {
                                     dragged = true
                                 }
                                 if (event.changes.none { it.pressed }) break
                             }
                             tapGuard.dragged = dragged
                         }
-                    }
-                    .then(imageModifier),
-                state = imageState,
-                contentScale = contentScale,
-                zoomState = zoomState,
-                onTap = if (closeOnTap) {
-                    { if (!tapGuard.dragged) onClose() }
-                } else {
-                    null
-                },
-            )
+                    },
+            ) {
+                SketchZoomAsyncImage(
+                    request = request,
+                    contentDescription = null,
+                    sketch = sketch,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            translationX = dismissState.offset.x
+                            translationY = dismissState.offset.y
+                            val progress = (abs(translationY) / size.height.coerceAtLeast(1f)).coerceIn(0f, 1f)
+                            scaleX = 1f - progress * 0.25f
+                            scaleY = scaleX
+                        }
+                        .testTag(IMAGE_VIEWER_TEST_TAG)
+                        .semantics { stateDescription = scalePercent?.let { "$it%" } ?: "—" }
+                        .focusRequester(focusRequester)
+                        .focusable()
+                        .then(imageModifier),
+                    state = imageState,
+                    contentScale = contentScale,
+                    zoomState = zoomState,
+                    onTap = { if (!tapGuard.dragged) controlsVisible = !controlsVisible },
+                )
+            }
         }
         if (loadState is LoadState.Error) {
             Text(
@@ -272,30 +328,61 @@ fun ImageViewerContent(
             )
         }
 
-        ImageViewerToolbar(
-            zoomable = zoomState.zoomable,
-            scalePercent = if (loaded) zoomState.currentScalePercent() else null,
-            enabled = loaded,
-            canSave = exported != null,
-            onCopy = onCopy,
-            onSave = {
-                val file = exported ?: return@ImageViewerToolbar
-                scope.launch {
-                    try {
-                        if (fileSaver.save(file)) toaster.toast(savedText)
-                    } catch (e: Exception) {
-                        logger.warn(e) { "Failed to save image ${file.fileName}" }
-                        toaster.toast(saveFailedText)
+        if (controlsVisible && !dismissState.active && scaleVisible && scalePercent != null) {
+            Text(
+                text = "$scalePercent%",
+                modifier = Modifier.align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(16.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .testTag(ImageViewerTestTags.SCALE_TEXT),
+                color = Color.White,
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
+        if (controlsVisible && !dismissState.active) {
+            if (showCloseButton) {
+                Surface(
+                    modifier = Modifier.align(Alignment.TopEnd)
+                        .windowInsetsPadding(WindowInsets.safeDrawing).padding(16.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                ) {
+                    IconButton(onClick = onClose, modifier = Modifier.size(48.dp).testTag(ImageViewerTestTags.CLOSE)) {
+                        Icon(Icons.Rounded.Close, contentDescription = stringResource(Lang.image_viewer_close))
                     }
                 }
-            },
-            showCloseButton = showCloseButton,
-            onClose = onClose,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(16.dp),
-        )
+            }
+            val vertical = maxWidth > maxHeight
+            ImageViewerToolbar(
+                zoomable = zoomState.zoomable,
+                vertical = vertical,
+                enabled = loaded,
+                canSave = exported != null,
+                onCopy = onCopy,
+                onSave = {
+                    val file = exported ?: return@ImageViewerToolbar
+                    scope.launch {
+                        try {
+                            if (fileSaver.save(file)) toaster.toast(savedText)
+                        } catch (e: Exception) {
+                            logger.warn(e) { "Failed to save image ${file.fileName}" }
+                            toaster.toast(saveFailedText)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .align(if (vertical) Alignment.CenterEnd else Alignment.BottomCenter)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = if (vertical && showCloseButton) 80.dp else 16.dp,
+                        bottom = 16.dp,
+                    ),
+            )
+        }
     }
 }
 
@@ -304,7 +391,7 @@ fun ImageViewerContent(
  * Sketch 会按显示尺寸缩小解码, 所以要用分块加载拿到的原图尺寸换算.
  */
 @Composable
-private fun com.github.panpf.zoomimage.compose.ZoomState.currentScalePercent(): Int {
+private fun ZoomState.currentScalePercent(): Int {
     val contentWidth = zoomable.contentSize.width
     val originalWidth = subsampling.imageInfo?.width
     val sourceFactor = if (originalWidth != null && originalWidth > 0 && contentWidth > 0) {
@@ -318,13 +405,11 @@ private fun com.github.panpf.zoomimage.compose.ZoomState.currentScalePercent(): 
 @Composable
 private fun ImageViewerToolbar(
     zoomable: ZoomableState,
-    scalePercent: Int?,
+    vertical: Boolean,
     enabled: Boolean,
     canSave: Boolean,
     onCopy: (() -> Unit)?,
     onSave: () -> Unit,
-    showCloseButton: Boolean,
-    onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -332,67 +417,118 @@ private fun ImageViewerToolbar(
     val canZoomOut = enabled && scale > zoomable.minScale + SCALE_EPSILON
     val canZoomIn = enabled && scale < zoomable.maxScale - SCALE_EPSILON
 
-    Surface(
-        modifier = modifier,
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        tonalElevation = 3.dp,
-    ) {
-        Row(
-            Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            IconButton(
-                onClick = { scope.launch { zoomable.scale(scale / ZOOM_STEP, animated = true) } },
-                enabled = canZoomOut,
-                modifier = Modifier.testTag(ImageViewerTestTags.ZOOM_OUT),
-            ) {
-                Icon(Icons.Rounded.ZoomOut, contentDescription = stringResource(Lang.image_viewer_zoom_out))
-            }
-            Text(
-                text = scalePercent?.let { "$it%" } ?: "—",
-                modifier = Modifier.testTag(ImageViewerTestTags.SCALE_TEXT),
-                style = MaterialTheme.typography.labelLarge,
+    val actions = buildList {
+        add(
+            ImageViewerAction(
+                ImageViewerTestTags.ZOOM_IN, Icons.Rounded.ZoomIn, stringResource(Lang.image_viewer_zoom_in), canZoomIn,
+            ) { scope.launch { zoomable.scale(scale * ZOOM_STEP, animated = true) } },
+        )
+        add(
+            ImageViewerAction(
+                ImageViewerTestTags.ZOOM_OUT,
+                Icons.Rounded.ZoomOut,
+                stringResource(Lang.image_viewer_zoom_out),
+                canZoomOut,
+            ) { scope.launch { zoomable.scale(scale / ZOOM_STEP, animated = true) } },
+        )
+        add(
+            ImageViewerAction(
+                ImageViewerTestTags.RESET_ZOOM, Icons.Rounded.FitScreen,
+                stringResource(Lang.image_viewer_reset_zoom), canZoomOut,
+            ) { scope.launch { zoomable.scale(zoomable.minScale, animated = true) } },
+        )
+        add(
+            ImageViewerAction(
+                ImageViewerTestTags.SAVE,
+                Icons.Rounded.SaveAlt,
+                stringResource(Lang.image_viewer_save),
+                canSave,
+                onSave,
+            ),
+        )
+        if (onCopy != null) {
+            add(
+                ImageViewerAction(
+                    ImageViewerTestTags.COPY,
+                    Icons.Rounded.ContentCopy,
+                    stringResource(Lang.image_viewer_copy),
+                    canSave,
+                    onCopy,
+                ),
             )
-            IconButton(
-                onClick = { scope.launch { zoomable.scale(scale * ZOOM_STEP, animated = true) } },
-                enabled = canZoomIn,
-                modifier = Modifier.testTag(ImageViewerTestTags.ZOOM_IN),
-            ) {
-                Icon(Icons.Rounded.ZoomIn, contentDescription = stringResource(Lang.image_viewer_zoom_in))
-            }
-            IconButton(
-                onClick = { scope.launch { zoomable.scale(zoomable.minScale, animated = true) } },
-                enabled = canZoomOut,
-                modifier = Modifier.testTag(ImageViewerTestTags.RESET_ZOOM),
-            ) {
-                Icon(Icons.Rounded.FitScreen, contentDescription = stringResource(Lang.image_viewer_reset_zoom))
-            }
-            if (onCopy != null) {
-                IconButton(
-                    onClick = onCopy,
-                    enabled = canSave,
-                    modifier = Modifier.testTag(ImageViewerTestTags.COPY),
-                ) {
-                    Icon(Icons.Rounded.ContentCopy, contentDescription = stringResource(Lang.image_viewer_copy))
+        }
+    }
+
+    BoxWithConstraints(modifier) {
+        val availableSpace = if (vertical) maxHeight else maxWidth
+        // 每个按钮占 48dp, 间距 4dp, 工具栏两端各留 4dp. 溢出时为菜单入口预留一个按钮的位置.
+        val capacity = ((availableSpace - 4.dp) / 52.dp).toInt().coerceAtLeast(1)
+        val visibleCount = if (actions.size <= capacity) actions.size else capacity - 1
+        val overflowActions = actions.drop(visibleCount)
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            tonalElevation = 3.dp,
+        ) {
+            val buttons: @Composable () -> Unit = {
+                actions.take(visibleCount).forEach { action ->
+                    IconButton(
+                        onClick = action.onClick,
+                        enabled = action.enabled,
+                        modifier = Modifier.size(48.dp).testTag(action.testTag),
+                    ) {
+                        Icon(action.icon, contentDescription = action.label)
+                    }
+                }
+                if (overflowActions.isNotEmpty()) {
+                    ImageViewerOverflowMenu(overflowActions)
                 }
             }
-            IconButton(
-                onClick = onSave,
-                enabled = canSave,
-                modifier = Modifier.testTag(ImageViewerTestTags.SAVE),
-            ) {
-                Icon(Icons.Rounded.SaveAlt, contentDescription = stringResource(Lang.image_viewer_save))
+            if (vertical) {
+                Column(
+                    Modifier.testTag(ImageViewerTestTags.TOOLBAR).verticalScroll(rememberScrollState()).padding(4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) { buttons() }
+            } else {
+                Row(
+                    Modifier.testTag(ImageViewerTestTags.TOOLBAR).horizontalScroll(rememberScrollState()).padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) { buttons() }
             }
-            if (showCloseButton) {
-                IconButton(
-                    onClick = onClose,
-                    modifier = Modifier.testTag(ImageViewerTestTags.CLOSE),
-                ) {
-                    Icon(Icons.Rounded.Close, contentDescription = stringResource(Lang.image_viewer_close))
-                }
+        }
+    }
+}
+
+private data class ImageViewerAction(
+    val testTag: String,
+    val icon: ImageVector,
+    val label: String,
+    val enabled: Boolean,
+    val onClick: () -> Unit,
+)
+
+@Composable
+private fun ImageViewerOverflowMenu(actions: List<ImageViewerAction>) {
+    Box {
+        var expanded by remember { mutableStateOf(false) }
+        IconButton(onClick = { expanded = true }, modifier = Modifier.size(48.dp).testTag(ImageViewerTestTags.MORE)) {
+            Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(Lang.image_viewer_more))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            actions.forEach { action ->
+                DropdownMenuItem(
+                    text = { Text(action.label) },
+                    leadingIcon = { Icon(action.icon, contentDescription = null) },
+                    onClick = {
+                        expanded = false
+                        action.onClick()
+                    },
+                    enabled = action.enabled,
+                    modifier = Modifier.testTag(action.testTag),
+                )
             }
         }
     }
@@ -414,7 +550,7 @@ fun imageViewerExportDirectory(context: ContextMP): SystemPath {
 }
 
 private class ImageViewerTapGuard {
-    /** 最近一次手势是否拖动过 (超过 touchSlop). Initial 阶段写, zoomimage 的 onTap (Main 阶段) 读. */
+    /** 最近一次手势是否包含拖动 (超过 touchSlop) 或多指输入. Initial 阶段写, zoomimage 的 onTap (Main 阶段) 读. */
     var dragged: Boolean = false
 }
 
