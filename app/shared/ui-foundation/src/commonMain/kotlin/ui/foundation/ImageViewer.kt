@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,7 +68,7 @@ fun rememberImageViewerHandler(): ImageViewerHandler {
  * 页面级图片查看器. 支持手势/滚轮/键盘缩放, 保存图片; 桌面端还支持把图片文件拖拽到其他应用.
  *
  * - 桌面端: 在真实窗口内时用独立窗口显示, 不遮挡页面; 预览/测试环境没有宿主窗口时回退到页面内覆盖层.
- * - Android/iOS: 覆盖整个页面的全屏层, 单击图片关闭.
+ * - Android/iOS: 覆盖整个页面的全屏层, 单击图片切换控件显隐.
  *
  * 在页面布局的最外层调用, 与 [ImageViewerBackHandler] 配合使用.
  */
@@ -80,7 +82,7 @@ expect fun ImageViewer(handler: ImageViewerHandler, onClose: () -> Unit)
 expect fun ImageViewerBackHandler(handler: ImageViewerHandler)
 
 /**
- * 覆盖整个页面的全屏查看器, 单击图片关闭.
+ * 覆盖整个页面的全屏查看器, 单击图片切换控件显隐.
  */
 @Composable
 internal fun ImageViewerOverlay(
@@ -94,11 +96,15 @@ internal fun ImageViewerOverlay(
         exit = LocalAniMotionScheme.current.animatedVisibility.standardExit,
         modifier = Modifier.fillMaxSize(),
     ) {
+        // 退场期间保留显示模型, 让图片、背景透明度和手势位移一起完成退场.
+        var retainedModel by remember { mutableStateOf(model) }
+        SideEffect {
+            if (model != null) retainedModel = model
+        }
         ImageViewerContent(
-            model = model,
+            model = model ?: retainedModel,
             onClose = onClose,
             modifier = Modifier.fillMaxSize(),
-            closeOnTap = true,
             showCloseButton = true,
         )
     }
