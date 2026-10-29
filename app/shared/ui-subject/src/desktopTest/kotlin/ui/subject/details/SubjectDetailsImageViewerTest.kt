@@ -19,10 +19,8 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SkikoComposeUiTest
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runSkikoComposeUiTest
 import androidx.compose.ui.unit.Density
 import kotlinx.coroutines.CoroutineScope
@@ -36,6 +34,7 @@ import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.ui.comment.createTestCommentState
 import me.him188.ani.app.ui.foundation.IMAGE_VIEWER_TEST_TAG
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerTestTags
 import me.him188.ani.app.ui.framework.runOnSwingEdt
 import me.him188.ani.app.ui.search.createTestPager
 import me.him188.ani.app.ui.subject.details.components.SUBJECT_COVER_IMAGE_TEST_TAG
@@ -55,7 +54,7 @@ import java.io.File
 import kotlin.test.Test
 
 /**
- * 交互测试: 条目详情页点击封面打开页面级图片查看器, 再点击查看器关闭.
+ * 交互测试: 条目详情页点击封面打开页面级图片查看器, 点击关闭按钮关闭查看器.
  *
  * 断点由 Skiko 场景像素尺寸控制 (density=1 => px==dp):
  * 360 => Compact(手机单栏) / 1400 => Medium(双栏).
@@ -112,7 +111,7 @@ class SubjectDetailsImageViewerTest {
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private fun runPageTest(widthDp: Int, heightDp: Int, block: SkikoComposeUiTest.() -> Unit) = runOnSwingEdt {
-        // 查看器的单击关闭经 Dispatchers.Main 真实 delay 触发; 确保 Main 未被其他测试替换为虚拟时钟.
+        // 确保 Main 未被其他测试替换为虚拟时钟.
         Dispatchers.resetMain()
         // 查看器 (zoomimage) 要求手势在 Swing EDT 上处理, 因此整个测试在 EDT 上跑.
         runSkikoComposeUiTest(Size(widthDp.toFloat(), heightDp.toFloat()), density = Density(1f)) {
@@ -149,7 +148,7 @@ class SubjectDetailsImageViewerTest {
     }
 
     @Test
-    fun `multi column - click cover opens image viewer, tap closes it`() = runPageTest(1400, 1400) {
+    fun `multi column - click cover opens image viewer and close button dismisses it`() = runPageTest(1400, 1400) {
         onNodeWithTag(IMAGE_VIEWER_TEST_TAG).assertDoesNotExist()
         capture("image-viewer-multicolumn-before")
         onNodeWithTag(SUBJECT_COVER_IMAGE_TEST_TAG).performClick()
@@ -157,16 +156,8 @@ class SubjectDetailsImageViewerTest {
         onNodeWithTag(IMAGE_VIEWER_TEST_TAG).assertIsDisplayed()
         capture("image-viewer-multicolumn-cover-open")
 
-        // 单击查看器关闭. 注意: 查看器的 tap 检测要求手势期间没有 Move 事件
-        // (performClick 会注入 down-move-up), 因此只注入 down+up;
-        // 其单击回调经真实墙钟 delay(272ms) 触发 (区分双击), 不受测试虚拟时钟控制,
-        // 因此用实时轮询等待节点消失.
-        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).performTouchInput {
-            down(center)
-            up()
-        }
-        waitUntil(timeoutMillis = 5000) {
-            onAllNodesWithTag(IMAGE_VIEWER_TEST_TAG).fetchSemanticsNodes().isEmpty()
-        }
+        onNodeWithTag(ImageViewerTestTags.CLOSE).assertIsDisplayed().performClick()
+        waitForIdle()
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).assertDoesNotExist()
     }
 }
