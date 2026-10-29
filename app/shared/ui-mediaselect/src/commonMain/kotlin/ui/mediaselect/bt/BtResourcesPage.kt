@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
+import me.him188.ani.app.tools.LocalTimeZone
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.setClipEntryText
@@ -99,7 +100,7 @@ import org.jetbrains.compose.resources.stringResource
  * @param sourceResults 数据源面板的源状态来源 (btSources: 名称 / 查询中 / 查询失败 + 重试 / 禁用灰显点击 = onRestartSource).
  * @param watching null → 不画「第 N 话」chip 与观看卡片 (episodeFilterEnabled 仍按 state 生效).
  * @param showWatchingCard 下载对话框传 false: 有当前集 (chip 可用) 但不显示「正在观看」卡片.
- * @param timeZone 发布日期 MM-dd 的时区; 截图测试传 TimeZone.UTC.
+ * @param timeZone 发布日期 MM-dd 的时区; `null` 表示使用 App 全局时区, 截图测试传 TimeZone.UTC.
  */
 @Composable
 fun BtResourcesPage(
@@ -113,8 +114,9 @@ fun BtResourcesPage(
     modifier: Modifier = Modifier,
     inlineTitle: (@Composable RowScope.() -> Unit)? = null,
     showWatchingCard: Boolean = true,
-    timeZone: TimeZone = TimeZone.currentSystemDefault(),
+    timeZone: TimeZone? = null,
 ) {
+    val zone = timeZone ?: LocalTimeZone.current
     val presentation by state.btPresentationFlow.collectAsStateWithLifecycle()
     val episodeFilterEnabled by state.btFilterState.episodeFilterEnabled.collectAsStateWithLifecycle()
     val sourceFilter by state.btFilterState.sourceFilter.collectAsStateWithLifecycle()
@@ -286,7 +288,7 @@ fun BtResourcesPage(
                     onReveal = { revealExcluded = true },
                     onClick = onClickRow,
                     onLongClick = onLongClickRow,
-                    timeZone = timeZone,
+                    timeZone = zone,
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     columns = columns,
                     listState = listState,
@@ -301,7 +303,7 @@ fun BtResourcesPage(
                     onReveal = { revealExcluded = true },
                     onClick = onClickRow,
                     onLongClick = onLongClickRow,
-                    timeZone = timeZone,
+                    timeZone = zone,
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     listState = listState,
                     horizontalPadding = horizontalPadding,

@@ -16,14 +16,21 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.number
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import me.him188.ani.app.platform.currentSystemTimeZone
 import kotlin.time.Clock
 import kotlin.time.Instant
 
+/**
+ * 按周显示日期. "今天"/"明天" 等相对语义以传入的时区中的日历日划分.
+ *
+ * 显示层应显式传入用户选择的时区 (见 `LocalTimeZone`);
+ * 两个 `format` 的默认值只用于预览与测试.
+ */
 class WeekFormatter(
     private val getTimeNow: () -> Instant = { Clock.System.now() },
 ) {
-    fun format(instance: Instant, timeZone: TimeZone = TimeZone.currentSystemDefault()): String {
-        return format(instance.toLocalDateTime(timeZone).date)
+    fun format(instance: Instant, timeZone: TimeZone = currentSystemTimeZone()): String {
+        return format(instance.toLocalDateTime(timeZone).date, timeZone)
     }
 
     /**
@@ -33,7 +40,7 @@ class WeekFormatter(
      */
     fun format(
         targetDate: LocalDate,
-        timeZone: TimeZone = TimeZone.currentSystemDefault(),
+        timeZone: TimeZone = currentSystemTimeZone(),
     ): String {
         val now = getTimeNow().toLocalDateTime(timeZone).date
 

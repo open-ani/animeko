@@ -78,6 +78,10 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.settings.tabs.media.MediaSelectorWorkflowDemoState",
         "me.him188.ani.app.ui.settings.tabs.media.rememberMediaSelectorWorkflowDemoState",
         "me.him188.ani.app.ui.settings.tabs.media.MediaSelectorWorkflowPreview",
+        // 时区目录与偏移格式化是无布局的展示数据, TV 时区条目与手机设置页共用
+        "me.him188.ani.app.ui.settings.time.TimeZoneSection",
+        "me.him188.ani.app.ui.settings.time.timeZoneCatalog",
+        "me.him188.ani.app.ui.settings.time.formatUtcOffset",
         "me.him188.ani.app.ui.settings.tabs.AniHelperDestination",
         "me.him188.ani.app.ui.settings.tabs.about.developerCredits",
         "me.him188.ani.app.ui.settings.tabs.about.mergeOpenSourceLibraries",

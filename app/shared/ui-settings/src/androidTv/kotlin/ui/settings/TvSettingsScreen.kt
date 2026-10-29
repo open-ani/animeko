@@ -56,6 +56,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_loading
 import me.him188.ani.app.ui.lang.settings_load_failed
@@ -82,6 +83,19 @@ import org.jetbrains.compose.resources.stringResource
 private fun sectionKey(section: TvSettingsSection) = TvFocusKey("settings-section-$section")
 internal fun settingsItemKey(id: String) = TvFocusKey("settings-item-$id")
 
+/**
+ * 入口指定的设置分节. TV 的分节与手机 tab 不完全对应: 只有同名分节 (界面/主题/播放器/媒体源/关于) 直接落位,
+ * 其余 tab 落到默认的「界面」分节, 用户可以再自己切换.
+ */
+internal fun SettingsTab?.toTvSettingsSection(): TvSettingsSection = when (this) {
+    SettingsTab.THEME -> TvSettingsSection.Theme
+    SettingsTab.PLAYER -> TvSettingsSection.Player
+    SettingsTab.MEDIA_SOURCE -> TvSettingsSection.Sources
+    SettingsTab.MEDIA_SELECTOR -> TvSettingsSection.Watching
+    SettingsTab.ABOUT -> TvSettingsSection.About
+    else -> TvSettingsSection.Appearance
+}
+
 @Composable
 fun TvSettingsScreen(
     state: TvSettingsUiState,
@@ -91,9 +105,11 @@ fun TvSettingsScreen(
     onOpenUrl: (String) -> Unit = {},
     onImport: () -> Unit = {},
     onCheckUpdate: () -> Unit = {},
+    /** 入口指定的设置分节, 映射规则见 [toTvSettingsSection]. */
+    initialTab: SettingsTab? = null,
 ) {
     val focus = rememberTvFocusScope()
-    var section by rememberSaveable { mutableStateOf(TvSettingsSection.Appearance) }
+    var section by rememberSaveable { mutableStateOf(initialTab.toTvSettingsSection()) }
     var detailFocused by rememberSaveable { mutableStateOf(false) }
     var aboutPage by rememberSaveable { mutableStateOf(TvSettingsAboutPage.Overview) }
     var extra by rememberSaveable { mutableStateOf<TvSettingsExtra?>(null) }

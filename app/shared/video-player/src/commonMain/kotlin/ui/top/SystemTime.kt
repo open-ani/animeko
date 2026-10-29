@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import me.him188.ani.app.tools.LocalTimeZone
 import me.him188.ani.app.ui.foundation.TextWithBorder
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
@@ -26,11 +27,12 @@ import kotlin.time.Instant
 
 @Composable
 fun SystemTime() {
-    var time by remember { mutableStateOf(formatTime(Clock.System.now())) }
+    val timeZone = LocalTimeZone.current
+    var time by remember { mutableStateOf(formatTime(Clock.System.now(), timeZone)) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(timeZone) {
         while (true) {
-            time = formatTime(Clock.System.now())
+            time = formatTime(Clock.System.now(), timeZone)
             delay(1.seconds)
         }
     }
@@ -41,8 +43,8 @@ fun SystemTime() {
     )
 }
 
-private fun formatTime(now: Instant): String {
-    val local = now.toLocalDateTime(TimeZone.currentSystemDefault())
+private fun formatTime(now: Instant, timeZone: TimeZone): String {
+    val local = now.toLocalDateTime(timeZone)
     val hour = local.hour.toString().padStart(2, '0')
     val minute = local.minute.toString().padStart(2, '0')
     return "$hour:$minute"

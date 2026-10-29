@@ -71,6 +71,7 @@ import me.him188.ani.app.data.models.bangumi.BangumiAutoMergedChange
 import me.him188.ani.app.data.models.bangumi.BangumiConflictFieldType
 import me.him188.ani.app.data.models.bangumi.BangumiConflictKey
 import me.him188.ani.app.data.models.bangumi.BangumiMergeSide
+import me.him188.ani.app.tools.LocalTimeZone
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -134,7 +135,7 @@ internal fun BangumiMergeConflictList(
 ) {
     val groups = state.groups
     val now = remember(state.mergeState) { getTimeNow() }
-    val timeZone = remember { TimeZone.currentSystemDefault() }
+    val timeZone = LocalTimeZone.current
 
     // 闪烁提示: 点击禁用态"应用合并"后滚动到第一个未决定的条目并高亮.
     // nonce 消费记录放在布局分支之外: 窗口尺寸变化切换分支时, 新分支的
