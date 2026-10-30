@@ -115,7 +115,7 @@ object JsonApiMediaSourceCodec : DefaultMediaSourceCodec<JsonApiMediaSourceArgum
 /**
  * 通用 JSON API 数据源: 站点通过 HTTP 接口提供搜索、剧集与播放地址, 配置见 [JsonApiSearchConfig].
  *
- * 浏览与自动匹配的结构与 Selector 数据源相同 (关键词链、搜索缓存、按集筛选), 区别在于页面是 JSON 而不是 HTML,
+ * 浏览与自动匹配的结构与 Selector 数据源相同 (关键词链、搜索缓存、条目名匹配), 区别在于页面是 JSON 而不是 HTML,
  * 以及视频地址在播放前由 [resolveApiVideo] 向站点重新获取 (签发请求, 或重取剧集列表), 而不是用 WebView 加载页面.
  */
 class JsonApiMediaSource(
@@ -534,7 +534,7 @@ class JsonApiMediaSource(
     }
 
     /**
-     * 把条目的剧集转换为资源, 并按当前剧集筛选 ([me.him188.ani.app.domain.mediasource.web.SelectorAutoMatchConfig.filterByEpisodeSort]).
+     * 把条目的全部剧集转换为资源. 当前剧集的筛选由资源选择器负责, 同一条目的各集共用查询结果.
      */
     private fun selectMedia(
         subject: JsonApiSubjectInfo,
@@ -542,14 +542,10 @@ class JsonApiMediaSource(
         filterContext: MediaListFilterContext,
     ): List<DefaultMedia> {
         val parser = LabelFirstRawTitleParser()
-        val list = episodes.mapNotNull { episode ->
+        return episodes.mapNotNull { episode ->
             val sort = episode.toWebSearchEpisodeInfo().matchingEpisodeSort(filterContext.episodeSort, filterContext.episodeEp)
                 ?: return@mapNotNull null
             createMedia(subject, episode, sort, parser)
-        }
-        if (!searchConfig.autoMatch.filterByEpisodeSort) return list
-        return with(filterContext) {
-            list.filter { MediaListFilters.ContainsAnyEpisodeInfo.applyOn(it.asCandidate()) }
         }
     }
 
