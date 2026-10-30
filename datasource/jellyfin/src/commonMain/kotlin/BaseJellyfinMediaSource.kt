@@ -48,6 +48,7 @@ private const val TYPE_SERIES = "Series"
 private const val TITLE_SEARCH_PAGE_SIZE = 50
 private const val TITLE_SEARCH_MAX_PAGES = 4
 private const val TITLE_SEARCH_ITEM_TYPES = "$TYPE_SERIES,$TYPE_SEASON,$TYPE_EPISODE,$TYPE_MOVIE"
+private const val MEDIA_STREAMS_BATCH_SIZE = 50
 private const val FIELD_PROVIDER_IDS = "ProviderIds"
 private const val PROVIDER_ID_BANGUMI = "Bangumi"
 private const val PROVIDER_ID_BANGUMI_SUBJECT = "BangumiSubject"
@@ -89,7 +90,7 @@ abstract class BaseJellyfinMediaSource(
 
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> {
         return SinglePagePagedSource {
-            val matches = findBySubjectNames(query)
+            val matches = hydrateMediaStreams(findBySubjectNames(query))
             val authorization = getAuthorization()
             matches
                 .mapNotNull { it.toMediaMatch(query, authorization.accessToken) }
@@ -139,7 +140,7 @@ abstract class BaseJellyfinMediaSource(
                 continue
             }
 
-            hydrateMediaStreams(matches).forEach { match ->
+            matches.forEach { match ->
                 val existing = fallbackMatches[match.item.Id]
                 if (existing == null || match.confidence > existing.confidence) {
                     fallbackMatches[match.item.Id] = match
@@ -364,26 +365,30 @@ abstract class BaseJellyfinMediaSource(
 
     /**
      * MediaStreams is large and unnecessary during discovery. Fetch it only for selected items.
+     * Bounded batches keep the item ids query within reverse proxy request URI limits.
      * If this optional enrichment fails, keep the playable item and continue without subtitles.
      */
     private suspend fun hydrateMediaStreams(matches: List<MatchedItem>): List<MatchedItem> {
         if (matches.isEmpty()) return emptyList()
 
-        val hydratedItems = try {
-            doSearch(
-                recursive = false,
-                itemIds = matches.joinToString(",") { it.item.Id },
-                fields = "MediaStreams",
-                limit = matches.size,
-                enableTotalRecordCount = false,
-            ).Items.associateBy { it.Id }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
-            logger.warn(e) {
-                "Failed to load MediaStreams for Jellyfin items; continuing without subtitle metadata"
+        val hydratedItems = buildMap {
+            for (batch in matches.distinctBy { it.item.Id }.chunked(MEDIA_STREAMS_BATCH_SIZE)) {
+                try {
+                    doSearch(
+                        recursive = false,
+                        itemIds = batch.joinToString(",") { it.item.Id },
+                        fields = "MediaStreams",
+                        limit = batch.size,
+                        enableTotalRecordCount = false,
+                    ).Items.forEach { put(it.Id, it) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    logger.warn(e) {
+                        "Failed to load MediaStreams for Jellyfin items; continuing without subtitle metadata for this batch"
+                    }
+                }
             }
-            emptyMap()
         }
 
         return matches.map { match ->

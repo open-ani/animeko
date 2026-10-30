@@ -247,6 +247,7 @@ afterEvaluate {
                 val dirsNames = listOf(
                     // From your (JBR's) Java Home to Packed Java Home 
                     "bin/jcef_helper.exe" to "bin/jcef_helper.exe",
+                    "bin/cef_server.exe" to "bin/cef_server.exe",
                     "bin/icudtl.dat" to "bin/icudtl.dat",
                     "bin/chrome_100_percent.pak" to "bin/chrome_100_percent.pak",
                     "bin/chrome_200_percent.pak" to "bin/chrome_200_percent.pak",
@@ -254,6 +255,8 @@ afterEvaluate {
                     "bin/v8_context_snapshot.bin" to "bin/v8_context_snapshot.bin",
                 )
                 val optionalJcefRuntimeFiles = setOf(
+                    // JCEF probes this helper during initialization when it is bundled with the JBR.
+                    "bin/cef_server.exe",
                     "bin/chrome_100_percent.pak",
                     "bin/chrome_200_percent.pak",
                     "bin/resources.pak",
