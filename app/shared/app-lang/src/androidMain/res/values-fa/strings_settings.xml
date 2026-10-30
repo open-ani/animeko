@@ -1,0 +1,26 @@
+<resources>
+    <string name="settings_option_enabled">فعال</string>
+    <string name="settings_option_disabled">غیرفعال</string>
+    <string name="settings_load_failed">بارگیری تنظیمات ممکن نشد. لطفاً دوباره امتحان کنید.</string>
+    <string name="settings_save_failed">ذخیرهٔ تنظیمات ممکن نشد. لطفاً دوباره امتحان کنید.</string>
+    <string name="settings_playback_speed_min">حداقل سرعت</string>
+    <string name="settings_playback_speed_max">حداکثر سرعت</string>
+    <string name="settings_appearance_description">زبان، قابلیت مشاهدهٔ محتوا و جستجو</string>
+    <string name="settings_player_description">پخش، کیفیت ویدیو و فیلترهای دانماکو</string>
+    <string name="settings_player_group_playback">رفتار پخش</string>
+    <string name="settings_player_group_picture">تصویر و سرعت پخش</string>
+    <string name="settings_player_group_danmaku">دانماکو و فیلترها</string>
+    <string name="settings_player_group_playback_description">قسمت بعدی، رد کردن تیتراژ آغازین و پایانی، و پیشرفت تماشا</string>
+    <string name="settings_player_group_picture_description">بهبود ویدیو، پیش‌نمایش‌ها و سرعت پخش</string>
+    <string name="settings_player_group_danmaku_description">نمایش دانماکو، نرخ نوسازی و قوانین فیلتر</string>
+    <string name="settings_player_group_advanced_description">ویژگی‌های آزمایشی و رفتار تمام‌صفحه</string>
+    <string name="settings_priority_reorder">تغییر اولویت‌ها</string>
+    <string name="settings_priority_reorder_done">اتمام مرتب‌سازی</string>
+    <string name="settings_priority_selected_description">گزینه‌های مورد نظر را برای استفاده انتخاب کنید. موارد بالاتر در اولویت هستند.</string>
+    <string name="settings_priority_position">اولویت %1$d</string>
+    <string name="settings_danmaku_rule_enabled">فعال‌سازی این قانون</string>
+    <string name="settings_danmaku_delete_rule_title">این قانون حذف شود؟</string>
+    <string name="settings_danmaku_delete_rule_description">این قانون فیلتر حذف خواهد شد. این عمل غیرقابل بازگشت است.</string>
+    <string name="settings_import">درون‌ریزی</string>
+    <string name="settings_search_visibility_description">فقط بر نتایج جستجو تأثیر می‌گذارد.</string>
+</resources>
