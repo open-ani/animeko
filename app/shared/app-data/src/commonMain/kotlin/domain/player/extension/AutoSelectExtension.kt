@@ -70,6 +70,7 @@ class AutoSelectExtension(
             episodeSession.fetchSelectFlow.collectLatest { fetchSelect ->
                 if (fetchSelect == null) return@collectLatest
                 val report = AutoSelectReport(episodeSession.playFlowEpisode, context.playFlow.markNow())
+                val selectionAttempt = fetchSelect.autoSelectionState.begin()
                 try {
                     // fetchSelect 由 infoBundleFlow 派生, 拿到非空 bundle 时 replayCache 已有对应的 infoBundle.
                     // infoBundleFlow 首值 null, 网络错误后也会回到 null; 用 replayCache 而不是 filterNotNull().first(), 否则会连自动选择一起挂住.
@@ -81,9 +82,14 @@ class AutoSelectExtension(
                             && !hasLocalCacheForEpisode(fetchSelect.mediaFetchSession, fetchSelect.mediaSelector)
                             && replayBrowseMemory(episodeInfo, fetchSelect.mediaSelector, report)
                     if (!replayed) {
-                        report.onAutoSelected(mediaSelectorAutoSelectUseCase(fetchSelect.mediaFetchSession, fetchSelect.mediaSelector))
+                        val outcome = mediaSelectorAutoSelectUseCase(
+                            fetchSelect.mediaFetchSession, fetchSelect.mediaSelector, context.playbackSourceMemory.snapshot(),
+                        )
+                        fetchSelect.autoSelectionState.finish(selectionAttempt, outcome)
+                        report.onAutoSelected(outcome)
                     }
                 } finally {
+                    fetchSelect.autoSelectionState.cancel(selectionAttempt)
                     report.recordIfNeeded()
                 }
             }
@@ -96,7 +102,7 @@ class AutoSelectExtension(
         report: AutoSelectReport,
     ): Boolean {
         return try {
-            val result = replayBrowseMemory(context.subjectId, episodeInfo, mediaSelector)
+            val result = replayBrowseMemory(context.subjectId, episodeInfo, mediaSelector, context.playbackSourceMemory.snapshot())
             when (result) {
                 ReplayResult.Selected -> report.onBrowseMemorySelected(mediaSelector.selected.value)
                 is ReplayResult.NotFound -> report.replayMiss = result.reason
@@ -217,6 +223,7 @@ class AutoSelectExtension(
         private fun MediaAutoSelectReason.toMethod(): String = when (this) {
             MediaAutoSelectReason.LOCAL_CACHE -> "local_cache"
             MediaAutoSelectReason.PREFERRED_SOURCE -> "preferred_source"
+            MediaAutoSelectReason.RECENT_PLAYBACK -> "recent_playback"
             MediaAutoSelectReason.PREFERRED_KIND_COMPLETED -> "bt"
             MediaAutoSelectReason.WEB_INSTANT -> "instant"
             MediaAutoSelectReason.WEB_EXACT -> "exact"

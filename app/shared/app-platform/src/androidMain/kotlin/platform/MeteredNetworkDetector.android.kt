@@ -14,6 +14,7 @@ import android.content.BroadcastReceiver
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
+import android.net.Network
 import android.net.NetworkCapabilities
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,28 @@ private class AndroidMeteredNetworkDetector(
 
     private val flow = MutableStateFlow(getCurrentIsMetered())
     override val isMeteredNetworkFlow: Flow<Boolean> get() = flow
+    private val environment = MutableStateFlow(getNetworkEnvironment())
+    override val networkEnvironmentFlow: Flow<NetworkEnvironment?> get() = environment
+
+    private val environmentCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) = updateEnvironment()
+        override fun onLost(network: Network) = updateEnvironment()
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) = updateEnvironment()
+    }
+
+    private fun updateEnvironment() {
+        environment.value = getNetworkEnvironment()
+    }
+
+    private fun getNetworkEnvironment(): NetworkEnvironment {
+        val network = connectivityManager.activeNetwork ?: return NetworkEnvironment(null, false)
+        val capabilities = connectivityManager.getNetworkCapabilities(network)
+        return NetworkEnvironment(
+            network.networkHandle.toString(),
+            capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true,
+            capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true,
+        )
+    }
     
     // Create a NetworkCallback to detect network changes
     // private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -60,12 +83,14 @@ private class AndroidMeteredNetworkDetector(
 
         @Suppress("DEPRECATION")
         context.registerReceiver(this, IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION))
+        connectivityManager.registerDefaultNetworkCallback(environmentCallback)
         // Emit the first value
         flow.value = getCurrentIsMetered()
     }
 
     override fun onReceive(context: android.content.Context?, intent: Intent?) {
         flow.value = getCurrentIsMetered()
+        updateEnvironment()
     }
 
     private fun getCurrentIsMetered(): Boolean {
@@ -82,6 +107,7 @@ private class AndroidMeteredNetworkDetector(
         // Unregister the network callback when no longer needed
         // connectivityManager.unregisterNetworkCallback(networkCallback)
         context.unregisterReceiver(this)
+        connectivityManager.unregisterNetworkCallback(environmentCallback)
     }
 
     private inline fun log(message: () -> String) {

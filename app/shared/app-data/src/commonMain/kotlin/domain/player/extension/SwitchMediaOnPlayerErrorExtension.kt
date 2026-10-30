@@ -10,7 +10,6 @@
 package me.him188.ani.app.domain.player.extension
 
 import androidx.annotation.VisibleForTesting
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.collections.immutable.persistentHashSetOf
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -32,11 +31,15 @@ import me.him188.ani.app.domain.media.selector.MediaAutoSelectOutcome
 import me.him188.ani.app.domain.media.selector.MediaAutoSelector
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
+import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
+import me.him188.ani.app.domain.media.selector.SelectOrigin
 import me.him188.ani.app.domain.media.selector.SelectTrigger
+import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
+import me.him188.ani.app.domain.player.MediaLoadResult
+import me.him188.ani.app.domain.player.PlaybackRecoveryPolicy
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.player.analytics.PlayFlowEpisode
 import me.him188.ani.app.domain.player.analytics.PlayFlowStep
-import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
-import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.datasources.api.Media
@@ -46,6 +49,7 @@ import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.PlayerState
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * 当播放失败时, 自动切换到下一个可选择的 media.
@@ -69,7 +73,7 @@ class SwitchMediaOnPlayerErrorExtension(
             context.sessionFlow.collectLatest { session ->
                 invoke(
                     session.fetchSelectFlow,
-                    context.videoLoadingStateFlow,
+                    context.mediaLoadResultFlow,
                     context.player.state,
                     session.playFlowEpisode,
                 )
@@ -85,13 +89,14 @@ class SwitchMediaOnPlayerErrorExtension(
      */
     private suspend fun invoke(
         mediaFetchSessionFlow: Flow<MediaFetchSelectBundle?>,
-        videoLoadingStateFlow: Flow<VideoLoadingState>,
+        mediaLoadResultFlow: Flow<MediaLoadResult?>,
         playerStateFlow: Flow<PlayerState>,
         episode: PlayFlowEpisode,
     ) {
         val handler = PlayerLoadErrorHandler(
             getPreferKind = { getMediaSelectorSettingsFlowUseCase().first().preferKind },
             getSourceTiers = { getSourceTiersUseCase().first() },
+            playbackSourceMemory = context.playbackSourceMemory,
         )
 
         // 播放失败时自动切换下一个 media.
@@ -113,7 +118,7 @@ class SwitchMediaOnPlayerErrorExtension(
                     launch {
                         handler.observeLoadErrorAndHandle(
                             mediaFetchSessionFlow,
-                            videoLoadingStateFlow,
+                            mediaLoadResultFlow,
                             playerStateFlow,
                             episode,
                         )
@@ -124,7 +129,7 @@ class SwitchMediaOnPlayerErrorExtension(
 
     private suspend fun PlayerLoadErrorHandler.observeLoadErrorAndHandle(
         mediaFetchSessionFlow: Flow<MediaFetchSelectBundle?>,
-        videoLoadingStateFlow: Flow<VideoLoadingState>,
+        mediaLoadResultFlow: Flow<MediaLoadResult?>,
         playerStateFlow: Flow<PlayerState>,
         episode: PlayFlowEpisode,
     ) {
@@ -132,22 +137,34 @@ class SwitchMediaOnPlayerErrorExtension(
             if (bundle == null) return@collectLatest
 
             combine(
-                videoLoadingStateFlow, // 解析链接出错 (未匹配到链接)
+                mediaLoadResultFlow,
                 playerStateFlow, // 解析成功, 但播放器出错 (无法链接到链接, 例如链接错误)
-            ) { videoLoadingState, playerState ->
-                when {
-                    videoLoadingState is VideoLoadingState.Failed &&
-                            PlayerLoadErrorHandler.canRecoverBySwitching(videoLoadingState) -> PlayerErrorTrigger.LOAD_FAILED
+                context.playbackSourceMemory.snapshots,
+            ) { loadResult, playerState, memory ->
+                val trigger = when {
+                    memory.networkAvailable == false -> null
+                    loadResult is MediaLoadResult.Failed &&
+                            PlayerLoadErrorHandler.canRecoverBySwitching(loadResult.state) -> PlayerErrorTrigger.LOAD_FAILED
 
-                    playerState.mediaStatus is MediaStatus.Error -> PlayerErrorTrigger.PLAYER_ERROR
+                    loadResult is MediaLoadResult.Ready && playerState.mediaStatus is MediaStatus.Error -> PlayerErrorTrigger.PLAYER_ERROR
                     else -> null
                 }
+                trigger?.let { ErrorSignal(it, checkNotNull(loadResult)) }
             }.distinctUntilChanged()
                 .collectLatest { trigger ->
                     if (trigger != null) {
-                        val failedMedia = bundle.mediaSelector.selected.value
-                        val handling = handleError(bundle.mediaFetchSession, bundle.mediaSelector)
-                        recordAutoSwitch(episode, trigger, failedMedia, handling, blacklist.size)
+                        val failedMedia = bundle.mediaSelector.selected.value ?: return@collectLatest
+                        if (failedMedia.mediaId != trigger.loadResult.mediaId) return@collectLatest
+                        val selectionAttempt = bundle.autoSelectionState.begin()
+                        try {
+                            val handling = handleError(bundle.mediaFetchSession, bundle.mediaSelector)
+                            if (handling is PlayerLoadErrorHandling.Attempted) {
+                                bundle.autoSelectionState.finish(selectionAttempt, handling.outcome)
+                            }
+                            recordAutoSwitch(episode, trigger.trigger, failedMedia, handling, blacklist.size)
+                        } finally {
+                            bundle.autoSelectionState.cancel(selectionAttempt)
+                        }
                     } // else: cancel selection
                 }
         }
@@ -156,7 +173,7 @@ class SwitchMediaOnPlayerErrorExtension(
     private fun recordAutoSwitch(
         episode: PlayFlowEpisode,
         trigger: PlayerErrorTrigger,
-        failedMedia: Media?,
+        failedMedia: Media,
         handling: PlayerLoadErrorHandling,
         blacklistSize: Int,
     ) {
@@ -165,7 +182,7 @@ class SwitchMediaOnPlayerErrorExtension(
                 put("outcome", "skipped")
                 put("reason", reason)
             }
-            put("sel_no", failedMedia?.let { episode.selectionNoOf(it.mediaId) })
+            put("sel_no", episode.selectionNoOf(failedMedia.mediaId))
             put("trigger", trigger)
             when (handling) {
                 is PlayerLoadErrorHandling.Attempted -> when (val outcome = handling.outcome) {
@@ -187,6 +204,7 @@ class SwitchMediaOnPlayerErrorExtension(
                 }
 
                 PlayerLoadErrorHandling.SkippedDroppedFile -> skipped("dropped_file")
+                PlayerLoadErrorHandling.SkippedNetworkUnavailable -> skipped("network_unavailable")
                 PlayerLoadErrorHandling.SkippedSelectionChanged -> skipped("user_switched")
                 is PlayerLoadErrorHandling.SkippedPreferKind -> skipped("prefer_bt")
             }
@@ -199,21 +217,28 @@ class SwitchMediaOnPlayerErrorExtension(
             return SwitchMediaOnPlayerErrorExtension(context, koin)
         }
     }
+
+    private data class ErrorSignal(val trigger: PlayerErrorTrigger, val loadResult: MediaLoadResult)
 }
 
 internal class PlayerLoadErrorHandler(
     private val getPreferKind: suspend () -> MediaSourceKind?,
     private val getSourceTiers: suspend () -> MediaSelectorSourceTiers,
+    private val playbackSourceMemory: PlaybackSourceMemory? = null,
 ) {
-    private var blacklistedMediaIds = persistentHashSetOf<String>()
+    /** 失败资源随环境代次重建，用户主动离开的资源在本集内保留。 */
+    private var failedMediaIds = persistentHashSetOf<String>()
+    private var manuallyLeftMediaIds = persistentHashSetOf<String>()
+    private var generation = playbackSourceMemory?.snapshot()?.generation
 
     suspend fun observeMediaSelectorBlacklist(
         mediaSelectorFlow: Flow<MediaSelector>
     ) {
         mediaSelectorFlow.collectLatest { selector ->
             selector.events.onSelect.collect { event ->
+                if (event.origin != SelectOrigin.MANUAL) return@collect
                 event.previousMedia?.let {
-                    blacklistedMediaIds = blacklistedMediaIds.add(it.mediaId)
+                    manuallyLeftMediaIds = manuallyLeftMediaIds.add(it.mediaId)
                 }
             }
         }
@@ -228,6 +253,12 @@ internal class PlayerLoadErrorHandler(
         session: MediaFetchSession,
         mediaSelector: MediaSelector,
     ): PlayerLoadErrorHandling {
+        if (playbackSourceMemory?.snapshot()?.networkAvailable == false) return PlayerLoadErrorHandling.SkippedNetworkUnavailable
+        val currentGeneration = playbackSourceMemory?.snapshot()?.generation
+        if (generation != currentGeneration) {
+            failedMediaIds = persistentHashSetOf()
+            generation = currentGeneration
+        }
         val failedMedia = mediaSelector.selected.value
         if (failedMedia != null && DroppedFileMedia.isDroppedFile(failedMedia)) {
             // 用户拖入的本地文件: 用户明确要播放这个文件, 保留报错, 不替换为其他资源
@@ -240,7 +271,7 @@ internal class PlayerLoadErrorHandler(
 
         // 将当前播放的 mediaId 加入黑名单
         failedMedia?.let {
-            blacklistedMediaIds = blacklistedMediaIds.add(it.mediaId) // thread-safe
+            failedMediaIds = failedMediaIds.add(it.mediaId)
         }
 
         delay(1.seconds) // 稍等让用户看到播放出错
@@ -252,7 +283,7 @@ internal class PlayerLoadErrorHandler(
             getSourceTiers.asFlow(),
         ) { kind, tiers -> kind to tiers }.first()
 
-        if (preferKind != MediaSourceKind.WEB) {
+        if (!PlaybackRecoveryPolicy.canSwitchMedia(failedMedia, preferKind)) {
             logger.info { "Player errored, but preferKind is not WEB ($preferKind), skip automatic switch" }
             return PlayerLoadErrorHandling.SkippedPreferKind(preferKind)
         }
@@ -262,7 +293,8 @@ internal class PlayerLoadErrorHandler(
             MediaAutoSelector.Config(
                 trigger = SelectTrigger.AUTO_ERROR_SWITCH,
                 selectCache = false,
-                blacklist = blacklistedMediaIds,
+                blacklist = blacklist,
+                playbackMemory = playbackSourceMemory?.snapshot() ?: PlaybackSourceMemory.Snapshot(),
                 web = MediaAutoSelector.Web(
                     sourceTiers = sourceTiers,
                     // 错误切换不需要等太长时间。
@@ -287,11 +319,11 @@ internal class PlayerLoadErrorHandler(
          * 并且把真正的原因藏在一串"自动切换"之后. 此时保留报错让用户看到.
          */
         fun canRecoverBySwitching(state: VideoLoadingState.Failed): Boolean =
-            state !is VideoLoadingState.WebEngineUnavailable
+            state !is VideoLoadingState.WebEngineUnavailable && state !is VideoLoadingState.Cancelled
     }
 
     @VisibleForTesting
-    val blacklist: Set<String> get() = blacklistedMediaIds
+    val blacklist: Set<String> get() = failedMediaIds + manuallyLeftMediaIds
 }
 
 /**
@@ -309,6 +341,9 @@ enum class PlayerErrorTrigger {
  * [PlayerLoadErrorHandler.handleError] 的处理结果.
  */
 sealed interface PlayerLoadErrorHandling {
+    /** 已知整机断网，保留错误并等待网络恢复或用户处理。 */
+    data object SkippedNetworkUnavailable : PlayerLoadErrorHandling
+
     /** 失败的是用户拖入的本地文件, 不换源. */
     data object SkippedDroppedFile : PlayerLoadErrorHandling
 

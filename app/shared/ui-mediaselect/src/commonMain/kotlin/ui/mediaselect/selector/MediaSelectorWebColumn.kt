@@ -55,6 +55,7 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_auto_rescue
 import me.him188.ani.app.ui.lang.media_selector_web_captcha_unsupported
 import me.him188.ani.app.ui.lang.media_selector_web_rate_limited
+import me.him188.ani.app.ui.lang.media_selector_web_route_failed
 import me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha
 import me.him188.ani.app.ui.lang.settings_mediasource_refresh
 import me.him188.ani.app.ui.media.webCaptchaRequiredMessage
@@ -68,6 +69,7 @@ import org.jetbrains.compose.resources.stringResource
 data class WebSourceChannel(
     val name: String,
     val original: Media? = null,
+    val isTemporarilyUnavailable: Boolean = false,
 )
 
 data class WebSource(
@@ -258,7 +260,14 @@ private fun WebSourceCard(
                 InputChip(
                     selected = channel == selectedChannel(),
                     onClick = { onSelect(channel) },
-                    label = { Text(channel.name) },
+                    label = {
+                        Column {
+                            Text(channel.name)
+                            if (channel.isTemporarilyUnavailable) {
+                                Text(stringResource(Lang.media_selector_web_route_failed), style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    },
                 )
             }
 

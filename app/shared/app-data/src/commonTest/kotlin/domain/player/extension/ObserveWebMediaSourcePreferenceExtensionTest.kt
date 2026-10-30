@@ -205,7 +205,7 @@ class ObserveWebMediaSourcePreferenceExtensionTest : AbstractPlayerExtensionTest
     }
 
     @Test
-    fun `remove preference if preferred source fails`() = runTest {
+    fun `query failure preserves manual preference until another source is selected`() = runTest {
         val web1: CompletableDeferred<List<Media>>
         val web2: CompletableDeferred<List<Media>>
         val context = createCase { _, suite ->
@@ -222,8 +222,9 @@ class ObserveWebMediaSourcePreferenceExtensionTest : AbstractPlayerExtensionTest
         web1.completeExceptionally(IllegalStateException("constant failure"))
         advanceUntilIdle()
 
-        // Source web1 failed, so preference should be removed
-        assertEquals(0, setPreferenceCalls.size)
+        // 查询失败只影响当前查询状态，用户指定的长期偏好仍然保留。
+        assertEquals("web1", preferredWebMediaSource.value)
+        assertEquals(listOf(subjectId to "web1"), setPreferenceCalls)
 
         val media = suite.mediaSelectorTestBuilder.createMedia("web2", kind = MediaSourceKind.WEB)
         web2.complete(listOf(media))
@@ -234,8 +235,8 @@ class ObserveWebMediaSourcePreferenceExtensionTest : AbstractPlayerExtensionTest
         advanceUntilIdle()
 
         // Preference should be updated to the new source
-        assertEquals(1, setPreferenceCalls.size)
-        assertEquals(subjectId to "web2", setPreferenceCalls.first())
+        assertEquals(2, setPreferenceCalls.size)
+        assertEquals(subjectId to "web2", setPreferenceCalls.last())
 
         testScope.cancel()
     }

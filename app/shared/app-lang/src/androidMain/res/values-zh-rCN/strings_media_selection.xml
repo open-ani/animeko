@@ -68,4 +68,12 @@
     <string name="settings_media_auto_cache_partial">当前设置: 自动缓存观看进度之后的 %d 话, </string>
     <string name="settings_media_auto_cache_space">预计占用空间 %s/番剧</string>
     <string name="settings_media_sort_tip">长按排序，优先选择顺序较高的项目。\n选中数量越少，查询越快。</string>
+    <string name="media_selector_runtime_failures">本次暂不可用的 %1$d 条线路将自动跳过，可手动切换或重新检测。</string>
+    <string name="media_selector_retry_failed_routes">重新检测失败线路</string>
+    <string name="media_selector_web_route_failed">本次暂不可用</string>
+    <string name="media_selector_auto_exhausted">本轮自动选源已结束</string>
+    <string name="media_selector_auto_no_candidates">没有本集可继续尝试的候选资源，可重新尝试或手动选源。</string>
+    <string name="media_selector_auto_no_preference_match">没有符合当前偏好的资源，可调整偏好或手动选源。</string>
+    <string name="media_selector_auto_wait_expired">等待时间内没有找到可继续尝试的资源，可重新尝试或手动选源。</string>
+    <string name="media_selector_retry_auto_selection">重新尝试选源</string>
 </resources>

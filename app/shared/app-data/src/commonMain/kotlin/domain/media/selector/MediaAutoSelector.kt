@@ -45,6 +45,8 @@ internal class MediaAutoSelector(
         /** Select available local caches first; otherwise wait for their lookups before considering network media. */
         val selectCache: Boolean = true,
         val blacklist: Set<String> = emptySet(),
+        /** 播放页的本次观看经验；读取快照不修改手动偏好或数据源启用状态。 */
+        val playbackMemory: PlaybackSourceMemory.Snapshot = PlaybackSourceMemory.Snapshot(),
         /** Null waits for the preferred source kind to complete, using the existing BT preference rules. */
         val web: Web? = null,
         /** Startup may fall back to another kind; player-error replacement stays within WEB. */
@@ -55,6 +57,7 @@ internal class MediaAutoSelector(
      * Web deadlines start only after the remembered source has finished without a selection.
      * Deadlines only wait for pending sources: once every Web source has settled, the selection is the one the
      * last reachable stage would make. An infinite deadline is never reached, so its stages stay closed.
+     * 存在播放页运行记录时，优先线路的有限等待与这些阶段共用起点。
      */
     data class Web(
         val sourceTiers: MediaSelectorSourceTiers,
@@ -89,26 +92,40 @@ internal class MediaAutoSelector(
             return@coroutineScope MediaAutoSelectOutcome.Exhausted(MediaAutoSelectExhaustCause.PRECONDITION_SELECTED)
         }
         val stage = MutableStateFlow(MediaAutoSelectStage.PREFERRED_SOURCE)
+        val priorityExpired = MutableStateFlow(false)
         var outcome: MediaAutoSelectOutcome = MediaAutoSelectOutcome.Cancelled
         var deadlines: Job? = null
+        val sharedDeadlines = config.playbackMemory.recentSuccess != null || config.playbackMemory.failures.isNotEmpty()
+        var fallbackStage = if (config.web?.fastSelect != false) MediaAutoSelectStage.INSTANT else MediaAutoSelectStage.EXACT
+        fun startDeadlines(web: Web): Job = launch {
+            delay(web.exactStageAfter)
+            fallbackStage = MediaAutoSelectStage.EXACT
+            if (stage.value != MediaAutoSelectStage.PREFERRED_SOURCE) stage.value = fallbackStage
+            delay((web.fuzzyMatchAfter - web.exactStageAfter).coerceAtLeast(Duration.ZERO))
+            fallbackStage = MediaAutoSelectStage.FUZZY
+            if (stage.value != MediaAutoSelectStage.PREFERRED_SOURCE) stage.value = fallbackStage
+        }
+        // 运行记录的优先等待与 tier 阶段共用时间预算，优先线路超时后沿用已经推进的阶段。
+        val priorityDeadline = config.web?.takeIf { sharedDeadlines }?.let { web ->
+            deadlines = startDeadlines(web)
+            launch {
+                delay(5.seconds.coerceAtMost(web.fuzzyMatchAfter))
+                priorityExpired.value = true
+            }
+        }
         try {
             combine(
-                mediaSelector.autoSelectSnapshots(sourceSnapshots(session)), stage, mediaSelector.selected,
-            ) { snapshot, phase, currentSelection ->
+                mediaSelector.autoSelectSnapshots(sourceSnapshots(session)), stage, mediaSelector.selected, priorityExpired,
+            ) { snapshot, phase, currentSelection, expired ->
                 if (currentSelection != expectedSelection) Decision.Exhausted(MediaAutoSelectExhaustCause.PREEMPTED)
-                else decide(snapshot, config, phase)
+                else decide(snapshot, config, phase, expired)
             }.first { decision ->
                 when (decision) {
                     Decision.StartFallback -> {
                         if (stage.value == MediaAutoSelectStage.PREFERRED_SOURCE) {
                             val web = checkNotNull(config.web)
-                            stage.value = if (web.fastSelect) MediaAutoSelectStage.INSTANT else MediaAutoSelectStage.EXACT
-                            deadlines = launch {
-                                delay(web.exactStageAfter)
-                                stage.value = MediaAutoSelectStage.EXACT
-                                delay((web.fuzzyMatchAfter - web.exactStageAfter).coerceAtLeast(Duration.ZERO))
-                                stage.value = MediaAutoSelectStage.FUZZY
-                            }
+                            stage.value = fallbackStage
+                            if (!sharedDeadlines) deadlines = startDeadlines(web)
                         }
                         false
                     }
@@ -135,6 +152,7 @@ internal class MediaAutoSelector(
             }
         } finally {
             deadlines?.cancel()
+            priorityDeadline?.cancel()
         }
         outcome
     }
@@ -172,12 +190,12 @@ internal class MediaAutoSelector(
     }
 
     /** Pure decision over a coherent snapshot. Only [select] advances time or writes selection. */
-    private fun decide(snapshot: MediaAutoSelectSnapshot, config: Config, stage: MediaAutoSelectStage): Decision {
+    private fun decide(snapshot: MediaAutoSelectSnapshot, config: Config, stage: MediaAutoSelectStage, priorityExpired: Boolean): Decision {
         val preferredSource = snapshot.sources.firstOrNull {
             it.kind == MediaSourceKind.WEB && it.mediaSourceId == config.preferredSourceId
         }
-        val candidates = snapshot.candidates.filter { it.result.mediaId !in config.blacklist }
-        val preferred = snapshot.preferred.filter { it.result.mediaId !in config.blacklist }
+        val candidates = snapshot.candidates.filter { it.result.mediaId !in config.blacklist && config.playbackMemory.allows(it.result) }
+        val preferred = snapshot.preferred.filter { it.result.mediaId !in config.blacklist && config.playbackMemory.allows(it.result) }
 
         // A ready cache wins immediately, even over a completed remembered WEB source.
         if (config.selectCache) {
@@ -198,16 +216,34 @@ internal class MediaAutoSelector(
             findWebCandidate(snapshot, preferred.filter { it.result.mediaSourceId == preferredSource.mediaSourceId })?.let {
                 return Decision.Select(it, MediaAutoSelectReason.PREFERRED_SOURCE)
             }
+            if (config.playbackMemory.failures.keys.any { it.sourceId == preferredSource.mediaSourceId }) {
+                // 手动优先源中只有已失败线路被跳过，未失败的其他线路仍可按其余偏好参与。
+                findWebCandidate(snapshot, candidates.filter { it.result.mediaSourceId == preferredSource.mediaSourceId })?.let {
+                    return Decision.Select(it, MediaAutoSelectReason.PREFERRED_SOURCE)
+                }
+            }
         }
 
         if (config.web == null) {
             return decideOnCompletion(snapshot, preferred, MediaAutoSelectReason.PREFERRED_KIND_COMPLETED)
         }
         if (stage == MediaAutoSelectStage.PREFERRED_SOURCE) {
-            if (preferredSource != null && !preferredSource.state.isFinal) return Decision.Wait
+            if (preferredSource != null && !preferredSource.state.isFinal && !priorityExpired) return Decision.Wait
             if (preferredSource != null && preferredSource.results.isNotEmpty() &&
                 !snapshot.context.allFieldsLoaded()
             ) return Decision.Wait
+            val recent = config.playbackMemory.recentSuccess
+            if (recent != null && snapshot.settings.preferKind == MediaSourceKind.WEB) {
+                val source = snapshot.sources.firstOrNull { it.mediaSourceId == recent.sourceId }
+                if (snapshot.context.allFieldsLoaded() && source?.state is MediaSourceFetchState.Succeed) {
+                    findWebCandidate(snapshot, candidates.filter {
+                        config.playbackMemory.isRecentSuccess(it.result) && it.metadata.subjectMatchKind == SubjectMatchKind.EXACT
+                    }, relax = true)?.let {
+                        return Decision.Select(it, MediaAutoSelectReason.RECENT_PLAYBACK)
+                    }
+                }
+                if (source != null && !source.state.isFinal && !priorityExpired) return Decision.Wait
+            }
             return Decision.StartFallback
         }
         return decideWeb(snapshot, config, stage, candidates, preferred)
@@ -259,6 +295,18 @@ internal class MediaAutoSelector(
                 MediaAutoSelectStage.FUZZY -> true
                 MediaAutoSelectStage.PREFERRED_SOURCE -> error("Handled before Web fallback")
             }
+        }
+        val recent = eligible.filter { config.playbackMemory.isRecentSuccess(it.result) }
+            .filter { candidate ->
+                candidate.metadata.subjectMatchKind == SubjectMatchKind.EXACT ||
+                    eligible.none { it.metadata.subjectMatchKind == SubjectMatchKind.EXACT }
+            }
+        findWebCandidate(snapshot, recent, relax = true)?.let { media ->
+            val candidate = recent.first { it.result == media }
+            return Decision.Select(
+                media, MediaAutoSelectReason.RECENT_PLAYBACK, candidate.metadata.subjectMatchKind,
+                web.sourceTiers.get(media.mediaSourceId, media.properties.alliance),
+            )
         }
         // Preferences apply within each match/tier group, never ahead of match quality or tier.
         val groups = eligible.groupBy {
@@ -351,6 +399,9 @@ enum class MediaAutoSelectReason {
 
     /** 记忆的 Web 源返回了可用资源. */
     PREFERRED_SOURCE,
+
+    /** 本播放页最近验证成功的条目线路. */
+    RECENT_PLAYBACK,
 
     /** 偏好类型 (非 Web) 的数据源全部完成后按偏好选出. */
     PREFERRED_KIND_COMPLETED,

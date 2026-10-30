@@ -20,8 +20,10 @@ import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.repository.media.ManualBrowseMemory
 import me.him188.ani.app.data.repository.media.ManualBrowseMemoryRepository
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
+import me.him188.ani.app.domain.mediasource.playbackConfigurationIdOrNull
 import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.WebMediaRoute
 import me.him188.ani.datasources.api.source.BrowseChannel
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -51,6 +53,9 @@ enum class ReplayMissReason {
 
     /** 该条目没有记忆. */
     NO_MEMORY,
+
+    /** 本播放页已验证这条线路失败，持久化的浏览记忆仍保留。 */
+    PLAYBACK_FAILED,
 
     /** 该记忆不久前刚结构性未命中过, 不再请求. */
     RECENT_STRUCTURAL_MISS,
@@ -108,7 +113,13 @@ enum class ReplayMissReason {
  * 超时用 `withTimeoutOrNull` 而不是 `withTimeout`: `TimeoutCancellationException` 是 CancellationException 子类, 重抛会杀掉扩展任务.
  */
 fun interface ReplayBrowseMemoryUseCase : UseCase {
-    suspend operator fun invoke(subjectId: Int, episodeInfo: EpisodeInfo, mediaSelector: MediaSelector): ReplayResult
+    suspend operator fun invoke(subjectId: Int, episodeInfo: EpisodeInfo, mediaSelector: MediaSelector): ReplayResult =
+        invoke(subjectId, episodeInfo, mediaSelector, PlaybackSourceMemory.Snapshot())
+
+    suspend operator fun invoke(
+        subjectId: Int, episodeInfo: EpisodeInfo, mediaSelector: MediaSelector,
+        playbackMemory: PlaybackSourceMemory.Snapshot,
+    ): ReplayResult
 }
 
 /**
@@ -128,7 +139,10 @@ class ReplayBrowseMemoryUseCaseImpl(
     private val recentStructuralMiss = mutableMapOf<Int, Pair<ManualBrowseMemory, Instant>>()
     private val recentStructuralMissLock = Mutex()
 
-    override suspend fun invoke(subjectId: Int, episodeInfo: EpisodeInfo, mediaSelector: MediaSelector): ReplayResult {
+    override suspend fun invoke(
+        subjectId: Int, episodeInfo: EpisodeInfo, mediaSelector: MediaSelector,
+        playbackMemory: PlaybackSourceMemory.Snapshot,
+    ): ReplayResult {
         try {
             if (mediaSelector.selected.value != null) return ReplayResult.NotFound(ReplayMissReason.ALREADY_SELECTED)
             val memory = repository.get(subjectId) ?: return ReplayResult.NotFound(ReplayMissReason.NO_MEMORY)
@@ -137,6 +151,12 @@ class ReplayBrowseMemoryUseCaseImpl(
             val source = allInstances.first().firstOrNull { instance ->
                 instance.isEnabled && instance.mediaSourceId == memory.mediaSourceId && instance.source.supportsBrowsing
             }?.source ?: return ReplayResult.NotFound(ReplayMissReason.SOURCE_UNAVAILABLE)
+
+            val configuration = source.playbackConfigurationIdOrNull
+            if (configuration != null && PlaybackSourceMemory.Route(
+                    memory.mediaSourceId, WebMediaRoute(memory.subject.url, memory.channelName.orEmpty(), configuration),
+                ) in playbackMemory.failures
+            ) return ReplayResult.NotFound(ReplayMissReason.PLAYBACK_FAILED)
 
             val channels = withTimeoutOrNull(REPLAY_TIMEOUT) { source.browseSubject(memory.subject) }
                 ?: return ReplayResult.NotFound(ReplayMissReason.BROWSE_TIMEOUT)
@@ -166,6 +186,7 @@ class ReplayBrowseMemoryUseCaseImpl(
             val episode = episodes.getOrNull(index)
                 ?: return ReplayResult.NotFound(ReplayMissReason.INDEX_OUT_OF_RANGE)
             val media = source.createMedia(memory.subject, channel.name, episode, episodeInfo.sort)
+            if (!playbackMemory.allows(media)) return ReplayResult.NotFound(ReplayMissReason.PLAYBACK_FAILED)
             if (mediaSelector.selected.value != null) return ReplayResult.NotFound(ReplayMissReason.PREEMPTED)
             mediaSelector.select(media, SelectTrigger.BROWSE_MEMORY_REPLAY)
             logger.info { "Replayed browse memory for subject $subjectId at index $index as ${episodeInfo.sort}: ${media.mediaId}" }

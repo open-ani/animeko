@@ -48,6 +48,14 @@ data class WebSearchEpisodeInfo(
     val playUrl: String
 )
 
+/** 同一线路标识下同一集有不同地址时，无法仅凭归一化名称建立跨集线路身份。 */
+internal fun List<WebSearchEpisodeInfo>.ambiguousChannelNames(): Set<String?> =
+    groupBy { it.channel }.filterValues { channel ->
+        channel.groupBy { it.episodeSortOrEp?.toString() ?: it.name }.values.any { group ->
+            group.map { it.playUrl }.distinct().size > 1
+        }
+    }.keys
+
 /**
  * 从剧集列表中找到正在播放的剧集.
  *
