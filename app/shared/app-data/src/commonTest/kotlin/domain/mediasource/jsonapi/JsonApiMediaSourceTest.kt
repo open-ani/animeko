@@ -14,10 +14,18 @@ import io.ktor.client.engine.mock.respondError
 import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
+import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.preference.MediaPreference
+import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.domain.media.selector.DefaultMediaSelector
+import me.him188.ani.app.domain.media.selector.MediaSelectorContext
 import me.him188.ani.app.domain.mediasource.web.InMemoryWebSearchSessionCacheDao
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
@@ -233,7 +241,67 @@ class JsonApiMediaSourceTest {
     // region 自动匹配
 
     @Test
-    fun `fetch only loads episodes of subjects whose name matches and returns one media per declared channel`() = runTest {
+    fun `one online fetch supports episode switching without more requests`() = runTest {
+        val (source, site) = createSource()
+        val media = source.fetchMedia(request(episode = 1))
+
+        assertEpisodeSwitching(media)
+
+        assertEquals(1, site.searchCount)
+        assertEquals(1, site.episodeRequests.size)
+        assertEquals(0, site.playCount)
+    }
+
+    @Test
+    fun `one cached fetch supports episode switching without more requests`() = runTest {
+        val (source, site) = createSource(cacheDao = InMemoryWebSearchSessionCacheDao())
+        val online = source.fetchMedia(request(episode = 1))
+        val cached = source.fetchMedia(request(episode = 2))
+
+        assertEquals(online, cached)
+        assertEpisodeSwitching(cached)
+
+        assertEquals(1, site.searchCount)
+        assertEquals(1, site.episodeRequests.size)
+        assertEquals(0, site.playCount)
+    }
+
+    private suspend fun TestScope.assertEpisodeSwitching(media: List<DefaultMedia>) {
+        // 切集只重建选择器, 各集共用同一份条目级查询结果.
+        val results = flowOf(media)
+        val episodeSorts = listOf(1, 2, 3).map { EpisodeSort(it) } +
+                listOf(EpisodeSort("SP1"), EpisodeSort(1))
+        for (sort in episodeSorts) {
+            val selector = DefaultMediaSelector(
+                mediaSelectorContextNotCached = flowOf(
+                    MediaSelectorContext.EmptyForPreview.copy(
+                        episodeInfo = EpisodeInfo.Empty.copy(episodeId = 1, sort = sort),
+                    ),
+                ),
+                mediaListNotCached = results,
+                savedUserPreference = flowOf(MediaPreference.Empty),
+                savedDefaultPreference = flowOf(MediaPreference.Empty),
+                mediaSelectorSettings = flowOf(MediaSelectorSettings.Default),
+                flowCoroutineContext = StandardTestDispatcher(testScheduler),
+                enableCaching = false,
+            )
+            val candidates = selector.filteredCandidatesMedia.first()
+            // sp 与 ex 都映射为 SP1; 选择器也允许特别篇匹配站点上同号的正片.
+            val expectedRanges = if (sort is EpisodeSort.Special) {
+                assertEquals(12, candidates.size, "Candidates for $sort")
+                setOf(EpisodeRange.single(EpisodeSort(1)), EpisodeRange.single(sort))
+            } else {
+                assertEquals(4, candidates.size, "Candidates for $sort")
+                setOf(EpisodeRange.single(sort))
+            }
+            assertEquals(expectedRanges, candidates.map { it.episodeRange }.toSet())
+            selector.select(candidates.first())
+            assertEquals(candidates.first(), selector.selected.value)
+        }
+    }
+
+    @Test
+    fun `fetch only loads matching subjects and returns every episode per declared channel`() = runTest {
         val (source, site) = createSource()
 
         val media = source.fetchMedia(request(subjectNames = listOf("葬送的芙莉莲 第二季"), episode = 1))
@@ -243,11 +311,14 @@ class JsonApiMediaSourceTest {
         assertEquals(listOf("https://api.example.com/episodes?anime_id=3252"), site.episodeRequests)
         assertEquals(
             listOf("线路A", "线路B", "备用", "线路D"),
-            media.map { it.properties.alliance },
+            media.map { it.properties.alliance }.distinct(),
         )
-        assertTrue(media.all { it.episodeRange == EpisodeRange.single(EpisodeSort(1)) })
-        // 特别篇 SP01 / EX01 虽然编号也是 1, 不会被当成第 1 集
-        assertTrue(media.none { it.mediaId.endsWith("-14369") || it.mediaId.endsWith("-14367") })
+        assertEquals(20, media.size)
+        for ((id, sort) in listOf("47463" to "1", "47464" to "2", "47465" to "3", "14369" to "SP1", "14367" to "SP1")) {
+            val episode = media.filter { it.mediaId.endsWith("-$id") }
+            assertEquals(4, episode.size)
+            assertTrue(episode.all { it.episodeRange == EpisodeRange.single(EpisodeSort(sort)) })
+        }
     }
 
     @Test
@@ -262,25 +333,25 @@ class JsonApiMediaSourceTest {
 
         val media = source.fetchMedia(request(subjectNames = names, episode = 1))
 
-        assertEquals(4, media.size)
+        assertEquals(20, media.size)
         assertTrue(media.all { it.mediaId.startsWith("json-api-test.3252-") })
         // 资源的条目名是对上的别名, 选择器下游按它过滤时才不会排除
         assertTrue(media.all { it.properties.subjectName == "Sousou no Frieren 2nd Season" })
 
         val cached = source.fetchMedia(request(subjectNames = names, episode = 2))
         assertEquals(1, site.searchCount)
-        assertEquals(4, cached.size)
+        assertEquals(20, cached.size)
         assertTrue(cached.all { it.properties.subjectName == "Sousou no Frieren 2nd Season" })
     }
 
     @Test
-    fun `fetch filters by the requested episode`() = runTest {
+    fun `fetch returns the same subject resources regardless of the requested episode`() = runTest {
         val (source, _) = createSource()
 
         val media = source.fetchMedia(request(episode = 2))
 
-        assertEquals(4, media.size)
-        assertTrue(media.all { it.mediaId.endsWith("-47464") && it.episodeRange == EpisodeRange.single(EpisodeSort(2)) })
+        assertEquals(20, media.size)
+        assertEquals(media, source.fetchMedia(request(episode = 1)))
     }
 
     @Test
@@ -303,7 +374,7 @@ class JsonApiMediaSourceTest {
         assertEquals(2, site.searchCount)
         assertTrue(site.requests[1].bodyText!!.contains("\"keyword\":\"芙莉莲\""))
         // 回退关键词只用于搜索, 名称匹配仍以 subjectNames 为准: 第一季被排除
-        assertEquals(4, media.size)
+        assertEquals(20, media.size)
         assertTrue(media.all { it.mediaId.startsWith("json-api-test.3252-") })
     }
 
@@ -328,13 +399,15 @@ class JsonApiMediaSourceTest {
         val first = source.fetchMedia(request(episode = 1))
         val second = source.fetchMedia(request(episode = 2))
 
-        assertEquals(4, first.size)
-        assertEquals(4, second.size)
+        assertEquals(20, first.size)
+        assertEquals(20, second.size)
         // 第二次完全从缓存构建, 不发请求
         assertEquals(1, site.searchCount)
         assertEquals(1, site.episodeRequests.size)
         // 缓存里还原的资源与在线搜索得到的一致 (含播放参数)
-        val cached = second.first { it.properties.alliance == "线路A" }
+        val cached = second.single {
+            it.properties.alliance == "线路A" && it.episodeRange == EpisodeRange.single(EpisodeSort(2))
+        }
         assertEquals("json-api-test.3252-线路A-47464", cached.mediaId)
         assertEquals("A", (cached.download as ResourceLocation.WebVideo).apiParameters!!["channelMatch"])
     }
@@ -431,7 +504,7 @@ class JsonApiMediaSourceTest {
         val dao = InMemoryWebSearchSessionCacheDao()
         val site = Site()
         val first = createTestJsonApiMediaSource(config, site.engine, cacheDao = dao, cacheTtl = 1.hours, getTimeMillis = { testScheduler.currentTime })
-        assertEquals(4, first.fetchMedia(request(episode = 1)).size)
+        assertEquals(20, first.fetchMedia(request(episode = 1)).size)
 
         val episodes = config.subject.episodes
         val changed = createTestJsonApiMediaSource(
@@ -440,8 +513,9 @@ class JsonApiMediaSourceTest {
         )
         val media = changed.fetchMedia(request(episode = 2))
 
-        assertEquals(4, media.size)
-        assertTrue(media.all { it.originalUrl == "https://example.com/watch/47464" })
+        assertEquals(20, media.size)
+        assertTrue(media.all { it.originalUrl.startsWith("https://example.com/watch/") })
+        assertEquals(4, media.count { it.originalUrl == "https://example.com/watch/47464" })
         assertEquals(2, site.searchCount)
     }
 
@@ -484,7 +558,7 @@ class JsonApiMediaSourceTest {
     fun `resolveApiVideo reads the url from the episode list and sends no play request when the list carries it`() = runTest {
         val site = Site().apply { episodesResponse = SampleSite.EPISODES_WITH_VIDEO_RESPONSE }
         val (source, _) = createSource(SampleSite.listVideoConfig.copy(requestInterval = Duration.ZERO, userAgent = "Ani-Test/1"), site)
-        val media = source.fetchMedia(request(episode = 2)).single()
+        val media = source.fetchMedia(request(episode = 2)).single { it.episodeRange == EpisodeRange.single(EpisodeSort(2)) }
 
         val video = assertNotNull(source.resolveApiVideo(media))
 
@@ -499,8 +573,9 @@ class JsonApiMediaSourceTest {
     fun `the episode list refetched at play time is shared by episodes of the same subject until it expires`() = runTest {
         val site = Site().apply { episodesResponse = SampleSite.EPISODES_WITH_VIDEO_RESPONSE }
         val (source, _) = createSource(SampleSite.listVideoConfig.copy(requestInterval = Duration.ZERO), site)
-        val second = source.fetchMedia(request(episode = 2)).single()
-        val third = source.fetchMedia(request(episode = 3)).single()
+        val media = source.fetchMedia(request(episode = 2))
+        val second = media.single { it.episodeRange == EpisodeRange.single(EpisodeSort(2)) }
+        val third = media.single { it.episodeRange == EpisodeRange.single(EpisodeSort(3)) }
         val listRequestsAfterFetch = site.episodeRequests.size
 
         assertEquals(SampleSite.EPISODE_2_VIDEO_URL, assertNotNull(source.resolveApiVideo(second)).m3u8Url)
@@ -519,7 +594,7 @@ class JsonApiMediaSourceTest {
         val (strict, _) = createSource(withoutPlayRequest, site)
         val (lenient, _) = createSource(withoutPlayRequest.copy(play = config.play), site)
         // 第 1 集在列表里没有地址
-        val media = strict.fetchMedia(request(episode = 1)).single()
+        val media = strict.fetchMedia(request(episode = 1)).single { it.episodeRange == EpisodeRange.single(EpisodeSort(1)) }
 
         assertNull(strict.resolveApiVideo(media))
         assertEquals(0, site.playCount)
@@ -541,8 +616,10 @@ class JsonApiMediaSourceTest {
         )
         val media = source.fetchMedia(request(episode = 2))
 
-        assertEquals(4, media.size)
-        val lineD = media.first { it.properties.alliance == SampleSite.LINE_D }
+        assertEquals(20, media.size)
+        val lineD = media.single {
+            it.properties.alliance == SampleSite.LINE_D && it.episodeRange == EpisodeRange.single(EpisodeSort(2))
+        }
         assertEquals(SampleSite.EPISODE_2_VIDEO_URL, assertNotNull(source.resolveApiVideo(lineD)).m3u8Url)
         assertEquals(0, site.playCount)
     }
