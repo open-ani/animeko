@@ -20,6 +20,7 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.MediaExtraFiles
@@ -64,6 +65,13 @@ abstract class BaseJellyfinMediaSource(
     )
 
     protected abstract suspend fun getAuthorization(): Authorization
+
+    protected open fun getMediaId(itemId: String): String = itemId
+
+    protected open fun apiParameterName(name: String): String = name
+
+    protected open fun getDownloadLocation(itemId: String, accessToken: String): ResourceLocation =
+        ResourceLocation.HttpStreamingFile(getDownloadUri(itemId, accessToken))
 
     /**
      * Invalidates [authorization] after the server rejects it.
@@ -430,12 +438,10 @@ abstract class BaseJellyfinMediaSource(
 
         return MediaMatch(
             media = DefaultMedia(
-                mediaId = Id,
+                mediaId = getMediaId(Id),
                 mediaSourceId = mediaSourceId,
                 originalUrl = "$baseUrl/Items/$Id",
-                download = ResourceLocation.HttpStreamingFile(
-                    uri = getDownloadUri(Id, accessToken),
-                ),
+                download = getDownloadLocation(Id, accessToken),
                 originalTitle = originalTitle,
                 publishedTime = 0,
                 properties = MediaProperties(
@@ -557,32 +563,28 @@ abstract class BaseJellyfinMediaSource(
         return ParsedSubjectName(name, null)
     }
 
-    private fun chineseToNumber(chinese: String): Int {
-        return when (chinese) {
-            "一" -> 1
-            "二" -> 2
-            "三" -> 3
-            "四" -> 4
-            "五" -> 5
-            "六" -> 6
-            "七" -> 7
-            "八" -> 8
-            "九" -> 9
-            "十" -> 10
-            else -> chinese.toIntOrNull() ?: 1
+    private fun chineseToNumber(chinese: String): Int? {
+        val digits = "一二三四五六七八九"
+        if (chinese.length == 1 && chinese[0] in digits) {
+            return digits.indexOf(chinese[0]) + 1
         }
+        val match = Regex("([一二三四五六七八九]?)十([一二三四五六七八九]?)").matchEntire(chinese)
+            ?: return null
+        val tens = match.groupValues[1].firstOrNull()?.let { digits.indexOf(it) + 1 } ?: 1
+        val ones = match.groupValues[2].firstOrNull()?.let { digits.indexOf(it) + 1 } ?: 0
+        return tens * 10 + ones
     }
 
     private suspend fun doGetSeasons(seriesId: String): SearchResponse {
         return authorizedGet("$baseUrl/Shows/$seriesId/Seasons") {
-            parameter("fields", FIELD_PROVIDER_IDS)
+            parameter(apiParameterName("fields"), FIELD_PROVIDER_IDS)
         }
     }
 
     private suspend fun doGetEpisodes(seriesId: String, seasonNum: Int): SearchResponse {
         return authorizedGet("$baseUrl/Shows/$seriesId/Episodes") {
-            parameter("Season", seasonNum)
-            parameter("fields", FIELD_PROVIDER_IDS)
+            parameter(apiParameterName("Season"), seasonNum)
+            parameter(apiParameterName("fields"), FIELD_PROVIDER_IDS)
         }
     }
 
@@ -598,18 +600,23 @@ abstract class BaseJellyfinMediaSource(
         enableTotalRecordCount: Boolean? = null,
     ): SearchResponse {
         return authorizedGet("$baseUrl/Items") {
-            parameter("enableImages", false)
-            parameter("recursive", recursive)
-            subjectName?.let { parameter("searchTerm", it) }
-            parentId?.let { parameter("parentId", it) }
-            itemIds?.let { parameter("ids", it) }
-            fields?.let { parameter("fields", it) }
-            includeItemTypes?.let { parameter("includeItemTypes", it) }
-            startIndex?.let { parameter("startIndex", it) }
-            limit?.let { parameter("limit", it) }
-            enableTotalRecordCount?.let { parameter("enableTotalRecordCount", it) }
+            parameter(apiParameterName("enableImages"), false)
+            parameter(apiParameterName("recursive"), recursive)
+            subjectName?.let { parameter(apiParameterName("searchTerm"), it) }
+            parentId?.let { parameter(apiParameterName("parentId"), it) }
+            itemIds?.let { parameter(apiParameterName("ids"), it) }
+            fields?.let { parameter(apiParameterName("fields"), it) }
+            includeItemTypes?.let { parameter(apiParameterName("includeItemTypes"), it) }
+            startIndex?.let { parameter(apiParameterName("startIndex"), it) }
+            limit?.let { parameter(apiParameterName("limit"), it) }
+            enableTotalRecordCount?.let { parameter(apiParameterName("enableTotalRecordCount"), it) }
         }
     }
+
+    protected suspend fun authorizedGetJson(
+        url: String,
+        configure: HttpRequestBuilder.() -> Unit = {},
+    ): JsonObject = authorizedGet(url, configure)
 
     private suspend inline fun <reified T> authorizedGet(
         url: String,
@@ -623,7 +630,7 @@ abstract class BaseJellyfinMediaSource(
                 return client.use {
                     val response = get(url) {
                         header(HttpHeaders.Authorization, authorization.headerValue)
-                        parameter("userId", authorization.userId)
+                        parameter(apiParameterName("userId"), authorization.userId)
                         configure()
                     }
                     if (response.status == HttpStatusCode.Unauthorized) {
@@ -657,6 +664,7 @@ private val Item.isPlayableSearchResult: Boolean
     get() = Type == TYPE_EPISODE || Type == TYPE_MOVIE
 
 private fun Item.matchesTargetSeason(targetSeason: Int?): Boolean {
+    if (Type == TYPE_MOVIE) return false
     if (targetSeason == null) return true
     return when (Type) {
         TYPE_SEASON -> IndexNumber == targetSeason

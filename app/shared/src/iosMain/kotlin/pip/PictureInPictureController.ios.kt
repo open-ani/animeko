@@ -25,10 +25,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import me.him188.ani.app.videoplayer.player.AniAVKitMediampPlayer
 import me.him188.ani.app.videoplayer.ui.IosVideoLayerRegistry
 import me.him188.ani.app.videoplayer.ui.findIosVideoLayer
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.avkit.AVKitMediampPlayer
 import platform.AVFoundation.AVPlayerLayer
 import platform.AVKit.AVPictureInPictureController
 import platform.AVKit.AVPictureInPictureControllerDelegateProtocol
@@ -54,7 +54,7 @@ actual fun rememberPictureInPictureController(player: MediampPlayer): PictureInP
     // layer 由 VideoPlayer 的 UIKitView factory 异步创建, 通过版本号感知
     val version by IosVideoLayerRegistry.version.collectAsState()
     val layer = remember(player, version) { player.findIosVideoLayer() }
-    val avPlayer = player as? AVKitMediampPlayer
+    val avPlayer = player as? AniAVKitMediampPlayer
     val controller = remember(player, layer) {
         if (layer != null && avPlayer != null) {
             IosPictureInPictureController(layer, avPlayer)
@@ -79,7 +79,7 @@ actual fun rememberPictureInPictureController(player: MediampPlayer): PictureInP
 @OptIn(BetaInteropApi::class, ExperimentalForeignApi::class)
 private class IosPictureInPictureController(
     layer: AVPlayerLayer,
-    private val player: AVKitMediampPlayer,
+    private val player: AniAVKitMediampPlayer,
 ) : PictureInPictureController {
     override val isSupported: Boolean get() = true
 

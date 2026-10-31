@@ -32,6 +32,31 @@ interface MediaSource {
 特别支持的数据源只是实现 `MediaSource` 接口以接入对应平台，本文不赘述。
 下面我们将着重了解 `SelectorMediaSource`、`JsonApiMediaSource` 和 `RssMediaSource`。
 
+### Emby 配置
+
+Emby 配置包含可选的服务器名称 `name`，用于数据源列表与选源界面展示。`authMode` 缺省为 `apiKey`，
+使用 `userId` 与 `apikey`；`usernamePassword` 使用 `username` 与 `password`，密码允许为空。
+账号登录通过 `Users/AuthenticateByName` 获取用户 ID 与令牌，实例内并发请求共享会话，收到 401 时至多重新登录一次。
+每台服务器使用独立的数据源 ID 与资源 ID。
+Emby 查询使用服务端参数的规范大小写（`UserId`、`SearchTerm`、`Limit` 等），以支持严格区分参数名的服务。
+播放时读取 `Items/{id}/PlaybackInfo` 的 `DirectStreamUrl` 与 `RequiredHttpHeaders`；未提供直链时使用静态视频流地址。
+资源本身保存条目 ID，由 `ApiVideoResolver` 在每次播放或下载前解析当前地址，服务器令牌只附加到同源请求。
+播放请求通过 `X-Emby-Token` 认证，登录会话的设备信息只用于 API 请求；mpv 的请求头列表以逗号分隔，不能直接传入带逗号的登录认证头。
+Emby 支持手动查找：搜索结果包含电视剧、季度和电影，并展示服务端提供的年份；打开电视剧后，每季作为一个带名称的播放列表，
+用户选择季度与剧集。打开季度或电影时直接列出可播放资源。搜索和剧集列表按服务端分页读取，手动选择的资源与自动匹配使用相同的资源 ID。
+电视剧的季度请求最多四个并发，返回的播放列表保持服务端季度顺序。
+自动匹配仅接收片名相符或条目 ID 已确认的电影，电视剧的季度搜索不会把片名不符的电影当作该季资源。
+
+服务器凭据保存在本机的数据源配置参数中，与已有 API Key 配置使用同一存储路径；密码字段在编辑器中遮蔽显示。
+
+`EmbyServerConnectionTest` 是可选的桌面端真实服务器测试。设置 `ANI_EMBY_TEST_URL`、`ANI_EMBY_TEST_USERNAME`、
+`ANI_EMBY_TEST_TITLE` 与可选的 `ANI_EMBY_TEST_PASSWORD` 后运行 `:datasource:jellyfin:desktopTest --tests '*EmbyServerConnectionTest'`，
+会验证登录、片名搜索、播放地址解析及 1024 字节的 Range 读取；未配置服务器时跳过。
+可设置 `ANI_EMBY_TEST_ITEM_ID` 指定搜索结果中必须存在并通过播放验证的条目 ID。
+真实服务器的手动浏览验证由 `EmbyServerBrowsingTest` 提供，设置相同的服务器与账号变量，并提供
+`ANI_EMBY_TEST_BROWSE_KEYWORD`、`ANI_EMBY_TEST_BROWSE_SUBJECT_ID`、`ANI_EMBY_TEST_CHANNEL_LABEL`、
+`ANI_EMBY_TEST_ITEM_ID` 和 `ANI_EMBY_TEST_EPISODE_SORT`，验证搜索、打开季度、选集与视频 Range 读取。
+
 ### `SelectorMediaSource`
 
 `SelectorMediaSource` 会根据配置，使用 [CSS Selector][CSS Selector] 和正则表达式，从 HTML
