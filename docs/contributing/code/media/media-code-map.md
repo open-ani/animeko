@@ -215,6 +215,22 @@
     - Desktop：`DesktopWebMediaResolver`
     - Apple/iOS：`IosWebMediaResolver`
 
+### iOS Matroska 播放
+
+`PlayerSession` 在调用播放器前通过 `preparePlatformMediaPlayback` 准备平台支持的媒体。
+iOS 的 `MatroskaPlaybackPreparer` 识别 `.mkv` 地址；扩展名不能确定格式时，使用有界 Range 请求检查
+EBML / Matroska 标记。MP4 和 HLS 直接交给 AVKit。
+
+Matroska 按块下载到临时目录，然后通过已打包的 FFmpeg 转封装为 MP4：音视频使用 stream copy，
+保留原有时间轴与音轨。HEVC 使用 `hvc1` sample entry，使 AVKit 能识别视频解码配置。
+播放器读取完整 MP4，因此支持时长和任意位置 seek。此路径需要等待完整下载与转封装，并占用源文件和输出文件的磁盘空间；
+AVKit 仍需支持其音视频编码。播放停止、换源、加载失败和取消时释放临时文件。JVM 平台使用原媒体。
+
+`readMatroskaTrackInfo` 有界读取 Tracks 中的视频编码、字幕语言和轨道名称；FFmpeg 将 SRT、ASS/SSA、WebVTT
+内封字幕提取为独立 SRT，位图字幕不进入文本字幕列表。提取结果随 `extraFiles` 交给播放器，生命周期与临时 MP4 一致。
+`AniAVKitMediampPlayer` 将原生 AVKit 字幕与提取的文本字幕接入 `MediaMetadata.subtitleTracks`，共用已有字幕菜单与“关闭”选项。
+SRT/WebVTT 文本根据播放器当前位置显示，seek、切换和关闭字幕时同步更新，异步读取结果受媒体会话与当前选择约束。
+
 ### Web 播放的重要细节
 
 - `ResourceLocation.WebVideo` 不能直接播放。`apiParameters` 为 `null` 时由平台 web resolver 打开页面拦截；
