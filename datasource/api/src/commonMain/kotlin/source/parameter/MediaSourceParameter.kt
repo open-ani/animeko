@@ -45,6 +45,8 @@ class StringParameter(
      */
     val sanitize: (String) -> String = NoopSanitizer,
     override val visibleWhen: MediaSourceParameterVisibilityCondition? = null,
+    /** 编辑器遮蔽此字段的输入，并使用密码键盘。 */
+    val isSensitive: Boolean = false,
 ) : MediaSourceParameter<String> {
     val validate: (String) -> Boolean = {
         if (isRequired && it.isBlank()) {
