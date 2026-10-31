@@ -26,6 +26,7 @@ interface MediaSource {
 - `RssMediaSource`：通用 RSS 订阅数据源；
 - 特别支持的数据源：
     - `JellyfinMediaSource`、`EmbyMediaSource`：Jellyfin、Emby 媒体库；
+    - `WebDavMediaSource`：WebDAV 媒体目录，支持名称搜索、目录浏览与 Basic 认证播放；
     - `DmhyMediaSource`、`MikanMediaSource`：[动漫花园][dmhy]、[蜜柑计划][Mikan] 站点；
     - `IkarosMediaSource`：[Ikaros][Ikaros] 媒体库。
 
@@ -229,6 +230,19 @@ JSONPath 表达式；公共请求头（如 `apikey`）与地址前缀在三个�
 
 客户端忽略不认识的标签，旧客户端忽略整个 `tags` 字段，所以新增标签不需要提升 `schemaVersion`。
 订阅文件由第三方维护，已发布的标签不能改名。
+
+### WebDAV 配置
+
+WebDAV 在自定义数据源模板中配置 `name`、`baseUrl`、`username` 与 `password`。
+`baseUrl` 是要扫描的媒体根目录，支持 HTTP(S) 和包含中文的路径；匿名访问可将账号与密码留空。
+私有地址与局域网主机名标记为 LAN 资源，公网地址标记为 Online；使用 HTTP 时 Basic 凭据没有传输加密，建议使用 HTTPS。
+数据源通过 `PROPFIND` (`Depth: 1`) 遍历子目录，每个包含视频的目录是一个可浏览条目，完整相对目录名与视频文件名参与搜索。
+目录索引在实例内缓存五分钟，最多扫描 2000 个目录；大型文件库应指定更小的媒体根目录。
+自动匹配按文件名解析全部剧集，无法解析集号的文件仍可在手动查找中选择。
+播放与下载通过 `ApiVideoResolver` 获取文件 URL 与 Basic 认证头，持久化的资源 URL 不包含账号密码。
+目录响应中的外部主机、根目录外路径和非直接子项不参与扫描。
+
+服务器凭据保存在本机的数据源配置参数中，与已有 API Key 配置使用同一存储路径；密码字段在编辑器中遮蔽显示。
 
 ## 扩展数据源支持
 
