@@ -11,9 +11,10 @@ import kotlinx.io.Source
 import kotlinx.io.readByteArray
 
 internal data class MatroskaSubtitleTrack(val index: Int, val language: String?, val name: String?)
-internal data class MatroskaTrackInfo(
+internal data class MediaContainerTrackInfo(
     val videoCodecId: String?,
     val subtitles: List<MatroskaSubtitleTrack>,
+    val audioCodecIds: List<String> = emptyList(),
 )
 
 internal fun mp4VideoTagFor(codecId: String?): String? = when (codecId) {
@@ -22,7 +23,7 @@ internal fun mp4VideoTagFor(codecId: String?): String? = when (codecId) {
 }
 
 /** 只读取 Cluster 前的 Tracks 元数据；FFmpeg 的字幕流序号包括位图字幕。 */
-internal fun readMatroskaTrackInfo(source: Source): MatroskaTrackInfo {
+internal fun readMediaContainerTrackInfo(source: Source): MediaContainerTrackInfo {
     fun Source.vint(keepMarker: Boolean): Long {
         val first = readByte().toInt() and 255
         require(first != 0) { "Invalid EBML variable integer" }
@@ -57,11 +58,13 @@ internal fun readMatroskaTrackInfo(source: Source): MatroskaTrackInfo {
         require(size in 0..16 * 1024 * 1024) { "Matroska header exceeds metadata limit" }
         if (id == 0x1654ae6bL) {
             var videoCodecId: String? = null
+            val audioCodecIds = mutableListOf<String>()
             val subtitles = fields(source.readByteArray(size.toInt())).filter { it.first == 0xaeL }.mapNotNull { (_, entry) ->
                 val values = fields(entry).toMap()
                 val type = values[0x83L]?.let(::bytesUnsigned)
                 val codec = values[0x86L]?.decodeToString().orEmpty()
                 if (type == 1L && videoCodecId == null) videoCodecId = codec
+                if (type == 2L) audioCodecIds += codec
                 if (type != 17L) return@mapNotNull null
                 val index = subtitleIndex++
                 if (codec !in setOf("S_TEXT/UTF8", "S_TEXT/ASS", "S_TEXT/SSA", "S_TEXT/WEBVTT")) return@mapNotNull null
@@ -71,10 +74,10 @@ internal fun readMatroskaTrackInfo(source: Source): MatroskaTrackInfo {
                     values[0x536eL]?.decodeToString()?.trimEnd('\u0000'),
                 )
             }
-            return MatroskaTrackInfo(videoCodecId, subtitles)
+            return MediaContainerTrackInfo(videoCodecId, subtitles, audioCodecIds)
         }
         source.skip(size)
         inspected += size
     }
-    return MatroskaTrackInfo(null, emptyList())
+    return MediaContainerTrackInfo(null, emptyList())
 }

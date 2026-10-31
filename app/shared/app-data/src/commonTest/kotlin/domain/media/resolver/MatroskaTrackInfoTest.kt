@@ -10,7 +10,7 @@ import kotlinx.io.Buffer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class MatroskaTrackInfoTest {
+class MediaContainerTrackInfoTest {
     @Test
     fun `parses HEVC and skips bitmap tracks while retaining FFmpeg subtitle stream indexes`() {
         val video = element(0xae, number(0x83, 1) + string(0x86, "V_MPEGH/ISO/HEVC"))
@@ -19,7 +19,7 @@ class MatroskaTrackInfoTest {
             0xae,
             number(0x83, 17) + string(0x86, "S_TEXT/ASS") + string(0x22b59d, "chi") + string(0x536e, "简体"),
         )
-        val tracks = readMatroskaTrackInfo(Buffer().apply { write(fixture(video + bitmap + ass)) })
+        val tracks = readMediaContainerTrackInfo(Buffer().apply { write(fixture(video + bitmap + ass)) })
 
         assertEquals("V_MPEGH/ISO/HEVC", tracks.videoCodecId)
         assertEquals(listOf(MatroskaSubtitleTrack(1, "chi", "简体")), tracks.subtitles)

@@ -30,7 +30,7 @@ import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.writeBytes
 import org.openani.mediamp.source.UriMediaData
 
-class MatroskaPlaybackPreparerTest {
+class AvkitPlaybackPreparerTest {
     @Test
     fun `mkv is downloaded with playback headers and temporary files follow playback lifetime`() = runTest {
         val bytes = matroskaFixture()
@@ -46,7 +46,7 @@ class MatroskaPlaybackPreparerTest {
                 "https://emby.test/original.mkv?api_key=token",
                 mapOf("X-Emby-Token" to "token", HttpHeaders.UserAgent to "VideoClient"),
             )
-            val playback = MatroskaPlaybackPreparer(
+            val playback = AvkitPlaybackPreparer(
                 client,
                 fileUri = { "file://$it" },
                 remux = { input, output, tracks ->
@@ -80,7 +80,7 @@ class MatroskaPlaybackPreparerTest {
             respond(bytes)
         })
         try {
-            MatroskaPlaybackPreparer(client, { "file://$it" }, { _, output, _ ->
+            AvkitPlaybackPreparer(client, { "file://$it" }, { _, output, _ ->
                 Path(output).inSystem.writeBytes(byteArrayOf(1))
             }).prepare(UriMediaData("https://emby.test/Videos/123/stream?static=true")).use {
                 assertTrue((it.data as UriMediaData).uri.startsWith("file://"))
@@ -92,12 +92,18 @@ class MatroskaPlaybackPreparerTest {
     }
 
     @Test
-    fun `mp4 and HLS stay on their original URLs without downloading`() = runTest {
-        val client = HttpClient(MockEngine { error("Direct media must not be downloaded") })
+    fun `compatible mp4 is probed and HLS stays on its original URL without downloading`() = runTest {
+        val bytes = mp4Fixture("hvc1")
+        val client = HttpClient(MockEngine { request ->
+            val range = checkNotNull(request.headers[HttpHeaders.Range]) { "Direct media must not be downloaded" }
+            assertTrue(request.url.encodedPath.endsWith(".MP4"))
+            val (start, end) = range.removePrefix("bytes=").split('-').map { it.toInt() }
+            respond(bytes.copyOfRange(start, minOf(end + 1, bytes.size)), HttpStatusCode.PartialContent)
+        })
         try {
             for (url in listOf("https://cdn.test/video.MP4?token=1", "https://cdn.test/index.m3u8")) {
                 val data = UriMediaData(url)
-                MatroskaPlaybackPreparer(client, { it }, { _, _, _ -> error("Unexpected remux") })
+                AvkitPlaybackPreparer(client, { it }, { _, _, _ -> error("Unexpected remux") })
                     .prepare(data).use { assertSame(data, it.data) }
             }
         } finally {
@@ -106,12 +112,49 @@ class MatroskaPlaybackPreparerTest {
     }
 
     @Test
+    fun `hev1 MP4 is downloaded once and retagged for AVKit`() = runTest {
+        val bytes = mp4Fixture("hev1")
+        var downloads = 0
+        val client = HttpClient(MockEngine { request ->
+            assertEquals("token", request.headers["X-Emby-Token"])
+            val range = request.headers[HttpHeaders.Range]
+            if (range == null) { downloads++; respond(bytes) } else {
+                val (start, end) = range.removePrefix("bytes=").split('-').map { it.toInt() }
+                respond(bytes.copyOfRange(start, minOf(end + 1, bytes.size)), HttpStatusCode.PartialContent)
+            }
+        })
+        try {
+            AvkitPlaybackPreparer(client, { "file://$it" }, { _, output, tracks ->
+                assertEquals("hvc1", mp4VideoTagFor(tracks.videoCodecId))
+                Path(output).inSystem.writeBytes(byteArrayOf(1))
+            }).prepare(UriMediaData("https://cdn.test/video.mp4", mapOf("X-Emby-Token" to "token"))).use {
+                assertTrue((it.data as UriMediaData).uri.startsWith("file://"))
+            }
+            assertEquals(1, downloads)
+        } finally { client.close() }
+    }
+
+    @Test
+    fun `other containers are normalized and subtitle failure does not block the video`() = runTest {
+        val client = HttpClient(MockEngine { respond("AVI fixture") })
+        try {
+            AvkitPlaybackPreparer(
+                client, { "file://$it" }, { _, output, _ -> Path(output).inSystem.writeBytes(byteArrayOf(1)) },
+                normalizeContainer = { _, output -> Path(output).inSystem.writeBytes(matroskaFixture()) },
+                extractSubtitles = { _, _, _ -> error("Damaged subtitle") },
+            ).prepare(UriMediaData("https://cdn.test/video.avi")).use {
+                assertTrue((it.data as UriMediaData).uri.startsWith("file://"))
+            }
+        } finally { client.close() }
+    }
+
+    @Test
     fun `extensionless non Matroska stays on the original URL`() = runTest {
         var requests = 0
         val client = HttpClient(MockEngine { requests++; respond("#EXTM3U\n#EXTINF:10,\na.ts") })
         try {
             val data = UriMediaData("https://cdn.test/stream")
-            MatroskaPlaybackPreparer(client, { it }, { _, _, _ -> error("Unexpected remux") })
+            AvkitPlaybackPreparer(client, { it }, { _, _, _ -> error("Unexpected remux") })
                 .prepare(data).use { assertSame(data, it.data) }
             assertEquals(1, requests)
         } finally {
@@ -125,7 +168,7 @@ class MatroskaPlaybackPreparerTest {
         try {
             for (failure in listOf(IllegalStateException("remux failed"), CancellationException("cancelled"))) {
                 val directory = SystemPaths.createTempDirectory("matroska-failure-")
-                val preparer = MatroskaPlaybackPreparer(client, { it }, { _, output, _ ->
+                val preparer = AvkitPlaybackPreparer(client, { it }, { _, output, _ ->
                     Path(output).inSystem.writeBytes(byteArrayOf(1))
                     throw failure
                 }, { directory })
@@ -144,12 +187,20 @@ class MatroskaPlaybackPreparerTest {
             expectSuccess = true
         }
         try {
-            val preparer = MatroskaPlaybackPreparer(client, { it }, { _, _, _ -> error("Unexpected remux") }, { directory })
+            val preparer = AvkitPlaybackPreparer(client, { it }, { _, _, _ -> error("Unexpected remux") }, { directory })
             assertFailsWith<Exception> { preparer.prepare(UriMediaData("https://cdn.test/video.mkv")) }
             assertFalse(directory.exists())
         } finally {
             client.close()
         }
+    }
+
+    private fun mp4Fixture(codec: String): ByteArray {
+        fun integer(value: Int) = ByteArray(4) { (value shr ((3 - it) * 8)).toByte() }
+        fun box(type: String, content: ByteArray) = integer(content.size + 8) + type.encodeToByteArray() + content
+        var content = box("stsd", ByteArray(4) + integer(1) + box(codec, ByteArray(78)))
+        for (type in listOf("stbl", "minf", "mdia", "trak", "moov")) content = box(type, content)
+        return box("ftyp", "isom".encodeToByteArray()) + content
     }
 
     private fun matroskaFixture(): ByteArray {

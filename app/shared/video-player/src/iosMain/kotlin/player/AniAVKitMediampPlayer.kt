@@ -114,7 +114,7 @@ class AniAVKitMediampPlayer(
     }
 }
 
-private class IosSubtitleTracks(
+internal class IosSubtitleTracks(
     private val scope: CoroutineScope,
     private val player: AVPlayer,
     private val position: () -> Long,
@@ -177,7 +177,8 @@ private class IosSubtitleTracks(
 
     override fun select(track: SubtitleTrack?): Boolean {
         if (track != null && track !in candidates.value) return false
-        if (item !== player.currentItem) return false
+        // AVPlayerItem 的原生对象相等性标识媒体会话，Kotlin 包装对象的引用可以不同。
+        if (item == null || item != player.currentItem) return false
         loadJob?.cancel()
         loadJob = null
         cues.value = SubtitleCueTimeline(emptyList())

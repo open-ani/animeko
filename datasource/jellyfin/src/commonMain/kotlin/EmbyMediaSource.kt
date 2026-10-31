@@ -208,7 +208,7 @@ class EmbyMediaSource(
 
     override suspend fun browseSubject(subject: BrowseSubject): List<BrowseChannel> {
         val id = browseItemId(subject.url)
-        val item = playbackJson.decodeFromJsonElement<EmbyBrowseItem>(authorizedGetJson(endpoint("Items", id)))
+        val item = browseItems(endpoint("Items"), mapOf("Ids" to id)).single { it.Id == id }
         return when (item.Type) {
             "Series" -> coroutineScope {
                 val requests = Semaphore(4)

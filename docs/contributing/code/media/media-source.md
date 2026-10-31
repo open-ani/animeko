@@ -43,7 +43,8 @@ Emby 查询使用服务端参数的规范大小写（`UserId`、`SearchTerm`、`
 资源本身保存条目 ID，由 `ApiVideoResolver` 在每次播放或下载前解析当前地址，服务器令牌只附加到同源请求。
 播放请求通过 `X-Emby-Token` 认证，登录会话的设备信息只用于 API 请求；mpv 的请求头列表以逗号分隔，不能直接传入带逗号的登录认证头。
 Emby 支持手动查找：搜索结果包含电视剧、季度和电影，并展示服务端提供的年份；打开电视剧后，每季作为一个带名称的播放列表，
-用户选择季度与剧集。打开季度或电影时直接列出可播放资源。搜索和剧集列表按服务端分页读取，手动选择的资源与自动匹配使用相同的资源 ID。
+用户选择季度与剧集。打开季度或电影时直接列出可播放资源。条目详情使用带 `Ids` 的 `Items` 查询，
+支持只开放查询接口的服务器。搜索和剧集列表按服务端分页读取，手动选择的资源与自动匹配使用相同的资源 ID。
 电视剧的季度请求最多四个并发，返回的播放列表保持服务端季度顺序。
 自动匹配仅接收片名相符或条目 ID 已确认的电影，电视剧的季度搜索不会把片名不符的电影当作该季资源。
 
@@ -56,6 +57,7 @@ Emby 支持手动查找：搜索结果包含电视剧、季度和电影，并展
 真实服务器的手动浏览验证由 `EmbyServerBrowsingTest` 提供，设置相同的服务器与账号变量，并提供
 `ANI_EMBY_TEST_BROWSE_KEYWORD`、`ANI_EMBY_TEST_BROWSE_SUBJECT_ID`、`ANI_EMBY_TEST_CHANNEL_LABEL`、
 `ANI_EMBY_TEST_ITEM_ID` 和 `ANI_EMBY_TEST_EPISODE_SORT`，验证搜索、打开季度、选集与视频 Range 读取。
+API Key 服务器可用 `ANI_EMBY_TEST_API_KEY` 和 `ANI_EMBY_TEST_USER_ID` 替代用户名密码变量。
 
 ### `SelectorMediaSource`
 

@@ -27,16 +27,32 @@ import kotlin.test.assertTrue
 @EnabledIfEnvironmentVariable(named = "ANI_EMBY_TEST_BROWSE_SUBJECT_ID", matches = ".+")
 class EmbyServerBrowsingTest {
     @Test
+    fun `a search result opens into playable seasons on the configured server`() = runBlocking {
+        createDefaultHttpClient().use { client ->
+            val source = EmbyMediaSource(
+                MediaSourceConfig(arguments = testArguments()),
+                client.asScopedHttpClient(),
+                instanceId = "manual-browse-verification",
+            )
+            val subjectId = checkNotNull(System.getenv("ANI_EMBY_TEST_BROWSE_SUBJECT_ID"))
+            val subjects = source.searchSubjects(checkNotNull(System.getenv("ANI_EMBY_TEST_BROWSE_KEYWORD")))
+            val subject = subjects.single { it.url.endsWith("/Items/$subjectId") }
+            val channels = source.browseSubject(subject)
+            assertTrue(channels.isNotEmpty())
+            assertTrue(channels.any { it.episodes.isNotEmpty() })
+            channels.flatMap { it.episodes }.forEach {
+                assertTrue(it.name.isNotBlank())
+                assertNotNull(source.createMedia(subject, null, it, it.episodeSort))
+            }
+        }
+    }
+
+    @Test
     fun `manual search selects the expected season episode and reads its stream`() = runBlocking {
         createDefaultHttpClient().use { client ->
             val source = EmbyMediaSource(
                 MediaSourceConfig(
-                    arguments = mapOf(
-                        "baseUrl" to checkNotNull(System.getenv("ANI_EMBY_TEST_URL")),
-                        "authMode" to EmbyMediaSource.AUTH_MODE_USERNAME_PASSWORD,
-                        "username" to checkNotNull(System.getenv("ANI_EMBY_TEST_USERNAME")),
-                        "password" to System.getenv("ANI_EMBY_TEST_PASSWORD").orEmpty(),
-                    ),
+                    arguments = testArguments(),
                 ),
                 client.asScopedHttpClient(),
                 instanceId = "manual-browse-verification",
@@ -60,6 +76,18 @@ class EmbyServerBrowsingTest {
                 assertEquals(HttpStatusCode.PartialContent, response.status)
                 assertTrue(response.bodyAsChannel().readAvailable(ByteArray(1024)) > 0)
             }
+        }
+    }
+
+    private fun testArguments(): Map<String, String> {
+        val apiKey = System.getenv("ANI_EMBY_TEST_API_KEY")
+        return mapOf("baseUrl" to checkNotNull(System.getenv("ANI_EMBY_TEST_URL"))) + if (apiKey != null) {
+            mapOf("authMode" to EmbyMediaSource.AUTH_MODE_API_KEY,
+                "userId" to checkNotNull(System.getenv("ANI_EMBY_TEST_USER_ID")), "apikey" to apiKey)
+        } else {
+            mapOf("authMode" to EmbyMediaSource.AUTH_MODE_USERNAME_PASSWORD,
+                "username" to checkNotNull(System.getenv("ANI_EMBY_TEST_USERNAME")),
+                "password" to System.getenv("ANI_EMBY_TEST_PASSWORD").orEmpty())
         }
     }
 }

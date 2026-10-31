@@ -15,6 +15,7 @@ import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.HttpResponseData
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
@@ -37,14 +38,35 @@ import kotlin.test.assertTrue
 
 class EmbyMediaSourceBrowsingTest {
     @Test
+    fun `search results open on servers that only expose item queries`() = runTest {
+        client { request ->
+            when {
+                request.url.encodedPath.contains("/Items/") ->
+                    respond("Unable to find the specified file.", HttpStatusCode.NotFound)
+                request.url.parameters["SearchTerm"] != null || request.url.parameters["Ids"] == "dress-up" ->
+                    jsonResponse("""{"Items":[{"Name":"更衣人偶坠入爱河","Id":"dress-up","Type":"Series"}]}""")
+                request.url.encodedPath.endsWith("Seasons") ->
+                    jsonResponse("""{"Items":[{"Name":"Season 1","Id":"season","Type":"Season"}]}""")
+                request.url.parameters["ParentId"] == "season" ->
+                    jsonResponse("""{"Items":[{"Name":"Episode 1","Id":"episode","Type":"Episode","IndexNumber":1}]}""")
+                else -> error("Unexpected browse request")
+            }
+        }.use { client ->
+            val source = source(client)
+            val result = source.searchSubjects("更衣人偶").single()
+            assertEquals("Episode 1", source.browseSubject(result).single().episodes.single().name.substringAfter(' '))
+        }
+    }
+
+    @Test
     fun `season requests are bounded and keep server order when responses finish out of order`() = runTest {
         var active = 0
         var peak = 0
         val tracker = Mutex()
         client { request ->
             when {
-                request.url.encodedPath.endsWith("/Items/series") ->
-                    jsonResponse("""{"Name":"Series","Id":"series","Type":"Series"}""")
+                request.url.parameters["Ids"] == "series" ->
+                    jsonResponse("""{"Items":[{"Name":"Series","Id":"series","Type":"Series"}]}""")
                 request.url.encodedPath.endsWith("Seasons") -> {
                     val seasons = (1..8).joinToString(",") {
                         """{"Name":"Season $it","Id":"$it","Type":"Season"}"""
@@ -86,8 +108,8 @@ class EmbyMediaSourceBrowsingTest {
                     ]}""")
                 }
 
-                request.url.encodedPath == "/emby/Items/series" ->
-                    jsonResponse("""{"Name":"辛普森一家","Id":"series","Type":"Series"}""")
+                request.url.parameters["Ids"] == "series" ->
+                    jsonResponse("""{"Items":[{"Name":"辛普森一家","Id":"series","Type":"Series"}]}""")
 
                 request.url.encodedPath.endsWith("Seasons") -> jsonResponse("""{"Items":[
                     {"Name":"第 1 季","Id":"season-1","Type":"Season","IndexNumber":1},
@@ -149,10 +171,10 @@ class EmbyMediaSourceBrowsingTest {
     fun `a selected season or movie opens directly and foreign URLs are rejected`() = runTest {
         client { request ->
             when {
-                request.url.encodedPath.endsWith("/season-37") ->
-                    jsonResponse("""{"Name":"第 37 季","Id":"season-37","Type":"Season"}""")
-                request.url.encodedPath.endsWith("/movie") ->
-                    jsonResponse("""{"Name":"Movie","Id":"movie","Type":"Movie"}""")
+                request.url.parameters["Ids"] == "season-37" ->
+                    jsonResponse("""{"Items":[{"Name":"第 37 季","Id":"season-37","Type":"Season"}]}""")
+                request.url.parameters["Ids"] == "movie" ->
+                    jsonResponse("""{"Items":[{"Name":"Movie","Id":"movie","Type":"Movie"}]}""")
                 request.url.parameters["ParentId"] == "season-37" ->
                     jsonResponse("""{"Items":[{"Name":"Episode","Id":"episode","Type":"Episode","IndexNumber":1}]}""")
                 else -> error("Unexpected browse request")
