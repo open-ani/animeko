@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -40,9 +41,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import io.ktor.utils.io.core.Closeable
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -68,8 +74,6 @@ import me.him188.ani.datasources.api.source.parameter.StringParameter
 import me.him188.ani.datasources.api.source.parameter.buildMediaSourceParameters
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.stringResource
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 
 
 sealed class EditMediaSourceMode {
@@ -274,6 +278,15 @@ internal fun EditMediaSourceDialog(
                                     supportingText = argument.description?.let { { Text(it) } },
                                     isError = argument.isError,
                                     shape = MaterialTheme.shapes.medium,
+                                    singleLine = true,
+                                    visualTransformation = if (argument.parameter.isSensitive) {
+                                        PasswordVisualTransformation()
+                                    } else {
+                                        VisualTransformation.None
+                                    },
+                                    keyboardOptions = KeyboardOptions(
+                                        keyboardType = if (argument.parameter.isSensitive) KeyboardType.Password else KeyboardType.Text,
+                                    ),
                                 )
                             }
                         }

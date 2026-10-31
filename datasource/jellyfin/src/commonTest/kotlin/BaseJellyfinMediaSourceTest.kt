@@ -2234,6 +2234,60 @@ class BaseJellyfinMediaSourceTest {
         assertEquals(listOf("1"), requestedSeasonNumbers)
     }
 
+    @Test
+    fun `season searches reject a movie with a different title`() = runTest {
+        val source = createSource { request ->
+            when {
+                request.url.parameters["searchTerm"] != null -> respondJson(
+                    """{"Items":[
+                        {"Name":"辛普森一家大电影","Id":"movie-2007","Type":"Movie"},
+                        {"Name":"辛普森一家","Id":"series","Type":"Series"}
+                    ]}""",
+                )
+
+                request.url.encodedPath.endsWith("Seasons") -> respondJson(
+                    """{"Items":[{"Name":"第 37 季","Id":"season-37","Type":"Season","IndexNumber":37}]}""",
+                )
+
+                request.url.encodedPath.endsWith("Episodes") -> respondJson(
+                    """{"Items":[{"Name":"Episode five","Id":"s37e05","Type":"Episode",
+                        "IndexNumber":5,"ParentIndexNumber":37,"SeriesName":"辛普森一家"}]}""",
+                )
+
+                else -> respondJson("""{"Items":[]}""")
+            }
+        }
+        val result = source.fetch(request(subjectNames = listOf("辛普森一家 第三十七季"))).results.toList()
+        assertEquals(listOf("s37e05"), result.map { it.media.mediaId })
+    }
+
+    @Test
+    fun `Chinese season titles above ten select the requested season`() = runTest {
+        val seasons = listOf("十" to 10, "十一" to 11, "二十" to 20, "二十一" to 21, "三十七" to 37, "九十九" to 99)
+        for ((number, season) in seasons) {
+            val episode = """{"Name":"Episode five","Id":"episode-$season","Type":"Episode",
+                "SeriesName":"辛普森一家","ParentIndexNumber":$season,"IndexNumber":5}"""
+            val source = createSource { request ->
+                when {
+                    request.url.encodedPath.endsWith("Seasons") -> respondJson(
+                        """{"Items":[{"Name":"第 1 季","Id":"season-1","Type":"Season","IndexNumber":1},
+                            {"Name":"第 $season 季","Id":"season-$season","Type":"Season","IndexNumber":$season}]}""",
+                    )
+
+                    request.url.encodedPath.endsWith("Episodes") -> {
+                        assertEquals(season.toString(), request.url.parameters["Season"])
+                        respondJson("""{"Items":[$episode]}""")
+                    }
+
+                    request.url.parameters["ids"] != null -> respondJson("""{"Items":[$episode]}""")
+                    else -> respondJson("""{"Items":[{"Name":"辛普森一家","Id":"series","Type":"Series"}]}""")
+                }
+            }
+            val result = source.fetch(request(subjectNames = listOf("辛普森一家 第${number}季"))).results.toList()
+            assertEquals(listOf("episode-$season"), result.map { it.media.mediaId })
+        }
+    }
+
     private data class TestCase(
         val subjectId: String,
         val episodeId: String,

@@ -1968,6 +1968,10 @@
     <string name="settings_mediasource_jsonapi_unknown_variables">未知变量：%1$s</string>
     <string name="settings_mediasource_jsonapi_play_open_video">打开视频地址</string>
     <string name="settings_mediasource_jsonapi_play_copy">复制</string>
+    <string name="video_player_subtitle_settings">字幕设置</string>
+    <string name="video_player_subtitle_font_size">字幕大小：%1$d%%</string>
+    <string name="video_player_subtitle_preview">字幕预览\n多行字幕保持清晰间距</string>
+    <string name="video_player_subtitle_reset">恢复默认</string>
 </resources>
 
 <!--@formatter:on-->

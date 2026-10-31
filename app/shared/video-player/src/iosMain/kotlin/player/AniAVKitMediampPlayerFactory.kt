@@ -10,7 +10,6 @@
 package me.him188.ani.app.videoplayer.player
 
 import org.openani.mediamp.MediampPlayerFactory
-import org.openani.mediamp.avkit.AVKitMediampPlayer
 import org.openani.mediamp.avkit.AVKitMediampPlayerFactory
 import platform.AVFoundation.preferredForwardBufferDuration
 import kotlin.coroutines.CoroutineContext
@@ -24,15 +23,18 @@ import kotlin.time.DurationUnit
  */
 class AniAVKitMediampPlayerFactory(
     private val delegate: AVKitMediampPlayerFactory = AVKitMediampPlayerFactory(),
-) : MediampPlayerFactory<AVKitMediampPlayer> {
-    override val forClass: KClass<AVKitMediampPlayer> get() = AVKitMediampPlayer::class
+) : MediampPlayerFactory<AniAVKitMediampPlayer> {
+    override val forClass: KClass<AniAVKitMediampPlayer> get() = AniAVKitMediampPlayer::class
 
-    override fun create(context: Any, parentCoroutineContext: CoroutineContext): AVKitMediampPlayer {
-        return delegate.create(
+    override fun create(context: Any, parentCoroutineContext: CoroutineContext): AniAVKitMediampPlayer {
+        return AniAVKitMediampPlayer(
+            delegate.create(
+                parentCoroutineContext,
+                configurePlayerItem = { item, _ ->
+                    item.preferredForwardBufferDuration = PlayerBufferPolicy.forward.toDouble(DurationUnit.SECONDS)
+                },
+            ),
             parentCoroutineContext,
-            configurePlayerItem = { item, _ ->
-                item.preferredForwardBufferDuration = PlayerBufferPolicy.forward.toDouble(DurationUnit.SECONDS)
-            },
         )
     }
 }

@@ -559,6 +559,13 @@ open class EpisodeViewModel(
     val videoScaffoldConfig: VideoScaffoldConfig by settingsRepository.videoScaffoldConfig
         .flow.produceState(VideoScaffoldConfig.Default)
 
+    fun setSubtitleFontScale(scale: Float) {
+        if (!scale.isFinite()) return
+        launchInBackground {
+            settingsRepository.videoScaffoldConfig.update { copy(subtitleFontScale = scale.coerceIn(0.75f, 2f)) }
+        }
+    }
+
     /** 当前生效的用户倍速范围. */
     val playbackSpeedRange: ClosedFloatingPointRange<Float>
         get() = videoScaffoldConfig.minPlaybackSpeed..videoScaffoldConfig.maxPlaybackSpeed

@@ -1963,6 +1963,10 @@
     <string name="settings_storage_backup_op_restore_warning">這會覆蓋當前應用的所有設定，且無法復原，確認匯入嗎？</string>
     <string name="settings_storage_backup_op_restore_error">剪下板中內容無效或者不是設定備份內容</string>
     <string name="settings_storage_backup_op_restore_succees">匯入設定成功</string>
+    <string name="video_player_subtitle_settings">字幕設定</string>
+    <string name="video_player_subtitle_font_size">字幕大小：%1$d%%</string>
+    <string name="video_player_subtitle_preview">字幕預覽\n多行字幕保持清晰間距</string>
+    <string name="video_player_subtitle_reset">恢復預設</string>
 </resources>
 
 <!--@formatter:on-->

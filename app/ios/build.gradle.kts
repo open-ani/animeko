@@ -413,11 +413,10 @@ val patchInfoPlist = tasks.register("patchInfoPlist", Task::class) {
     }
 }
 
-// ── 确保 Xcode 构建前 Info.plist 已更新 ──
-// 拦截 Kotlin/Native 的 embedAndSignPodAppleFrameworkForXcode task,
-// 添加对 patchInfoPlist 的依赖, 确保版本号在 framework 嵌入前已注入。
-tasks.matching { it.path == ":app:shared:application:embedAndSignPodAppleFrameworkForXcode" }.configureEach {
+val applicationBuildDirectory = project(":app:shared:application").layout.buildDirectory
+tasks.withType<XcodeArchiveTask>().configureEach {
     dependsOn(patchInfoPlist)
-    inputs.file(file("Animeko/Info.plist"))
+    inputs.files(fileTree("Animeko"), fileTree("Animeko.xcodeproj"), fileTree("Frameworks"))
+    inputs.files(applicationBuildDirectory.dir(archiveConfiguration.map { "bin/iosArm64/pod${it}Framework" }).map { it.asFileTree })
 }
 

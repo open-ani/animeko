@@ -241,7 +241,7 @@ class EditMediaSourceState(
     fun startEditing(presentation: MediaSourcePresentation) {
         cancelEdit()
         editMediaSourceState = EditingMediaSource(
-            editingMediaSourceId = presentation.mediaSourceId,
+            editingMediaSourceId = presentation.instanceId,
             factoryId = presentation.factoryId,
             info = presentation.info,
             parameters = presentation.parameters,

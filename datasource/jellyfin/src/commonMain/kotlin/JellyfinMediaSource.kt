@@ -61,6 +61,7 @@ class JellyfinMediaSource(
             "apikey",
             description = "仅 API Key 模式使用。可在 Jellyfin \"控制台 - API 秘钥\" 中添加",
             visibleWhen = authMode.hasValue(AUTH_MODE_API_KEY),
+            isSensitive = true,
         )
         // SECURITY: Legacy media-source parameters are serialized as plain text in
         // MediaSourceConfig.arguments. Password authentication intentionally uses the same local
@@ -76,6 +77,7 @@ class JellyfinMediaSource(
             "password",
             description = "仅用户名密码模式使用",
             visibleWhen = authMode.hasValue(AUTH_MODE_USERNAME_PASSWORD),
+            isSensitive = true,
         )
     }
 

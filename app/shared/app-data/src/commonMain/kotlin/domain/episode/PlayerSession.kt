@@ -31,9 +31,11 @@ import me.him188.ani.app.domain.media.resolver.MediaResolutionException
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaSourceOpenException
 import me.him188.ani.app.domain.media.resolver.OpenFailures
+import me.him188.ani.app.domain.media.resolver.PlatformMediaPlayback
 import me.him188.ani.app.domain.media.resolver.ResolutionFailures
 import me.him188.ani.app.domain.media.resolver.TorrentBackedMediaDataProvider
 import me.him188.ani.app.domain.media.resolver.UnsupportedMediaException
+import me.him188.ani.app.domain.media.resolver.preparePlatformMediaPlayback
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.mediasource.MediaSourceTags
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
@@ -74,6 +76,8 @@ class PlayerSession(
     private val hlsPlaybackPreparer: HlsPlaybackPreparer by koin.inject()
     private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
     private val getMediaSourceInstancesUseCase: GetMediaSourceInstancesUseCase by koin.inject()
+
+    private var platformMediaPlayback: PlatformMediaPlayback? = null
 
     private val hlsPlaybackProxySessionFlow = MutableStateFlow<HlsPlaybackProxySession?>(null)
     private var hlsPlaybackProxySession: HlsPlaybackProxySession?
@@ -140,6 +144,7 @@ class PlayerSession(
             listener.onFailed(phase, state, start.elapsedNow())
         }
 
+        var preparedPlatformPlayback: PlatformMediaPlayback? = null
         var preparedHlsPlaybackProxySession: HlsPlaybackProxySession? = null
         try {
             _videoLoadingStateFlow.value = VideoLoadingState.ResolvingSource
@@ -162,8 +167,9 @@ class PlayerSession(
             val openedEngineKey = (data as? TorrentMediaData)?.engineKey ?: resolvedEngineKey
             listener.onOpened(openedEngineKey, start.elapsedNow())
 
+            preparedPlatformPlayback = preparePlatformMediaPlayback(data)
             val preparedData = prepareHlsPlaybackIfEnabled(
-                data,
+                preparedPlatformPlayback.data,
                 media,
                 startPositionHintMillis = startPositionMillis.takeIf { it > 0L },
             ).also {
@@ -174,6 +180,8 @@ class PlayerSession(
             logger.info { "Set media data to player at ${startPositionMillis}ms: $preparedData" }
             // v2: setMediaData 挂起直到媒体真正打开, 播放意图和起播位置随打开一并生效.
             player.setMediaData(preparedData, playWhenReady = true, startPositionMillis = startPositionMillis)
+            platformMediaPlayback = preparedPlatformPlayback
+            preparedPlatformPlayback = null
             hlsPlaybackProxySession = preparedHlsPlaybackProxySession
             preparedHlsPlaybackProxySession = null
 
@@ -229,17 +237,18 @@ class PlayerSession(
             stopPlayback()
         } finally {
             preparedHlsPlaybackProxySession?.close()
+            preparedPlatformPlayback?.close()
         }
     }
 
     suspend fun stopPlayback() {
         stopPlayer()
-        closeHlsPlaybackProxySession()
+        closePlaybackResources()
     }
 
     fun close() {
-        closeHlsPlaybackProxySession()
         player.close()
+        closePlaybackResources()
     }
 
     private suspend fun stopPlayer() {
@@ -280,9 +289,11 @@ class PlayerSession(
             .orEmpty()
     }
 
-    private fun closeHlsPlaybackProxySession() {
+    private fun closePlaybackResources() {
         hlsPlaybackProxySession?.close()
         hlsPlaybackProxySession = null
+        platformMediaPlayback?.close()
+        platformMediaPlayback = null
     }
 
     companion object {
