@@ -34,6 +34,7 @@ import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
+import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
 import me.him188.ani.app.data.models.preference.ProfileSettings
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -85,6 +86,7 @@ interface SettingsRepository {
     val themeSettings: Settings<ThemeSettings>
     val updateSettings: Settings<UpdateSettings>
     val videoScaffoldConfig: Settings<VideoScaffoldConfig>
+    val playerShortcutConfig: Settings<PlayerShortcutConfig>
 
     /**
      * 播放器内核配置.
@@ -241,6 +243,11 @@ class PreferencesRepositoryImpl(
         "videoScaffoldConfig",
         VideoScaffoldConfig.serializer(),
         default = { VideoScaffoldConfig.Default },
+    )
+    override val playerShortcutConfig: Settings<PlayerShortcutConfig> = SerializablePreference(
+        "playerShortcutConfig",
+        PlayerShortcutConfig.serializer(),
+        default = { PlayerShortcutConfig.Default },
     )
     override val playerKernelConfig: Settings<PlayerKernelConfig> = SerializablePreference(
         "playerKernelConfig",

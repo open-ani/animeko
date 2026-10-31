@@ -53,6 +53,7 @@ import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
+import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.preference.WatchTogetherSettings
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
@@ -204,6 +205,7 @@ class UserCollectionsViewModelTest {
         override val themeSettings: Settings<ThemeSettings> by lazy { error("not implemented") }
         override val updateSettings: Settings<UpdateSettings> by lazy { error("not implemented") }
         override val videoScaffoldConfig: Settings<VideoScaffoldConfig> by lazy { error("not implemented") }
+        override val playerShortcutConfig: Settings<PlayerShortcutConfig> by lazy { error("not implemented") }
         override val playerKernelConfig: Settings<PlayerKernelConfig> by lazy { error("not implemented") }
         override val videoResolverSettings: Settings<VideoResolverSettings> by lazy { error("not implemented") }
         override val anitorrentConfig: Settings<AnitorrentConfig> by lazy { error("not implemented") }

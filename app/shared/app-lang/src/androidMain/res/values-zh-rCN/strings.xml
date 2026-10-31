@@ -456,6 +456,39 @@
     <string name="settings_player_mpv_options_count">已设置 %1$d 个选项</string>
     <string name="settings_player_mpv_options_placeholder">hwdec=auto\nprofile=fast</string>
 
+    <string name="settings_player_shortcuts">键盘快捷键</string>
+    <string name="settings_player_shortcuts_description">自定义播放器使用的键盘快捷键</string>
+    <string name="settings_player_shortcuts_group_playback">播放</string>
+    <string name="settings_player_shortcuts_group_seek">进度</string>
+    <string name="settings_player_shortcuts_group_volume">音量</string>
+    <string name="settings_player_shortcuts_group_speed">倍速</string>
+    <string name="settings_player_shortcut_toggle_pause_resume">暂停 / 继续</string>
+    <string name="settings_player_shortcut_toggle_fullscreen">切换全屏</string>
+    <string name="settings_player_shortcut_toggle_danmaku">开关弹幕</string>
+    <string name="settings_player_shortcut_toggle_player_stats">显示播放统计</string>
+    <string name="settings_player_shortcut_seek_backward">后退 5 秒</string>
+    <string name="settings_player_shortcut_seek_forward">前进 5 秒</string>
+    <string name="settings_player_shortcut_seek_forward_description">长按进入倍速快进</string>
+    <string name="settings_player_shortcut_volume_up">增大音量</string>
+    <string name="settings_player_shortcut_volume_down">减小音量</string>
+    <string name="settings_player_shortcut_volume_description">按住 Shift 微调</string>
+    <string name="settings_player_shortcut_speed_down">降低倍速</string>
+    <string name="settings_player_shortcut_speed_up">提高倍速</string>
+    <string name="settings_player_shortcut_speed_reset">恢复 1x 倍速</string>
+    <string name="settings_player_shortcut_speed_preset">倍速 %1$sx</string>
+    <string name="settings_player_shortcuts_none">未设置</string>
+    <string name="settings_player_shortcuts_edit_hint">一个操作可以设置多个快捷键，点击已添加的快捷键可将其移除</string>
+    <string name="settings_player_shortcuts_capture_idle">点击此处，然后按下新的快捷键</string>
+    <string name="settings_player_shortcuts_capture_active">请按下按键…</string>
+    <string name="settings_player_shortcuts_unsupported_key">此按键不能用作快捷键</string>
+    <string name="settings_player_shortcuts_conflict">%1$s 当前用于「%2$s」，确认后将改为本操作</string>
+    <string name="settings_player_shortcuts_remove">移除</string>
+    <string name="settings_player_shortcuts_reset">恢复默认</string>
+    <string name="settings_player_shortcuts_reset_all">恢复全部默认</string>
+    <string name="settings_player_shortcuts_reset_all_confirm">要将播放器的所有快捷键恢复为默认值吗？</string>
+    <string name="settings_player_shortcuts_confirm">确认</string>
+    <string name="settings_player_shortcuts_cancel">取消</string>
+
     <!-- Version Expired Overlay -->
     <string name="settings_update_version_expired_title">版本过期</string>
     <string name="settings_update_version_expired_message">当前版本太旧，为了你的使用体验，请更新到最新版本。\n右下角将会显示最新版本，可以点击自动更新。如果无法更新，请前往官网下载：</string>

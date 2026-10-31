@@ -145,6 +145,7 @@ import me.him188.ani.app.ui.lang.settings_tab_debug
 import me.him188.ani.app.ui.lang.settings_tab_log
 import me.him188.ani.app.ui.lang.settings_tab_media_selector
 import me.him188.ani.app.ui.lang.settings_tab_media_source
+import me.him188.ani.app.ui.lang.settings_player_shortcuts
 import me.him188.ani.app.ui.lang.settings_tab_player
 import me.him188.ani.app.ui.lang.settings_tab_proxy
 import me.him188.ani.app.ui.lang.settings_tab_settings_backup
@@ -167,6 +168,8 @@ import me.him188.ani.app.ui.settings.tabs.about.DevelopersTab
 import me.him188.ani.app.ui.settings.tabs.about.OpenSourceLibrariesTab
 import me.him188.ani.app.ui.settings.tabs.app.AppearanceGroup
 import me.him188.ani.app.ui.settings.tabs.app.PlayerGroup
+import me.him188.ani.app.ui.settings.tabs.app.PlayerShortcutsResetAction
+import me.him188.ani.app.ui.settings.tabs.app.PlayerShortcutsTab
 import me.him188.ani.app.ui.settings.tabs.app.SoftwareUpdateGroup
 import me.him188.ani.app.ui.settings.tabs.app.WatchTogetherGroup
 import me.him188.ani.app.ui.settings.tabs.log.LogTab
@@ -386,6 +389,9 @@ fun SettingsScreen(
                                     vm.danmakuFilterConfigState,
                                     vm.danmakuRegexFilterState,
                                     vm.isInDebugMode,
+                                    onNavigateToShortcuts = {
+                                        navigateTo(DetailPaneRoutes.PlayerShortcuts)
+                                    },
                                 )
                                 WatchTogetherGroup(vm.watchTogetherSettings)
                             }
@@ -473,6 +479,12 @@ fun SettingsScreen(
                 vm.editMediaSourceState,
             )
         },
+        playerShortcutsPageActions = {
+            PlayerShortcutsResetAction(vm.playerShortcutConfig)
+        },
+        playerShortcutsPageContent = {
+            PlayerShortcutsTab(vm.playerShortcutConfig)
+        },
         modifier = modifier,
         contentWindowInsets = windowInsets,
         navigationIcon = navigationIcon,
@@ -496,6 +508,9 @@ internal fun SettingsPageLayout(
     subscriptionPageTitle: @Composable (subscriptionId: String) -> String = { "" },
     subscriptionPageActions: @Composable (subscriptionId: String) -> Unit = {},
     subscriptionPageContent: @Composable SettingsDetailPaneScope.(subscriptionId: String) -> Unit = {},
+    // [DetailPaneRoutes.PlayerShortcuts] 页面. 由调用方提供, 因为它依赖设置页的状态.
+    playerShortcutsPageActions: @Composable () -> Unit = {},
+    playerShortcutsPageContent: @Composable SettingsDetailPaneScope.() -> Unit = {},
     modifier: Modifier = Modifier,
     contentWindowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
@@ -937,6 +952,30 @@ internal fun SettingsPageLayout(
                             }
                         }
                     }
+                    entry<DetailPaneRoutes.PlayerShortcuts> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings_player_shortcuts)) },
+                                    navigationIcon = {
+                                        BackNavigationIconButton(navigateUp)
+                                    },
+                                    actions = {
+                                        playerShortcutsPageActions()
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            RouteContent {
+                                playerShortcutsPageContent()
+                            }
+                        }
+                    }
                     entry<DetailPaneRoutes.DevBuilds> {
                         DetailPaneRoute(
                             topAppBar = {
@@ -1093,6 +1132,9 @@ sealed class DetailPaneRoutes : NavKey {
     data object DevBuilds : DetailPaneRoutes()
 
     @Serializable
+    data object PlayerShortcuts : DetailPaneRoutes()
+
+    @Serializable
     data class MediaSourceSubscription(val subscriptionId: String) : DetailPaneRoutes()
 }
 
@@ -1126,6 +1168,7 @@ private val DetailPaneBackStackSaver: Saver<SnapshotStateList<DetailPaneRoutes>,
                     "BangumiSync" -> DetailPaneRoutes.BangumiSync
                     "GithubAccount" -> DetailPaneRoutes.GithubAccount
                     "DevBuilds" -> DetailPaneRoutes.DevBuilds
+                    "PlayerShortcuts" -> DetailPaneRoutes.PlayerShortcuts
                     else -> DetailPaneRoutes.Main
                 }
             }.toMutableStateList()
