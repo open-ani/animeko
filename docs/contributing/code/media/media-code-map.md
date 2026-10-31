@@ -240,6 +240,12 @@ Matroska muxer；位图字幕不进入文本字幕列表。字幕提取失败时
 SRT/WebVTT 文本根据播放器当前位置显示，seek、切换和关闭字幕时同步更新，异步读取结果受媒体会话与当前选择约束。
 字幕选择通过 `AVPlayerItem` 的原生对象相等性验证当前媒体会话；Objective-C 对象可以由不同的 Kotlin 包装对象引用。
 
+iOS 播放器右上角菜单的“字幕设置”提供 75% 至 200% 字号倍率、双行预览及恢复默认，倍率保存到
+`VideoScaffoldConfig.subtitleFontScale`。`IosSubtitleOverlay` 使用单个 UILabel 排版当前对白，去除重复重叠文本，
+按视口、系统安全区和播放器控制栏计算显示区域。区域最多占视频高度的 35%，长文本先缩小到可读字号，
+仍超出时限制最多六行并截断，避免覆盖控件或越过画面边缘。`IosNativeSubtitleStyle` 将相同字号和底部避让位置
+应用到 AVKit 原生文本轨道。
+
 ### Web 播放的重要细节
 
 - `ResourceLocation.WebVideo` 不能直接播放。`apiParameters` 为 `null` 时由平台 web resolver 打开页面拦截；

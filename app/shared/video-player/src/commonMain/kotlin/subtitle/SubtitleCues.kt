@@ -58,6 +58,6 @@ internal class SubtitleCueTimeline(cues: List<SubtitleCue>) {
             if (cue.endMillis > positionMillis) active += cue.text
             index--
         }
-        return active.asReversed().joinToString("\n")
+        return active.asReversed().distinct().joinToString("\n")
     }
 }

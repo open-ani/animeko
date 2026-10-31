@@ -1931,6 +1931,10 @@
     <string name="settings_mediasource_jsonapi_unknown_variables">未知變量：%1$s</string>
     <string name="settings_mediasource_jsonapi_play_open_video">打開視頻地址</string>
     <string name="settings_mediasource_jsonapi_play_copy">複製</string>
+    <string name="video_player_subtitle_settings">字幕設定</string>
+    <string name="video_player_subtitle_font_size">字幕大小：%1$d%%</string>
+    <string name="video_player_subtitle_preview">字幕預覽\n多行字幕保持清晰間距</string>
+    <string name="video_player_subtitle_reset">恢復預設</string>
 </resources>
 
 <!--@formatter:on-->

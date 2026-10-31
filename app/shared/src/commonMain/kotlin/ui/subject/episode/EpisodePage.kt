@@ -1126,6 +1126,8 @@ private fun EpisodeVideo(
         onClickNextEpisode = { vm.episodeSelectorState.selectNext() },
         playerControllerState = playerControllerState,
         opEdSkipDuration = vm.videoScaffoldConfig.opEdSkipDuration,
+        subtitleFontScale = vm.videoScaffoldConfig.subtitleFontScale,
+        onSubtitleFontScaleChange = if (LocalPlatform.current.isIos()) vm::setSubtitleFontScale else null,
         onClickSkipOpEd = { vm.onClickSkipOpEd(it) },
         title = {
             val episode = page.episodePresentation

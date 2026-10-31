@@ -53,6 +53,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -61,6 +62,8 @@ import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.gesture.PlayerGestureHost
+import me.him188.ani.app.videoplayer.subtitle.LocalSubtitleSafeArea
+import me.him188.ani.app.videoplayer.subtitle.SubtitleSafeArea
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 
@@ -136,6 +139,7 @@ fun VideoScaffold(
 ) {
     val inlineSliderOnly = controllerState.visibility == ControllerVisibility.InlineSliderOnly
     var bottomControllerHeightPx by remember { mutableIntStateOf(0) }
+    var topControllerHeightPx by remember { mutableIntStateOf(0) }
     val controllerVisibility = controllerState.visibility
         .withGestureLocked(gestureLocked)
         .withExpanded(expanded)
@@ -143,6 +147,18 @@ fun VideoScaffold(
     // 不含底部系统栏边距: 控制栏自己应用了边距, 避让它的元素也各自应用, 不重复计.
     val bottomControllerHeight = with(LocalDensity.current) {
         (bottomControllerHeightPx - contentWindowInsets.getBottom(this)).coerceAtLeast(0).toDp()
+    }
+    val density = LocalDensity.current
+    val direction = LocalLayoutDirection.current
+    val subtitleSafeArea = with(density) {
+        SubtitleSafeArea(
+            left = contentWindowInsets.getLeft(this, direction).toDp().value.toDouble(),
+            right = contentWindowInsets.getRight(this, direction).toDp().value.toDouble(),
+            top = maxOf(contentWindowInsets.getTop(this), if (controllerVisibility.topBar) topControllerHeightPx else 0)
+                .toDp().value.toDouble(),
+            bottom = maxOf(contentWindowInsets.getBottom(this), if (layout == VideoScaffoldLayout.Overlay) bottomControllerHeightPx else 0)
+                .toDp().value.toDouble(),
+        )
     }
 
     val enterTransition = LocalAniMotionScheme.current.animatedVisibility.standardEnter
@@ -188,7 +204,9 @@ fun VideoScaffold(
                 Box(
                     mediaPaneModifier.background(Color.Transparent), // no window insets for video
                 ) {
-                    video()
+                    CompositionLocalProvider(LocalSubtitleSafeArea provides subtitleSafeArea) {
+                        video()
+                    }
                     Box(Modifier.matchParentSize()) // 防止点击事件传播到 video 里
                 }
                 if (videoOnly) return@Box
@@ -244,6 +262,7 @@ fun VideoScaffold(
 
                                 Column(
                                     Modifier
+                                        .onSizeChanged { topControllerHeightPx = it.height }
                                         .keepLayoutWhenHidden(inlineSliderOnly)
                                         .hoverToRequestAlwaysOn(alwaysOnRequester)
                                         .fillMaxWidth(),
