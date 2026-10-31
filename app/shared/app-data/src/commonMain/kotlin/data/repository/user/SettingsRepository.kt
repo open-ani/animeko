@@ -27,6 +27,7 @@ import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
 import me.him188.ani.app.data.models.preference.DebugSettings
+import me.him188.ani.app.data.models.preference.LocalVideoLibrarySettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
@@ -80,6 +81,13 @@ interface SettingsRepository {
     val profileSettings: Settings<ProfileSettings>
     val proxySettings: Settings<ProxySettings>
     val mediaCacheSettings: Settings<MediaCacheSettings>
+
+    /**
+     * 本地视频库目录. 当前仅作为选择本地视频文件时的默认目录.
+     *
+     * @since 4.9.0
+     */
+    val localVideoLibrarySettings: Settings<LocalVideoLibrarySettings>
     val danmakuSettings: Settings<DanmakuSettings>
     val uiSettings: Settings<UISettings>
     val themeSettings: Settings<ThemeSettings>
@@ -216,6 +224,11 @@ class PreferencesRepositoryImpl(
         "cachePreferences",
         MediaCacheSettings.serializer(),
         default = { MediaCacheSettings.Default },
+    )
+    override val localVideoLibrarySettings: Settings<LocalVideoLibrarySettings> = SerializablePreference(
+        "localVideoLibrarySettings",
+        LocalVideoLibrarySettings.serializer(),
+        default = { LocalVideoLibrarySettings.Default },
     )
     override val danmakuSettings: Settings<DanmakuSettings> = SerializablePreference(
         "danmakuSettings",

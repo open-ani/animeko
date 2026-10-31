@@ -26,7 +26,7 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaPreference.Companion.ANY_FILTER
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
-import me.him188.ani.app.domain.media.DroppedFileMedia
+import me.him188.ani.app.domain.media.LocalFileMedia
 import me.him188.ani.app.domain.media.selector.filter.MediaSelectorFilterSortAlgorithm
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.isLocalCache
@@ -189,7 +189,7 @@ interface MediaSelector {
     /**
      * [selected] 按当前条件过滤的结果, 包含匹配信息. 未选择时为 `null`.
      *
-     * [selected] 不一定在 [filteredCandidates] 中: 浏览手动选集和浏览记忆回放现场创建资源, 用户拖入的本地文件不来自任何数据源.
+     * [selected] 不一定在 [filteredCandidates] 中: 浏览手动选集和浏览记忆回放现场创建资源, 本地文件不来自任何数据源.
      * 此时对它单独执行与 [filteredCandidates] 相同的过滤, 名称对得上条目名或别名的照样是精确匹配.
      * 条目信息等条件在选择之后才加载完时, 结果随之更新.
      */
@@ -233,7 +233,7 @@ interface MediaSelector {
      * 优先级同样高于任何其他的选择, 但不会更新偏好, 也不会广播 [MediaSelectorEvents.onChangePreference]
      * 和 [MediaSelectorEvents.onPreferWebSource], 因此不影响之后的自动选择.
      *
-     * 用于播放不来自任何数据源的资源, 例如用户拖入播放页的本地文件 ([DroppedFileMedia]).
+     * 用于播放不来自任何数据源的资源, 例如用户在播放页指定的本地文件 ([LocalFileMedia]).
      *
      * @param trigger 广播的 [SelectEvent.trigger].
      * @return 当成功将 [selected] 更新为 [candidate] 时返回 `true`. 当 [selected] 已经是 [candidate] 时返回 `false`.

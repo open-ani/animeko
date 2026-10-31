@@ -298,7 +298,7 @@ private fun EpisodeScreenContent(
     VideoNotifEffect(vm)
 
     // 将本地视频文件拖入窗口, 即在当前剧集播放该文件
-    WindowDropHandlerEffect(rememberEpisodeVideoDropHandler { vm.playDroppedFile(it) })
+    WindowDropHandlerEffect(rememberEpisodeVideoDropHandler { vm.playLocalFile(it) })
 
     DarkStatusBarAppearance()
 
@@ -699,6 +699,8 @@ private fun EpisodeScreenSidebar(
                                 page.loadError?.let { vm.retryLoad(it) }
                             },
                             danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
+                            localVideoLibraryDirectory = vm.localVideoLibraryDirectory.collectAsStateWithLifecycle(null).value,
+                            onLocalFilePicked = vm::playLocalVideoFile,
                             onBeforeOpenMediaSelector = {
                                 if (vm.mediaSelectorMode == null && !page.isLoading) {
                                     vm.mediaSelectorMode = page.initialMediaSelectorMode
@@ -857,6 +859,8 @@ private fun EpisodeScreenPhoneDetails(
                     },
                     modifier = Modifier.fillMaxSize(),
                     danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
+                    localVideoLibraryDirectory = vm.localVideoLibraryDirectory.collectAsStateWithLifecycle(null).value,
+                    onLocalFilePicked = vm::playLocalVideoFile,
                     onBeforeOpenMediaSelector = {
                         if (vm.mediaSelectorMode == null && !page.isLoading) {
                             vm.mediaSelectorMode = page.initialMediaSelectorMode
@@ -1296,6 +1300,13 @@ private fun EpisodeVideo(
                                     vm.fullscreenSelectorVisible = true
                                 }
                             }
+                            val pickLocalFile = rememberLocalVideoFilePicker(
+                                onPicked = { file ->
+                                    vm.playLocalVideoFile(file)
+                                    goBack()
+                                },
+                                initialDirectory = vm.localVideoLibraryDirectory.collectAsStateWithLifecycle(null).value,
+                            )
                             EpisodeVideoSideSheets.MediaSelectorSheet(
                                 page.mediaSelectorState,
                                 page.mediaSourceResultListPresentation,
@@ -1303,6 +1314,7 @@ private fun EpisodeVideo(
                                 onModeChange = { vm.mediaSelectorMode = it },
                                 onDismissRequest = { goBack() },
                                 onRestartSource = { vm.restartSource(it) },
+                                onRequestLocalFile = pickLocalFile,
                                 watching = page.watchingEpisode,
                                 fetchRequest = page.fetchRequest,
                                 onFetchRequestChange = { vm.updateFetchRequest(it) },
