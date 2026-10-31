@@ -35,4 +35,7 @@ kotlin {
     }
     sourceSets.desktopMain.dependencies {
     }
+    sourceSets.desktopTest.dependencies {
+        implementation(libs.ktor.client.mock)
+    }
 }

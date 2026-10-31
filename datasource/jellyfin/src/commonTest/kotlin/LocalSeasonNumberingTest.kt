@@ -117,8 +117,10 @@ class LocalSeasonNumberingTest {
         for (factory in listOf(JellyfinMediaSource.Factory(), EmbyMediaSource.Factory())) {
             val requestedSeasons = mutableListOf<Int>()
             val client = HttpClient(MockEngine { request ->
+                fun parameter(name: String): String? = request.url.parameters[name]
+                    ?: request.url.parameters[name.replaceFirstChar { it.uppercaseChar() }]
                 val items = when {
-                    request.url.parameters["searchTerm"] != null -> """
+                    parameter("searchTerm") != null -> """
                         {"Name":"$seriesName","Type":"Series","Id":"series",
                          "ProviderIds":${subjectProviderIds(seriesProviderId)}}
                     """.trimIndent()
@@ -130,9 +132,9 @@ class LocalSeasonNumberingTest {
                         episodes.getValue(season)
                     }
 
-                    request.url.parameters["parentId"] == "series" -> episodes.values.joinToString(",")
-                    request.url.parameters["ids"] != null -> {
-                        val ids = request.url.parameters["ids"]!!.split(",")
+                    parameter("parentId") == "series" -> episodes.values.joinToString(",")
+                    parameter("ids") != null -> {
+                        val ids = parameter("ids")!!.split(",")
                         episodes.filterKeys { "episode-$it-1" in ids }.values.joinToString(",")
                     }
 
@@ -173,7 +175,8 @@ class LocalSeasonNumberingTest {
                 ).results.toList()
 
                 val context = "${factory.factoryId}: $subjectName / $seriesName / $seasons"
-                assertEquals(expectedEpisodeSeasons.map { "episode-$it-1" }, result.map { it.media.mediaId }, context)
+                val prefix = if (factory is EmbyMediaSource.Factory) "${source.mediaSourceId}." else ""
+                assertEquals(expectedEpisodeSeasons.map { "${prefix}episode-$it-1" }, result.map { it.media.mediaId }, context)
                 assertEquals(expectedSeasons, requestedSeasons.distinct(), context)
                 assertTrue(result.all { it.kind == expectedKind }, context)
             } finally {

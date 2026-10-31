@@ -44,6 +44,8 @@
   通用 HTML/CSS-selector 网页数据源。
 - `JsonApiMediaSource`（`app/shared/app-data/.../domain/mediasource/jsonapi/JsonApiMediaSource.kt`）：
   通用 JSON 接口数据源，`JsonApiMediaSourceEngine` 负责按模板构造请求与 JSONPath 解析。
+- `EmbyMediaSource`（`datasource/jellyfin`）：支持自定义服务器名称、API Key 和用户名密码认证，
+  与 Jellyfin 共用 `JellyfinPasswordAuthenticator` 的会话缓存及令牌失效处理。
 - `RssMediaSource`（`app/shared/app-data/.../domain/mediasource/rss/RssMediaSource.kt`）：
   通用 RSS BitTorrent 数据源。
 - 本地缓存以数据源形式暴露：`MediaCacheStorageSource`
