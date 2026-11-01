@@ -539,6 +539,7 @@ class DanmakuHostState(
         return withContext(Dispatchers.Main.immediate) {
             when (danmaku.danmaku.location) {
                 DanmakuLocation.NORMAL -> {
+                    if (!danmakuConfig.isLocationEnabled(DanmakuLocation.NORMAL)) return@withContext false
                     val floatingDanmaku = floatingTrack.firstNotNullOfOrNull {
                         it.tryPlace(styledDanmaku, placeFrameTimeNanos, overrideSpeedMultiplier)
                     }
@@ -546,6 +547,7 @@ class DanmakuHostState(
                 }
 
                 DanmakuLocation.TOP -> {
+                    if (!danmakuConfig.isLocationEnabled(DanmakuLocation.TOP)) return@withContext false
                     val floatingDanmaku = topTrack.firstNotNullOfOrNull {
                         it.tryPlace(styledDanmaku, placeFrameTimeNanos)
                     }
@@ -553,6 +555,7 @@ class DanmakuHostState(
                 }
 
                 DanmakuLocation.BOTTOM -> {
+                    if (!danmakuConfig.isLocationEnabled(DanmakuLocation.BOTTOM)) return@withContext false
                     val floatingDanmaku = bottomTrack.firstNotNullOfOrNull {
                         it.tryPlace(styledDanmaku, placeFrameTimeNanos)
                     }
@@ -897,6 +900,13 @@ internal class DanmakuRepopulator(
         }
     }
 }
+
+internal fun DanmakuConfig.isLocationEnabled(location: DanmakuLocation): Boolean =
+    when (location) {
+        DanmakuLocation.NORMAL -> enableFloating
+        DanmakuLocation.TOP -> enableTop
+        DanmakuLocation.BOTTOM -> enableBottom
+    }
 
 private fun <D : SizeSpecifiedDanmaku, DT, T : DanmakuTrack<D, DT>>
         MutableList<T>.setTrackCountImpl(count: Int, newInstance: List<T>.(index: Int) -> T) {
