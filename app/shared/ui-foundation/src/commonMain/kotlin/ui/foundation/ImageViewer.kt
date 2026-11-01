@@ -9,22 +9,21 @@
 
 package me.him188.ani.app.ui.foundation
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.ProvidableCompositionLocal
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerContent
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -90,23 +89,23 @@ internal fun ImageViewerOverlay(
     onClose: () -> Unit,
 ) {
     val model by handler.imageModel.collectAsStateWithLifecycle()
-    AniAnimatedVisibility(
-        visible = handler.viewing.value,
-        enter = LocalAniMotionScheme.current.animatedVisibility.standardEnter,
-        exit = LocalAniMotionScheme.current.animatedVisibility.standardExit,
+    val animation = LocalAniMotionScheme.current.animatedVisibility
+    AnimatedContent(
+        targetState = model.takeIf { handler.viewing.value },
         modifier = Modifier.fillMaxSize(),
-    ) {
-        // 退场期间保留显示模型, 让图片、背景透明度和手势位移一起完成退场.
-        var retainedModel by remember { mutableStateOf(model) }
-        SideEffect {
-            if (model != null) retainedModel = model
+        transitionSpec = { (animation.standardEnter togetherWith animation.standardExit).using(null) },
+        contentKey = { it != null },
+        label = "ImageViewerOverlay",
+    ) { displayedModel ->
+        // AnimatedContent 在退场结束前保留非空模型; 图片之间的切换复用同一个查看器.
+        if (displayedModel != null) {
+            ImageViewerContent(
+                model = displayedModel,
+                onClose = onClose,
+                modifier = Modifier.fillMaxSize(),
+                showCloseButton = true,
+            )
         }
-        ImageViewerContent(
-            model = model ?: retainedModel,
-            onClose = onClose,
-            modifier = Modifier.fillMaxSize(),
-            showCloseButton = true,
-        )
     }
 }
 

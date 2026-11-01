@@ -22,6 +22,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -29,6 +30,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
@@ -44,6 +46,11 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.headersOf
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -51,6 +58,7 @@ import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.ui.foundation.IMAGE_VIEWER_TEST_TAG
+import me.him188.ani.app.ui.foundation.ImageViewerHandler
 import me.him188.ani.app.ui.foundation.ImageViewerOverlay
 import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -76,11 +84,6 @@ import okio.Path.Companion.toPath
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Surface
-import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 /**
  * 交互测试: 查看器工具栏的缩放, 保存, 关闭.
@@ -93,7 +96,9 @@ class ImageViewerContentTest {
         val exportDirectory: SystemPath,
         val closeCount: AtomicInteger,
         val toasts: CopyOnWriteArrayList<String>,
-    )
+    ) {
+        lateinit var handler: ImageViewerHandler
+    }
 
     /** 等待 [condition] 成立, 期间在当前线程 (EDT) 上执行 Dispatchers.Main 的排队任务. */
     private fun Env.waitUntilPumpingMain(
@@ -117,9 +122,13 @@ class ImageViewerContentTest {
     ) {
         val tempDirectory = SystemPaths.createTempDirectory("ani-image-viewer-content-test")
         val bytes = encodedRaster(width = 400, height = 300)
+        val replacementBytes = encodedRaster(width = 400, height = 300, color = 0xFF00FF00.toInt())
         val client = HttpClient(
             MockEngine {
-                respond(content = bytes, headers = headersOf(HttpHeaders.ContentType, "image/png"))
+                respond(
+                    content = if (it.url.parameters["replacement"] != null) replacementBytes else bytes,
+                    headers = headersOf(HttpHeaders.ContentType, "image/png"),
+                )
             },
         )
         val sketch = createDefaultSketch(
@@ -157,7 +166,10 @@ class ImageViewerContentTest {
                             ) {
                                 if (useOverlay) {
                                     val handler = rememberImageViewerHandler()
-                                    LaunchedEffect(handler) { handler.viewImage(env.url) }
+                                    LaunchedEffect(handler) {
+                                        env.handler = handler
+                                        handler.viewImage(env.url)
+                                    }
                                     Box(
                                         Modifier.requiredSize(size.width, size.height)
                                             .background(Color.Magenta).testTag("ViewerHost"),
@@ -206,9 +218,44 @@ class ImageViewerContentTest {
         env.mainScheduler.advanceUntilIdle()
         mainClock.advanceTimeByFrame()
         onNodeWithTag(IMAGE_VIEWER_TEST_TAG).assertExists()
+        onNodeWithTag(ImageViewerTestTags.ZOOM_IN).assertIsEnabled()
         assertEquals(1, env.closeCount.get())
         mainClock.advanceTimeBy(1_000)
         onNodeWithTag(IMAGE_VIEWER_TEST_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun `reopening during exit displays the requested image`() = runViewerTest(useOverlay = true) { env ->
+        mainClock.advanceTimeBy(1_000)
+        mainClock.autoAdvance = false
+        onNodeWithTag(ImageViewerTestTags.CLOSE).performClick()
+        env.mainScheduler.advanceUntilIdle()
+        mainClock.advanceTimeByFrame()
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).assertExists()
+
+        runOnIdle { env.handler.viewImage("${env.url}?replacement=true") }
+        mainClock.autoAdvance = true
+        env.waitUntilPumpingMain(this) {
+            val pixels = onNodeWithTag("ViewerHost").captureToImage().toPixelMap()
+            pixels[pixels.width / 2, pixels.height / 2] == Color.Green
+        }
+        onAllNodesWithTag(IMAGE_VIEWER_TEST_TAG).assertCountEquals(1)
+        onNodeWithTag(ImageViewerTestTags.CLOSE).performClick()
+        env.waitUntilPumpingMain(this) {
+            onAllNodesWithTag(IMAGE_VIEWER_TEST_TAG).fetchSemanticsNodes().isEmpty()
+        }
+        assertEquals(2, env.closeCount.get())
+    }
+
+    @Test
+    fun `changing the image while open keeps one viewer`() = runViewerTest(useOverlay = true) { env ->
+        runOnIdle { env.handler.viewImage("${env.url}?replacement=true") }
+        env.waitUntilPumpingMain(this) {
+            val pixels = onNodeWithTag("ViewerHost").captureToImage().toPixelMap()
+            pixels[pixels.width / 2, pixels.height / 2] == Color.Green
+        }
+        onAllNodesWithTag(IMAGE_VIEWER_TEST_TAG).assertCountEquals(1)
+        assertEquals(0, env.closeCount.get())
     }
 
     @Test
@@ -529,10 +576,10 @@ class ImageViewerContentTest {
         return text.removeSuffix("%").toIntOrNull() ?: -1
     }
 
-    private fun encodedRaster(width: Int, height: Int): ByteArray {
+    private fun encodedRaster(width: Int, height: Int, color: Int = 0xFF6750A4.toInt()): ByteArray {
         val surface = Surface.makeRasterN32Premul(width, height)
         try {
-            surface.canvas.clear(0xFF6750A4.toInt())
+            surface.canvas.clear(color)
             return requireNotNull(
                 surface.makeImageSnapshot().encodeToData(EncodedImageFormat.PNG, 100),
             ).bytes
