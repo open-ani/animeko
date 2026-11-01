@@ -23,6 +23,7 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
+import me.him188.ani.app.data.R
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.utils.logging.logger
@@ -45,7 +46,7 @@ class ServiceNotification(
 ) {
     private val notificationService by lazy { context.getSystemService(NOTIFICATION_SERVICE) as NotificationManager }
 
-    var notificationAppearance = defaultNotificationAppearance
+    var notificationAppearance = defaultNotificationAppearance(context)
         private set
     private var notificationOpenActivityIntent: Intent? = null
     private val stopServiceIntent by lazy {
@@ -83,24 +84,22 @@ class ServiceNotification(
             return
         }
 
+        val default = defaultNotificationAppearance(context)
         val name = intent.getStringOrDefault("app_name") {
-            defaultNotificationAppearance.name
+            default.name
         }
-        // TODO
-        val titleIdle = "BT 下载服务正在运行"/*intent.getStringOrDefault("app_service_title_text_idle") {
-            defaultNotificationAppearance.titleIdle
-        }*/
+        val titleIdle = default.titleIdle
         val titleWorking = intent.getStringOrDefault("app_service_title_text_working") {
-            defaultNotificationAppearance.titleWorking
+            default.titleWorking
         }
         val content = intent.getStringOrDefault("app_service_content_text") {
-            defaultNotificationAppearance.content
+            default.content
         }
         val stopActionText = intent.getStringOrDefault("app_service_stop_text") {
-            defaultNotificationAppearance.stopActionText
+            default.stopActionText
         }
         val icon = (intent?.getIntExtra("app_icon", -1) ?: -1)
-            .let { if (it == -1) defaultNotificationAppearance.icon else Icon.createWithResource(context, it) }
+            .let { if (it == -1) default.icon else Icon.createWithResource(context, it) }
         notificationOpenActivityIntent = intent?.getParcelable<Intent>("open_activity_intent")
 
         notificationAppearance = NotificationAppearance(
@@ -214,12 +213,12 @@ class ServiceNotification(
             "me.him188.ani.app.domain.torrent.service.AniTorrentService"
         private val logger = logger<ServiceNotification>()
 
-        private val defaultNotificationAppearance = NotificationAppearance(
-            name = "Animeko BT 引擎服务",
-            titleIdle = "BT 下载服务正在运行",
-            titleWorking = "正在下载 %1\$d 个资源",
-            content = "下载：%1\$s，上传：%2\$s",
-            stopActionText = "停止",
+        private fun defaultNotificationAppearance(context: Context) = NotificationAppearance(
+            name = context.getString(R.string.ani_torrent_service_name),
+            titleIdle = context.getString(R.string.ani_torrent_service_title_idle),
+            titleWorking = context.getString(R.string.ani_torrent_service_title_working),
+            content = context.getString(R.string.ani_torrent_service_content),
+            stopActionText = context.getString(R.string.ani_torrent_service_stop),
             icon = Icon.createWithBitmap(Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)),
         )
     }

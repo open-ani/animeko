@@ -41,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
@@ -49,6 +50,8 @@ import me.him188.ani.app.ui.foundation.effects.defaultFocus
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_confirm
+import me.him188.ani.app.ui.lang.foundation_edit
 import me.him188.ani.app.ui.lang.settings_danmaku_cancel
 import me.him188.ani.app.ui.settings.SettingsTab
 import org.jetbrains.compose.resources.stringResource
@@ -118,7 +121,11 @@ fun SettingsScope.TextFieldItem(
             },
             trailingContent = {
                 IconButton({ showDialog = true }) {
-                    Icon(Icons.Rounded.Edit, "编辑", tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Rounded.Edit,
+                        stringResource(Lang.foundation_edit),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
             },
         )
@@ -213,8 +220,9 @@ internal fun SettingsScope.TextFieldDialog(
             TextButton(
                 onClick = onConfirm,
                 enabled = confirmEnabled,
+                modifier = Modifier.testTag("settings_text_field_dialog_confirm"),
             ) {
-                Text("确认")
+                Text(stringResource(Lang.foundation_confirm))
             }
         },
         title = title,

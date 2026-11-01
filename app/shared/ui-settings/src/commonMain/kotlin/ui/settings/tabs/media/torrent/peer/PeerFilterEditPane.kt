@@ -47,12 +47,40 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_blacklist_description
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_blacklist_title
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_always_block_invalid_fingerprint
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_auto_save_hint
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_client_fingerprint
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_client_id_help
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_client_type
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_client_type_help
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_invalid_fingerprint_description
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_blacklist
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_blacklist_description
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_help
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_help_cidr
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_help_range
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_help_wildcard
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_load_error
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_local
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_local_description
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_not_updated
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_refresh_all
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_rule
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_stats
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_subscriptions
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_update_error
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_use_builtin
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.rememberBBCodeRichTextState
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 private fun BBCodeSupportingText(text: String, modifier: Modifier = Modifier) {
@@ -74,7 +102,7 @@ private fun RuleEditItem(
             OutlinedTextField(
                 value = content,
                 enabled = enabled,
-                label = { Text("规则") },
+                label = { Text(stringResource(Lang.settings_media_torrent_peer_filter_rule)) },
                 maxLines = 8,
                 onValueChange = onContentChange,
                 shape = textFieldShape,
@@ -94,20 +122,27 @@ private fun renderLastLoaded(lastLoaded: PeerFilterSubscription.LastLoaded?): St
     val error = lastLoaded?.error
 
     if (lastLoaded == null || (stat == null && error == null)) {
-        return "未更新，启用以更新"
+        return stringResource(Lang.settings_media_torrent_peer_filter_not_updated)
     }
 
     return buildString {
         if (stat != null) {
-            append("包含 ${stat.ipRuleCount} 个 IP 过滤项，${stat.idRuleCount} 个 ID 过滤项和 ${stat.clientRuleCount} 个客户端过滤项")
+            append(
+                stringResource(
+                    Lang.settings_media_torrent_peer_filter_stats,
+                    stat.ipRuleCount,
+                    stat.idRuleCount,
+                    stat.clientRuleCount,
+                ),
+            )
         }
 
         if (error != null) {
             if (stat == null) {
-                append("加载错误：$error")
+                append(stringResource(Lang.settings_media_torrent_peer_filter_load_error, error))
             } else {
                 appendLine()
-                append("更新错误：$error")
+                append(stringResource(Lang.settings_media_torrent_peer_filter_update_error, error))
             }
         }
     }
@@ -124,7 +159,7 @@ fun PeerFilterEditPane(
 
     SettingsTab(modifier.verticalScroll(rememberScrollState())) {
         Group(
-            title = { Text("过滤规则订阅") },
+            title = { Text(stringResource(Lang.settings_media_torrent_peer_filter_subscriptions)) },
             actions = {
                 val updatingSubs by state.updatingSubs.collectAsStateWithLifecycle(false)
                 AnimatedContent(
@@ -136,7 +171,12 @@ fun PeerFilterEditPane(
                         CircularProgressIndicator(Modifier.size(24.dp))
                     } else {
                         IconButton({ state.updateSubs() }) {
-                            Icon(Icons.Rounded.Refresh, contentDescription = "刷新全部")
+                            Icon(
+                                Icons.Rounded.Refresh,
+                                contentDescription = stringResource(
+                                    Lang.settings_media_torrent_peer_filter_refresh_all,
+                                ),
+                            )
                         }
                     }
                 }
@@ -149,7 +189,7 @@ fun PeerFilterEditPane(
 
             SwitchItem(
                 onClick = { onCheckedChange(!(builtInSub?.enabled ?: false)) },
-                title = { Text("使用内置过滤规则") },
+                title = { Text(stringResource(Lang.settings_media_torrent_peer_filter_use_builtin)) },
                 description = { Text(renderLastLoaded(list.firstOrNull()?.lastLoaded)) },
             ) {
                 Switch(
@@ -161,11 +201,11 @@ fun PeerFilterEditPane(
         }
 
         Group(
-            title = { Text("本地过滤规则") },
-            description = { Text("除通过订阅过滤规则外，还可以手动添加过滤规则") },
+            title = { Text(stringResource(Lang.settings_media_torrent_peer_filter_local)) },
+            description = { Text(stringResource(Lang.settings_media_torrent_peer_filter_local_description)) },
         ) {
             SwitchItem(
-                title = { Text("过滤 IP 地址") },
+                title = { Text(stringResource(Lang.settings_media_torrent_peer_filter_ip)) },
                 checked = state.ipFilterEnabled,
                 onCheckedChange = { state.ipFilterEnabled = it },
             )
@@ -173,25 +213,18 @@ fun PeerFilterEditPane(
                 RuleEditItem(
                     content = state.ipFiltersPattern,
                     enabled = true,
-                    supportingTextBBCode = """
-                        每行一条过滤规则，支持 IPv4 和 IPv6
-                        支持以下格式：
-                        * 无类别域间路由（CIDR）
-                          例如：[code]10.0.0.1/24[/code] 将过滤从 [code]10.0.0.0[/code] 至 [code]10.0.0.255[/code] 的所有 IP
-                          [code]ff06:1234::/64[/code] 将过滤从 [code]ff06:1234::[/code] 至 [code]ff06:1234::ffff:ffff:ffff:ffff[/code] 的所有 IP
-                        * 通配符
-                          例如：[code]10.0.12.*[/code] 将过滤从 [code]10.0.12.0[/code] 至 [code]10.0.12.255[/code] 的所有 IP
-                          [code]ff06:1234::*[/code] 将过滤从 [code]ff06:1234::[/code] 至 [code]ff06:1234::ffff[/code] 的所有 IP
-                          支持多级通配符，例如 [code]10.0.*.*[/code]
-                        * 范围表示
-                          例如 [code]10.0.24.100-200[/code] 和 [code]ff06:1234::cafe-dead[/code]
-                    """.trimIndent(),
+                    supportingTextBBCode = listOf(
+                        stringResource(Lang.settings_media_torrent_peer_filter_ip_help),
+                        stringResource(Lang.settings_media_torrent_peer_filter_ip_help_cidr),
+                        stringResource(Lang.settings_media_torrent_peer_filter_ip_help_wildcard),
+                        stringResource(Lang.settings_media_torrent_peer_filter_ip_help_range),
+                    ).joinToString("\n"),
                     onContentChange = { state.ipFiltersPattern = it },
                 )
             }
 
             SwitchItem(
-                title = { Text("过滤客户端指纹") },
+                title = { Text(stringResource(Lang.settings_media_torrent_peer_filter_client_fingerprint)) },
                 checked = state.idFilterEnabled,
                 onCheckedChange = { state.idFilterEnabled = it },
             )
@@ -200,25 +233,34 @@ fun PeerFilterEditPane(
                     RuleEditItem(
                         content = state.idFiltersRegex,
                         enabled = true,
-                        supportingTextBBCode = """
-                        每行一条过滤规则，仅支持使用正则表达式过滤
-                        例如：[code]\-HP\d{4}\-[/code] 将封禁具有 -HPxxxx- 指纹的客户端
-                    """.trimIndent(),
+                        supportingTextBBCode = stringResource(
+                            Lang.settings_media_torrent_peer_filter_client_id_help,
+                        ),
                         onContentChange = { state.idFiltersRegex = it },
                     )
                     SwitchItem(
-                        title = { Text("总是过滤异常指纹") },
+                        title = {
+                            Text(
+                                stringResource(
+                                    Lang.settings_media_torrent_peer_filter_always_block_invalid_fingerprint,
+                                ),
+                            )
+                        },
                         checked = state.blockInvalidId,
                         onCheckedChange = { state.blockInvalidId = it },
                         description = {
-                            BBCodeSupportingText("无论是否满足规则, 都会屏蔽指纹不符合 [code]-xxxxxx-[/code] 格式的客户端")
+                            BBCodeSupportingText(
+                                stringResource(
+                                    Lang.settings_media_torrent_peer_filter_invalid_fingerprint_description,
+                                ),
+                            )
                         },
                     )
                 }
             }
 
             SwitchItem(
-                title = { Text("过滤客户端类型") },
+                title = { Text(stringResource(Lang.settings_media_torrent_peer_filter_client_type)) },
                 checked = state.clientFilterEnabled,
                 onCheckedChange = { state.clientFilterEnabled = it },
             )
@@ -226,22 +268,27 @@ fun PeerFilterEditPane(
                 RuleEditItem(
                     content = state.clientFiltersRegex,
                     enabled = true,
-                    supportingTextBBCode = """
-                        每行一条过滤规则，仅支持使用正则表达式过滤
-                        例如：[code]go\.torrent(\sdev)?[/code] 将封禁百度网盘的离线下载客户端
-                    """.trimIndent(),
+                    supportingTextBBCode = stringResource(
+                        Lang.settings_media_torrent_peer_filter_client_type_help,
+                    ),
                     onContentChange = { state.clientFiltersRegex = it },
                 )
             }
 
             AniAnimatedVisibility(visible = showIpBlockingItem) {
                 Group(
-                    title = { Text("黑名单") },
-                    description = { Text("黑名单中的 Peer 总是被屏蔽，无论是否匹配过滤规则") },
+                    title = { Text(stringResource(Lang.settings_media_torrent_peer_blacklist_title)) },
+                    description = { Text(stringResource(Lang.settings_media_torrent_peer_blacklist_description)) },
                 ) {
                     TextItem(
-                        title = { Text("IP 黑名单设置") },
-                        description = { Text("配置 IP 黑名单列表") },
+                        title = { Text(stringResource(Lang.settings_media_torrent_peer_filter_ip_blacklist)) },
+                        description = {
+                            Text(
+                                stringResource(
+                                    Lang.settings_media_torrent_peer_filter_ip_blacklist_description,
+                                ),
+                            )
+                        },
                         action = {
                             IconButton(onClickIpBlockSettings) {
                                 Icon(Icons.Rounded.ArrowOutward, null)
@@ -261,7 +308,7 @@ fun PeerFilterEditPane(
                         MaterialTheme.typography.labelMedium,
                         MaterialTheme.colorScheme.outline,
                     ) {
-                        Text("提示：修改自动保存")
+                        Text(stringResource(Lang.settings_media_torrent_peer_filter_auto_save_hint))
                     }
                 }
             }

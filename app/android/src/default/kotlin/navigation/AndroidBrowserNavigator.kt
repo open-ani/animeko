@@ -12,6 +12,7 @@ package me.him188.ani.android.navigation
 import android.content.Intent
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
+import me.him188.ani.android.R
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.OpenBrowserResult
 import me.him188.ani.app.platform.Context
@@ -59,7 +60,7 @@ class AndroidBrowserNavigator : BrowserNavigator {
         try {
             val browserIntent = Intent(Intent.ACTION_VIEW)
                 .apply { setDataAndType(url.toUri(), "video/*") }
-            context.startActivity(Intent.createChooser(browserIntent, "选择播放器"))
+            context.startActivity(Intent.createChooser(browserIntent, context.getString(R.string.choose_video_player)))
             return OpenBrowserResult.Success
         } catch (ex: Exception) {
             logger.warn("Failed to open video", ex)
