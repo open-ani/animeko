@@ -9,8 +9,16 @@
 
 package me.him188.ani.app.ui.download.subject
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
@@ -49,9 +57,14 @@ import org.jetbrains.compose.resources.getString
 class DownloadMediaPickerTest {
     /**
      * @param onManualPick 非 null 时提供手动查找, 点选的一集交给它; null 时宿主没有手动查找.
+     * @param userMode 宿主持有的模式, 默认本次组合内的局部状态.
      */
     @Composable
-    private fun Picker(hasBt: Boolean, onManualPick: ((Media, ManualBrowseMemory?) -> Unit)? = null) {
+    private fun Picker(
+        hasBt: Boolean,
+        onManualPick: ((Media, ManualBrowseMemory?) -> Unit)? = null,
+        userMode: MutableState<MediaSelectorMode?> = remember { mutableStateOf(null) },
+    ) {
         ProvideCompositionLocalsForPreview {
             val scope = rememberBackgroundScope()
             val manualBrowse = remember {
@@ -68,6 +81,8 @@ class DownloadMediaPickerTest {
                 selectorState = rememberTestMediaSelectorState(),
                 sourceResults = TestMediaSourceResultListPresentation,
                 hasBt = hasBt,
+                userMode = userMode.value,
+                onUserModeChange = { userMode.value = it },
                 watching = WatchingEpisode("01", "Episode 1"),
                 fetchRequest = TestMediaFetchRequest,
                 onFetchRequestChange = {},
@@ -91,19 +106,48 @@ class DownloadMediaPickerTest {
     }
 
     @Test
-    fun `defaults to BT with BT sources and switches to auto from the menu`() = runAniComposeUiTest {
+    fun `defaults to auto even with BT sources and switches to BT from the menu`() = runAniComposeUiTest {
         setContent { Picker(hasBt = true) }
-        onNodeWithTag(BtResourcesPageTestTags.ROOT).assertExists()
-        onNodeWithTag(AutoMatchPageTestTags.ROOT).assertDoesNotExist()
-        onNodeWithTag(MediaSelectorChromeTestTags.MODE_CHIP).assertTextEquals(modeName(MediaSelectorMode.BT))
-
-        onNodeWithTag(MediaSelectorChromeTestTags.MODE_CHIP).performClick()
-        onNodeWithTag(MediaSelectorChromeTestTags.modeItem(MediaSelectorMode.MANUAL)).assertDoesNotExist()
-        onNodeWithTag(MediaSelectorChromeTestTags.modeItem(MediaSelectorMode.AUTO)).performClick()
-
         onNodeWithTag(AutoMatchPageTestTags.ROOT).assertExists()
         onNodeWithTag(BtResourcesPageTestTags.ROOT).assertDoesNotExist()
         onNodeWithTag(MediaSelectorChromeTestTags.MODE_CHIP).assertTextEquals(modeName(MediaSelectorMode.AUTO))
+
+        onNodeWithTag(MediaSelectorChromeTestTags.MODE_CHIP).performClick()
+        onNodeWithTag(MediaSelectorChromeTestTags.modeItem(MediaSelectorMode.MANUAL)).assertDoesNotExist()
+        onNodeWithTag(MediaSelectorChromeTestTags.modeItem(MediaSelectorMode.BT)).performClick()
+
+        onNodeWithTag(BtResourcesPageTestTags.ROOT).assertExists()
+        onNodeWithTag(AutoMatchPageTestTags.ROOT).assertDoesNotExist()
+        onNodeWithTag(MediaSelectorChromeTestTags.MODE_CHIP).assertTextEquals(modeName(MediaSelectorMode.BT))
+    }
+
+    @Test
+    fun `mode chosen in the picker survives leaving for the episode step and coming back`() = runAniComposeUiTest {
+        // 与 DownloadRequestSheet 一样用 AnimatedContent 在选源与选集之间切换, 选源页会被销毁重建; 模式由宿主持有.
+        val userMode = mutableStateOf<MediaSelectorMode?>(null)
+        var step by mutableStateOf(0)
+        setContent {
+            AnimatedContent(targetState = step, contentKey = { it != 0 }) { s ->
+                if (s == 0) Picker(hasBt = true, userMode = userMode) else Box(Modifier.testTag("episode_step"))
+            }
+        }
+        onNodeWithTag(MediaSelectorChromeTestTags.MODE_CHIP).performClick()
+        onNodeWithTag(MediaSelectorChromeTestTags.modeItem(MediaSelectorMode.BT)).performClick()
+        onNodeWithTag(BtResourcesPageTestTags.ROOT).assertExists()
+
+        step = 1
+        waitForIdle()
+        mainClock.advanceTimeBy(5_000)
+        waitForIdle()
+        onNodeWithTag("episode_step").assertExists()
+        onNodeWithTag(DownloadMediaPickerTestTags.ROOT).assertDoesNotExist()
+
+        step = 0
+        waitForIdle()
+        mainClock.advanceTimeBy(5_000)
+        waitForIdle()
+        onNodeWithTag(BtResourcesPageTestTags.ROOT).assertExists()
+        onNodeWithTag(MediaSelectorChromeTestTags.MODE_CHIP).assertTextEquals(modeName(MediaSelectorMode.BT))
     }
 
     @Test
