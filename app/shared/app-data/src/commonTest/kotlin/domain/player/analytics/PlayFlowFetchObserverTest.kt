@@ -25,6 +25,7 @@ import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstan
 import me.him188.ani.app.domain.player.extension.RecordingAnalytics
 import me.him188.ani.datasources.api.paging.SinglePagePagedSource
 import me.him188.ani.datasources.api.source.TestHttpMediaSource
+import me.him188.ani.utils.analytics.IAnalytics
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -199,7 +200,8 @@ class PlayFlowFetchObserverTest {
     fun `failures that do not fit in one event are split into parts without dropping any`() = runTest {
         val builder = MediaSelectorTestBuilder(this)
         // 每个记号 (id=IllegalStateException) 超过 50 字符, 一段只装得下一个; 比一条事件的段数多一个
-        val ids = (1..PlayFlowFetchObserver.MAX_SOURCE_CHUNKS + 1).map { "source-${it.toString().padStart(2, '0')}-" + "x".repeat(40) }
+        val maxChunks = PlayFlowFetchObserver.maxSourceChunks(IAnalytics.MAX_EVENT_PROPERTIES)
+        val ids = (1..maxChunks + 1).map { "source-${it.toString().padStart(2, '0')}-" + "x".repeat(40) }
         val sources = ids.map { builder.delayedMediaSource(it) }
         observe(builder)
 
@@ -210,7 +212,7 @@ class PlayFlowFetchObserverTest {
         assertEquals(listOf(1L, 2L), parts.map { it["part"] })
         assertTrue(parts.all { it["count"] == ids.size.toLong() && it["round"] == 1L })
         val tokens = parts.flatMap { part ->
-            (1..PlayFlowFetchObserver.MAX_SOURCE_CHUNKS).mapNotNull { part["sources_$it"] as String? }.flatMap { it.split(',') }
+            (1..maxChunks).mapNotNull { part["sources_$it"] as String? }.flatMap { it.split(',') }
         }
         assertEquals(ids.map { "$it=IllegalStateException" }.toSet(), tokens.toSet())
         assertEquals(ids.size, tokens.size)

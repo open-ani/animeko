@@ -180,7 +180,7 @@ class MediaFetchAnalyticsExtension(
                 put("first_media_ms", stats.firstMedia?.inWholeMilliseconds)
                 put("select_ms", stats.selectTime?.inWholeMilliseconds)
                 put("selected_by", stats.selectOrigin.value?.toAnalyticsValue())
-                put("selected_source_id", selected?.mediaSourceId?.take(100))
+                put("selected_source", selected?.let { context.playFlow.sourceName(it.mediaSourceId) }?.take(100))
                 if (selected != null && !selected.isLocalCache()) {
                     put("selected_tier", tiers?.tierOf(selected))
                 }

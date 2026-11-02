@@ -19,8 +19,13 @@
 
 这 7 个属性出现在每条 `play_flow` 事件里. `sel_no` (Long, 每次尝试内从 1 起) 是一次资源选择的编号, 把 `auto_select_done` / `user_select` →
 `video_load_done` → `playback_started` / `auto_switch` / `play_error` 串成一条加载链; 同一资源再次被选中沿用同一编号.
+`source` (String) 是数据源的标识: 数据源网址 (Web 源是搜索网址) 的主机名, 小写、去掉 `www.`; 没有网址的源 (本地缓存、部分 BT 源) 是 `mediaSourceId`.
+订阅的 Web 源 id 是 UUID, 主机名才可读. 查询会话创建时登记参与的源 (`PlayFlowRecorder.registerSource`), 没登记过的源也记 id.
+既有事件的 `episode_exit.source` 与 `media_fetch_result.selected_source` 同样取主机名.
 
-属性值的类型只有 String 与 Long (GA4 / Firebase 的限制): 布尔为 `1` / `0`, 时长为毫秒, 字符串截断到 100 字符. 一条事件最多 25 个属性.
+属性值的类型只有 String 与 Long (GA4 / Firebase 的限制): 布尔为 `1` / `0`, 时长为毫秒, 字符串截断到 100 字符.
+GA4 一条事件最多 25 个属性, 其中包括 analytics 实现附加在每条事件上的平台 / 版本 / 会话属性 (Android 4 个, 桌面 6 个, `IAnalytics.extraPropertyCount`);
+超出时 GA4 只保留一部分属性, 丢哪些不确定 (Android 的事件另带 `firebase_error=5`, 桌面没有任何提示). `PlayFlowRecorder.maxProperties` 是扣除后的预算, 超过它会抛异常.
 `reason` 只放枚举值或异常的简单类名, 不放异常消息; 不发送搜索关键字、条目标题、URL、文件路径.
 
 记录器是 `PlayFlowRecorder` (`app/shared/app-data/.../domain/player/analytics/`). `EpisodeViewModel` 创建它并传给 `EpisodeFetchSelectPlayState`;
@@ -46,11 +51,12 @@
 | step | 时机 | 属性 |
 |---|---|---|
 | `search_started` | 本次尝试开始查找资源 | `kind`: `new` (新建查询) / `reused` (切集复用上一集的查询); `count` 参与的数据源数 (不含禁用与本地缓存源); `restarts` 复用时自动重试的失败源数 |
-| `source_failed` | 一轮查询结束时 (紧接在 `search_done` 之前), 这一轮里有失败、限流、需要验证码, 或成功但耗时达到 10 秒的源 | `round`; `count` 本轮有问题的源数; `part` 从 1 起; `sources_1` … `sources_15`: 逗号分隔的 `域名=结果` 记号, 每段不超过 100 字符; 一条装不下时按 `part` 分成多条, 所有源都会记录 |
+| `source_failed` | 一轮查询结束时 (紧接在 `search_done` 之前), 这一轮里有失败、限流、需要验证码, 或成功但耗时达到 10 秒的源 | `round`; `count` 本轮有问题的源数; `part` 从 1 起; `sources_1` … `sources_N`: 逗号分隔的 `源=结果` 记号, 每段不超过 100 字符, N 是属性预算减去公共属性与 `round` / `count` / `part` (Android 11, 桌面 9); 一条装不下时按 `part` 分成多条, 所有源都会记录 |
 | `search_done` | 一轮查询全部结束, 或用户在结束前离开播放页 | `outcome`: `complete` / `incomplete`; `round`; `count` 本轮到达终态的源数; `media_count` 全部源返回的资源总数; `cached_count` 本轮完全由搜索缓存满足的源数; `duration_ms` 本轮时长 |
 
-`source_failed` 的记号里, 域名是数据源网址的主机名 (去掉 `www.`), 没有网址的源用 `media_source_id`; 结果是失败的异常简名或阻断原因,
-`rate_limited`, `captcha_required`, 或 `slow` (成功但慢). 失败类记号排在前, 慢源在后. 查询时按 `(play_session_id, round, part)` 收齐各条, 把各段拼起来再按逗号拆:
+`source_failed` 的记号里, 源同 `source`; 结果是 `rate_limited`, `captcha_required`, `slow` (成功但慢), 或失败的原因: `forbidden` (401 / 403),
+`unavailable` (5xx), `not_found`, `request_error`, `timeout`, `dns`, `tls`, `network` (其他 IO 错误), `http_<状态码>`; 其余异常取简单类名 (多半是代码问题).
+常见异常归并成短词是为了让一条事件装下更多源. 失败类记号排在前, 慢源在后. 查询时按 `(play_session_id, round, part)` 收齐各条, 把各段拼起来再按逗号拆:
 `SPLIT(CONCAT(sources_1, ',', sources_2, …), ',')`.
 
 正常完成的源不单独记录 (一次查询通常有几十个源, 逐源记录会占 play_flow 总量的七成以上), 只计入 `search_done` 的 `count`, `media_count` 与 `cached_count`;
@@ -63,7 +69,7 @@
 
 | step | 时机 | 属性 |
 |---|---|---|
-| `auto_select_done` | 每次自动选源有了结果 (每个查询 bundle 一条) | `outcome`: `selected` / `no_media` / `timeout` / `preempted_by_user` / `skipped`; `method` (selected): `local_cache` / `browse_memory` / `preferred_source` / `instant` / `exact` / `fuzzy` / `bt`; `reason`: 未选中时是具体原因 (`fuzzy_deadline`, `no_web_candidates`, `info_missing`, `cancelled` 等), 选中时是浏览记忆未命中、退回自动选择的原因 (`no_memory`, `browse_timeout`, `channel_not_found` 等); `media_source_id`; `kind`; `match`: `exact` / `fuzzy`; `tier`; `sel_no`; `duration_ms` 自开始 |
+| `auto_select_done` | 每次自动选源有了结果 (每个查询 bundle 一条) | `outcome`: `selected` / `no_media` / `timeout` / `preempted_by_user` / `skipped`; `method` (selected): `local_cache` / `browse_memory` / `preferred_source` / `instant` / `exact` / `fuzzy` / `bt`; `reason`: 未选中时是具体原因 (`fuzzy_deadline`, `no_web_candidates`, `info_missing`, `cancelled` 等), 选中时是浏览记忆未命中、退回自动选择的原因 (`no_memory`, `browse_timeout`, `channel_not_found` 等); `source`; `kind`; `match`: `exact` / `fuzzy`; `tier`; `sel_no`; `duration_ms` 自开始 |
 
 `method` 对应 `MediaAutoSelector` 的决策依据: 本地缓存、浏览记忆回放、记忆的 Web 源、Web 三阶段 (精确且高阶级 → 精确 → 模糊)、BT.
 `outcome=timeout` 表示到了模糊匹配阶段仍没有候选; `preempted_by_user` 表示等待期间用户自己选了; `skipped` 带 `reason=info_missing` (剧集信息未加载) 或 `cancelled`.
@@ -72,17 +78,17 @@
 
 | step | 时机 | 属性 |
 |---|---|---|
-| `user_select` | 用户手动选了一个资源 | `sel_no`; `entry`: `auto_page` / `bt_page` / `manual_search` / `dropped_file` / `tv` / `other`; `media_source_id`; `kind`: `web` / `bt` / `local_cache` / `dropped_file`; `match`; `tier`; `count`: 1 = 换掉了已选中的资源 |
-| `manual_search` | 手动查找的一步完成 | `stage`: `search` / `open_subject` / `open_channel` / `play`; `outcome`: `ok` / `empty` / `failed` / `captcha_solved` / `captcha_solved_failed` / `captcha_failed` / `captcha_unsupported` / `invalid_state` / `create_media_failed`; `media_source_id`; `count` 结果数 (条目 / 线路 / 剧集); `remember` (play) 是否记住选择; `duration_ms` |
-| `user_action` | 用户为推进播放做的其他操作 | `action`: `refresh_source` / `refresh_all` / `edit_query` / `retry_info` / `retry_playback` / `solve_captcha`; `media_source_id`; `outcome` (solve_captcha): `solved` / `failed` / `cancelled` / `unsupported` |
+| `user_select` | 用户手动选了一个资源 | `sel_no`; `entry`: `auto_page` / `bt_page` / `manual_search` / `dropped_file` / `tv` / `other`; `source`; `kind`: `web` / `bt` / `local_cache` / `dropped_file`; `match`; `tier`; `count`: 1 = 换掉了已选中的资源 |
+| `manual_search` | 手动查找的一步完成 | `stage`: `search` / `open_subject` / `open_channel` / `play`; `outcome`: `ok` / `empty` / `failed` / `captcha_solved` / `captcha_solved_failed` / `captcha_failed` / `captcha_unsupported` / `invalid_state` / `create_media_failed`; `source`; `count` 结果数 (条目 / 线路 / 剧集); `remember` (play) 是否记住选择; `duration_ms` |
+| `user_action` | 用户为推进播放做的其他操作 | `action`: `refresh_source` / `refresh_all` / `edit_query` / `retry_info` / `retry_playback` / `solve_captcha`; `source`; `outcome` (solve_captcha): `solved` / `failed` / `cancelled` / `unsupported` |
 
 ### 加载与播放
 
 | step | 时机 | 属性 |
 |---|---|---|
-| `video_load_done` | 选中的资源加载完毕: 可以播放, 失败, 或被打断 | `sel_no`; `outcome`: `ok` / `failed` / `cancelled`; `stage` (failed / cancelled): `resolve` / `open` / `player`; `reason` (failed): `no_playable_link` / `resolve_timeout` / `network` / `web_engine_unavailable` / `unsupported_media` / `player_io` / `player_decoding` / `player_unsupported_format` / 异常简名; `reason` (cancelled): `user_switched` / `episode_switched` / `left_page`; `media_source_id`; `kind`; `engine`: `web` / `local_bt` / `cloud_bt` / `direct` / `local_file` / `none` / `other`; `duration_ms` 自开始加载 |
-| `auto_switch` | 加载或播放失败后系统自动换源的结果 | `sel_no` 失败的资源; `trigger`: `load_failed` / `player_error`; `outcome`: `switched` / `no_more_sources` / `skipped`; `reason` (skipped): `dropped_file` / `user_switched` / `prefer_bt` / `cancelled`; `media_source_id` 换到的资源; `count` 已排除的资源数 |
-| `playback_started` | 画面开始播放 (播放器报告播放中) | `sel_no`; `media_source_id`; `kind`; `is_first` 本次尝试首次; `duration_ms` 自选中; `since_enter_ms` 自 `enter` |
+| `video_load_done` | 选中的资源加载完毕: 可以播放, 失败, 或被打断 | `sel_no`; `outcome`: `ok` / `failed` / `cancelled`; `stage` (failed / cancelled): `resolve` / `open` / `player`; `reason` (failed): `no_playable_link` / `resolve_timeout` / `network` / `web_engine_unavailable` / `unsupported_media` / `player_io` / `player_decoding` / `player_unsupported_format` / 异常简名; `reason` (cancelled): `user_switched` / `episode_switched` / `left_page`; `source`; `kind`; `engine`: `web` / `local_bt` / `cloud_bt` / `direct` / `local_file` / `none` / `other`; `duration_ms` 自开始加载 |
+| `auto_switch` | 加载或播放失败后系统自动换源的结果 | `sel_no` 失败的资源; `trigger`: `load_failed` / `player_error`; `outcome`: `switched` / `no_more_sources` / `skipped`; `reason` (skipped): `dropped_file` / `user_switched` / `prefer_bt` / `cancelled`; `source` 换到的资源; `count` 已排除的资源数 |
+| `playback_started` | 画面开始播放 (播放器报告播放中) | `sel_no`; `source`; `kind`; `is_first` 本次尝试首次; `duration_ms` 自选中; `since_enter_ms` 自 `enter` |
 | `play_error` | 已经在播放中出错 | `sel_no`; `reason`: `player_io` 等播放器错误码; `position_ms` |
 
 一次选择对应一次加载; 新的选择会取消进行中的加载, 产生 `video_load_done outcome=cancelled reason=user_switched`.
@@ -106,7 +112,7 @@ SELECT
   (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'step') AS step,
   (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'outcome') AS outcome,
   (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'reason') AS reason,
-  (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'media_source_id') AS source,
+  (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'source') AS source,
   (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'sel_no') AS sel_no
 FROM `analytics.events_*`
 WHERE event_name = 'play_flow'
