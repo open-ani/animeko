@@ -175,7 +175,7 @@ data class PendingSyncEpisode(
 }
 
 @Stable
-class PlaybackHistoryViewModel : AbstractViewModel(), KoinComponent {
+open class PlaybackHistoryViewModel : AbstractViewModel(), KoinComponent {
     private val repository: EpisodePlayHistoryRepository by inject()
     private val syncer: PlaybackHistorySyncer by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
