@@ -14,6 +14,7 @@ MediaSelector 主要包含以下四个阶段：
 3. **偏好**：根据用户对这个番剧的偏好，只采取满足用户喜好的 media。
 4. **选择**：支持手动或自动方式来选中某个 [Media]：
     - 手动调用 `select` 方法。
+      点选当前正在播放的资源同样记录偏好, 但不广播资源切换事件, 播放与进度保持不变。
     - 自动通过 `trySelectDefault`、`trySelectCached` 或 `trySelectFromMediaSources` 等方法完成。
     - 临时选择 `selectTemporarily`：只更新本会话的选择，不写偏好。用于拖入的本地文件、
       关掉「记住选择」时的手动查找点选，见[选源界面](media-selector-ui.md)。
