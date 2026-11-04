@@ -15,6 +15,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import me.him188.ani.tv.ui.foundation.TvNavigationEffect
 import me.him188.ani.tv.ui.foundation.TvNavigationEvent
 
@@ -26,6 +28,17 @@ fun TvScheduleRoute(
     navigationRailInsets: PaddingValues = PaddingValues(0.dp),
 ) {
     val presentation by viewModel.presentationFlow.collectAsState()
+    val timeZone by viewModel.scheduleTimeZone.collectAsState()
+    val timeZonePreference by viewModel.scheduleTimeZonePreference.collectAsState()
+    // 回到前台时重新解析系统时区: 跟随系统模式下, 期间在系统设置里改了时区也要生效
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onReturnedToForeground() }
     TvNavigationEffect(viewModel.navigationEvents, onNavigate)
-    TvScheduleScreen(presentation, viewModel::onIntent, modifier, navigationRailInsets)
+    TvScheduleScreen(
+        presentation = presentation,
+        onIntent = viewModel::onIntent,
+        modifier = modifier,
+        timeZone = timeZone,
+        timeZonePreference = timeZonePreference,
+        navigationRailInsets = navigationRailInsets,
+    )
 }
