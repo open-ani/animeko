@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
@@ -156,6 +157,7 @@ fun LockableVideoGestureHost(
     ),
     gestureIndicatorState: GestureIndicatorState = rememberGestureIndicatorState(),
     fastForwardSpeed: Float = 3f,
+    shortcuts: PlayerShortcutConfig = PlayerShortcutConfig.Default,
     fastSkipState: FastSkipState? = playerState.features[PlaybackSpeed]?.let {
         rememberPlayerFastSkipState(
             playerState = it,
@@ -188,6 +190,7 @@ fun LockableVideoGestureHost(
             onToggleDanmaku = onToggleDanmaku,
             onTogglePlayerStats = onTogglePlayerStats,
             family = family,
+            shortcuts = shortcuts,
         )
     }
 }
