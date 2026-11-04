@@ -20,13 +20,13 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import me.him188.ani.datasources.api.EpisodeSort
-import me.him188.ani.datasources.api.source.BrowseEpisode
 import me.him188.ani.datasources.api.source.BrowseSubject
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.contains
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 /**
@@ -116,10 +116,14 @@ class SelectorSiteFixtureTest {
         val ep14 = medias.filter { it.episodeRange?.contains(EpisodeSort(14)) == true }
         assertEquals(listOf("旧番主线①", "备用①"), ep14.map { it.properties.alliance })
 
+        // 手动点选使用浏览返回的剧集及其线路证据。
+        val channel = source.browseSubject(FRIEREN).single { it.name == "备用①" }
+        val episode = channel.episodes.single { it.episodeSort == EpisodeSort(14) }
+        assertNotNull(episode.webRoute)
         val manual = source.createMedia(
             FRIEREN,
-            channelName = "备用①",
-            episode = BrowseEpisode("第14集", "https://www.fixture.invalid/watch/44/2/14.html", EpisodeSort(14)),
+            channelName = channel.name,
+            episode = episode,
             episodeSort = EpisodeSort(14),
         )
         val auto = ep14.single { it.properties.alliance == "备用①" }

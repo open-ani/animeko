@@ -14,6 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.models.fold
 import me.him188.ani.app.data.models.runApiRequest
@@ -43,6 +44,7 @@ import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.SubtitleKind
+import me.him188.ani.datasources.api.WebMediaRoute
 import me.him188.ani.datasources.api.matcher.ApiVideoResolver
 import me.him188.ani.datasources.api.matcher.WebVideo
 import me.him188.ani.datasources.api.paging.SizedSource
@@ -163,6 +165,9 @@ class JsonApiMediaSource(
     private val arguments = config.deserializeArgumentsOrNull(JsonApiMediaSourceArguments.serializer())
         ?: JsonApiMediaSourceArguments.Default
     val searchConfig: JsonApiSearchConfig get() = arguments.searchConfig
+    val playbackConfigurationId: String by lazy {
+        MediaSourceEngineHelpers.playbackConfigurationId(Json.encodeToString(JsonApiSearchConfig.serializer(), searchConfig))
+    }
 
     override val kind: MediaSourceKind get() = MediaSourceKind.WEB
     override val location: MediaSourceLocation get() = MediaSourceLocation.Online
@@ -399,6 +404,7 @@ class JsonApiMediaSource(
                 alliance = episode.channel ?: "",
                 size = FileSize.Unspecified,
                 subtitleKind = SubtitleKind.EMBEDDED,
+                webRoute = WebMediaRoute(subject.url, episode.channel.orEmpty(), playbackConfigurationId),
             ),
             episodeRange = episodeSort?.let { EpisodeRange.single(it) },
             location = MediaSourceLocation.Online,

@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.models.fold
 import me.him188.ani.app.data.models.runApiRequest
@@ -33,17 +34,18 @@ import me.him188.ani.app.domain.mediasource.latestAiredEpisode
 import me.him188.ani.app.domain.mediasource.rememberedKeywords
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
+import me.him188.ani.app.domain.mediasource.web.format.SelectedChannelEpisodes
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.WebMediaRoute
 import me.him188.ani.datasources.api.matcher.WebVideoMatcher
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherContext
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherProvider
 import me.him188.ani.datasources.api.matcher.WebViewConfig
 import me.him188.ani.datasources.api.paging.SizedSource
-import me.him188.ani.datasources.api.paging.map
-import me.him188.ani.app.domain.mediasource.web.format.SelectedChannelEpisodes
-import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.paging.emptySizedSource
+import me.him188.ani.datasources.api.paging.map
 import me.him188.ani.datasources.api.source.BrowseChannel
 import me.him188.ani.datasources.api.source.BrowseEpisode
 import me.him188.ani.datasources.api.source.BrowseSubject
@@ -161,6 +163,9 @@ class SelectorMediaSource(
         config.deserializeArgumentsOrNull(ArgumentType.serializer())
             ?: SelectorMediaSourceArguments.Default
     private val searchConfig = arguments.searchConfig
+    val playbackConfigurationId: String by lazy {
+        MediaSourceEngineHelpers.playbackConfigurationId(Json.encodeToString(SelectorSearchConfig.serializer(), searchConfig))
+    }
 
     private val engine by lazy { EngineType(client) }
 
@@ -319,6 +324,7 @@ class SelectorMediaSource(
         return buildList {
             for (cache in caches) {
                 val episodes = cache.webEpisodeInfos
+                val ambiguous = cache.unreliableChannelNames + episodes.ambiguousChannelNames()
                 if (episodes.findMatchingEpisodeOrNull(probe.episodeSort, probe.episodeEp, probe.episodeName) == null) {
                     continue
                 }
@@ -329,6 +335,9 @@ class SelectorMediaSource(
                         query,
                         mediaSourceId,
                         subjectName = cache.webSubjectInfo.name,
+                        subjectUrl = cache.webSubjectInfo.fullUrl,
+                        configurationId = playbackConfigurationId,
+                        ambiguousChannels = ambiguous,
                     ).originalList,
                 )
             }
@@ -367,11 +376,11 @@ class SelectorMediaSource(
 
         buildList {
             for (subjectInfo in subjects) {
-                val episodes = try {
+                val selected = try {
                     fetchPageOrThrow(
                         subjectInfo.fullUrl,
                         PageExpectation.SubjectDetails(searchConfig, subjectInfo.fullUrl),
-                    )?.episodes
+                    )
                 } catch (e: BlockedException) {
                     throw e
                 } catch (e: CancellationException) {
@@ -381,9 +390,13 @@ class SelectorMediaSource(
                     logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to load subject page ${subjectInfo.fullUrl}" }
                     null
                 } ?: continue
+                val episodes = selected.episodes
+                val ambiguous = selected.channelGroups.orEmpty().groupBy { it.name }.filterValues { it.size > 1 }.keys +
+                    episodes.ambiguousChannelNames()
                 repository.addCache(
                     subjectId, mediaSourceId, query.subjectName, subjectInfo, episodes,
                     sourceCacheTtl = searchConfig.searchCacheTtl,
+                    ambiguousChannelNames = ambiguous,
                 )
                 addAll(
                     selectMedia(
@@ -392,6 +405,9 @@ class SelectorMediaSource(
                         query,
                         mediaSourceId,
                         subjectName = subjectInfo.name,
+                        subjectUrl = subjectInfo.fullUrl,
+                        configurationId = playbackConfigurationId,
+                        ambiguousChannels = ambiguous,
                     ).originalList,
                 )
             }
@@ -462,7 +478,14 @@ class SelectorMediaSource(
     override suspend fun browseSubject(subject: BrowseSubject): List<BrowseChannel> {
         val selected = fetchPageOrThrow(subject.url, PageExpectation.SubjectDetails(searchConfig, subject.url))
             ?: return emptyList()
-        return selected.toBrowseChannels()
+        val channels = selected.toBrowseChannels()
+        val ambiguous = channels.groupBy { it.name }.filterValues { it.size > 1 }.keys +
+            selected.episodes.ambiguousChannelNames()
+        return channels.map { channel ->
+            val route = if (channel.name in ambiguous) null
+            else WebMediaRoute(subject.url, channel.name.orEmpty(), playbackConfigurationId)
+            channel.copy(episodes = channel.episodes.map { it.copy(webRoute = route) })
+        }
     }
 
     override fun createMedia(
@@ -481,6 +504,10 @@ class SelectorMediaSource(
         searchConfig,
         mediaSourceId,
         subjectName = subject.name,
+        subjectUrl = episode.webRoute?.takeIf {
+            it.subjectUrl == subject.url && it.channel == channelName.orEmpty() && it.configuration == playbackConfigurationId
+        }?.subjectUrl,
+        configurationId = playbackConfigurationId,
     )
 
     // endregion

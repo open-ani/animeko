@@ -233,6 +233,33 @@ class AniDatabaseMigrationTest {
     }
 
     @Test
+    fun `v28 to v29 preserves cached episodes with unknown channel identity`() {
+        val helper = createHelper()
+        helper.createDatabase(28).use { connection ->
+            connection.execSQL(
+                """
+                INSERT INTO `web_search_session_cache`
+                    (`requesterSubjectId`, `mediaSourceId`, `subjectName`, `subjectPageName`, `subjectInternalId`,
+                     `subjectUrl`, `subjectPartialUrl`, `channel`, `episodeName`, `episodeSortOrEp`, `playUrl`, `cachedAt`, `expiresAt`)
+                VALUES (1, 'web', 'Example', 'Example', '1', 'https://site/subject/1', '/subject/1',
+                        'line', 'episode-1', '1', 'https://site/play/1', 100, 200)
+                """.trimIndent(),
+            )
+        }
+        helper.runMigrationsAndValidate(29, emptyList()).use { connection ->
+            connection.prepare(
+                "SELECT `hasReliableChannelIdentity`, `playUrl`, `episodeName` FROM `web_search_session_cache`",
+            ).use { statement ->
+                assertTrue(statement.step())
+                assertEquals(0, statement.getInt(0))
+                assertEquals("https://site/play/1", statement.getText(1))
+                assertEquals("episode-1", statement.getText(2))
+                assertFalse(statement.step())
+            }
+        }
+    }
+
+    @Test
     fun `MIG-04 缺失手动19-20迁移时从v16迁移到v21失败`() {
         val helper = createHelper()
         helper.createDatabase(16).use {}

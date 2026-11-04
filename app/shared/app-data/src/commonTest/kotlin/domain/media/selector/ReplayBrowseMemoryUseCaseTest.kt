@@ -21,14 +21,13 @@ import me.him188.ani.app.data.repository.media.ManualBrowseMemory
 import me.him188.ani.app.data.repository.media.ManualBrowseMemoryRepositoryImpl
 import me.him188.ani.app.domain.media.createTestDefaultMedia
 import me.him188.ani.app.domain.media.createTestMediaProperties
-import me.him188.ani.app.domain.media.selector.testFramework.RecordedMediaSelectorEvent.OnBeforeSelect
-import me.him188.ani.app.domain.media.selector.testFramework.RecordedMediaSelectorEvent.OnSelect
 import me.him188.ani.app.domain.media.selector.testFramework.collectEvents
 import me.him188.ani.app.domain.media.selector.testFramework.runSimpleMediaSelectorTestSuite
 import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.WebMediaRoute
 import me.him188.ani.datasources.api.source.BrowseChannel
 import me.him188.ani.datasources.api.source.BrowseEpisode
 import me.him188.ani.datasources.api.source.BrowseSubject
@@ -94,7 +93,7 @@ class ReplayBrowseMemoryUseCaseTest {
             properties = createTestMediaProperties(
                 alliance = channelName ?: "",
                 subtitleLanguageIds = listOf(SubtitleLanguage.ChineseSimplified.id),
-            ),
+            ).copy(webRoute = WebMediaRoute(subject.url, channelName.orEmpty(), "test-config")),
             episodeRange = episodeSort?.let { EpisodeRange.single(it) },
             location = MediaSourceLocation.Online,
             kind = MediaSourceKind.WEB,
@@ -141,6 +140,35 @@ class ReplayBrowseMemoryUseCaseTest {
     }
 
     // region 按位置
+
+    @Test
+    fun `failed browse route is skipped without removing the saved memory`() = runSimpleMediaSelectorTestSuite {
+        initSubject("孤独摇滚")
+        val saved = memory()
+        val fixture = fixture(memory = saved)
+        val runtime = PlaybackSourceMemory()
+        val failed = fixture.source.createMedia(
+            saved.subject,
+            saved.channelName,
+            BrowseEpisode("第1集", "https://example.com/play/old", EpisodeSort(1)),
+            EpisodeSort(1),
+        )
+        runtime.recordFailure(runtime.beginAttempt(1, failed), PlaybackSourceMemory.FailureReason.PLAYBACK)
+        val useCase: ReplayBrowseMemoryUseCase = fixture.useCase
+        val events = selector.collectEvents {
+            assertEquals(
+                ReplayResult.NotFound(ReplayMissReason.PLAYBACK_FAILED),
+                useCase(SUBJECT_ID, episodeInfo(2), selector, runtime.snapshot()),
+            )
+        }
+        events.expectNoEvents()
+        assertNull(selector.selected.value)
+        assertEquals(saved, fixture.repository.get(SUBJECT_ID))
+
+        runtime.retryFailures()
+        assertEquals(ReplayResult.Selected, useCase(SUBJECT_ID, episodeInfo(2), selector, runtime.snapshot()))
+        assertNotNull(selector.selected.value)
+    }
 
     @Test
     fun `next episode takes the next item formally and chains memory`() = runSimpleMediaSelectorTestSuite {
