@@ -38,6 +38,7 @@ data class SearchPageState(
      * 可选的浏览季度列表, 按时间降序 (最新在前). 由 ViewModel 从 GetAnimeSeasonIdsFlowUseCase 填充.
      */
     val seasons: List<AnimeSeasonId> = emptyList(),
+    val expandedFilterGroups: Set<String> = emptySet(),
 ) {
     data class EpisodeTarget(
         val subjectId: Int,
@@ -57,6 +58,7 @@ sealed interface SearchPageIntent {
     data object StartInitialSearch : SearchPageIntent
     data class RemoveHistory(val text: String) : SearchPageIntent
     data class ChangeSort(val sort: SearchSort) : SearchPageIntent
+    data class ToggleFilterGroup(val groupKey: String) : SearchPageIntent
 
     /**
      * 切换浏览年份; [year] 为 null 表示"全部年份", 同时清除从属的季度筛选.
@@ -126,6 +128,17 @@ fun SearchPageState.toggleTagSelection(
         existingTags + value
     }
 
+    return withQuery(
+        query.copy(tags = updatedTags),
+        tagKinds = tagKinds,
+    )
+}
+
+fun SearchPageState.clearTagSelection(
+    tag: SearchFilterChipState,
+    tagKinds: List<CanonicalTagKind> = searchFilterState.tagKinds,
+): SearchPageState {
+    val updatedTags = query.tags.orEmpty().filterNot { it in tag.values }
     return withQuery(
         query.copy(tags = updatedTags),
         tagKinds = tagKinds,
