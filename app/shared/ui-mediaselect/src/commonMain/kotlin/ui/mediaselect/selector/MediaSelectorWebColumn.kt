@@ -53,6 +53,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_auto_rescue
+import me.him188.ani.app.ui.lang.media_selector_use_local_file
 import me.him188.ani.app.ui.lang.media_selector_web_captcha_unsupported
 import me.him188.ani.app.ui.lang.media_selector_web_rate_limited
 import me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha
@@ -98,11 +99,13 @@ data class WebSource(
 /**
  * https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Animeko?node-id=1054-13751&t=OSgRmNiOHpUGBYYu-0
  *
- * 顺序: 正常的源 → 「找不到想看的？手动查找」救援按钮 → 查询失败的源 ([WebSource.isError]), 各组内保持 [list] 的顺序.
+ * 顺序: 正常的源 → 救援按钮行 → 查询失败的源 ([WebSource.isError]), 各组内保持 [list] 的顺序.
  * 失败的源行帮不上忙, 放在按钮前会把按钮挤到最后; 源都失败时正是最需要救援的时候.
  * 验证码与限流的源不算失败, 仍在按钮前面: 用户处理后它们还会出结果.
+ * 救援按钮行里「使用本地视频文件」在前, 「找不到想看的？手动查找」在后: 用户手里已有文件时, 直接选择文件是最直接的出路.
  *
  * @param onRequestManualSearch 救援按钮的点击; null 时不显示按钮 (宿主没有手动查找).
+ * @param onRequestLocalFile 「使用本地视频文件」按钮的点击; null 时不显示按钮 (宿主没有文件选择器).
  */
 @Composable
 fun MediaSelectorWebSourcesColumn(
@@ -113,6 +116,7 @@ fun MediaSelectorWebSourcesColumn(
     onRefresh: (WebSource) -> Unit,
     onResolveCaptcha: (WebSource) -> Unit,
     onRequestManualSearch: (() -> Unit)?,
+    onRequestLocalFile: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     preferredSourceContainerColor: Color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.33f)
 ) {
@@ -148,12 +152,24 @@ fun MediaSelectorWebSourcesColumn(
             card(source)
         }
 
-        if (onRequestManualSearch != null) {
+        if (onRequestLocalFile != null || onRequestManualSearch != null) {
             Box(Modifier.fillMaxWidth().padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
-                ManualSearchRescueButton(
-                    onClick = onRequestManualSearch,
-                    Modifier.testTag(AutoMatchPageTestTags.RESCUE_BUTTON),
-                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (onRequestLocalFile != null) {
+                        AutoMatchRescueButton(
+                            text = stringResource(Lang.media_selector_use_local_file),
+                            onClick = onRequestLocalFile,
+                            Modifier.testTag(AutoMatchPageTestTags.LOCAL_FILE_BUTTON),
+                        )
+                    }
+                    if (onRequestManualSearch != null) {
+                        AutoMatchRescueButton(
+                            text = stringResource(Lang.media_selector_auto_rescue),
+                            onClick = onRequestManualSearch,
+                            Modifier.testTag(AutoMatchPageTestTags.RESCUE_BUTTON),
+                        )
+                    }
+                }
             }
         }
 
@@ -164,15 +180,16 @@ fun MediaSelectorWebSourcesColumn(
 }
 
 /**
- * 自动页的救援入口: 默认样式的文字按钮 (不加粗、无图标), 水平居中, 视觉上弱于源列表. 点击 = 切到手动查找模式.
+ * 自动页的救援入口: 默认样式的文字按钮 (不加粗、无图标), 视觉上弱于源列表.
  */
 @Composable
-private fun ManualSearchRescueButton(
+private fun AutoMatchRescueButton(
+    text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     TextButton(onClick = onClick, modifier = modifier) {
-        Text(stringResource(Lang.media_selector_auto_rescue))
+        Text(text)
     }
 }
 
@@ -334,6 +351,7 @@ private fun PreviewMediaSelectorWebColumn() {
                 onRefresh = {},
                 onResolveCaptcha = {},
                 onRequestManualSearch = {},
+                onRequestLocalFile = {},
             )
         }
     }

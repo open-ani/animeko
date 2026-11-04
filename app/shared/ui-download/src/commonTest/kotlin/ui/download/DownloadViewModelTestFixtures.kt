@@ -31,6 +31,7 @@ import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
 import me.him188.ani.app.data.models.preference.DebugSettings
+import me.him188.ani.app.data.models.preference.LocalVideoLibrarySettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
@@ -299,6 +300,7 @@ internal class FakeSettingsRepository : SettingsRepository {
     override val profileSettings: Settings<ProfileSettings> get() = error("Not used")
     override val proxySettings: Settings<ProxySettings> get() = error("Not used")
     override val mediaCacheSettings: Settings<MediaCacheSettings> get() = error("Not used")
+    override val localVideoLibrarySettings: Settings<LocalVideoLibrarySettings> get() = error("Not used")
     override val danmakuSettings: Settings<DanmakuSettings> get() = error("Not used")
     override val uiSettings: Settings<UISettings> get() = error("Not used")
     override val themeSettings: Settings<ThemeSettings> get() = error("Not used")

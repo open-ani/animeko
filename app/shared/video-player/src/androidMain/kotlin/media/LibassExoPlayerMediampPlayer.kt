@@ -314,10 +314,16 @@ private class LibassMediaSourcePipeline(
 
     private fun createLibassMediaSource(data: MediaData): MediaSource? {
         val dataSourceFactory = when (data) {
-            is UriMediaData -> DefaultHttpDataSource.Factory()
-                .setUserAgent(data.headers["User-Agent"] ?: DEFAULT_USER_AGENT)
-                .setDefaultRequestProperties(data.headers)
-                .setConnectTimeoutMs(CONNECT_TIMEOUT_MILLIS)
+            is UriMediaData -> when (Uri.parse(data.uri).scheme?.lowercase()) {
+                "http", "https" -> DefaultHttpDataSource.Factory()
+                    .setUserAgent(data.headers["User-Agent"] ?: DEFAULT_USER_AGENT)
+                    .setDefaultRequestProperties(data.headers)
+                    .setConnectTimeoutMs(CONNECT_TIMEOUT_MILLIS)
+
+                // SAF 的 content:// 文档由 ContentResolver 读取. 其余本地 scheme 也交给
+                // DefaultDataSource, 它会在 FileDataSource / ContentDataSource 等之间分派.
+                else -> DefaultDataSource.Factory(context)
+            }
 
             is SeekableInputMediaData -> {
                 if (data.uri.startsWith("file://")) {

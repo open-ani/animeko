@@ -15,7 +15,7 @@ MediaSelector 主要包含以下四个阶段：
 4. **选择**：支持手动或自动方式来选中某个 [Media]：
     - 手动调用 `select` 方法。
     - 自动通过 `trySelectDefault`、`trySelectCached` 或 `trySelectFromMediaSources` 等方法完成。
-    - 临时选择 `selectTemporarily`：只更新本会话的选择，不写偏好。用于拖入的本地文件、
+    - 临时选择 `selectTemporarily`：只更新本会话的选择，不写偏好。用于播放本地文件（拖入窗口或在自动匹配页选择）、
       关掉「记住选择」时的手动查找点选，见[选源界面](media-selector-ui.md)。
 
    最终选定的资源会存入 `selected: StateFlow<Media>`，并通过 `events` Flow 广播变更。
