@@ -34,8 +34,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -56,6 +59,8 @@ import me.him188.ani.app.ui.exploration.schedule.AiringScheduleItemPresentation
 import me.him188.ani.app.ui.exploration.schedule.ScheduleDay
 import me.him188.ani.app.ui.exploration.schedule.SchedulePagePresentation
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_schedule_time_zone_settings
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
@@ -70,12 +75,16 @@ import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
+import org.jetbrains.compose.resources.stringResource
 
 /** 时间表焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private sealed interface TvScheduleFocus : TvFocusKey {
     /** 今天列的第一条番剧 (进页初始焦点). */
     data object Today : TvScheduleFocus
     data class Item(val subjectId: Int, val episodeId: Int) : TvScheduleFocus
+
+    /** 右上角的时区设置入口. */
+    data object TimeZoneSettings : TvScheduleFocus
 }
 
 /*
@@ -83,6 +92,7 @@ private sealed interface TvScheduleFocus : TvFocusKey {
  * 多天并排的固定宽列 (360dp) 横向排列, 列头为「M/d + 周几」(今天主题色 + 圆头分隔线),
  * 每列一条时间线列表 (时间行 / 56dp 封面 / 标题 / 集数副行 / 当前时间指示器 / 占位骨架).
  * 数据复用手机 ScheduleViewModel，视口由页面的可保存 LazyListState 持有。
+ * 顶部操作区只有时区设置入口: 时间表按全局时区渲染, 入口跳到设置的「界面」分节.
  *
  * 滚动控制: 手机 desktop 用 HorizontalScrollControlScaffoldOnDesktop (鼠标悬停出滚动按钮,
  * 修 CMP 的 LazyRow 无法鼠标拖动); TV 上它是 Platform.Desktop 分支的空透传, 且 hover/click
@@ -128,50 +138,106 @@ fun TvScheduleScreen(
         }
     }
 
-    // ── 错误态: 文本 + 重试 ──
-    val error = presentation.error
-    if (error != null) {
-        Column(
-            modifier.fillMaxSize().padding(navigationRailInsets),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                "加载失败了, 请检查网络后重试",
-                style = MaterialTheme.typography.titleMedium,
-                color = tvHeroSecondaryContentColor(),
-            )
-            TvHeroButton(
-                text = "重试",
-                icon = Icons.Rounded.Refresh,
-                filled = true,
-                onClick = { onIntent(TvScheduleIntent.Refresh) },
-                onFocused = {},
-                modifier = Modifier.padding(top = 16.dp),
-            )
-        }
-        return
-    }
+    Column(modifier.fillMaxSize().padding(navigationRailInsets)) {
+        TvScheduleActions(focus, onIntent, Modifier.fillMaxWidth())
 
-    // ── 多列并排 (手机 Medium 档): 固定 360dp 列宽, 列间 16dp, 初始滚动到今天列 ──
-    CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec) {
-        LazyRow(
-            modifier.fillMaxSize().padding(navigationRailInsets).tvFocusNavSignal(focus),
-            state = listState,
-            horizontalArrangement = Arrangement.spacedBy(TvScheduleDefaults.PageSpacing),
-            contentPadding = PaddingValues(start = TvScheduleDefaults.StartPadding, end = TvPageDefaults.EndPadding),
-        ) {
-            items(days, key = { it.date.toString() }) { day ->
-                val columnItems = presentation.airingSchedules
-                    .firstOrNull { it.date == day.date }?.episodes.orEmpty()
-                TvScheduleDayColumn(
-                    day = day,
-                    items = columnItems,
-                    onClickSubject = { onIntent(TvScheduleIntent.OpenSubject(it)) },
-                    focus = focus,
-                    modifier = Modifier.width(TvScheduleDefaults.PageWidth).fillParentMaxHeight(),
+        // ── 错误态: 文本 + 重试 ──
+        val error = presentation.error
+        if (error != null) {
+            Column(
+                Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    "加载失败了, 请检查网络后重试",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = tvHeroSecondaryContentColor(),
+                )
+                TvHeroButton(
+                    text = "重试",
+                    icon = Icons.Rounded.Refresh,
+                    filled = true,
+                    onClick = { onIntent(TvScheduleIntent.Refresh) },
+                    onFocused = {},
+                    modifier = Modifier.padding(top = 16.dp),
                 )
             }
+            return@Column
+        }
+
+        // ── 多列并排 (手机 Medium 档): 固定 360dp 列宽, 列间 16dp, 初始滚动到今天列 ──
+        CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec) {
+            LazyRow(
+                Modifier.fillMaxSize().tvFocusNavSignal(focus),
+                state = listState,
+                horizontalArrangement = Arrangement.spacedBy(TvScheduleDefaults.PageSpacing),
+                contentPadding = PaddingValues(start = TvScheduleDefaults.StartPadding, end = TvPageDefaults.EndPadding),
+            ) {
+                items(days, key = { it.date.toString() }) { day ->
+                    val columnItems = presentation.airingSchedules
+                        .firstOrNull { it.date == day.date }?.episodes.orEmpty()
+                    TvScheduleDayColumn(
+                        day = day,
+                        items = columnItems,
+                        onClickSubject = { onIntent(TvScheduleIntent.OpenSubject(it)) },
+                        focus = focus,
+                        modifier = Modifier.width(TvScheduleDefaults.PageWidth).fillParentMaxHeight(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 页面顶部操作区: 右上角的时区设置入口. TV 没有设置二级页, 直接落到设置的「界面」分节.
+ */
+@Composable
+private fun TvScheduleActions(
+    focus: TvFocusScope,
+    onIntent: (TvScheduleIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier.padding(start = TvScheduleDefaults.StartPadding, end = TvPageDefaults.EndPadding, top = 8.dp),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        TvScheduleTimeZoneButton(
+            onClick = { onIntent(TvScheduleIntent.OpenTimeZoneSettings) },
+            focus = focus,
+        )
+    }
+}
+
+/**
+ * 圆形地球按钮. 焦点反馈沿用统一的色圈 + 预留留白, 不改变尺寸.
+ */
+@Composable
+private fun TvScheduleTimeZoneButton(
+    onClick: () -> Unit,
+    focus: TvFocusScope,
+    modifier: Modifier = Modifier,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    Box(modifier.tvCardFocusBorder(focused, CircleShape)) {
+        Surface(
+            onClick = onClick,
+            modifier = Modifier
+                .padding(TvFocusDefaults.RingInset)
+                .tvFocusAnchor(focus, TvScheduleFocus.TimeZoneSettings)
+                .tvFocusMemorable(TvScheduleFocus.TimeZoneSettings),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            interactionSource = interactionSource,
+        ) {
+            Icon(
+                Icons.Rounded.Public,
+                contentDescription = stringResource(Lang.exploration_schedule_time_zone_settings),
+                modifier = Modifier.padding(12.dp).size(24.dp),
+                tint = tvHeroContentColor(),
+            )
         }
     }
 }

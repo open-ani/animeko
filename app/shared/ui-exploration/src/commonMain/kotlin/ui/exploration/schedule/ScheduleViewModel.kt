@@ -36,6 +36,7 @@ import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.domain.episode.AiringScheduleForDate
 import me.him188.ani.app.domain.episode.GetAnimeScheduleFlowUseCase
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.settings.TimeZoneProvider
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
@@ -47,11 +48,12 @@ import org.koin.core.Koin
 /**
  * 新番时间表页面的 ViewModel.
  *
- * - "今天" 是一个 flow: 构造后立即发出当前本地日期, 之后每到 [timeZone] 的本地 00:00 再发一次 (每次都重新计算到下一个 00:00 的延迟,
+ * - 时区来自全局 [TimeZoneProvider.timeZone]: 用户改动时区后, 下面的整条链路以新时区重新计算并重新请求, 不需要手动刷新.
+ * - "今天" 是一个 flow: 构造后立即发出当前本地日期, 之后每到该时区的本地 00:00 再发一次 (每次都重新计算到下一个 00:00 的延迟,
  *   所以夏令时切换也正确). 向服务端请求的窗口由它派生 (`flatMapLatest`).
  * - [presentationFlow] 是页面状态的唯一来源: 日期列 ([SchedulePagePresentation.days]) 和每列的内容
  *   ([SchedulePagePresentation.airingSchedules]) 总是由同一个 [ScheduleLoad] 生成, 所以永远一致.
- *   今天变化 (或 [refresh]) 时, 在新的响应到达之前, 先立即发出一个以新的今天为基准的占位 presentation
+ *   今天或时区变化 (或 [refresh]) 时, 在新的响应到达之前, 先立即发出一个以新的今天为基准的占位 presentation
  *   ([SchedulePagePresentation.isPlaceholder]), 日期列和列内容一起移动, 不会出现表头是新的一天而内容还是旧的一天.
  * - [pageState] 的日期列也来自 [presentationFlow] (经由 [presentationState]).
  * - [refresh] 重启整条链路: 重新读取今天并重新请求服务端.
@@ -59,21 +61,22 @@ import org.koin.core.Koin
  *
  * 本 ViewModel 由 androidx `viewModel {}` 取得, 不会被 compose remember, 所以不使用 [AbstractViewModel.init].
  *
+ * @param timeZoneFlow 全局时区. 变化后以新时区重新计算 "今天", 重新请求, 并重绘日期与时刻.
  * @param clock 时钟. 测试用假时钟驱动跨午夜.
  */
 open class ScheduleViewModel(
     koin: Koin = GlobalKoin,
-    private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
+    private val timeZoneFlow: StateFlow<TimeZone> = koin.get<TimeZoneProvider>().timeZone,
     private val clock: Clock = Clock.System,
 ) : AbstractViewModel() {
     private val getAnimeScheduleFlowUseCase: GetAnimeScheduleFlowUseCase by koin.inject()
 
-    private fun currentToday(): LocalDate = clock.now().toLocalDateTime(timeZone).date
+    private fun currentToday(timeZone: TimeZone): LocalDate = clock.now().toLocalDateTime(timeZone).date
 
     /**
-     * 当前本地日期. 立即发出一次, 之后每到本地 00:00 再发一次.
+     * [timeZone] 下的当前本地日期. 立即发出一次, 之后每到该时区的本地 00:00 再发一次.
      */
-    private val todayFlow: Flow<LocalDate> = flow {
+    private fun todayFlow(timeZone: TimeZone): Flow<LocalDate> = flow {
         while (true) {
             val now = clock.now()
             emit(now.toLocalDateTime(timeZone).date)
@@ -93,23 +96,28 @@ open class ScheduleViewModel(
     }
 
     /**
-     * 一次请求的状态: 以 [today] 为基准的日期窗口, 以及服务端的响应.
+     * 一次请求的状态: 生成它的时区, 以 [today] 为基准的日期窗口, 以及服务端的响应.
      *
-     * @param result `null` 表示正在加载 (刚跨过午夜或 [refresh] 之后, 新的响应还没到), 此时页面显示以 [today] 为基准的占位列.
+     * @param timeZone 请求参数与展示共用的时区. 日期列、列内容与每条记录的时刻都由它派生, 所以三者总是同一个时区.
+     * @param result `null` 表示正在加载 (刚跨过午夜、时区变化或 [refresh] 之后, 新的响应还没到),
+     *   此时页面显示以 [today] 为基准的占位列.
      */
     private class ScheduleLoad(
+        val timeZone: TimeZone,
         val today: LocalDate,
         val result: Result<List<AiringScheduleForDate>>?,
     )
 
     private val airingSchedulesFlowRestarter = FlowRestarter()
-    private val airingSchedulesFlow: Flow<ScheduleLoad> = todayFlow
-        .flatMapLatest { today ->
-            getAnimeScheduleFlowUseCase(today, timeZone = timeZone)
-                .catching()
-                .map { ScheduleLoad(today, it) }
-                // 今天一变就先发出 "加载中", 让日期列和占位列立即移动到新的今天, 不等服务端响应
-                .onStart { emit(ScheduleLoad(today, result = null)) }
+    private val airingSchedulesFlow: Flow<ScheduleLoad> = timeZoneFlow
+        .flatMapLatest { timeZone ->
+            todayFlow(timeZone).flatMapLatest { today ->
+                getAnimeScheduleFlowUseCase(today, timeZone = timeZone)
+                    .catching()
+                    .map { ScheduleLoad(timeZone, today, it) }
+                    // 今天或时区一变就先发出 "加载中", 让日期列和占位列立即移动到新的今天, 不等服务端响应
+                    .onStart { emit(ScheduleLoad(timeZone, today, result = null)) }
+            }
         }
         .restartable(airingSchedulesFlowRestarter)
         .shareInBackground(started = SharingStarted.Lazily) // always cached
@@ -126,7 +134,9 @@ open class ScheduleViewModel(
      * 单独镜像一份是因为 [ScheduleScreenState.days] 用 `derivedStateOf` 读取日期列, 只有 Compose snapshot state 才能触发它重新计算,
      * 直接读 [StateFlow.value] 不会.
      */
-    private val presentationState = mutableStateOf(ScheduleLoad(currentToday(), result = null).toPresentation(clock.now()))
+    private val presentationState = mutableStateOf(
+        ScheduleLoad(timeZoneFlow.value, currentToday(timeZoneFlow.value), result = null).toPresentation(clock.now()),
+    )
 
     val presentationFlow: StateFlow<SchedulePagePresentation> = combine(airingSchedulesFlow, minuteTicker) { load, _ ->
         load.toPresentation(clock.now())
@@ -144,7 +154,8 @@ open class ScheduleViewModel(
     val pageState = ScheduleScreenState { presentationState.value.days }
 
     /**
-     * 日期列和列内容都由 [ScheduleLoad.today] 派生, 所以二者的日期序列总是相同.
+     * 日期列和列内容都由同一个 [ScheduleLoad] 的 [ScheduleLoad.today] 与 [ScheduleLoad.timeZone] 派生,
+     * 所以二者的日期序列总是相同, 时刻也与请求参数使用同一个时区.
      */
     private fun ScheduleLoad.toPresentation(now: Instant): SchedulePagePresentation {
         val days = ScheduleDay.generateForRecentTwoWeeks(today)
@@ -156,7 +167,6 @@ open class ScheduleViewModel(
                 isPlaceholder = true,
             )
 
-        val timeZone = timeZone
         val currentDateTime = now.toLocalDateTime(timeZone)
         return SchedulePagePresentation(
             days = days,

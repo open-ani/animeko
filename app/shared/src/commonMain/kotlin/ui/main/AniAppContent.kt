@@ -51,6 +51,7 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.OverrideNavigation
+import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.app.platform.LocalContext
@@ -106,6 +107,7 @@ import me.him188.ani.app.ui.qrlogin.isQrCodeScannerSupported
 import me.him188.ani.app.ui.search.SearchScreen
 import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
+import me.him188.ani.app.ui.settings.TIME_ZONE_DETAIL_KEY
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceScreen
 import me.him188.ani.app.ui.settings.mediasource.rss.EditRssMediaSourceViewModel
 import me.him188.ani.app.ui.settings.mediasource.jsonapi.EditJsonApiMediaSourceScreen
@@ -423,6 +425,7 @@ private fun AniAppContentImpl(
                     loadOpenSourceLibrariesJsons = ::loadOpenSourceLibrariesJsons,
                     Modifier.fillMaxSize(),
                     route.tab,
+                    initialDetailKey = route.detail,
                     onNavigateToQrLogin = if (isQrCodeScannerSupported) {
                         { aniNavigator.navigateQrLoginScan() }
                     } else null,
@@ -748,6 +751,9 @@ private fun AniAppContentImpl(
                         )
                     },
                     state = vm.pageState,
+                    onOpenTimeZoneSettings = {
+                        aniNavigator.navigateSettings(SettingsTab.APPEARANCE, detail = TIME_ZONE_DETAIL_KEY)
+                    },
                 )
             }
             entry<NavRoutes.TrendingRanking> { route ->
