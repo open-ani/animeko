@@ -9,9 +9,12 @@
 
 package me.him188.ani.app.data.repository.episode
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
@@ -22,6 +25,7 @@ import me.him188.ani.app.data.persistent.database.createTestAniDatabase
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
 import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCase
+import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCaseImpl
 import me.him188.ani.app.domain.tracking.Tracker
 import me.him188.ani.app.domain.tracking.TrackingChange
 import me.him188.ani.app.domain.tracking.TrackingDispatcher
@@ -32,8 +36,11 @@ import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.ktor.ApiInvoker
+import org.koin.dsl.koinApplication
+import org.koin.dsl.module
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /**
@@ -118,6 +125,65 @@ class EpisodeCollectionRepositoryPendingOpsTest {
             val bulk = changes[1] as TrackingChange.Episodes
             assertEquals(setOf(11, 12), bulk.episodeIds.toSet())
             assertEquals(UnifiedCollectionType.DONE, bulk.collectionType)
+        }
+    }
+
+    @Test
+    fun `player watched use case delivers one change to tracker`() {
+        val changes = mutableListOf<TrackingChange>()
+        val tracker = object : Tracker {
+            override val id = "test"
+            override suspend fun push(change: TrackingChange) { changes += change }
+        }
+        runRepositoryTest(trackingDispatcher = TrackingDispatcher(listOf(tracker)) { _, error -> throw error }) {
+            seed(1, listOf(11))
+            val app = koinApplication { modules(module { single { repository } }) }
+            try {
+                SetEpisodeCollectionTypeUseCaseImpl(app.koin)(1, 11, UnifiedCollectionType.DONE)
+                assertEquals(listOf<TrackingChange>(TrackingChange.Episodes(1, listOf(11), UnifiedCollectionType.DONE)), changes)
+                assertEquals(UnifiedCollectionType.DONE, localType(11))
+            } finally {
+                app.close()
+            }
+        }
+    }
+
+    @Test
+    fun `tracking observes local write and pending operation before dispatch`() {
+        var inspect: suspend () -> Unit = { error("inspection not configured") }
+        val tracker = object : Tracker {
+            override val id = "test"
+            override suspend fun push(change: TrackingChange) { inspect() }
+        }
+        runRepositoryTest(trackingDispatcher = TrackingDispatcher(listOf(tracker)) { _, error -> throw error }) {
+            seed(1, listOf(11))
+            var inspected = false
+            inspect = {
+                assertEquals(UnifiedCollectionType.DONE, localType(11))
+                assertEquals(listOf(11), repository.pendingOpsFlow.first().map { it.episodeId })
+                inspected = true
+            }
+            repository.setEpisodeCollectionType(1, 11, UnifiedCollectionType.DONE)
+            assertTrue(inspected)
+        }
+    }
+
+    @Test
+    fun `cancelled operation does not notify trackers`() {
+        var called = false
+        val tracker = object : Tracker {
+            override val id = "test"
+            override suspend fun push(change: TrackingChange) { called = true }
+        }
+        runRepositoryTest(trackingDispatcher = TrackingDispatcher(listOf(tracker)) { _, error -> throw error }) {
+            seed(1, listOf(11))
+            val cancelled = Job().apply { cancel() }
+            assertFailsWith<CancellationException> {
+                withContext(cancelled) { repository.setEpisodeCollectionType(1, 11, UnifiedCollectionType.DONE) }
+            }
+            assertEquals(false, called)
+            assertEquals(UnifiedCollectionType.WISH, localType(11))
+            assertTrue(repository.pendingOpsFlow.first().isEmpty())
         }
     }
 
