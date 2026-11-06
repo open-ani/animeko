@@ -22,6 +22,9 @@ import me.him188.ani.app.data.persistent.database.createTestAniDatabase
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
 import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCase
+import me.him188.ani.app.domain.tracking.Tracker
+import me.him188.ani.app.domain.tracking.TrackingChange
+import me.him188.ani.app.domain.tracking.TrackingDispatcher
 import me.him188.ani.client.apis.ScheduleAniApi
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.datasources.api.EpisodeSort
@@ -49,7 +52,7 @@ class EpisodeCollectionRepositoryPendingOpsTest {
 
     private fun runRepositoryTest(
         now: Long = 1_000,
-        trackingObserver: EpisodeTrackingObserver? = null,
+        trackingDispatcher: TrackingDispatcher? = null,
         block: suspend Fixture.() -> Unit,
     ) = runBlocking {
         val database = createTestAniDatabase()
@@ -65,7 +68,7 @@ class EpisodeCollectionRepositoryPendingOpsTest {
                 getEpisodeTypeFiltersUseCase = GetEpisodeTypeFiltersUseCase { flowOf(EpisodeType.entries) },
                 nowMillis = { now },
                 onDirtyChanged = { dirty++ },
-                trackingObserver = trackingObserver,
+                trackingDispatcher = trackingDispatcher,
             )
             Fixture(database, repository) { dirty }.block()
         } finally {
@@ -99,25 +102,31 @@ class EpisodeCollectionRepositoryPendingOpsTest {
 
     @Test
     fun `tracking receives single and bulk changes after local writes`() {
-        val changes = mutableListOf<Triple<Int, List<Int>, UnifiedCollectionType>>()
-        runRepositoryTest(trackingObserver = EpisodeTrackingObserver { subjectId, episodeIds, type ->
-            changes += Triple(subjectId, episodeIds, type)
-        }) {
+        val changes = mutableListOf<TrackingChange>()
+        val tracker = object : Tracker {
+            override val id = "test"
+            override suspend fun push(change: TrackingChange) { changes += change }
+        }
+        runRepositoryTest(trackingDispatcher = TrackingDispatcher(listOf(tracker)) { _, _ -> }) {
             seed(1, listOf(11, 12))
             repository.setEpisodeCollectionType(1, 11, UnifiedCollectionType.DONE)
             repository.setAllEpisodesWatched(1)
             assertEquals(UnifiedCollectionType.DONE, localType(12))
             assertEquals(2, dirtyCalls())
             assertEquals(2, changes.size)
-            assertEquals(Triple(1, listOf(11), UnifiedCollectionType.DONE), changes[0])
-            assertEquals(setOf(11, 12), changes[1].second.toSet())
-            assertEquals(UnifiedCollectionType.DONE, changes[1].third)
+            assertEquals(TrackingChange.Episodes(1, listOf(11), UnifiedCollectionType.DONE), changes[0])
+            val bulk = changes[1] as TrackingChange.Episodes
+            assertEquals(setOf(11, 12), bulk.episodeIds.toSet())
+            assertEquals(UnifiedCollectionType.DONE, bulk.collectionType)
         }
     }
 
     @Test
     fun `tracking failure does not undo local write or pending server operation`() =
-        runRepositoryTest(trackingObserver = EpisodeTrackingObserver { _, _, _ -> error("offline") }) {
+        runRepositoryTest(trackingDispatcher = TrackingDispatcher(listOf(object : Tracker {
+            override val id = "test"
+            override suspend fun push(change: TrackingChange) { error("offline") }
+        })) { _, _ -> }) {
             seed(1, listOf(11))
             repository.setEpisodeCollectionType(1, 11, UnifiedCollectionType.DONE)
             assertEquals(UnifiedCollectionType.DONE, localType(11))

@@ -29,6 +29,8 @@ import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCase
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.toEpisodeType
 import me.him188.ani.app.data.repository.subject.toUnifiedCollectionType
+import me.him188.ani.app.domain.tracking.TrackingChange
+import me.him188.ani.app.domain.tracking.TrackingDispatcher
 import me.him188.ani.app.domain.episode.EpisodeCollections
 import me.him188.ani.client.models.AniEpisodeCollection
 import me.him188.ani.datasources.api.EpisodeSort
@@ -71,11 +73,6 @@ interface EpisodeCollectionPendingOpSource {
     suspend fun deletePendingOps(ids: Collection<Long>)
 }
 
-/** Receives locally recorded episode changes for optional external tracking. */
-fun interface EpisodeTrackingObserver {
-    suspend fun onEpisodesChanged(subjectId: Int, episodeIds: List<Int>, type: UnifiedCollectionType)
-}
-
 class EpisodeCollectionRepository(
     private val subjectDao: SubjectCollectionDao,
     private val episodeCollectionDao: EpisodeCollectionDao,
@@ -89,7 +86,7 @@ class EpisodeCollectionRepository(
     private val nowMillis: () -> Long = { currentTimeMillis() },
     /** 有新的待同步操作时调用, 由 syncer 决定何时推送. */
     private val onDirtyChanged: () -> Unit = {},
-    private val trackingObserver: EpisodeTrackingObserver? = null,
+    private val trackingDispatcher: TrackingDispatcher? = null,
 ) : Repository(defaultDispatcher), EpisodeCollectionPendingOpSource {
 
     private val subjectCollectionRepository by subjectCollectionRepository
@@ -232,7 +229,7 @@ class EpisodeCollectionRepository(
 
     private suspend fun notifyTracking(subjectId: Int, episodeIds: List<Int>, type: UnifiedCollectionType) {
         try {
-            trackingObserver?.onEpisodesChanged(subjectId, episodeIds, type)
+            trackingDispatcher?.dispatch(TrackingChange.Episodes(subjectId, episodeIds, type))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

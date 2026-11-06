@@ -6,6 +6,10 @@
 > 设计文档记录的是编写时的计划和现状，具有时效性，不会随代码持续更新。
 > 要了解当前实现，请参考[开发文档](../contributing/README.md#开发文档)。
 
+## Tracking
+
+- [条目追踪与第三方同步](tracking/tracking-subsystem.md)
+
 ## Media
 
 - [Media Selector 重构方案](media/media-selector-refactor.md)
