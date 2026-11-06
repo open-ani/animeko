@@ -47,7 +47,11 @@ class EpisodeCollectionRepositoryPendingOpsTest {
 
     private class Fixture(val database: AniDatabase, val repository: EpisodeCollectionRepository, val dirtyCalls: () -> Int)
 
-    private fun runRepositoryTest(now: Long = 1_000, block: suspend Fixture.() -> Unit) = runBlocking {
+    private fun runRepositoryTest(
+        now: Long = 1_000,
+        trackingObserver: EpisodeTrackingObserver? = null,
+        block: suspend Fixture.() -> Unit,
+    ) = runBlocking {
         val database = createTestAniDatabase()
         var dirty = 0
         try {
@@ -61,6 +65,7 @@ class EpisodeCollectionRepositoryPendingOpsTest {
                 getEpisodeTypeFiltersUseCase = GetEpisodeTypeFiltersUseCase { flowOf(EpisodeType.entries) },
                 nowMillis = { now },
                 onDirtyChanged = { dirty++ },
+                trackingObserver = trackingObserver,
             )
             Fixture(database, repository) { dirty }.block()
         } finally {
@@ -91,6 +96,34 @@ class EpisodeCollectionRepositoryPendingOpsTest {
         assertTrue(ops.all { it.subjectId == 1 && it.updatedAtMillis == 1_000L })
         assertEquals(3, dirtyCalls())
     }
+
+    @Test
+    fun `tracking receives single and bulk changes after local writes`() {
+        val changes = mutableListOf<Triple<Int, List<Int>, UnifiedCollectionType>>()
+        runRepositoryTest(trackingObserver = EpisodeTrackingObserver { subjectId, episodeIds, type ->
+            changes += Triple(subjectId, episodeIds, type)
+        }) {
+            seed(1, listOf(11, 12))
+            repository.setEpisodeCollectionType(1, 11, UnifiedCollectionType.DONE)
+            repository.setAllEpisodesWatched(1)
+            assertEquals(UnifiedCollectionType.DONE, localType(12))
+            assertEquals(2, dirtyCalls())
+            assertEquals(2, changes.size)
+            assertEquals(Triple(1, listOf(11), UnifiedCollectionType.DONE), changes[0])
+            assertEquals(setOf(11, 12), changes[1].second.toSet())
+            assertEquals(UnifiedCollectionType.DONE, changes[1].third)
+        }
+    }
+
+    @Test
+    fun `tracking failure does not undo local write or pending server operation`() =
+        runRepositoryTest(trackingObserver = EpisodeTrackingObserver { _, _, _ -> error("offline") }) {
+            seed(1, listOf(11))
+            repository.setEpisodeCollectionType(1, 11, UnifiedCollectionType.DONE)
+            assertEquals(UnifiedCollectionType.DONE, localType(11))
+            assertEquals(listOf(11), repository.pendingOpsFlow.first().map { it.episodeId })
+            assertEquals(1, dirtyCalls())
+        }
 
     @Test
     fun `remote refresh keeps locally pending collection type`() = runRepositoryTest {
