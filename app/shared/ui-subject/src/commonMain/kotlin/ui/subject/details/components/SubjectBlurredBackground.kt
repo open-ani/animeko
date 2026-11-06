@@ -32,6 +32,7 @@ fun SubjectBlurredBackground(
     modifier: Modifier = Modifier,
     backgroundColor: Color = MaterialTheme.colorScheme.background,
     surfaceColor: Color = MaterialTheme.colorScheme.surface,
+    coverThumbnailUrl: String? = null,
 ) {
     Box(
         modifier
@@ -51,6 +52,7 @@ fun SubjectBlurredBackground(
                         1.00f to backgroundColor,
                     )
                 },
+                thumbnail = coverThumbnailUrl,
             ),
     )
 }
