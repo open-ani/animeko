@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -202,23 +203,28 @@ internal fun PeopleHeaderRow(
             )
         }
         Column(Modifier.weight(1f)) {
-            Text(
-                displayName,
-                Modifier.placeholder(isPlaceholder),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (!originalName.isNullOrBlank() && originalName != displayName) {
-                Text(
-                    originalName,
-                    Modifier.padding(top = 6.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            // 名字 (中文名 + 原名) 可选中复制
+            SelectionContainer {
+                Column {
+                    Text(
+                        displayName,
+                        Modifier.placeholder(isPlaceholder),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (!originalName.isNullOrBlank() && originalName != displayName) {
+                        Text(
+                            originalName,
+                            Modifier.padding(top = 6.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
             Text(
                 metaLine,
@@ -241,22 +247,27 @@ internal fun PeopleTitleBlock(
     isPlaceholder: Boolean = false,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            displayName,
-            Modifier.placeholder(isPlaceholder),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (!originalName.isNullOrBlank() && originalName != displayName) {
-            Text(
-                originalName,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        // 名字 (中文名 + 原名) 可选中复制
+        SelectionContainer {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    displayName,
+                    Modifier.placeholder(isPlaceholder),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (!originalName.isNullOrBlank() && originalName != displayName) {
+                    Text(
+                        originalName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
         Text(
             metaLine,
@@ -268,7 +279,7 @@ internal fun PeopleTitleBlock(
     }
 }
 
-/** 基本信息键值表, 结构同条目详情的作品信息表. */
+/** 基本信息键值表, 结构同条目详情的作品信息表. 键和值都完整显示 (不截断) 且可选中复制. */
 @Composable
 internal fun PeopleInfoTable(
     rows: List<InfoboxRowInfo>,
@@ -276,22 +287,22 @@ internal fun PeopleInfoTable(
     labelWidth: Dp = 78.dp,
     rowSpacing: Dp = 12.dp,
 ) {
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(rowSpacing)) {
-        for (row in rows) {
-            Row(Modifier.fillMaxWidth()) {
-                Text(
-                    row.key,
-                    Modifier.width(labelWidth),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    row.value,
-                    Modifier.weight(1f).padding(start = 8.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+    SelectionContainer(modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(rowSpacing)) {
+            for (row in rows) {
+                Row(Modifier.fillMaxWidth()) {
+                    Text(
+                        row.key,
+                        Modifier.width(labelWidth),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        row.value,
+                        Modifier.weight(1f).padding(start = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
         }
     }
