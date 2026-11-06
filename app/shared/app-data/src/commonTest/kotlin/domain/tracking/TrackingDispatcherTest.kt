@@ -31,6 +31,23 @@ class TrackingDispatcherTest {
     }
 
     @Test
+    fun `a failed failure reporter does not prevent later dispatch`() = runTest {
+        val received = mutableListOf<TrackingChange>()
+        val failing = tracker("failed") { error("offline") }
+        val working = tracker("working") { received += it }
+        TrackingDispatcher(listOf(failing, working)) { _, _ -> error("report failed") }.dispatch(change)
+        assertEquals(listOf<TrackingChange>(change), received)
+    }
+
+    @Test
+    fun `failure reporter cancellation propagates`() = runTest {
+        val failing = tracker("failed") { error("offline") }
+        assertFailsWith<CancellationException> {
+            TrackingDispatcher(listOf(failing)) { _, _ -> throw CancellationException("cancelled") }.dispatch(change)
+        }
+    }
+
+    @Test
     fun `cancellation stops dispatch and propagates`() = runTest {
         var called = false
         val cancelled = tracker("cancelled") { throw CancellationException("cancelled") }

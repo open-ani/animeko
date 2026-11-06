@@ -11,6 +11,8 @@ package me.him188.ani.app.domain.tracking
 
 import kotlinx.coroutines.CancellationException
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 
 /** A collection change recorded by Animeko, identified using Animeko subject and episode IDs. */
 sealed interface TrackingChange {
@@ -42,6 +44,8 @@ class TrackingDispatcher(
     private val trackers: List<Tracker>,
     private val onFailure: (trackerId: String, failure: Exception) -> Unit,
 ) {
+    private val logger = logger<TrackingDispatcher>()
+
     init {
         require(trackers.all { it.id.isNotBlank() }) { "Tracker IDs must not be blank" }
         require(trackers.map { it.id }.distinct().size == trackers.size) { "Tracker IDs must be unique" }
@@ -54,7 +58,13 @@ class TrackingDispatcher(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                onFailure(tracker.id, e)
+                try {
+                    onFailure(tracker.id, e)
+                } catch (reportFailure: CancellationException) {
+                    throw reportFailure
+                } catch (reportFailure: Exception) {
+                    logger.warn(reportFailure) { "Failed to report tracker failure for ${tracker.id}" }
+                }
             }
         }
     }
