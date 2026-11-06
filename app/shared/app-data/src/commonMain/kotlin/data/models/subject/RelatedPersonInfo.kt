@@ -33,6 +33,9 @@ data class RelatedPersonInfo(
             )
         }
 
+        /**
+         * 重要职位靠前, 其余按服务端给的 [RelatedPersonInfo.index] 排, 不依赖数据库返回顺序.
+         */
         val ImportanceOrder = compareBy<RelatedPersonInfo> { info ->
             val index = SORT_ORDER.indexOfFirst { position ->
                 info.position == position
@@ -42,7 +45,7 @@ data class RelatedPersonInfo(
             } else {
                 index
             }
-        }
+        }.thenBy { it.index }
     }
 }
 
