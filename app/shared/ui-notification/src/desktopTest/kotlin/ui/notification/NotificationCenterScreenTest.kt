@@ -92,6 +92,7 @@ class NotificationCenterScreenTest {
                 onOpenSubject = noop.onOpenSubject,
                 onOpenPerson = noop.onOpenPerson,
                 onOpenCharacter = noop.onOpenCharacter,
+                onOpenCommentThread = noop.onOpenCommentThread,
                 onReauthorizeBangumi = { reauthorize++ },
                 onOpenAccountSettings = { accountSettings++ },
                 onCheckUpdate = { checkUpdate++ },

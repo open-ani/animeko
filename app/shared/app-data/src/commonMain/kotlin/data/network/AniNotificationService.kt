@@ -208,6 +208,8 @@ private fun AniNotificationTarget.toNotificationTarget() = NotificationTarget(
     personId = personId,
     characterId = characterId,
     url = url,
+    commentId = commentId,
+    replyId = replyId,
 )
 
 private fun AniNotificationSystem.toSystem() = AppNotificationContent.System(

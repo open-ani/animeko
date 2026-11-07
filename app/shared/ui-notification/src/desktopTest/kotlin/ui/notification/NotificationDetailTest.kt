@@ -93,6 +93,7 @@ class NotificationDetailTest {
             },
             onOpenPerson = { calls += "person:$it" },
             onOpenCharacter = { calls += "character:$it" },
+            onOpenCommentThread = { target, commentId, replyId -> calls += "comment:$target:$commentId:$replyId" },
             onReauthorizeBangumi = { calls += "reauthorize" },
             onOpenAccountSettings = { calls += "account-settings" },
             onCheckUpdate = { calls += "check-update" },

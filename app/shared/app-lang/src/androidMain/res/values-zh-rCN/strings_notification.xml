@@ -65,6 +65,7 @@
     <string name="notification_go_to_subject">前往该条目</string>
     <string name="notification_go_to_person">前往人物</string>
     <string name="notification_go_to_character">前往角色</string>
+    <string name="notification_go_to_comment">前往该评论</string>
 
     <string name="notification_account_third_party_unbound">%1$s 账号已解绑</string>
     <string name="notification_account_third_party_unbound_generic">第三方账号已解绑</string>

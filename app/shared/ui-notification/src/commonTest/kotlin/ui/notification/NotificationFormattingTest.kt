@@ -36,6 +36,7 @@ import me.him188.ani.app.ui.lang.notification_account_third_party_unbound
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound_generic
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound_supporting
 import me.him188.ani.app.ui.lang.notification_go_to_character
+import me.him188.ani.app.ui.lang.notification_go_to_comment
 import me.him188.ani.app.ui.lang.notification_go_to_episode
 import me.him188.ani.app.ui.lang.notification_go_to_person
 import me.him188.ani.app.ui.lang.notification_go_to_subject
@@ -205,6 +206,7 @@ class NotificationFormattingTest {
                 onOpenSubject = { subjectId, placeholder -> calls += "subject:$subjectId:${placeholder?.nameCN}" },
                 onOpenPerson = { calls += "person:$it" },
                 onOpenCharacter = { calls += "character:$it" },
+                onOpenCommentThread = { target, commentId, replyId -> calls += "comment:$target:$commentId:$replyId" },
                 onReauthorizeBangumi = noop.onReauthorizeBangumi,
                 onOpenAccountSettings = noop.onOpenAccountSettings,
                 onCheckUpdate = noop.onCheckUpdate,
@@ -476,6 +478,7 @@ class NotificationFormattingTest {
                 onOpenSubject = { subjectId, placeholder -> calls += "subject:$subjectId:$placeholder" },
                 onOpenPerson = { calls += "person:$it" },
                 onOpenCharacter = { calls += "character:$it" },
+                onOpenCommentThread = { target, commentId, replyId -> calls += "comment:$target:$commentId:$replyId" },
                 onReauthorizeBangumi = noop.onReauthorizeBangumi,
                 onOpenAccountSettings = noop.onOpenAccountSettings,
                 onCheckUpdate = noop.onCheckUpdate,
@@ -486,6 +489,8 @@ class NotificationFormattingTest {
             NotificationDestination.Subject(3) to Lang.notification_go_to_subject,
             NotificationDestination.Person(4) to Lang.notification_go_to_person,
             NotificationDestination.Character(5) to Lang.notification_go_to_character,
+            NotificationDestination.CommentThread(NotificationDestination.Episode(1, 2), "ani:c") to
+                    Lang.notification_go_to_comment,
             NotificationDestination.Url("https://myani.org") to Lang.notification_view_details,
         )
         for ((destination, label) in cases) {
@@ -493,7 +498,14 @@ class NotificationFormattingTest {
             actions.open(destination, openUrl = { calls += "url:$it" })
         }
         assertEquals(
-            listOf("episode:1:2", "subject:3:null", "person:4", "character:5", "url:https://myani.org"),
+            listOf(
+                "episode:1:2",
+                "subject:3:null",
+                "person:4",
+                "character:5",
+                "comment:Episode(subjectId=1, episodeId=2):ani:c:null",
+                "url:https://myani.org",
+            ),
             calls,
         )
     }

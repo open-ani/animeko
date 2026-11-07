@@ -30,6 +30,8 @@ import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.UIRichText
 import me.him188.ani.app.ui.comment.createTestCommentState
+import me.him188.ani.app.ui.comment.createTestCommentThreadState
+import me.him188.ani.app.ui.comment.thread.CommentThreadHost
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
@@ -63,6 +65,9 @@ class PersonCommentsSheetTest {
                 backgroundScope = scope,
             ),
             originalCommentsUrl = "https://bgm.tv/person/42",
+            threadHost = CommentThreadHost { key, snapshot ->
+                createTestCommentThreadState(scope, key = key, root = snapshot, replies = emptyList(), snapshot = snapshot)
+            },
             onRefresh = {},
         )
     }

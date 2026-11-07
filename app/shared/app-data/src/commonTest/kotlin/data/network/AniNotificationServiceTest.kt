@@ -491,7 +491,7 @@ class AniNotificationServiceTest {
                "title":"Bob 回复了你的评论","body":"同意\n作画很好","overline":"葬送的芙莉莲 第 1 话","icon":"reply",
                "imageUrl":"https://example.com/bob.png","target":{"subjectId":400602,"episodeId":1227087}},
               {"id":"i2","type":"future_type","category":"interaction","createdAtMillis":2,"read":true,
-               "title":"新功能","icon":"sparkles","target":{"personId":5,"commentId":9},"futurePayload":{"x":1}}
+               "title":"新功能","icon":"sparkles","target":{"personId":5,"placeId":9},"futurePayload":{"x":1}}
             ]}
         """.trimIndent()
 

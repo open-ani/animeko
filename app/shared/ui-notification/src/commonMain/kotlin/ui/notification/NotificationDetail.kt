@@ -60,6 +60,7 @@ import me.him188.ani.app.data.models.notification.NotificationDestination
 import me.him188.ani.app.data.models.notification.NotificationDisplay
 import me.him188.ani.app.data.models.notification.NotificationTarget
 import me.him188.ani.app.data.models.notification.SystemNotificationEvent
+import me.him188.ani.app.navigation.CommentThreadTarget
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
@@ -67,6 +68,7 @@ import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.notification_check_update
 import me.him188.ani.app.ui.lang.notification_go_to_character
+import me.him188.ani.app.ui.lang.notification_go_to_comment
 import me.him188.ani.app.ui.lang.notification_go_to_episode
 import me.him188.ani.app.ui.lang.notification_go_to_person
 import me.him188.ani.app.ui.lang.notification_go_to_subject
@@ -222,8 +224,18 @@ val NotificationDestination.labelRes: StringResource
         is NotificationDestination.Subject -> Lang.notification_go_to_subject
         is NotificationDestination.Person -> Lang.notification_go_to_person
         is NotificationDestination.Character -> Lang.notification_go_to_character
+        is NotificationDestination.CommentThread -> Lang.notification_go_to_comment
         is NotificationDestination.Url -> Lang.notification_view_details
     }
+
+/**
+ * 评论所在的对象对应的 thread 路由参数.
+ */
+fun NotificationDestination.CommentHost.toCommentThreadTarget(): CommentThreadTarget = when (this) {
+    is NotificationDestination.Episode -> CommentThreadTarget.Episode(subjectId.toInt(), episodeId.toInt())
+    is NotificationDestination.Person -> CommentThreadTarget.Person(personId.toInt())
+    is NotificationDestination.Character -> CommentThreadTarget.Character(characterId.toInt())
+}
 
 /**
  * 前往 [destination]. 网页链接由 [openUrl] 在浏览器中打开.
@@ -237,6 +249,9 @@ fun NotificationActions.open(
         is NotificationDestination.Subject -> onOpenSubject(destination.subjectId.toInt(), null)
         is NotificationDestination.Person -> onOpenPerson(destination.personId.toInt())
         is NotificationDestination.Character -> onOpenCharacter(destination.characterId.toInt())
+        is NotificationDestination.CommentThread ->
+            onOpenCommentThread(destination.host.toCommentThreadTarget(), destination.commentId, destination.replyId)
+
         is NotificationDestination.Url -> openUrl(destination.url)
     }
 }

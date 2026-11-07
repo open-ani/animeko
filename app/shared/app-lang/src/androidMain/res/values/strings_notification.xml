@@ -65,6 +65,7 @@
     <string name="notification_go_to_subject">Go to anime</string>
     <string name="notification_go_to_person">Go to person</string>
     <string name="notification_go_to_character">Go to character</string>
+    <string name="notification_go_to_comment">Go to comment</string>
 
     <string name="notification_account_third_party_unbound">%1$s account unlinked</string>
     <string name="notification_account_third_party_unbound_generic">Third-party account unlinked</string>

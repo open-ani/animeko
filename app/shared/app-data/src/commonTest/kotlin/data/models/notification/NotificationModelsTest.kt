@@ -93,6 +93,29 @@ class NotificationModelsTest {
     }
 
     @Test
+    fun `comment target goes to the thread of the comment host`() {
+        val episode = NotificationTarget(subjectId = 1, episodeId = 2, commentId = "ani:c", replyId = "ani:r")
+        assertEquals(
+            NotificationDestination.CommentThread(NotificationDestination.Episode(1, 2), "ani:c", "ani:r"),
+            episode.destination,
+        )
+        assertEquals(
+            NotificationDestination.CommentThread(NotificationDestination.Person(3), "bangumi:9", null),
+            NotificationTarget(personId = 3, commentId = "bangumi:9").destination,
+        )
+        assertEquals(
+            NotificationDestination.CommentThread(NotificationDestination.Character(4), "ani:c"),
+            NotificationTarget(characterId = 4, commentId = "ani:c", url = "https://example.com").destination,
+        )
+        // 评论要挂在剧集、人物或角色上; 只有条目或只有链接时退回到那里
+        assertEquals(NotificationDestination.Subject(1), NotificationTarget(subjectId = 1, commentId = "ani:c").destination)
+        assertEquals(
+            NotificationDestination.Url("https://example.com"),
+            NotificationTarget(commentId = "ani:c", url = "https://example.com").destination,
+        )
+    }
+
+    @Test
     fun `target url must be http or https`() {
         assertEquals(
             NotificationDestination.Url("http://example.com/a?b=1"),

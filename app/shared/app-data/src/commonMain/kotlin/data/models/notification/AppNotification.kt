@@ -101,6 +101,8 @@ enum class NotificationIcon(val wireValue: String) {
  * @property subjectId 条目. 有 [episodeId] 时是剧集所在的条目.
  * @property episodeId 剧集, 与 [subjectId] 一起使用.
  * @property url 网页链接, 在浏览器中打开.
+ * @property commentId 根评论的稳定 id. 评论所在的剧集或人物/角色由 [episodeId] 与 [subjectId], 或 [personId] / [characterId] 给出.
+ * @property replyId [commentId] 这楼里要定位到的回复的稳定 id.
  */
 @Immutable
 data class NotificationTarget(
@@ -109,13 +111,18 @@ data class NotificationTarget(
     val personId: Long? = null,
     val characterId: Long? = null,
     val url: String? = null,
+    val commentId: String? = null,
+    val replyId: String? = null,
 ) {
     /**
-     * 客户端支持的最具体的位置: 剧集 (需要 [episodeId] 和 [subjectId]) > 条目 > 人物 > 角色 > 网页.
-     * 只接受 http(s) 链接. 都没有时为 `null`.
+     * 客户端支持的最具体的位置: 评论 (需要 [commentId] 和评论所在的剧集或人物/角色) > 剧集 (需要 [episodeId] 和 [subjectId]) >
+     * 条目 > 人物 > 角色 > 网页. 只接受 http(s) 链接. 都没有时为 `null`.
      */
     val destination: NotificationDestination?
         get() {
+            if (commentId != null) {
+                hostDestination()?.let { return NotificationDestination.CommentThread(it, commentId, replyId) }
+            }
             if (subjectId != null && episodeId != null) return NotificationDestination.Episode(subjectId, episodeId)
             if (subjectId != null) return NotificationDestination.Subject(subjectId)
             if (personId != null) return NotificationDestination.Person(personId)
@@ -123,6 +130,16 @@ data class NotificationTarget(
             val url = url?.trim()?.takeIf { HttpUrlPattern.matches(it) } ?: return null
             return NotificationDestination.Url(url)
         }
+
+    /**
+     * 能挂评论的位置: 剧集, 人物或角色. 条目没有评论 thread, 所以不算.
+     */
+    private fun hostDestination(): NotificationDestination.CommentHost? {
+        if (subjectId != null && episodeId != null) return NotificationDestination.Episode(subjectId, episodeId)
+        if (personId != null) return NotificationDestination.Person(personId)
+        if (characterId != null) return NotificationDestination.Character(characterId)
+        return null
+    }
 
     private companion object {
         val HttpUrlPattern = Regex("""https?://\S+""", RegexOption.IGNORE_CASE)
@@ -134,17 +151,33 @@ data class NotificationTarget(
  */
 @Immutable
 sealed interface NotificationDestination {
+    /**
+     * 能挂评论的位置, 也是评论 thread ([CommentThread]) 所在的对象.
+     */
+    sealed interface CommentHost : NotificationDestination
+
     @Immutable
-    data class Episode(val subjectId: Long, val episodeId: Long) : NotificationDestination
+    data class Episode(val subjectId: Long, val episodeId: Long) : CommentHost
 
     @Immutable
     data class Subject(val subjectId: Long) : NotificationDestination
 
     @Immutable
-    data class Person(val personId: Long) : NotificationDestination
+    data class Person(val personId: Long) : CommentHost
 
     @Immutable
-    data class Character(val characterId: Long) : NotificationDestination
+    data class Character(val characterId: Long) : CommentHost
+
+    /**
+     * 一条评论的详情 (thread).
+     *
+     * @property host 评论所在的剧集、人物或角色.
+     * @property commentId 根评论的稳定 id.
+     * @property replyId 要定位到的回复的稳定 id, 没有时停在根评论.
+     */
+    @Immutable
+    data class CommentThread(val host: CommentHost, val commentId: String, val replyId: String? = null) :
+        NotificationDestination
 
     /**
      * 在浏览器中打开的 http(s) 链接.

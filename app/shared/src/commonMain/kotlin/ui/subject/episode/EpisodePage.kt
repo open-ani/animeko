@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
@@ -86,6 +87,7 @@ import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.comment.CommentContext
 import me.him188.ani.app.domain.media.player.data.suppliedFramePreview
+import me.him188.ani.app.navigation.CommentThreadTarget
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.pip.LocalPictureInPictureController
 import me.him188.ani.app.pip.NoOpPictureInPictureController
@@ -100,6 +102,10 @@ import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentReportHost
 import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
+import me.him188.ani.app.ui.comment.UIComment
+import me.him188.ani.app.ui.comment.thread.CommentThreadHost
+import me.him188.ani.app.ui.comment.thread.CommentThreadHostContent
+import me.him188.ani.app.ui.comment.thread.CommentThreadPane
 import me.him188.ani.app.ui.danmaku.DanmakuEditorState
 import me.him188.ani.app.ui.danmaku.DanmakuStylePanel
 import me.him188.ani.app.ui.danmaku.DummyDanmakuEditor
@@ -443,8 +449,13 @@ private fun EpisodeScreenContent(
                 tryUnpause()
             },
             onSendComplete = {
-                scope.launch {
-                    vm.commentLazyGirdState.scrollToItem(0)
+                val threadOpen = vm.commentThreadHost.current != null
+                vm.refreshComments()
+                // 新评论在列表顶部; 从 thread 里发的回复由 thread 自己滚到末尾
+                if (!threadOpen) {
+                    scope.launch {
+                        vm.commentLazyGirdState.scrollToItem(0)
+                    }
                 }
             },
         )
@@ -713,10 +724,13 @@ private fun EpisodeScreenSidebar(
                         commentState = vm.episodeCommentState,
                         commentReportState = vm.commentReportState,
                         commentEditorState = vm.commentEditorState,
+                        threadHost = vm.commentThreadHost,
+                        onOpenThread = { scope.launch { vm.openCommentThread(it) } },
                         subjectId = vm.subjectId,
                         episodeId = page.episodePresentation.episodeId,
                         setShowEditCommentSheet = setShowEditCommentSheet,
                         pauseOnPlaying = pauseOnPlaying,
+                        backHandlerEnabled = !vm.isFullscreen,
                         gridState = vm.commentLazyGirdState,
                     )
                 }
@@ -866,14 +880,18 @@ private fun EpisodeScreenPhoneDetails(
             }
         },
         commentColumn = {
+            val scope = rememberCoroutineScope()
             EpisodeCommentColumn(
                 commentState = vm.episodeCommentState,
                 commentReportState = vm.commentReportState,
                 commentEditorState = vm.commentEditorState,
+                threadHost = vm.commentThreadHost,
+                onOpenThread = { scope.launch { vm.openCommentThread(it) } },
                 subjectId = vm.subjectId,
                 episodeId = page.episodePresentation.episodeId,
                 setShowEditCommentSheet = setShowEditCommentSheet,
                 pauseOnPlaying = pauseOnPlaying,
+                backHandlerEnabled = !vm.isFullscreen,
                 gridState = vm.commentLazyGirdState,
             )
         },
@@ -1419,45 +1437,90 @@ private fun EpisodeCommentColumn(
     commentState: CommentState,
     commentReportState: CommentReportState,
     commentEditorState: CommentEditorState,
+    threadHost: CommentThreadHost,
+    onOpenThread: (UIComment) -> Unit,
     subjectId: Int,
     episodeId: Int,
     setShowEditCommentSheet: (Boolean) -> Unit,
     pauseOnPlaying: () -> Unit,
     modifier: Modifier = Modifier,
+    backHandlerEnabled: Boolean = true,
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
     val toaster = LocalToaster.current
     val browserNavigator = LocalUriHandler.current
     val externalAppLinkWarningPrefix = stringResource(Lang.foundation_richtext_external_app_link_warning_prefix)
     val openLinkFailedPrefix = stringResource(Lang.foundation_richtext_open_failed_prefix)
+    val onClickUrl: (String) -> Unit = {
+        RichTextDefaults.checkSanityAndOpen(
+            it,
+            browserNavigator,
+            toaster,
+            externalAppLinkWarningPrefix,
+            openLinkFailedPrefix,
+        )
+    }
 
-    EpisodeCommentColumn(
-        state = commentState,
-        reportState = commentReportState,
-        episodeId = episodeId,
-        onClickReply = {
-            setShowEditCommentSheet(true)
-            commentEditorState.startEdit(CommentContext.EpisodeReply(subjectId, episodeId.toLong(), it))
-            pauseOnPlaying()
+    // 自动连播 / 页内切集后评论列表随之重建, 还开着的 thread 会和下面的列表不是一集, 所以一并关掉
+    LaunchedEffect(threadHost, episodeId) {
+        val target = threadHost.current?.key?.target as? CommentThreadTarget.Episode ?: return@LaunchedEffect
+        if (target.episodeId != episodeId) {
+            threadHost.close()
+        }
+    }
 
-        },
-        onNewCommentClick = {
-            commentEditorState.startEdit(
-                CommentContext.Episode(subjectId, episodeId.toLong()),
-            )
-            setShowEditCommentSheet(true)
-        },
-        onClickUrl = {
-            RichTextDefaults.checkSanityAndOpen(
-                it,
-                browserNavigator,
-                toaster,
-                externalAppLinkWarningPrefix,
-                openLinkFailedPrefix,
-            )
-        },
+    CommentThreadHostContent(
+        host = threadHost,
         modifier = modifier.fillMaxSize(),
-        gridState = gridState,
+        backHandlerEnabled = backHandlerEnabled,
+        list = {
+            EpisodeCommentColumn(
+                state = commentState,
+                reportState = commentReportState,
+                episodeId = episodeId,
+                onClickReply = {
+                    setShowEditCommentSheet(true)
+                    commentEditorState.startEdit(CommentContext.EpisodeReply(subjectId, episodeId.toLong(), it))
+                    pauseOnPlaying()
+                },
+                onExpandReplies = onOpenThread,
+                onNewCommentClick = {
+                    commentEditorState.startEdit(
+                        CommentContext.Episode(subjectId, episodeId.toLong()),
+                    )
+                    setShowEditCommentSheet(true)
+                },
+                onClickUrl = onClickUrl,
+                modifier = Modifier.fillMaxSize(),
+                gridState = gridState,
+            )
+        },
+        thread = { thread ->
+            val imageViewer = LocalImageViewerHandler.current
+            CommentThreadPane(
+                state = thread,
+                onClickUrl = onClickUrl,
+                onClickImage = { imageViewer.viewImage(it) },
+                onReply = { target ->
+                    commentEditorState.startEdit(
+                        CommentContext.EpisodeReply(
+                            subjectId,
+                            target.episodeId ?: episodeId.toLong(),
+                            target.sourceCommentId,
+                        ),
+                        replyToName = target.author?.nickname,
+                    )
+                    setShowEditCommentSheet(true)
+                    pauseOnPlaying()
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)),
+                onBack = { threadHost.close() },
+                reportState = commentReportState,
+                onOpenOriginal = { browserNavigator.openUri("https://bgm.tv/ep/$episodeId") },
+            )
+        },
     )
 }
 

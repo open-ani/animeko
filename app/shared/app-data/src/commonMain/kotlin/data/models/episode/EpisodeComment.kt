@@ -45,6 +45,14 @@ data class EpisodeComment(
      * 当前登录用户对这条评论的投票, 未投票或未登录时为 `null`.
      */
     val selfVote: CommentVoteValue? = null,
+    /**
+     * 楼中楼回复直接回复的另一条回复的稳定 id; 回复的是根评论, 或本身是根评论时为 `null`.
+     */
+    val parentStableId: String? = null,
+    /**
+     * [parentStableId] 的作者, 用于显示 "回复 @某人". [parentStableId] 有值而它为 `null` 时, 父评论已被删除.
+     */
+    val replyTo: UserInfo? = null,
 )
 
 data class EpisodeCommentReaction(

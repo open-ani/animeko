@@ -1462,6 +1462,13 @@
     <string name="comment_dislike">倒讚</string>
     <string name="comment_more_actions">更多操作</string>
     <string name="comment_expand_replies">展開 %1$d 則回覆</string>
+    <string name="comment_thread_title">評論詳情</string>
+    <string name="comment_thread_replies_count">相關回覆共 %1$d 則</string>
+    <string name="comment_reply_to_name">回覆 @%1$s</string>
+    <string name="comment_reply_to_deleted">回覆 已刪除的評論</string>
+    <string name="comment_thread_no_replies">還沒有回覆</string>
+    <string name="comment_thread_not_found">評論不存在或已被刪除</string>
+    <string name="comment_thread_reply_root">改為回覆原評論</string>
     <string name="comment_copy_content">複製內容</string>
     <string name="comment_open_in_bangumi">在 Bangumi 開啟</string>
     <string name="comment_block_user">封鎖此使用者</string>

@@ -15,16 +15,20 @@ import androidx.compose.runtime.Stable
 import me.him188.ani.app.data.models.person.PersonCommentTarget
 import me.him188.ani.app.domain.comment.CommentContext
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.navigation.CommentThreadTarget
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentReportHost
 import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
+import me.him188.ani.app.ui.comment.UIComment
+import me.him188.ani.app.ui.comment.thread.CommentThreadHost
+import me.him188.ani.app.ui.comment.thread.CommentThreadKey
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
 
 /**
- * 人物/角色页评论区的全部状态: 列表 ([commentState]), 举报 ([reportState]), 编辑器 ([editorState]).
- * 由 [PeopleDetailsViewModel] 创建, 页面、侧边预览与全量评论 sheet 共用同一份.
+ * 人物/角色页评论区的全部状态: 列表 ([commentState]), 举报 ([reportState]), 编辑器 ([editorState]),
+ * 以及全量评论 sheet 里原地打开的 thread ([threadHost]). 由 [PeopleDetailsViewModel] 创建, 页面、侧边预览与全量评论 sheet 共用同一份.
  *
  * 与剧集评论一个路数: Ani 自有评论可回复/贴纸回应/点赞/举报, Bangumi 评论只读, 可在 Bangumi 打开.
  */
@@ -36,18 +40,36 @@ class PeopleCommentsState(
     val editorState: CommentEditorState,
     /** 评论来源页 (Bangumi 吐槽箱), 用于菜单的 "在 Bangumi 打开". */
     val originalCommentsUrl: String,
+    val threadHost: CommentThreadHost,
     private val onRefresh: () -> Unit,
 ) {
     /**
-     * 重新拉取评论列表与评论数. 发送成功后调用, 让新评论立刻出现在列表顶部.
+     * 重新拉取评论列表与评论数. 发送成功后调用, 让新评论立刻出现在列表顶部; 打开着 thread 时 thread 也一并刷新.
      */
-    fun refresh() = onRefresh()
+    fun refresh() {
+        onRefresh()
+        threadHost.current?.onReplySent()
+    }
 
     /** 开始写一条新评论. */
     fun startNewComment() = editorState.startEdit(CommentContext.PersonComment(target))
 
-    /** 开始回复 [commentId] (Ani 评论的 `sourceCommentId`). */
-    fun startReply(commentId: String) = editorState.startEdit(CommentContext.PersonCommentReply(target, commentId))
+    /**
+     * 开始回复 [commentId] (Ani 评论的 `sourceCommentId`).
+     *
+     * @param replyToName 回复对象的昵称, 编辑器标题显示 "回复 @昵称"
+     */
+    fun startReply(commentId: String, replyToName: String? = null) =
+        editorState.startEdit(CommentContext.PersonCommentReply(target, commentId), replyToName)
+
+    /** 在全量评论 sheet 里原地打开 [comment] 的 thread, 列表里的这条评论作为快照先显示. */
+    fun openThread(comment: UIComment) {
+        val threadTarget = when (target) {
+            is PersonCommentTarget.Person -> CommentThreadTarget.Person(target.personId)
+            is PersonCommentTarget.Character -> CommentThreadTarget.Character(target.characterId)
+        }
+        threadHost.open(CommentThreadKey(threadTarget, comment.stableId), snapshot = comment)
+    }
 }
 
 /**

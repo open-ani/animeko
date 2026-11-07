@@ -14,11 +14,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddComment
 import androidx.compose.material3.Icon
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.testTag
 import me.him188.ani.app.ui.comment.EditCommentSheet
+import me.him188.ani.app.ui.comment.thread.CommentThreadHostContent
+import me.him188.ani.app.ui.comment.thread.CommentThreadPane
 import me.him188.ani.app.ui.lang.person_details_write_comment
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -533,6 +536,9 @@ internal fun PersonCommentsSheet(
 
 /**
  * [PersonCommentsSheet] 的内容: 标题行 (评论数 + "写评论") + 评论列 + 编辑器. 拆出来是为了能脱离 [ModalBottomSheet] 测试.
+ *
+ * 点评论的回复块时在 sheet 内原地切换到该评论的 thread ([CommentThreadPane]), 系统返回先关 thread 再关 sheet;
+ * sheet 关闭 (内容离开组合) 时 thread 一并关掉, 下次打开 sheet 是列表.
  */
 @Composable
 internal fun PersonCommentsSheetContent(
@@ -547,56 +553,82 @@ internal fun PersonCommentsSheetContent(
     val openLinkFailedPrefix = stringResource(Lang.foundation_richtext_open_failed_prefix)
     // 不用 rememberSaveable: 编辑目标存在 view model 里, 进程重建后 sheet 也不会自动恢复
     var showEditor by remember { mutableStateOf(false) }
-
-    Column(modifier.fillMaxWidth()) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                state.count?.takeIf { it > 0 }?.let {
-                    stringResource(Lang.person_details_comments) + " · " + remember(it) { groupThousands(it) }
-                } ?: stringResource(Lang.person_details_comments),
-                Modifier.weight(1f),
-                style = MaterialTheme.typography.titleLarge,
-            )
-            TextButton(
-                onClick = {
-                    comments.startNewComment()
-                    showEditor = true
-                },
-                Modifier.testTag(PersonCommentsSheetTestTags.WriteComment),
-            ) {
-                Icon(Icons.Rounded.AddComment, contentDescription = null, Modifier.size(18.dp))
-                Text(
-                    stringResource(Lang.person_details_write_comment),
-                    Modifier.padding(start = 8.dp),
-                )
-            }
-        }
-        SubjectDetailsDefaults.SubjectCommentColumn(
-            state = state,
-            onClickUrl = { url ->
-                RichTextDefaults.checkSanityAndOpen(
-                    url,
-                    browserNavigator,
-                    toaster,
-                    externalAppLinkWarningPrefix,
-                    openLinkFailedPrefix,
-                )
-            },
-            onClickImage = onClickImage,
-            reportState = comments.reportState,
-            onOpenOriginal = { browserNavigator.openUri(comments.originalCommentsUrl) },
-            onClickReply = { comment ->
-                comments.startReply(comment.sourceCommentId)
-                showEditor = true
-            },
-            onToggleReaction = { comment, value -> state.submitReaction(comment, value) },
-            connectedScrollState = rememberConnectedScrollState(),
-            modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+    val onClickUrl: (String) -> Unit = { url ->
+        RichTextDefaults.checkSanityAndOpen(
+            url,
+            browserNavigator,
+            toaster,
+            externalAppLinkWarningPrefix,
+            openLinkFailedPrefix,
         )
     }
+    DisposableEffect(comments) {
+        onDispose { comments.threadHost.close() }
+    }
+
+    CommentThreadHostContent(
+        host = comments.threadHost,
+        modifier = modifier.fillMaxWidth(),
+        list = {
+            Column(Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        state.count?.takeIf { it > 0 }?.let {
+                            stringResource(Lang.person_details_comments) + " · " + remember(it) { groupThousands(it) }
+                        } ?: stringResource(Lang.person_details_comments),
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    TextButton(
+                        onClick = {
+                            comments.startNewComment()
+                            showEditor = true
+                        },
+                        Modifier.testTag(PersonCommentsSheetTestTags.WriteComment),
+                    ) {
+                        Icon(Icons.Rounded.AddComment, contentDescription = null, Modifier.size(18.dp))
+                        Text(
+                            stringResource(Lang.person_details_write_comment),
+                            Modifier.padding(start = 8.dp),
+                        )
+                    }
+                }
+                SubjectDetailsDefaults.SubjectCommentColumn(
+                    state = state,
+                    onClickUrl = onClickUrl,
+                    onClickImage = onClickImage,
+                    reportState = comments.reportState,
+                    onOpenOriginal = { browserNavigator.openUri(comments.originalCommentsUrl) },
+                    onClickReply = { comment ->
+                        comments.startReply(comment.sourceCommentId)
+                        showEditor = true
+                    },
+                    onToggleReaction = { comment, value -> state.submitReaction(comment, value) },
+                    onExpandReplies = { comments.openThread(it) },
+                    connectedScrollState = rememberConnectedScrollState(),
+                    modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                )
+            }
+        },
+        thread = { thread ->
+            CommentThreadPane(
+                state = thread,
+                onClickUrl = onClickUrl,
+                onClickImage = onClickImage,
+                onReply = { target ->
+                    comments.startReply(target.sourceCommentId, replyToName = target.author?.nickname)
+                    showEditor = true
+                },
+                modifier = Modifier.fillMaxWidth(),
+                onBack = { comments.threadHost.close() },
+                reportState = comments.reportState,
+                onOpenOriginal = { browserNavigator.openUri(comments.originalCommentsUrl) },
+            )
+        },
+    )
 
     if (showEditor) {
         EditCommentSheet(
