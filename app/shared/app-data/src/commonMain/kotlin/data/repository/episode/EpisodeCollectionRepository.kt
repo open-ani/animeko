@@ -10,6 +10,7 @@
 package me.him188.ani.app.data.repository.episode
 
 import androidx.paging.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
@@ -28,6 +29,8 @@ import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCase
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.toEpisodeType
 import me.him188.ani.app.data.repository.subject.toUnifiedCollectionType
+import me.him188.ani.app.domain.tracking.TrackingChange
+import me.him188.ani.app.domain.tracking.TrackingDispatcher
 import me.him188.ani.app.domain.episode.EpisodeCollections
 import me.him188.ani.client.models.AniEpisodeCollection
 import me.him188.ani.datasources.api.EpisodeSort
@@ -83,6 +86,7 @@ class EpisodeCollectionRepository(
     private val nowMillis: () -> Long = { currentTimeMillis() },
     /** 有新的待同步操作时调用, 由 syncer 决定何时推送. */
     private val onDirtyChanged: () -> Unit = {},
+    private val trackingDispatcher: TrackingDispatcher? = null,
 ) : Repository(defaultDispatcher), EpisodeCollectionPendingOpSource {
 
     private val subjectCollectionRepository by subjectCollectionRepository
@@ -193,6 +197,7 @@ class EpisodeCollectionRepository(
             },
         )
         onDirtyChanged()
+        notifyTracking(subjectId, episodeIds, UnifiedCollectionType.DONE)
     }
 
     /**
@@ -219,6 +224,17 @@ class EpisodeCollectionRepository(
             ),
         )
         onDirtyChanged()
+        notifyTracking(subjectId, listOf(episodeId), collectionType)
+    }
+
+    private suspend fun notifyTracking(subjectId: Int, episodeIds: List<Int>, type: UnifiedCollectionType) {
+        try {
+            trackingDispatcher?.dispatch(TrackingChange.Episodes(subjectId, episodeIds, type))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.warn(e) { "External tracking notification failed for subject $subjectId" }
+        }
     }
 
     override val pendingOpsFlow: Flow<List<EpisodeCollectionPendingOp>> = pendingOpDao.pendingOpsFlow().map { ops ->
