@@ -16,6 +16,7 @@ import androidx.paging.PagingState
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.comment.CommentVoteValue
 import me.him188.ani.app.data.models.episode.EpisodeComment
+import me.him188.ani.app.data.models.episode.EpisodeCommentSource
 import me.him188.ani.app.data.network.AniEpisodeCommentService
 import me.him188.ani.app.data.network.toEpisodeComment
 import me.him188.ani.app.data.repository.Repository
@@ -40,6 +41,35 @@ class EpisodeCommentRepository(
         }.flow
     }
 
+    /**
+     * 评论详情 (thread) 的根评论, 不含回复 ([EpisodeComment.replies] 为空). [stableId] 是列表里的稳定 id.
+     *
+     * @return 评论不存在、已删除或不属于该剧集时为 `null`.
+     */
+    suspend fun getComment(episodeId: Long, stableId: String): EpisodeComment? {
+        return aniCommentService.getEpisodeComment(episodeId, stableId)?.toEpisodeComment()
+    }
+
+    /**
+     * 一条根评论的全部楼中楼回复, 发送时间正序.
+     *
+     * @param onTotal 加载首页时回调服务端给出的可见回复总数, 刷新时再次回调
+     */
+    fun repliesPager(
+        episodeId: Long,
+        stableId: String,
+        onTotal: (Int) -> Unit = {},
+    ): Flow<PagingData<EpisodeComment>> {
+        return Pager(defaultPagingConfig) {
+            EpisodeCommentRepliesPagingSource(
+                episodeId = episodeId,
+                rootStableId = stableId,
+                aniCommentService = aniCommentService,
+                onTotal = onTotal,
+            )
+        }.flow
+    }
+
     suspend fun submitReaction(
         episodeId: Long,
         commentId: String,
@@ -54,7 +84,7 @@ class EpisodeCommentRepository(
     }
 
     /**
-     * 对评论投票 (点赞/点踩). [vote] 为 `null` 表示取消投票.
+     * 对评论 (根评论或楼中楼回复) 投票 (点赞/点踩). [vote] 为 `null` 表示取消投票.
      */
     suspend fun submitVote(
         episodeId: Long,
@@ -62,6 +92,48 @@ class EpisodeCommentRepository(
         vote: CommentVoteValue?,
     ) {
         aniCommentService.voteEpisodeComment(episodeId, commentId, vote)
+    }
+}
+
+/**
+ * 一条根评论的回复翻页, 发送时间正序. 回复的来源与根评论相同, 由根评论稳定 id 的前缀得知 (回复的 DTO 没有来源字段).
+ */
+internal class EpisodeCommentRepliesPagingSource(
+    private val episodeId: Long,
+    private val rootStableId: String,
+    private val aniCommentService: AniEpisodeCommentService,
+    private val onTotal: (Int) -> Unit = {},
+) : PagingSource<String, EpisodeComment>() {
+    override fun getRefreshKey(state: PagingState<String, EpisodeComment>): String? = null
+
+    override suspend fun load(params: LoadParams<String>): LoadResult<String, EpisodeComment> {
+        return runWrappingExceptionAsLoadResult {
+            val response = aniCommentService.listEpisodeCommentReplies(
+                episodeId = episodeId,
+                commentId = rootStableId,
+                after = params.key,
+                limit = params.loadSize.coerceAtMost(MAX_LIMIT),
+            )
+            if (params.key == null) {
+                onTotal(response.total)
+            }
+            val source = if (rootStableId.startsWith(BANGUMI_PREFIX)) {
+                EpisodeCommentSource.BANGUMI
+            } else {
+                EpisodeCommentSource.ANI
+            }
+            LoadResult.Page(
+                data = response.items.map { it.toEpisodeComment(episodeId, source) },
+                prevKey = null,
+                nextKey = response.nextCursor,
+            )
+        }
+    }
+
+    private companion object {
+        /** 服务端 `limit` 的上限, 超过会 400 */
+        const val MAX_LIMIT = 100
+        const val BANGUMI_PREFIX = "bangumi:"
     }
 }
 

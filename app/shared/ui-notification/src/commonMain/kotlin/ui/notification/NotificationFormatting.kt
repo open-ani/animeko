@@ -16,6 +16,7 @@ import me.him188.ani.app.data.models.notification.AccountSecurityEvent
 import me.him188.ani.app.data.models.notification.AnnouncementTag
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
+import me.him188.ani.app.data.models.notification.NotificationDestination
 import me.him188.ani.app.data.models.notification.NotificationDisplay
 import me.him188.ani.app.data.models.notification.SystemNotificationEvent
 import me.him188.ani.app.ui.lang.Lang
@@ -33,6 +34,7 @@ import me.him188.ani.app.ui.lang.notification_announcement_tag_community
 import me.him188.ani.app.ui.lang.notification_announcement_tag_general
 import me.him188.ani.app.ui.lang.notification_announcement_tag_maintenance
 import me.him188.ani.app.ui.lang.notification_announcement_tag_release
+import me.him188.ani.app.ui.lang.notification_comment_reply_row_title
 import me.him188.ani.app.ui.lang.notification_report_result_row_title
 import me.him188.ani.app.ui.lang.notification_report_target_character_comment
 import me.him188.ani.app.ui.lang.notification_report_target_comment
@@ -50,7 +52,7 @@ import org.jetbrains.compose.resources.StringResource
  * 各部分分开展示, 不拼接成一行. 客户端自己的文案从不引用用户自己的评论内容.
  *
  * @property supporting 没有可展示的细节时为 `null`, 此时只显示一行.
- * @property overline 标题上方的一行, 例如条目与剧集. 只有通用展示内容 ([NotificationDisplay.overline]) 有.
+ * @property overline 标题上方的一行, 例如条目与剧集. 通用展示内容 ([NotificationDisplay.overline]) 和评论被回复有.
  */
 @Immutable
 data class NotificationRowText(
@@ -77,8 +79,64 @@ fun notificationRowText(
 
     is AppNotificationContent.System -> systemRowText(content, notification.display)
 
+    is AppNotificationContent.CommentReply -> commentReplyRowText(content, notification.display, useOriginalTitle)
+
     AppNotificationContent.Unknown -> displayRowText(notification.display)
 }
+
+/**
+ * 评论被回复的行文本: 第一行是评论所在的位置 (条目与剧集, 或人物 / 角色), 第二行是 "某人 回复了你的评论",
+ * 第三行是回复正文的第一行. 正文用服务端给的纯文本 ([NotificationDisplay.body]): 客户端不在列表里解析 BBCode.
+ */
+fun commentReplyRowText(
+    content: AppNotificationContent.CommentReply,
+    display: NotificationDisplay,
+    useOriginalTitle: Boolean,
+): NotificationRowText = NotificationRowText(
+    headline = NotificationText.Res(
+        Lang.notification_comment_reply_row_title,
+        listOf(NotificationText.Plain(content.replier.nickname)),
+    ),
+    supporting = display.body?.let { firstLineOf(it) }?.let { NotificationText.Plain(it) },
+    overline = commentReplyTargetText(content, display, useOriginalTitle),
+)
+
+/**
+ * 被回复的评论所在的位置, 规则与 [reportTargetText] 相同: 剧集评论为 "条目名 第 N 话", 人物和角色评论为人物或角色名.
+ * 不认识的评论类型用通用展示内容中标题上方的一行; 都没有时为 `null`, 列表行只有两行.
+ */
+fun commentReplyTargetText(
+    content: AppNotificationContent.CommentReply,
+    display: NotificationDisplay,
+    useOriginalTitle: Boolean,
+): NotificationText? {
+    val subjectName = preferredSubjectName(content.subjectName, content.subjectNameCn, useOriginalTitle)
+    val targetName = content.targetName?.takeIf { it.isNotBlank() }
+    return when (content.targetType) {
+        CommentReportTargetType.EPISODE_COMMENT -> {
+            if (subjectName == null) return null
+            val episode = content.episodeSort?.takeIf { it.isNotBlank() }?.let { episodeLabelText(it) }
+                ?: return NotificationText.Plain(subjectName)
+            NotificationText.Words(listOf(NotificationText.Plain(subjectName), episode))
+        }
+
+        CommentReportTargetType.SUBJECT_REVIEW -> subjectName?.let { NotificationText.Plain(it) }
+
+        CommentReportTargetType.PERSON_COMMENT,
+        CommentReportTargetType.CHARACTER_COMMENT,
+            -> targetName?.let { NotificationText.Plain(it) }
+
+        null -> display.overline?.trim()?.takeIf { it.isNotEmpty() }?.let { NotificationText.Plain(it) }
+    }
+}
+
+/**
+ * 评论被回复的去处: 这条回复所在的评论详情. 内容里缺少评论所在的剧集或人物时, 退回通用展示内容中的位置.
+ */
+fun commentReplyDestination(
+    content: AppNotificationContent.CommentReply,
+    display: NotificationDisplay,
+): NotificationDestination? = content.destination ?: display.target?.destination
 
 /**
  * 系统消息的行文本. 认识的事件使用客户端的文案, 否则为服务端的通用展示内容.
@@ -137,6 +195,7 @@ fun notificationInlineActions(content: AppNotificationContent): List<Notificatio
 
     is AppNotificationContent.ReportResult,
     is AppNotificationContent.AccountSecurity,
+    is AppNotificationContent.CommentReply,
     AppNotificationContent.Unknown,
         -> emptyList()
 }
@@ -144,25 +203,38 @@ fun notificationInlineActions(content: AppNotificationContent): List<Notificatio
 /**
  * 点击列表行时打开的位置.
  */
-enum class NotificationOpenTarget {
+@Immutable
+sealed interface NotificationOpenTarget {
     /**
      * 通知详情. 窄屏为单独的页面, 宽屏显示在列表右侧.
      */
-    DETAIL,
+    @Immutable
+    data object Detail : NotificationOpenTarget
 
     /**
      * 账号设置. 账号安全通知没有详情, 相关的操作都在账号设置中.
      */
-    ACCOUNT_SETTINGS,
+    @Immutable
+    data object AccountSettings : NotificationOpenTarget
+
+    /**
+     * 通知指向的位置, 例如评论被回复时直接前往那条回复所在的评论详情, 不经过通知详情.
+     */
+    @Immutable
+    data class Destination(val destination: NotificationDestination) : NotificationOpenTarget
 }
 
-fun notificationOpenTarget(content: AppNotificationContent): NotificationOpenTarget = when (content) {
+fun notificationOpenTarget(notification: AppNotification): NotificationOpenTarget = when (val content = notification.content) {
     is AppNotificationContent.ReportResult,
     is AppNotificationContent.System,
     AppNotificationContent.Unknown,
-        -> NotificationOpenTarget.DETAIL
+        -> NotificationOpenTarget.Detail
 
-    is AppNotificationContent.AccountSecurity -> NotificationOpenTarget.ACCOUNT_SETTINGS
+    is AppNotificationContent.AccountSecurity -> NotificationOpenTarget.AccountSettings
+
+    is AppNotificationContent.CommentReply ->
+        commentReplyDestination(content, notification.display)?.let { NotificationOpenTarget.Destination(it) }
+            ?: NotificationOpenTarget.Detail
 }
 
 /**

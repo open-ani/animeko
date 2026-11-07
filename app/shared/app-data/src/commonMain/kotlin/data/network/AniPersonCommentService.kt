@@ -26,6 +26,7 @@ import me.him188.ani.client.models.AniCreatePersonCommentRequest
 import me.him188.ani.client.models.AniCreatePersonReplyRequest
 import me.him188.ani.client.models.AniEpisodeCommentReaction
 import me.him188.ani.client.models.AniPersonComment
+import me.him188.ani.client.models.AniPersonCommentRepliesResponse
 import me.him188.ani.client.models.AniPersonCommentReply
 import me.him188.ani.client.models.AniPersonCommentSource
 import me.him188.ani.client.models.AniPersonCommentsResponse
@@ -72,6 +73,59 @@ open class AniPersonCommentService(
                     limit = limit,
                     includeBangumi = true,
                     after = after,
+                ).body()
+            }
+        }
+    }
+
+    /**
+     * 评论详情 (thread) 的根评论, 不含回复. [commentId] 是列表响应里的稳定 `id` (`ani:<uuid>` / `bangumi:<id>`).
+     *
+     * @return 评论不存在、已删除、不属于该人物/角色或者是楼中楼回复时为 `null`.
+     */
+    open suspend fun getComment(target: PersonCommentTarget, commentId: String): AniPersonComment? = withContext(ioDispatcher) {
+        try {
+            when (target) {
+                is PersonCommentTarget.Person -> personsApi {
+                    getPersonComment(personId = target.personId.toLong(), commentId = commentId).body()
+                }
+
+                is PersonCommentTarget.Character -> charactersApi {
+                    getCharacterComment(characterId = target.characterId.toLong(), commentId = commentId).body()
+                }
+            }
+        } catch (e: Exception) {
+            if (e.isNotFound()) return@withContext null
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
+    /**
+     * 一条根评论的楼中楼回复, 发送时间正序, 游标翻页: [after] 传上一页的 [AniPersonCommentRepliesResponse.nextCursor].
+     * Bangumi 评论的回复一次全部返回.
+     */
+    open suspend fun listReplies(
+        target: PersonCommentTarget,
+        commentId: String,
+        after: String? = null,
+        limit: Int = 30,
+    ): AniPersonCommentRepliesResponse = call {
+        when (target) {
+            is PersonCommentTarget.Person -> personsApi {
+                listPersonCommentReplies(
+                    personId = target.personId.toLong(),
+                    commentId = commentId,
+                    after = after,
+                    limit = limit,
+                ).body()
+            }
+
+            is PersonCommentTarget.Character -> charactersApi {
+                listCharacterCommentReplies(
+                    characterId = target.characterId.toLong(),
+                    commentId = commentId,
+                    after = after,
+                    limit = limit,
                 ).body()
             }
         }
@@ -148,7 +202,7 @@ open class AniPersonCommentService(
     }
 
     /**
-     * 对评论投票. [vote] 为 `null` 表示取消投票. 只有 Ani 源的根评论可投票.
+     * 对评论 (根评论或楼中楼回复) 投票. [vote] 为 `null` 表示取消投票. 只有 Ani 源的评论可投票.
      */
     open suspend fun vote(target: PersonCommentTarget, commentId: String, vote: CommentVoteValue?) {
         call {
@@ -207,27 +261,27 @@ fun AniPersonComment.toPersonComment(): PersonComment {
     )
 }
 
-private fun AniPersonCommentReply.toPersonComment(source: PersonCommentSource): PersonComment {
+/**
+ * 楼中楼回复. 回复的 DTO 没有来源字段, [source] 沿用所在根评论的来源; 只有 Ani 的回复可以被回复 (回复它的人).
+ */
+internal fun AniPersonCommentReply.toPersonComment(source: PersonCommentSource): PersonComment {
     return PersonComment(
         stableId = id,
         source = source,
         sourceCommentId = sourceCommentId,
         createdAt = createdAtMillis,
         content = contentBbcode,
-        author = author?.let {
-            UserInfo(
-                id = it.id,
-                username = null,
-                nickname = it.nickname,
-                avatarUrl = it.avatarUrl,
-            )
-        },
+        author = author?.toUserInfo(),
         reactions = reactions.map { it.toPersonCommentReaction() },
-        canReply = false,
+        canReply = source == PersonCommentSource.ANI,
+        likeCount = likeCount,
+        selfVote = selfVote?.toCommentVoteValue(),
+        parentStableId = parentId,
+        replyTo = replyToAuthor?.toUserInfo(),
     )
 }
 
-private fun AniPersonCommentSource.toPersonCommentSource(): PersonCommentSource = when (this) {
+internal fun AniPersonCommentSource.toPersonCommentSource(): PersonCommentSource = when (this) {
     AniPersonCommentSource.ANIMEKO -> PersonCommentSource.ANI
     AniPersonCommentSource.BANGUMI -> PersonCommentSource.BANGUMI
 }

@@ -19,6 +19,7 @@ import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.notification.AccountSecurityEvent
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
+import me.him188.ani.app.data.models.notification.CommentReplier
 import me.him188.ani.app.data.models.notification.NotificationDisplay
 import me.him188.ani.app.data.models.notification.NotificationGroup
 import me.him188.ani.app.data.models.notification.NotificationIcon
@@ -35,6 +36,7 @@ import me.him188.ani.client.models.AniMarkAllNotificationsReadRequest
 import me.him188.ani.client.models.AniMarkNotificationsReadRequest
 import me.him188.ani.client.models.AniNotification
 import me.him188.ani.client.models.AniNotificationAccountSecurity
+import me.him188.ani.client.models.AniNotificationCommentReply
 import me.him188.ani.client.models.AniNotificationReportResult
 import me.him188.ani.client.models.AniNotificationSystem
 import me.him188.ani.client.models.AniNotificationTarget
@@ -182,6 +184,7 @@ internal fun AniNotification.toAppNotification(): AppNotification {
         NotificationType.SYSTEM -> system?.toSystem()
         NotificationType.REPORT_RESULT -> reportResult?.toReportResult()
         NotificationType.ACCOUNT_SECURITY -> accountSecurity?.toAccountSecurity()
+        NotificationType.COMMENT_REPLY -> commentReply?.toCommentReply()
         null -> null
     } ?: AppNotificationContent.Unknown
     return AppNotification(
@@ -208,6 +211,8 @@ private fun AniNotificationTarget.toNotificationTarget() = NotificationTarget(
     personId = personId,
     characterId = characterId,
     url = url,
+    commentId = commentId,
+    replyId = replyId,
 )
 
 private fun AniNotificationSystem.toSystem() = AppNotificationContent.System(
@@ -223,6 +228,28 @@ private fun AniNotificationReportResult.toReportResult() = AppNotificationConten
     contentRemoved = contentRemoved,
     contentSnapshot = contentSnapshot,
     contentCreatedAtMillis = contentCreatedAtMillis,
+    subjectId = subjectId,
+    subjectName = subjectName,
+    subjectNameCn = subjectNameCn,
+    episodeId = episodeId,
+    episodeSort = episodeSort,
+    personId = personId,
+    characterId = characterId,
+    targetName = targetName,
+)
+
+private fun AniNotificationCommentReply.toCommentReply() = AppNotificationContent.CommentReply(
+    targetType = AniCommentReportTargetType.entries.firstOrNull { it.value == targetType }?.toCommentReportTargetType(),
+    replier = CommentReplier(
+        id = replier.id,
+        nickname = replier.nickname.orEmpty(),
+        avatarUrl = replier.avatarUrl?.takeIf { it.isNotBlank() },
+    ),
+    replyId = replyId,
+    rootCommentId = rootCommentId,
+    parentCommentId = parentCommentId,
+    contentBbcode = contentBbcode,
+    createdAtMillis = createdAtMillis,
     subjectId = subjectId,
     subjectName = subjectName,
     subjectNameCn = subjectNameCn,

@@ -101,6 +101,8 @@ enum class NotificationIcon(val wireValue: String) {
  * @property subjectId 条目. 有 [episodeId] 时是剧集所在的条目.
  * @property episodeId 剧集, 与 [subjectId] 一起使用.
  * @property url 网页链接, 在浏览器中打开.
+ * @property commentId 根评论的稳定 id. 评论所在的剧集或人物/角色由 [episodeId] 与 [subjectId], 或 [personId] / [characterId] 给出.
+ * @property replyId [commentId] 这楼里要定位到的回复的稳定 id.
  */
 @Immutable
 data class NotificationTarget(
@@ -109,13 +111,18 @@ data class NotificationTarget(
     val personId: Long? = null,
     val characterId: Long? = null,
     val url: String? = null,
+    val commentId: String? = null,
+    val replyId: String? = null,
 ) {
     /**
-     * 客户端支持的最具体的位置: 剧集 (需要 [episodeId] 和 [subjectId]) > 条目 > 人物 > 角色 > 网页.
-     * 只接受 http(s) 链接. 都没有时为 `null`.
+     * 客户端支持的最具体的位置: 评论 (需要 [commentId] 和评论所在的剧集或人物/角色) > 剧集 (需要 [episodeId] 和 [subjectId]) >
+     * 条目 > 人物 > 角色 > 网页. 只接受 http(s) 链接. 都没有时为 `null`.
      */
     val destination: NotificationDestination?
         get() {
+            if (commentId != null) {
+                hostDestination()?.let { return NotificationDestination.CommentThread(it, commentId, replyId) }
+            }
             if (subjectId != null && episodeId != null) return NotificationDestination.Episode(subjectId, episodeId)
             if (subjectId != null) return NotificationDestination.Subject(subjectId)
             if (personId != null) return NotificationDestination.Person(personId)
@@ -123,6 +130,16 @@ data class NotificationTarget(
             val url = url?.trim()?.takeIf { HttpUrlPattern.matches(it) } ?: return null
             return NotificationDestination.Url(url)
         }
+
+    /**
+     * 能挂评论的位置: 剧集, 人物或角色. 条目没有评论 thread, 所以不算.
+     */
+    private fun hostDestination(): NotificationDestination.CommentHost? {
+        if (subjectId != null && episodeId != null) return NotificationDestination.Episode(subjectId, episodeId)
+        if (personId != null) return NotificationDestination.Person(personId)
+        if (characterId != null) return NotificationDestination.Character(characterId)
+        return null
+    }
 
     private companion object {
         val HttpUrlPattern = Regex("""https?://\S+""", RegexOption.IGNORE_CASE)
@@ -134,17 +151,33 @@ data class NotificationTarget(
  */
 @Immutable
 sealed interface NotificationDestination {
+    /**
+     * 能挂评论的位置, 也是评论 thread ([CommentThread]) 所在的对象.
+     */
+    sealed interface CommentHost : NotificationDestination
+
     @Immutable
-    data class Episode(val subjectId: Long, val episodeId: Long) : NotificationDestination
+    data class Episode(val subjectId: Long, val episodeId: Long) : CommentHost
 
     @Immutable
     data class Subject(val subjectId: Long) : NotificationDestination
 
     @Immutable
-    data class Person(val personId: Long) : NotificationDestination
+    data class Person(val personId: Long) : CommentHost
 
     @Immutable
-    data class Character(val characterId: Long) : NotificationDestination
+    data class Character(val characterId: Long) : CommentHost
+
+    /**
+     * 一条评论的详情 (thread).
+     *
+     * @property host 评论所在的剧集、人物或角色.
+     * @property commentId 根评论的稳定 id.
+     * @property replyId 要定位到的回复的稳定 id, 没有时停在根评论.
+     */
+    @Immutable
+    data class CommentThread(val host: CommentHost, val commentId: String, val replyId: String? = null) :
+        NotificationDestination
 
     /**
      * 在浏览器中打开的 http(s) 链接.
@@ -222,6 +255,60 @@ sealed class AppNotificationContent {
     ) : AppNotificationContent()
 
     /**
+     * 用户的评论被回复. 回复根评论时通知根评论的作者, 回复楼中楼时通知那条回复的作者.
+     *
+     * 点击前往这条回复所在的评论详情 ([destination]), 定位到这条回复. 缺少评论所在的剧集或人物时没有去处,
+     * 此时退回到详情页.
+     *
+     * @property targetType 评论所在位置的类型 (剧集 / 人物 / 角色评论). 服务端以后可能增加新的类型, 客户端不认识时为 `null`.
+     * @property replier 回复者. 昵称和头像是服务端读取时的资料.
+     * @property replyId 这条回复的稳定 id.
+     * @property rootCommentId 回复所在楼的根评论的稳定 id.
+     * @property parentCommentId 被回复的评论的稳定 id: 被回复的是根评论时等于 [rootCommentId].
+     * @property contentBbcode 回复正文 (BBCode), 可能被截断.
+     * @property createdAtMillis 回复的发表时间.
+     * @property episodeSort 剧集序号的展示文本, 不补零, 例如 `12`, `12.5`, `SP1`.
+     * @property targetName 人物或角色的名字.
+     */
+    @Immutable
+    data class CommentReply(
+        val targetType: CommentReportTargetType?,
+        val replier: CommentReplier,
+        val replyId: String,
+        val rootCommentId: String,
+        val parentCommentId: String,
+        val contentBbcode: String,
+        val createdAtMillis: Long,
+        val subjectId: Long? = null,
+        val subjectName: String? = null,
+        val subjectNameCn: String? = null,
+        val episodeId: Long? = null,
+        val episodeSort: String? = null,
+        val personId: Long? = null,
+        val characterId: Long? = null,
+        val targetName: String? = null,
+    ) : AppNotificationContent() {
+        /**
+         * 被回复的是根评论本身, 而不是楼里的一条回复.
+         */
+        val repliesToRoot: Boolean get() = parentCommentId == rootCommentId
+
+        /**
+         * 这条回复所在的评论详情, 定位到这条回复. 评论所在的剧集, 人物或角色都缺失时为 `null`.
+         */
+        val destination: NotificationDestination.CommentThread?
+            get() {
+                val host: NotificationDestination.CommentHost = when {
+                    subjectId != null && episodeId != null -> NotificationDestination.Episode(subjectId, episodeId)
+                    personId != null -> NotificationDestination.Person(personId)
+                    characterId != null -> NotificationDestination.Character(characterId)
+                    else -> return null
+                }
+                return NotificationDestination.CommentThread(host, rootCommentId, replyId)
+            }
+    }
+
+    /**
      * 客户端没有专门展示方式的通知, 完全用通用展示内容 ([AppNotification.display]) 展示.
      *
      * 包括客户端不认识的类型 ([AppNotification.type] 为 `null`), 以及缺少该类型内容的通知.
@@ -229,6 +316,19 @@ sealed class AppNotificationContent {
     @Immutable
     data object Unknown : AppNotificationContent()
 }
+
+/**
+ * 回复者.
+ *
+ * @property id 用户 id.
+ * @property avatarUrl 没有头像时为 `null`.
+ */
+@Immutable
+data class CommentReplier(
+    val id: String,
+    val nickname: String,
+    val avatarUrl: String? = null,
+)
 
 /**
  * 账号安全事件. 服务端以字符串下发, 以后可能增加新的事件, 客户端不认识的值映射为 [UNKNOWN].

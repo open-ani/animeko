@@ -22,6 +22,8 @@ import me.him188.ani.client.models.AniCommentVoteValue
 import me.him188.ani.client.models.AniCreateCharacterCommentRequest
 import me.him188.ani.client.models.AniCreateCharacterReplyRequest
 import me.him188.ani.client.models.AniLegacyPersonCommentsPage
+import me.him188.ani.client.models.AniPersonComment
+import me.him188.ani.client.models.AniPersonCommentRepliesResponse
 import me.him188.ani.client.models.AniPersonCommentsResponse
 
 import me.him188.ani.client.infrastructure.*
@@ -154,6 +156,40 @@ open class CharactersAniApi : ApiClient {
 
 
     /**
+     * Get character comment
+     * 获取一条根评论, 供评论详情 (thread) 页使用. 响应的 &#x60;briefReplies&#x60; 为空, 回复用 &#x60;.../replies&#x60; 分页获取. &#x60;commentId&#x60; 接受列表响应里的稳定 &#x60;id&#x60; (&#x60;ani:&lt;uuid&gt;&#x60; / &#x60;bangumi:&lt;id&gt;&#x60;), 也接受裸 UUID (视为 Ani 评论). 评论不存在、已删除、不属于该人物/角色, 或者是楼中楼回复时 404. Bangumi 评论来自与列表相同的缓存; 上游故障且没有可用的旧结果时 503, 不像列表那样降级. 登录时带 &#x60;selfVote&#x60; 与贴纸回应的 &#x60;selected&#x60;.
+     * @param characterId
+     * @param commentId
+     * @return AniPersonComment
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getCharacterComment(characterId: kotlin.Long, commentId: kotlin.String): HttpResponse<AniPersonComment> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/characters/{characterId}/comments/{commentId}".replace("{" + "characterId" + "}", "$characterId").replace("{" + "commentId" + "}", "$commentId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
      * 获取角色的 Bangumi 评论 (吐槽箱, 无评分), 新评论在前. 已废弃: 只含 Bangumi 评论, 为兼容旧客户端保留; 新客户端请用 &#x60;GET /characters/{characterId}/comments/merged&#x60;.
      * 获取角色的 Bangumi 评论 (吐槽箱, 无评分), 新评论在前. 已废弃: 只含 Bangumi 评论, 为兼容旧客户端保留; 新客户端请用 &#x60;GET /characters/{characterId}/comments/merged&#x60;.
      * @param characterId
@@ -247,6 +283,44 @@ open class CharactersAniApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/v2/characters/{characterId}/subjects".replace("{" + "characterId" + "}", "$characterId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * List character comment replies
+     * 获取一条根评论下的楼中楼回复, 按发送时间正序, 游标翻页: 传上一页响应的 &#x60;nextCursor&#x60; 为 &#x60;after&#x60;, 不受翻页期间新增回复的影响. &#x60;commentId&#x60; 的取值与单条评论接口一致. 根评论不存在、已删除、不属于该人物/角色, 或者是楼中楼回复时 404. Bangumi 评论的回复一次全部返回, 没有游标; 上游故障且没有可用的旧结果时 503. 登录时每条回复带 &#x60;selfVote&#x60; 与贴纸回应的 &#x60;selected&#x60;.
+     * @param characterId
+     * @param commentId
+     * @param after  (optional)
+     * @param limit  (optional)
+     * @return AniPersonCommentRepliesResponse
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun listCharacterCommentReplies(characterId: kotlin.Long, commentId: kotlin.String, after: kotlin.String? = null, limit: kotlin.Int? = null): HttpResponse<AniPersonCommentRepliesResponse> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        after?.apply { localVariableQuery["after"] = listOf("$after") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/characters/{characterId}/comments/{commentId}/replies".replace("{" + "characterId" + "}", "$characterId").replace("{" + "commentId" + "}", "$commentId"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -372,7 +446,7 @@ open class CharactersAniApi : ApiClient {
 
     /**
      * Vote on Ani character comment
-     * 对 Ani 角色评论点赞或点踩. 赞与踩互斥, 重复调用同一个值是幂等的. &#x60;commentId&#x60; 是响应里的 &#x60;sourceCommentId&#x60; (裸 UUID), 不是带 &#x60;ani:&#x60; 前缀的 &#x60;id&#x60;. Bangumi 来源的评论不可投票.
+     * 对 Ani 角色评论点赞或点踩. 根评论与楼中楼回复都可以投票. 赞与踩互斥, 重复调用同一个值是幂等的. &#x60;commentId&#x60; 是响应里的 &#x60;sourceCommentId&#x60; (裸 UUID), 不是带 &#x60;ani:&#x60; 前缀的 &#x60;id&#x60;. Bangumi 来源的评论不可投票.
      * @param characterId
      * @param commentId
      * @param vote

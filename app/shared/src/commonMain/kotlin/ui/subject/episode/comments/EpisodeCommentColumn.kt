@@ -40,6 +40,7 @@ import me.him188.ani.app.ui.comment.CommentMenuHandlers
 import me.him188.ani.app.ui.comment.CommentOverlayCleanupEffect
 import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
+import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.generateUiComment
 import me.him188.ani.app.ui.comment.rememberTestCommentState
@@ -53,6 +54,9 @@ import me.him188.ani.app.ui.lang.comment_send_comment
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * @param onExpandReplies 点击评论的回复块 (简要回复 + "展开 N 条回复"), 用来打开评论的 thread. `null` 时回落到回复根评论.
+ */
 @Composable
 fun EpisodeCommentColumn(
     state: CommentState,
@@ -62,6 +66,7 @@ fun EpisodeCommentColumn(
     onClickUrl: (url: String) -> Unit,
     modifier: Modifier = Modifier,
     reportState: CommentReportState? = null,
+    onExpandReplies: ((UIComment) -> Unit)? = null,
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
     val imageViewer = LocalImageViewerHandler.current
@@ -107,6 +112,7 @@ fun EpisodeCommentColumn(
                 onClickUrl = onClickUrl,
                 onClickImage = { imageViewer.viewImage(it) },
                 onClickReply = { onClickReply(it.sourceCommentId) },
+                onExpandReplies = onExpandReplies,
                 onToggleVote = { c, vote -> state.toggleVote(c, vote) },
                 onToggleReaction = if (commentWithOverlay.source == UICommentSource.ANI) {
                     { c, value -> state.submitReaction(c, value) }

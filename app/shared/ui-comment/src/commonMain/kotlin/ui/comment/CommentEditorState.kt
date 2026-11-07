@@ -175,6 +175,12 @@ class CommentEditorState(
 
     var currentSendTarget: CommentContext? by mutableStateOf(null)
         private set
+
+    /**
+     * 正在回复的人的昵称. 有值时编辑器标题显示 "回复 @昵称" 而不是 [panelTitle], 让用户知道回的是谁; 回复根评论时也可以给.
+     */
+    var replyToName: String? by mutableStateOf(null)
+        private set
     val sending get() = sendTasker.isRunning
 
     /**
@@ -242,15 +248,18 @@ class CommentEditorState(
     val linkActive: Boolean by derivedStateOf { currentText().isLinkActive() }
 
     /**
-     * 连续开关为同一个评论的编辑框将保存编辑内容和编辑框状态
+     * 连续开关为同一个评论的编辑框将保存编辑内容和编辑框状态.
+     *
+     * @param replyToName 见 [CommentEditorState.replyToName]
      */
-    fun startEdit(newTarget: CommentContext) {
+    fun startEdit(newTarget: CommentContext, replyToName: String? = null) {
         if (newTarget != currentSendTarget) {
             textFieldState.clearText()
             textFieldState.undoState.clearHistory()
             clearImageUploads()
         }
         currentSendTarget = newTarget
+        this.replyToName = replyToName
         previewing = false
         previewContent = null
         editExpanded = false
