@@ -172,10 +172,11 @@ fun SubjectSummarySection(
     var expanded by rememberSaveable { mutableStateOf(false) }
     var hasOverflow by remember { mutableStateOf(false) }
     Column(modifier.fillMaxWidth()) {
+        // 正文不响应点击: 点击/拖动留给文本选择 (复制), 展开只走下方按钮.
         SelectionContainer {
             Text(
                 summary,
-                Modifier.fillMaxWidth().clickable { expanded = !expanded },
+                Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = if (expanded) Int.MAX_VALUE else collapsedMaxLines,
                 overflow = TextOverflow.Ellipsis,
