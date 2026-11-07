@@ -255,6 +255,60 @@ sealed class AppNotificationContent {
     ) : AppNotificationContent()
 
     /**
+     * 用户的评论被回复. 回复根评论时通知根评论的作者, 回复楼中楼时通知那条回复的作者.
+     *
+     * 点击前往这条回复所在的评论详情 ([destination]), 定位到这条回复. 缺少评论所在的剧集或人物时没有去处,
+     * 此时退回到详情页.
+     *
+     * @property targetType 评论所在位置的类型 (剧集 / 人物 / 角色评论). 服务端以后可能增加新的类型, 客户端不认识时为 `null`.
+     * @property replier 回复者. 昵称和头像是服务端读取时的资料.
+     * @property replyId 这条回复的稳定 id.
+     * @property rootCommentId 回复所在楼的根评论的稳定 id.
+     * @property parentCommentId 被回复的评论的稳定 id: 被回复的是根评论时等于 [rootCommentId].
+     * @property contentBbcode 回复正文 (BBCode), 可能被截断.
+     * @property createdAtMillis 回复的发表时间.
+     * @property episodeSort 剧集序号的展示文本, 不补零, 例如 `12`, `12.5`, `SP1`.
+     * @property targetName 人物或角色的名字.
+     */
+    @Immutable
+    data class CommentReply(
+        val targetType: CommentReportTargetType?,
+        val replier: CommentReplier,
+        val replyId: String,
+        val rootCommentId: String,
+        val parentCommentId: String,
+        val contentBbcode: String,
+        val createdAtMillis: Long,
+        val subjectId: Long? = null,
+        val subjectName: String? = null,
+        val subjectNameCn: String? = null,
+        val episodeId: Long? = null,
+        val episodeSort: String? = null,
+        val personId: Long? = null,
+        val characterId: Long? = null,
+        val targetName: String? = null,
+    ) : AppNotificationContent() {
+        /**
+         * 被回复的是根评论本身, 而不是楼里的一条回复.
+         */
+        val repliesToRoot: Boolean get() = parentCommentId == rootCommentId
+
+        /**
+         * 这条回复所在的评论详情, 定位到这条回复. 评论所在的剧集, 人物或角色都缺失时为 `null`.
+         */
+        val destination: NotificationDestination.CommentThread?
+            get() {
+                val host: NotificationDestination.CommentHost = when {
+                    subjectId != null && episodeId != null -> NotificationDestination.Episode(subjectId, episodeId)
+                    personId != null -> NotificationDestination.Person(personId)
+                    characterId != null -> NotificationDestination.Character(characterId)
+                    else -> return null
+                }
+                return NotificationDestination.CommentThread(host, rootCommentId, replyId)
+            }
+    }
+
+    /**
      * 客户端没有专门展示方式的通知, 完全用通用展示内容 ([AppNotification.display]) 展示.
      *
      * 包括客户端不认识的类型 ([AppNotification.type] 为 `null`), 以及缺少该类型内容的通知.
@@ -262,6 +316,19 @@ sealed class AppNotificationContent {
     @Immutable
     data object Unknown : AppNotificationContent()
 }
+
+/**
+ * 回复者.
+ *
+ * @property id 用户 id.
+ * @property avatarUrl 没有头像时为 `null`.
+ */
+@Immutable
+data class CommentReplier(
+    val id: String,
+    val nickname: String,
+    val avatarUrl: String? = null,
+)
 
 /**
  * 账号安全事件. 服务端以字符串下发, 以后可能增加新的事件, 客户端不认识的值映射为 [UNKNOWN].

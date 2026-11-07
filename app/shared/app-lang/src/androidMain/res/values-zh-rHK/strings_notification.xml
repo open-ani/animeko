@@ -67,6 +67,9 @@
     <string name="notification_go_to_character">前往角色</string>
     <string name="notification_go_to_comment">前往該評論</string>
 
+    <string name="notification_comment_reply_row_title">%1$s 回覆了你的評論</string>
+    <string name="notification_comment_reply_detail_title">評論回覆</string>
+
     <string name="notification_account_third_party_unbound">%1$s 賬戶已解除綁定</string>
     <string name="notification_account_third_party_unbound_generic">第三方賬戶已解除綁定</string>
     <string name="notification_account_third_party_unbound_supporting">該賬戶已登入另一個 Animeko 賬戶</string>
@@ -80,6 +83,8 @@
     <string name="notification_settings_system_group_description">關閉後，對應的通知不會在此裝置顯示，也不計入未讀。</string>
     <string name="notification_settings_report_result_item">你舉報的評論有處理結果</string>
     <string name="notification_settings_account_security_item">你的賬戶有安全提示</string>
+    <string name="notification_settings_group_interaction">互動</string>
+    <string name="notification_settings_comment_reply_item">有人回覆了你的評論</string>
     <string name="notification_settings_group_announcements">公告</string>
     <string name="notification_settings_announcement_item">你收到新公告</string>
     <string name="notification_settings_announcement_description">關閉後新公告不會在頭像上顯示紅點。</string>

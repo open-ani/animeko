@@ -564,7 +564,7 @@ class NotificationDetailTest {
 
             val overline = onNodeWithTag(NotificationTestTags.DETAIL_OVERLINE, useUnmergedTree = true)
                 .assertTextEquals("葬送的芙莉莲 第 1 话")
-            val title = onNodeWithText("Bob 回复了你的评论").assertIsDisplayed()
+            val title = onNodeWithText("Bob 在评论中提到了你").assertIsDisplayed()
             // 30 分钟前, 当地时间 19:30
             val time = onNodeWithText("10 月 13 日 19:30").assertIsDisplayed()
             val body = onNodeWithText("同意，这一集的作画太好了").assertIsDisplayed()
@@ -589,7 +589,7 @@ class NotificationDetailTest {
             ),
             NotificationActions.Noop,
         )
-        onNodeWithText("Bob 回复了你的评论").assertIsDisplayed()
+        onNodeWithText("Bob 在评论中提到了你").assertIsDisplayed()
         onNodeWithTag(NotificationTestTags.LEADING_IMAGE, useUnmergedTree = true).assertExists()
         assertTrue(onAllNodesWithTag(NotificationTestTags.DETAIL_OVERLINE, useUnmergedTree = true).fetchSemanticsNodes().isEmpty())
         assertNoAction()
@@ -719,16 +719,78 @@ class NotificationDetailTest {
     @Test
     fun `detail screen shows an unknown type loaded by id`() = runAniComposeUiTest {
         val repository = FakeNotificationRepository(notifications = TestNotifications + TestInteractionNotifications)
-        val vm = NotificationDetailViewModel("reply-1", notificationTestKoin(repository))
+        val vm = NotificationDetailViewModel("mention-1", notificationTestKoin(repository))
         setContent {
             NotificationTestHost {
                 NotificationDetailScreen(vm, NotificationActions.Noop)
             }
         }
         waitUntil { onAllNodes(hasTestTag(NotificationTestTags.DETAIL)).fetchSemanticsNodes().isNotEmpty() }
-        onNodeWithText("Bob 回复了你的评论").assertIsDisplayed()
+        onNodeWithText("阿九 在评论中提到了你").assertIsDisplayed()
         onNodeWithTag(NotificationTestTags.DETAIL_UPDATE_HINT).assertIsDisplayed()
         onNodeWithText(string(Lang.notification_title)).assertIsDisplayed()
+    }
+
+    // endregion
+
+    // region comment reply
+
+    @Test
+    fun `comment reply detail shows the target replier body and goes to the thread`() = withSimplifiedChinese {
+        runAniComposeUiTest {
+            val recorded = RecordedActions()
+            showDetail(createTestCommentReply(body = "同意\n作画太好了"), recorded.actions)
+
+            val overline = onNodeWithTag(NotificationTestTags.DETAIL_OVERLINE, useUnmergedTree = true)
+                .assertTextEquals("葬送的芙莉莲 第 1 话")
+            val title = onNodeWithText("Bob 回复了你的评论").assertIsDisplayed()
+            val body = onNodeWithText("同意\n作画太好了").assertIsDisplayed()
+            onNodeWithTag(NotificationTestTags.LEADING_IMAGE, useUnmergedTree = true).assertExists()
+            val tops = listOf(overline, title, body).map { it.fetchSemanticsNode().boundsInRoot.top }
+            assertEquals(tops.sorted(), tops, "overline, title and body should be in order: $tops")
+            // 认识的类型, 不提示更新
+            assertTrue(onAllNodesWithTag(NotificationTestTags.DETAIL_UPDATE_HINT).fetchSemanticsNodes().isEmpty())
+
+            onNodeWithTag(NotificationTestTags.DETAIL_ACTION).assertTextEquals("前往该评论").performClick()
+            assertEquals(
+                listOf("comment:Episode(subjectId=400602, episodeId=1227087):ani:root-1:ani:reply-1"),
+                recorded.calls,
+            )
+        }
+    }
+
+    @Test
+    fun `comment reply detail without a host has no action and the top bar shows none either`() = runAniComposeUiTest {
+        val notification = createTestCommentReply(subjectId = null, episodeId = null, target = null)
+        setContent {
+            NotificationTestHost {
+                Column {
+                    NotificationDetailTopBarActions(notification, NotificationActions.Noop)
+                    NotificationDetailContent(notification, NotificationActions.Noop, reportActionInTopBar = true)
+                }
+            }
+        }
+        assertNoAction()
+        assertTrue(onAllNodesWithTag(NotificationTestTags.DETAIL_TOP_BAR_ACTION).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun `comment reply detail in two pane puts the thread button in the top bar`() = runAniComposeUiTest {
+        val recorded = RecordedActions()
+        setContent {
+            NotificationTestHost {
+                Column {
+                    NotificationDetailTopBarActions(createTestCommentReply(), recorded.actions)
+                    NotificationDetailContent(createTestCommentReply(), recorded.actions, reportActionInTopBar = true)
+                }
+            }
+        }
+        assertNoAction()
+        onNodeWithTag(NotificationTestTags.DETAIL_TOP_BAR_ACTION).performClick()
+        assertEquals(
+            listOf("comment:Episode(subjectId=400602, episodeId=1227087):ani:root-1:ani:reply-1"),
+            recorded.calls,
+        )
     }
 
     // endregion

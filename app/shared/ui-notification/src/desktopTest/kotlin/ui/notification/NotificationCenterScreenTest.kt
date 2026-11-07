@@ -85,6 +85,7 @@ class NotificationCenterScreenTest {
         var reauthorize = 0
         var checkUpdate = 0
         val episodes = mutableListOf<String>()
+        val comments = mutableListOf<String>()
 
         val actions = NotificationActions.Noop.let { noop ->
             NotificationActions(
@@ -92,7 +93,7 @@ class NotificationCenterScreenTest {
                 onOpenSubject = noop.onOpenSubject,
                 onOpenPerson = noop.onOpenPerson,
                 onOpenCharacter = noop.onOpenCharacter,
-                onOpenCommentThread = noop.onOpenCommentThread,
+                onOpenCommentThread = { target, commentId, replyId -> comments += "$target:$commentId:$replyId" },
                 onReauthorizeBangumi = { reauthorize++ },
                 onOpenAccountSettings = { accountSettings++ },
                 onCheckUpdate = { checkUpdate++ },
@@ -873,7 +874,12 @@ class NotificationCenterScreenTest {
         onNodeWithTag(NotificationTestTags.item("reply-1")).performClick()
         waitUntil { repository.markedRead.isNotEmpty() }
         assertEquals(listOf(listOf("reply-1")), repository.markedRead.toList())
-        assertEquals(listOf("reply-1"), opened.details)
+        // 评论被回复直接前往评论详情, 不经过通知详情
+        assertEquals(
+            listOf("Episode(subjectId=400602, episodeId=1227087):ani:root-1:ani:reply-1"),
+            opened.comments,
+        )
+        assertTrue(opened.details.isEmpty())
         assertEquals(setOf("reply-1"), vm.readOverlays.value.getValue(NotificationGroup.INTERACTION).readIds)
         assertEquals(ReadOverlay.Empty, vm.readOverlays.value.getValue(NotificationGroup.NOTICE))
 
@@ -1148,28 +1154,34 @@ class NotificationCenterScreenTest {
 
         row("mention-1", NotificationGroup.INTERACTION)
         assertTrue(hasNodeInRow("mention-1", NotificationTestTags.LEADING_IMAGE))
+        // 评论被回复显示回复者的头像
         row("reply-1", NotificationGroup.INTERACTION)
-        assertFalse(hasNodeInRow("reply-1", NotificationTestTags.LEADING_IMAGE))
+        assertTrue(hasNodeInRow("reply-1", NotificationTestTags.LEADING_IMAGE))
+        row("follow-1", NotificationGroup.INTERACTION)
+        assertFalse(hasNodeInRow("follow-1", NotificationTestTags.LEADING_IMAGE))
     }
 
     @Test
     fun `clicking an unknown type row marks it read and shows the generic detail beside the list`() = runAniComposeUiTest {
-        val repository = FakeNotificationRepository(notifications = TestNotifications + TestInteractionNotifications)
+        val generic = createTestGenericNotification()
+        val repository = FakeNotificationRepository(
+            notifications = TestNotifications + TestInteractionNotifications + generic,
+        )
         val vm = NotificationCenterViewModel(notificationTestKoin(repository))
         val opened = showCenter(vm, twoPane = true)
         waitForRow("report-1")
         selectTab(vm, NotificationGroup.INTERACTION)
-        waitForRow("reply-1")
+        waitForRow(generic.id)
 
-        row("reply-1", NotificationGroup.INTERACTION).performClick()
+        row(generic.id, NotificationGroup.INTERACTION).performClick()
 
         waitUntil { repository.markedRead.isNotEmpty() }
-        assertEquals(listOf(listOf("reply-1")), repository.markedRead.toList())
+        assertEquals(listOf(listOf(generic.id)), repository.markedRead.toList())
         waitUntil { hasNode(hasTestTag(NotificationTestTags.DETAIL_UPDATE_HINT)) }
-        onNode(hasText("Bob 回复了你的评论") and hasAnyAncestor(hasTestTag(NotificationTestTags.DETAIL)))
+        onNode(hasText("Bob 在评论中提到了你") and hasAnyAncestor(hasTestTag(NotificationTestTags.DETAIL)))
             .assertIsDisplayed()
         assertTrue(opened.details.isEmpty())
-        waitUntil { !hasNodeInRow("reply-1", NotificationTestTags.UNREAD_DOT) }
+        waitUntil { !hasNodeInRow(generic.id, NotificationTestTags.UNREAD_DOT) }
 
         // 前往按钮在详情底部, 顶栏没有操作
         assertFalse(hasNode(hasTestTag(NotificationTestTags.DETAIL_TOP_BAR_ACTION)))

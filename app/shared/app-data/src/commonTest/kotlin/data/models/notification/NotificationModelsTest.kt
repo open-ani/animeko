@@ -35,13 +35,13 @@ class NotificationModelsTest {
     @Test
     fun `only types with their own rendering are known`() {
         assertEquals(
-            listOf("system", "report_result", "account_security"),
+            listOf("system", "report_result", "account_security", "comment_reply"),
             NotificationType.entries.map { it.wireValue },
         )
         for (type in NotificationType.entries) {
             assertEquals(type, NotificationType.fromWireValue(type.wireValue))
         }
-        for (value in listOf("comment_reply", "mention", "reaction", "follow", "direct_message", "future_type")) {
+        for (value in listOf("mention", "reaction", "follow", "direct_message", "future_type")) {
             assertNull(NotificationType.fromWireValue(value), value)
         }
     }
@@ -52,7 +52,11 @@ class NotificationModelsTest {
         assertEquals(NotificationType.REPORT_RESULT, known.type)
         assertEquals(NotificationGroup.NOTICE, known.group)
 
-        val unknown = notification(rawType = "comment_reply", rawCategory = "interaction")
+        val interaction = notification(rawType = "comment_reply", rawCategory = "interaction")
+        assertEquals(NotificationType.COMMENT_REPLY, interaction.type)
+        assertEquals(NotificationGroup.INTERACTION, interaction.group)
+
+        val unknown = notification(rawType = "mention", rawCategory = "interaction")
         assertNull(unknown.type)
         assertEquals(NotificationGroup.INTERACTION, unknown.group)
 
@@ -161,10 +165,15 @@ class NotificationModelsTest {
             setOf(NotificationType.ACCOUNT_SECURITY),
             NotificationSettings(showAccountSecurity = false).excludedTypes,
         )
+        assertEquals(
+            setOf(NotificationType.COMMENT_REPLY),
+            NotificationSettings(showCommentReplies = false).excludedTypes,
+        )
         // 系统消息没有开关
         assertEquals(
-            setOf(NotificationType.REPORT_RESULT, NotificationType.ACCOUNT_SECURITY),
-            NotificationSettings(showReportResults = false, showAccountSecurity = false).excludedTypes,
+            setOf(NotificationType.REPORT_RESULT, NotificationType.ACCOUNT_SECURITY, NotificationType.COMMENT_REPLY),
+            NotificationSettings(showReportResults = false, showAccountSecurity = false, showCommentReplies = false)
+                .excludedTypes,
         )
         assertEquals(emptySet(), NotificationSettings(showAnnouncementDot = false).excludedTypes)
     }

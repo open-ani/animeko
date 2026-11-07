@@ -67,6 +67,8 @@ import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.foundation.LocalSubjectAppearanceSettings
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.notification_check_update
+import me.him188.ani.app.ui.lang.notification_comment_reply_detail_title
+import me.him188.ani.app.ui.lang.notification_comment_reply_row_title
 import me.him188.ani.app.ui.lang.notification_go_to_character
 import me.him188.ani.app.ui.lang.notification_go_to_comment
 import me.him188.ani.app.ui.lang.notification_go_to_episode
@@ -267,15 +269,17 @@ fun notificationDetailTitle(content: AppNotificationContent): String = when (con
         -> stringResource(Lang.notification_title)
 
     is AppNotificationContent.System -> stringResource(Lang.notification_system_detail_title)
+    is AppNotificationContent.CommentReply -> stringResource(Lang.notification_comment_reply_detail_title)
 }
 
 /**
  * 一条通知的详情内容 (不含顶栏). 自带纵向滚动.
  *
- * 账号安全通知没有详情 (见 [NotificationOpenTarget]), 不显示内容.
+ * 账号安全通知没有详情 (见 [NotificationOpenTarget]), 不显示内容. 评论被回复点击时直接前往评论详情, 这里的详情只在
+ * 缺少去处时显示.
  *
- * @param reportActionInTopBar 举报结果的跳转按钮由顶栏的 [NotificationDetailTopBarActions] 显示, 此时内容底部没有这个按钮.
- * 用于宽屏双栏.
+ * @param reportActionInTopBar 举报结果和评论被回复的跳转按钮由顶栏的 [NotificationDetailTopBarActions] 显示,
+ * 此时内容底部没有这个按钮. 用于宽屏双栏.
  */
 @Composable
 fun NotificationDetailContent(
@@ -290,14 +294,17 @@ fun NotificationDetailContent(
                 ReportResultDetail(content, notification.display, actions, reportActionInTopBar)
             is AppNotificationContent.AccountSecurity -> {}
             is AppNotificationContent.System -> SystemNotificationDetail(content, notification, actions)
+            is AppNotificationContent.CommentReply ->
+                CommentReplyDetail(content, notification, actions, reportActionInTopBar)
+
             AppNotificationContent.Unknown -> GenericNotificationDetail(notification, actions)
         }
     }
 }
 
 /**
- * 详情栏顶栏中的操作: 举报结果的跳转按钮 (见 [ReportResultAction] 和 [reportResultFallbackDestination]),
- * 显示为图标按钮. 其他通知没有.
+ * 详情栏顶栏中的操作: 举报结果的跳转按钮 (见 [ReportResultAction] 和 [reportResultFallbackDestination]) 和
+ * 评论被回复的 "前往该评论" (见 [commentReplyDestination]), 显示为图标按钮. 其他通知没有.
  *
  * 与 `NotificationDetailContent(reportActionInTopBar = true)` 一起使用.
  */
@@ -306,13 +313,23 @@ fun NotificationDetailTopBarActions(
     notification: AppNotification,
     actions: NotificationActions,
 ) {
-    val content = notification.content as? AppNotificationContent.ReportResult ?: return
-    val action = reportResultAction(content)
-    if (action != null) {
-        TopBarOpenButton(stringResource(action.labelRes), onClick = { actions.perform(action, content) })
-        return
-    }
-    val destination = reportResultFallbackDestination(content, notification.display) ?: return
+    val destination = when (val content = notification.content) {
+        is AppNotificationContent.ReportResult -> {
+            val action = reportResultAction(content)
+            if (action != null) {
+                TopBarOpenButton(stringResource(action.labelRes), onClick = { actions.perform(action, content) })
+                return
+            }
+            reportResultFallbackDestination(content, notification.display)
+        }
+
+        is AppNotificationContent.CommentReply -> commentReplyDestination(content, notification.display)
+
+        is AppNotificationContent.AccountSecurity,
+        is AppNotificationContent.System,
+        AppNotificationContent.Unknown,
+            -> null
+    } ?: return
     val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
     TopBarOpenButton(
@@ -612,6 +629,30 @@ private fun SystemNotificationDetail(
 }
 
 /**
+ * 评论被回复: 回复者的头像, 评论所在的位置, "某人 回复了你的评论", 时间, 回复正文 (服务端给的纯文本) 和 "前往该评论".
+ *
+ * @param actionInTopBar 跳转按钮由顶栏显示, 内容底部不再显示. 见 [NotificationDetailTopBarActions].
+ */
+@Composable
+private fun CommentReplyDetail(
+    content: AppNotificationContent.CommentReply,
+    notification: AppNotification,
+    actions: NotificationActions,
+    actionInTopBar: Boolean,
+) {
+    val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
+    val overline = commentReplyTargetText(content, notification.display, useOriginalTitle)
+    NotificationHeadedDetail(
+        notification = notification,
+        overline = overline?.resolve(),
+        title = stringResource(Lang.notification_comment_reply_row_title, content.replier.nickname),
+        body = notification.display.body,
+        destination = if (actionInTopBar) null else commentReplyDestination(content, notification.display),
+        actions = actions,
+    )
+}
+
+/**
  * 只用通用展示内容展示的通知: 图标或图片, 标题上方的一行, 标题, 时间, 正文和前往的位置 ([NotificationTarget.destination]).
  *
  * 客户端不认识这个类型时 ([isUnknownType]), 内容可能不完整, 在底部提示用户更新.
@@ -622,6 +663,34 @@ private fun GenericNotificationDetail(
     actions: NotificationActions,
 ) {
     val display = notification.display
+    NotificationHeadedDetail(
+        notification = notification,
+        overline = display.overline?.trim()?.takeIf { it.isNotEmpty() },
+        title = display.title,
+        body = display.body,
+        destination = display.target?.destination,
+        actions = actions,
+    )
+
+    if (notification.isUnknownType) {
+        Spacer(Modifier.height(16.dp))
+        UpdateHint(actions.onCheckUpdate)
+    }
+}
+
+/**
+ * 带头像或图标的详情: 左侧是 [NotificationListItemDefaults.iconFor] 和 [NotificationListItemDefaults.imageUrlFor],
+ * 右侧依次是 [overline], [title] 和时间, 下面是可选的 [body] 和前往 [destination] 的按钮.
+ */
+@Composable
+private fun NotificationHeadedDetail(
+    notification: AppNotification,
+    overline: String?,
+    title: String,
+    body: String?,
+    destination: NotificationDestination?,
+    actions: NotificationActions,
+) {
     val scheme = MaterialTheme.colorScheme
     Row(
         Modifier.padding(top = 8.dp, bottom = 16.dp),
@@ -634,7 +703,6 @@ private fun GenericNotificationDetail(
             contentColor = scheme.onSecondaryContainer,
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            val overline = display.overline?.trim()?.takeIf { it.isNotEmpty() }
             if (overline != null) {
                 Text(
                     overline,
@@ -644,7 +712,7 @@ private fun GenericNotificationDetail(
                     color = scheme.onSurfaceVariant,
                 )
             }
-            Text(display.title, style = MaterialTheme.typography.titleLarge)
+            Text(title, style = MaterialTheme.typography.titleLarge)
             Text(
                 formatNotificationDetailTime(notification.createdAtMillis),
                 style = MaterialTheme.typography.bodySmall,
@@ -653,20 +721,14 @@ private fun GenericNotificationDetail(
         }
     }
 
-    val body = display.body?.takeIf { it.isNotBlank() }
-    if (body != null) {
-        LinkifiedBody(body)
+    val text = body?.takeIf { it.isNotBlank() }
+    if (text != null) {
+        LinkifiedBody(text)
     }
 
-    val destination = display.target?.destination
     if (destination != null) {
         Spacer(Modifier.height(12.dp))
         NotificationDestinationButton(destination, actions)
-    }
-
-    if (notification.isUnknownType) {
-        Spacer(Modifier.height(16.dp))
-        UpdateHint(actions.onCheckUpdate)
     }
 }
 

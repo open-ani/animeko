@@ -25,6 +25,7 @@ import me.him188.ani.app.data.models.notification.Announcement
 import me.him188.ani.app.data.models.notification.AnnouncementTag
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
+import me.him188.ani.app.data.models.notification.CommentReplier
 import me.him188.ani.app.data.models.notification.NotificationDisplay
 import me.him188.ani.app.data.models.notification.NotificationGroup
 import me.him188.ani.app.data.models.notification.NotificationIcon
@@ -134,8 +135,65 @@ class AniNotificationServiceTest {
                         targetName = "芙莉莲",
                     ),
                 ),
+                AppNotification(
+                    id = "n5",
+                    rawType = "comment_reply",
+                    rawCategory = "interaction",
+                    createdAtMillis = 996,
+                    read = false,
+                    display = NotificationDisplay(
+                        title = "Bob 回复了你的评论",
+                        body = "同意 [图片]",
+                        overline = "葬送的芙莉莲 第 12 话",
+                        icon = NotificationIcon.REPLY,
+                        imageUrl = "https://example.com/bob.png",
+                        target = NotificationTarget(
+                            subjectId = 400602,
+                            episodeId = 1227087,
+                            commentId = "ani:root",
+                            replyId = "ani:reply",
+                        ),
+                    ),
+                    content = AppNotificationContent.CommentReply(
+                        targetType = CommentReportTargetType.EPISODE_COMMENT,
+                        replier = CommentReplier(id = "bob", nickname = "Bob", avatarUrl = "https://example.com/bob.png"),
+                        replyId = "ani:reply",
+                        rootCommentId = "ani:root",
+                        parentCommentId = "ani:root",
+                        contentBbcode = "同意 [img]https://example.com/a.png[/img]",
+                        createdAtMillis = 996,
+                        subjectId = 400602,
+                        subjectName = "Sousou no Frieren",
+                        subjectNameCn = "葬送的芙莉莲",
+                        episodeId = 1227087,
+                        episodeSort = "12",
+                    ),
+                ),
             ),
             page.items,
+        )
+    }
+
+    @Test
+    fun `comment reply with unknown values keeps what the client understands`() = runTest {
+        val server = NotificationTestServer { respondJson(REPLY_UNKNOWN_VALUES_PAGE) }
+
+        val item = server.list(NotificationGroup.INTERACTION).items.single()
+
+        assertEquals(NotificationType.COMMENT_REPLY, item.type)
+        assertEquals(
+            AppNotificationContent.CommentReply(
+                targetType = null,
+                replier = CommentReplier(id = "u", nickname = "用户", avatarUrl = null),
+                replyId = "ani:reply",
+                rootCommentId = "ani:root",
+                parentCommentId = "ani:parent",
+                contentBbcode = "x",
+                createdAtMillis = 5,
+                characterId = 8,
+                targetName = "芙莉莲",
+            ),
+            item.content,
         )
     }
 
@@ -181,15 +239,15 @@ class AniNotificationServiceTest {
         assertEquals(
             AppNotification(
                 id = "i1",
-                rawType = "comment_reply",
+                rawType = "mention",
                 rawCategory = "interaction",
                 createdAtMillis = 3,
                 read = false,
                 display = NotificationDisplay(
-                    title = "Bob 回复了你的评论",
+                    title = "Bob 在评论中提到了你",
                     body = "同意\n作画很好",
                     overline = "葬送的芙莉莲 第 1 话",
-                    icon = NotificationIcon.REPLY,
+                    icon = NotificationIcon.MENTION,
                     imageUrl = "https://example.com/bob.png",
                     target = NotificationTarget(subjectId = 400602, episodeId = 1227087),
                 ),
@@ -481,14 +539,34 @@ class AniNotificationServiceTest {
               {"id":"n4","type":"report_result","category":"notice","createdAtMillis":997,"read":false,
                "title":"你举报的评论已被处理","body":"芙莉莲","icon":"report","target":{"characterId":8},
                "reportResult":{"targetType":"character_comment","reason":"harassment","reportedAtMillis":1,
-               "handledAtMillis":2,"contentRemoved":false,"characterId":8,"targetName":"芙莉莲"}}
+               "handledAtMillis":2,"contentRemoved":false,"characterId":8,"targetName":"芙莉莲"}},
+              {"id":"n5","type":"comment_reply","category":"interaction","createdAtMillis":996,"read":false,
+               "title":"Bob 回复了你的评论","body":"同意 [图片]","overline":"葬送的芙莉莲 第 12 话","icon":"reply",
+               "imageUrl":"https://example.com/bob.png",
+               "target":{"subjectId":400602,"episodeId":1227087,"commentId":"ani:root","replyId":"ani:reply"},
+               "commentReply":{"targetType":"episode_comment",
+               "replier":{"id":"bob","nickname":"Bob","avatarUrl":"https://example.com/bob.png"},
+               "replyId":"ani:reply","rootCommentId":"ani:root","parentCommentId":"ani:root",
+               "contentBbcode":"同意 [img]https://example.com/a.png[/img]","createdAtMillis":996,
+               "subjectId":400602,"subjectName":"Sousou no Frieren","subjectNameCn":"葬送的芙莉莲",
+               "episodeId":1227087,"episodeSort":"12"}}
             ],"nextCursor":"998:n3"}
+        """.trimIndent()
+
+        val REPLY_UNKNOWN_VALUES_PAGE = """
+            {"items":[
+              {"id":"r1","type":"comment_reply","category":"interaction","createdAtMillis":5,"read":false,"title":"t",
+               "commentReply":{"targetType":"subject_review_thread",
+               "replier":{"id":"u","nickname":"用户","avatarUrl":" "},
+               "replyId":"ani:reply","rootCommentId":"ani:root","parentCommentId":"ani:parent",
+               "contentBbcode":"x","createdAtMillis":5,"characterId":8,"targetName":"芙莉莲","futureField":true}}
+            ]}
         """.trimIndent()
 
         val INTERACTION_PAGE = """
             {"items":[
-              {"id":"i1","type":"comment_reply","category":"interaction","createdAtMillis":3,"read":false,
-               "title":"Bob 回复了你的评论","body":"同意\n作画很好","overline":"葬送的芙莉莲 第 1 话","icon":"reply",
+              {"id":"i1","type":"mention","category":"interaction","createdAtMillis":3,"read":false,
+               "title":"Bob 在评论中提到了你","body":"同意\n作画很好","overline":"葬送的芙莉莲 第 1 话","icon":"mention",
                "imageUrl":"https://example.com/bob.png","target":{"subjectId":400602,"episodeId":1227087}},
               {"id":"i2","type":"future_type","category":"interaction","createdAtMillis":2,"read":true,
                "title":"新功能","icon":"sparkles","target":{"personId":5,"placeId":9},"futurePayload":{"x":1}}
