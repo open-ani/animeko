@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~ Copyright (C) 2024-2025 OpenAni and contributors.
+  ~
+  ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+  ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+  ~
+  ~ https://github.com/open-ani/ani/blob/main/LICENSE
+  -->
+
+<!--@formatter:off-->
+
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="settings_media_preference_title">ترجیحات انتخاب منبع</string>
+    <string name="settings_media_preference_description">تنظیم ترجیحات پیش‌فرض انتخاب منبع. این گزینه بر پخش آنلاین و حافظهٔ پنهان (دانلود آفلاین) تأثیر می‌گذارد</string>
+    <string name="settings_media_preference_override_notice">انتخابی که هنگام پخش برای هر انیمه انجام می‌شود جایگزین این تنظیمات خواهد شد</string>
+    <string name="settings_media_any">هرکدام</string>
+    <string name="settings_media_none">هیچ‌کدام</string>
+    <string name="settings_media_subtitle_language">زبان زیرنویس</string>
+    <string name="settings_media_resolution">وضوح</string>
+    <string name="settings_media_resolution_description">وضوح‌های انتخاب‌نشده همچنان نمایش داده می‌شوند، اما به‌طور خودکار انتخاب نخواهند شد</string>
+    <string name="settings_media_alliance">گروه زیرنویس</string>
+    <string name="settings_media_alliance_description">از عبارات باقاعده که با کاما از هم جدا شده‌اند پشتیبانی می‌کند. عباراتی که ابتدا فهرست شده‌اند اولویت بالاتری دارند\n\nمثال: 桜都, 喵萌, 北宇治\nمنابع گروه زیرنویس 桜都 در اولویت قرار می‌گیرند، سپس 喵萌 و به همین ترتیب</string>
+    <string name="settings_media_advanced_settings">تنظیمات پیشرفته</string>
+    <string name="settings_media_advanced_settings_description">تنظیم دقیق الگوریتم انتخاب خودکار منبع داده. معمولاً نیازی به تغییر این تنظیمات ندارید</string>
+    <string name="settings_media_source_web">آنلاین (توصیه‌شده)</string>
+    <string name="settings_media_source_bt">منبع BT</string>
+    <string name="settings_media_source_no_preference">بدون ترجیح</string>
+    <string name="settings_media_prefer_source_type">نوع منبع دادهٔ ترجیحی</string>
+    <string name="settings_media_prefer_source_type_description">منابع آنلاین سریع‌تر بارگیری می‌شوند اما ممکن است وضوح کمتری داشته باشند، در حالی که منابع BT برعکس هستند</string>
+    <string name="settings_media_fast_select_web">انتخاب سریع منابع آنلاین</string>
+    <string name="settings_media_fast_select_web_description">مرتب‌سازی بر اساس منبع داده، و انتخاب فوری پس از تکمیل پرس‌وجوی منابع با رتبهٔ بالاتر، بدون انتظار برای سایر منابع. می‌تواند زمان انتظار را به‌طور چشمگیری کاهش دهد</string>
+    <string name="settings_media_wait_time_none">بدون انتظار</string>
+    <string name="settings_media_wait_time_3s">پس از ۳ ثانیه</string>
+    <string name="settings_media_wait_time_5s">پس از ۵ ثانیه</string>
+    <string name="settings_media_wait_time_8s">پس از ۸ ثانیه</string>
+    <string name="settings_media_wait_time_10s">پس از ۱۰ ثانیه</string>
+    <string name="settings_media_wait_time_15s">پس از ۱۵ ثانیه</string>
+    <string name="settings_media_wait_time_20s">پس از ۲۰ ثانیه</string>
+    <string name="settings_media_wait_time_30s">پس از ۳۰ ثانیه</string>
+    <string name="settings_media_wait_time_infinite">نامحدود</string>
+    <string name="settings_media_video_link_resolve_timeout">مهلت زمانی بررسی پیوند ویدیو</string>
+    <string name="settings_media_video_link_resolve_timeout_description">حداکثر زمان مجاز برای تحلیل URL نهایی و قابل‌پخش منابع ویدیوی آنلاین. اگر تحلیل پیوند بیش از حد طول بکشد، پخش سریع‌تر متوقف می‌شود و زودتر منبع تعویض شده یا تلاش مجدد صورت می‌گیرد. ۸ تا ۱۵ ثانیه پیشنهاد می‌شود</string>
+    <string name="settings_media_max_wait_time">حداکثر زمان انتظار</string>
+    <string name="settings_media_max_wait_time_description">حداکثر زمان انتظار برای هر پرس‌وجو. در پایان این مدت، یک منبع داده به‌طور خودکار بر اساس ترجیحات شما از میان منابعی که جستجو شده‌اند انتخاب می‌شود. اگر زمان انتظار خیلی کوتاه باشد، ممکن است تنظیمات ترجیحی شما نادیده گرفته شود؛ اگر طولانی‌تر باشد، ترجیحات شما بهتر اعمال می‌شود اما ممکن است شروع پخش را کند کند. ۵ تا ۱۰ ثانیه پیشنهاد می‌شود</string>
+    <string name="settings_media_web_search_cache_ttl">مدت نگهداری حافظهٔ پنهان جستجوی وب</string>
+    <string name="settings_media_web_search_cache_ttl_description">استفادهٔ مجدد از نتایج جستجوی منابع وب هنگام تعویض قسمت‌ها یا ورود سریع مجدد به پخش‌کننده. مدت زمان مؤثر، مقدار کمتر بین این عدد و مقدار تعریف‌شده توسط هر منبع داده است</string>
+    <string name="settings_media_cache_ttl_none">خاموش</string>
+    <string name="settings_media_cache_ttl_5min">۵ دقیقه</string>
+    <string name="settings_media_cache_ttl_15min">۱۵ دقیقه</string>
+    <string name="settings_media_cache_ttl_30min">۳۰ دقیقه</string>
+    <string name="settings_media_cache_ttl_1h">۱ ساعت</string>
+    <string name="settings_media_cache_ttl_6h">۶ ساعت</string>
+    <string name="settings_media_cache_ttl_1d">۱ روز</string>
+    <string name="settings_media_show_disabled">نمایش منابع دادهٔ غیرفعال</string>
+    <string name="settings_media_show_disabled_description">هنگام پخش، منابع دادهٔ غیرفعال در تنظیمات «مدیریت منبع داده» به جای پنهان شدن به رنگ خاکستری نمایش داده می‌شوند. این کار امکان فعال‌سازی موقت منابع غیرفعال را در صورت نبود منبع در گزینه‌های ترجیحی فراهم می‌کند</string>
+    <string name="settings_media_image_captcha_auto_solve">حل خودکار کپچاهای تصویری</string>
+    <string name="settings_media_image_captcha_auto_solve_description">استفاده از مدل آفلاین داخلی برای شناسایی و رد کردن خودکار کپچاهای تصویری منابع آنلاین، بدون نیاز به ورود دستی. فرایند شناسایی کاملاً روی دستگاه شما اجرا می‌شود و هیچ تصویری بارگذاری نمی‌شود. در صورت غیرفعال بودن، کپچاها باید به‌صورت دستی حل شوند</string>
+    <string name="settings_media_hide_no_subtitle">پنهان کردن منابع بدون زیرنویس</string>
+    <string name="settings_media_hide_no_subtitle_description">می‌تواند برخی منابع خام را فیلتر کند، اما ممکن است منابعی را که نوع زیرنویس آن‌ها شناسایی نشده است نیز فیلتر کند</string>
+    <string name="settings_media_hide_single_episode">پنهان کردن منابع تک‌قسمتی BT پس از یک سال</string>
+    <string name="settings_media_hide_single_episode_description">منابع تک‌قسمتی معمولاً یک سال پس از اتمام یک انیمه دیگر سرعتی ندارند</string>
+    <string name="settings_media_prefer_seasons">اولویت دادن به مجموعه‌های فصلی برای منابع BT</string>
+    <string name="settings_media_prefer_seasons_description">منابع مجموعه‌های فصلی معمولاً سریع‌تر هستند، توصیه می‌شود فعال شود</string>
+    <string name="settings_media_auto_enable_last">فعال‌سازی خودکار آخرین منبع دادهٔ موقتاً فعال‌شده</string>
+    <string name="settings_media_auto_enable_last_description">اگر یک منبع داده در تنظیمات «مدیریت منبع داده» غیرفعال باشد اما هنگام تماشای یک انیمه استفاده شده باشد، در پخش بعدی آن انیمه این منبع به‌طور خودکار فعال می‌شود</string>
+    <string name="settings_media_auto_cache_none">تنظیم فعلی: بدون ذخیرهٔ خودکار در حافظهٔ پنهان</string>
+    <string name="settings_media_auto_cache_all">تنظیم فعلی: ذخیرهٔ خودکار همهٔ قسمت‌های دیده‌نشده در حافظهٔ پنهان، </string>
+    <string name="settings_media_auto_cache_partial">تنظیم فعلی: ذخیرهٔ خودکار %d قسمت پس از پیشرفت فعلی در حافظهٔ پنهان، </string>
+    <string name="settings_media_auto_cache_space">میزان فضای تخمینی %s به ازای هر انیمه</string>
+    <string name="settings_media_sort_tip">برای مرتب‌سازی لمس طولانی کنید، موارد با رتبهٔ بالاتر در اولویت هستند.\nانتخاب موارد کمتر به معنای جستجوی سریع‌تر است.</string>
+</resources>

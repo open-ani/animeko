@@ -14,6 +14,7 @@ fun renderLocale(locale: Locale?): String {
     if (locale == null) return stringResource(Lang.settings_app_language_system)
     return when (locale.language) {
         "en", "eng" -> "English"
+        "fa" -> "فارسی"
         "zh", "chi", "zho" -> when (locale.region) {
             "CN" -> "简体中文"
             "HK" -> "繁體中文(香港)"
