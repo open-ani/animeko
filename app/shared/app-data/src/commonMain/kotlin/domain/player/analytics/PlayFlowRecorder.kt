@@ -52,6 +52,13 @@ class PlayFlowRecorder(
     private val seq = atomic(0L)
     private val attempts = atomic(0L)
     private val current = atomic<PlayFlowEpisode?>(null)
+    private val lock = SynchronizedObject()
+    private val sourceNames = HashMap<String, String>()
+
+    /**
+     * 一条事件最多可带的属性数: GA4 的上限减去 [analytics] 自己附加的属性 (平台、版本、会话等), 超出时 GA4 会丢掉一部分属性.
+     */
+    val maxProperties: Int = IAnalytics.MAX_EVENT_PROPERTIES - analytics.extraPropertyCount
 
     /**
      * 当前的剧集尝试. 只给无法在任务开始时捕获尝试的页级观察者使用 (条目级查询会话); 扩展应使用 `EpisodeSession.playFlowEpisode`.
@@ -78,6 +85,20 @@ class PlayFlowRecorder(
     }
 
     /**
+     * 登记数据源 [mediaSourceId] 的网址, 之后 [sourceName] 返回它的主机名. 查询会话创建时登记参与的源.
+     */
+    fun registerSource(mediaSourceId: String, websiteUrl: String?) {
+        val host = playFlowHost(websiteUrl) ?: return
+        synchronized(lock) { sourceNames[mediaSourceId] = host }
+    }
+
+    /**
+     * 事件里数据源的标识 (`source`): 数据源网址的主机名 (小写, 去掉 `www.`); 没有网址或没登记过的源是 [mediaSourceId] 本身.
+     * 订阅的 Web 源 id 是 UUID, 主机名才可读.
+     */
+    fun sourceName(mediaSourceId: String): String = synchronized(lock) { sourceNames[mediaSourceId] } ?: mediaSourceId
+
+    /**
      * 记录一条 [AnalyticsEvent.PlayFlow] 事件. [episode] 为 `null` 时不带 `episode_attempt` 与 `episode_id`.
      */
     fun record(step: PlayFlowStep, episode: PlayFlowEpisode?, build: PlayFlowProps.() -> Unit = {}) {
@@ -88,7 +109,7 @@ class PlayFlowRecorder(
             }
             return
         }
-        post(PlayFlowProps(commonProperties(step, episode, seq)).apply(build).build())
+        post(PlayFlowProps(commonProperties(step, episode, seq), maxProperties).apply(build).build())
     }
 
     private fun post(properties: Map<String, Any?>) {
@@ -128,11 +149,6 @@ class PlayFlowRecorder(
 
         /** 每条事件都带的公共属性, 顺序与 [commonProperties] 一致. */
         val COMMON_KEYS: List<String> = listOf("step", "play_session_id", "episode_attempt", "seq", "t_ms", "subject_id", "episode_id")
-
-        /**
-         * GA4 单条事件的参数上限.
-         */
-        const val MAX_PROPERTIES = 25
 
         /**
          * GA4 字符串参数值的长度上限.
@@ -220,10 +236,11 @@ enum class PlayFlowStep(val value: String) {
 
 /**
  * 构造事件属性, 统一转换成 GA4 接受的类型: 整数为 `Long`, 布尔为 `1L` / `0L`, 时长为毫秒, 枚举为小写名称,
- * 字符串截断到 [PlayFlowRecorder.MAX_STRING_LENGTH]; `null` 丢弃.
+ * 字符串截断到 [PlayFlowRecorder.MAX_STRING_LENGTH]; `null` 丢弃. 属性数不能超过 [maxProperties].
  */
 class PlayFlowProps internal constructor(
     private val map: MutableMap<String, Any?>,
+    private val maxProperties: Int,
 ) {
     fun put(key: String, value: String?) {
         map[key] = value?.take(PlayFlowRecorder.MAX_STRING_LENGTH)
@@ -250,8 +267,8 @@ class PlayFlowProps internal constructor(
     }
 
     internal fun build(): Map<String, Any?> {
-        check(map.size <= PlayFlowRecorder.MAX_PROPERTIES) {
-            "play_flow event has ${map.size} properties, exceeding ${PlayFlowRecorder.MAX_PROPERTIES}: ${map.keys}"
+        check(map.size <= maxProperties) {
+            "play_flow event has ${map.size} properties, exceeding $maxProperties: ${map.keys}"
         }
         return map
     }

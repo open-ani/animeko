@@ -171,7 +171,7 @@ class SwitchMediaOnPlayerErrorExtension(
                 is PlayerLoadErrorHandling.Attempted -> when (val outcome = handling.outcome) {
                     is MediaAutoSelectOutcome.Selected -> {
                         put("outcome", "switched")
-                        put("media_source_id", outcome.media.mediaSourceId)
+                        put("source", context.playFlow.sourceName(outcome.media.mediaSourceId))
                     }
 
                     is MediaAutoSelectOutcome.Rejected -> skipped("user_switched")
