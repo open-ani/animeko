@@ -1805,6 +1805,7 @@
     <string name="image_viewer_copy">复制图片</string>
     <string name="image_viewer_copied">图片已复制</string>
     <string name="image_viewer_copy_failed">复制图片失败</string>
+    <string name="image_viewer_more">更多操作</string>
     <string name="image_viewer_close">关闭</string>
     <!-- Shared playback captcha messages -->
     <string name="media_captcha_required_message">需要处理%1$s</string>

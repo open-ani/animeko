@@ -9,22 +9,36 @@
 
 package me.him188.ani.app.ui.foundation.imageviewer
 
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.withKeyDown
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import com.github.panpf.sketch.PlatformContext
 import com.github.panpf.sketch.Sketch
 import io.ktor.client.HttpClient
@@ -39,9 +53,12 @@ import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.ui.foundation.IMAGE_VIEWER_TEST_TAG
+import me.him188.ani.app.ui.foundation.ImageViewerHandler
+import me.him188.ani.app.ui.foundation.ImageViewerOverlay
 import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.createDefaultSketch
+import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.framework.AniComposeUiTest
@@ -79,7 +96,9 @@ class ImageViewerContentTest {
         val exportDirectory: SystemPath,
         val closeCount: AtomicInteger,
         val toasts: CopyOnWriteArrayList<String>,
-    )
+    ) {
+        lateinit var handler: ImageViewerHandler
+    }
 
     /** 等待 [condition] 成立, 期间在当前线程 (EDT) 上执行 Dispatchers.Main 的排队任务. */
     private fun Env.waitUntilPumpingMain(
@@ -96,13 +115,20 @@ class ImageViewerContentTest {
     private fun runViewerTest(
         fileSaver: ImageFileSaver = ImageFileSaver { true },
         imageClipboard: ImageClipboard? = null,
+        size: DpSize = DpSize(800.dp, 600.dp),
+        dismissOnSwipe: Boolean = true,
+        useOverlay: Boolean = false,
         block: AniComposeUiTest.(Env) -> Unit,
     ) {
         val tempDirectory = SystemPaths.createTempDirectory("ani-image-viewer-content-test")
         val bytes = encodedRaster(width = 400, height = 300)
+        val replacementBytes = encodedRaster(width = 400, height = 300, color = 0xFF00FF00.toInt())
         val client = HttpClient(
             MockEngine {
-                respond(content = bytes, headers = headersOf(HttpHeaders.ContentType, "image/png"))
+                respond(
+                    content = if (it.url.parameters["replacement"] != null) replacementBytes else bytes,
+                    headers = headersOf(HttpHeaders.ContentType, "image/png"),
+                )
             },
         )
         val sketch = createDefaultSketch(
@@ -138,14 +164,32 @@ class ImageViewerContentTest {
                                 LocalSketch provides sketch,
                                 LocalToaster provides toaster,
                             ) {
-                                ImageViewerContent(
-                                    model = env.url,
-                                    onClose = { env.closeCount.incrementAndGet() },
-                                    modifier = Modifier.fillMaxSize(),
-                                    fileSaver = fileSaver,
-                                    imageClipboard = imageClipboard,
-                                    exportDirectory = env.exportDirectory,
-                                )
+                                if (useOverlay) {
+                                    val handler = rememberImageViewerHandler()
+                                    LaunchedEffect(handler) {
+                                        env.handler = handler
+                                        handler.viewImage(env.url)
+                                    }
+                                    Box(
+                                        Modifier.requiredSize(size.width, size.height)
+                                            .background(Color.Magenta).testTag("ViewerHost"),
+                                    ) {
+                                        ImageViewerOverlay(handler) {
+                                            handler.clear()
+                                            env.closeCount.incrementAndGet()
+                                        }
+                                    }
+                                } else {
+                                    ImageViewerContent(
+                                        model = env.url,
+                                        onClose = { env.closeCount.incrementAndGet() },
+                                        modifier = Modifier.requiredSize(size.width, size.height),
+                                        fileSaver = fileSaver,
+                                        imageClipboard = imageClipboard,
+                                        dismissOnSwipe = dismissOnSwipe,
+                                        exportDirectory = env.exportDirectory,
+                                    )
+                                }
                             }
                         }
                     }
@@ -164,6 +208,77 @@ class ImageViewerContentTest {
             client.close()
             tempDirectory.deleteRecursively()
         }
+    }
+
+    @Test
+    fun `close retains image content throughout the overlay exit`() = runViewerTest(useOverlay = true) { env ->
+        mainClock.advanceTimeBy(1_000)
+        mainClock.autoAdvance = false
+        onNodeWithTag(ImageViewerTestTags.CLOSE).performClick()
+        env.mainScheduler.advanceUntilIdle()
+        mainClock.advanceTimeByFrame()
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).assertExists()
+        onNodeWithTag(ImageViewerTestTags.ZOOM_IN).assertIsEnabled()
+        assertEquals(1, env.closeCount.get())
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun `reopening during exit displays the requested image`() = runViewerTest(useOverlay = true) { env ->
+        mainClock.advanceTimeBy(1_000)
+        mainClock.autoAdvance = false
+        onNodeWithTag(ImageViewerTestTags.CLOSE).performClick()
+        env.mainScheduler.advanceUntilIdle()
+        mainClock.advanceTimeByFrame()
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).assertExists()
+
+        runOnIdle { env.handler.viewImage("${env.url}?replacement=true") }
+        mainClock.autoAdvance = true
+        env.waitUntilPumpingMain(this) {
+            val pixels = onNodeWithTag("ViewerHost").captureToImage().toPixelMap()
+            pixels[pixels.width / 2, pixels.height / 2] == Color.Green
+        }
+        onAllNodesWithTag(IMAGE_VIEWER_TEST_TAG).assertCountEquals(1)
+        onNodeWithTag(ImageViewerTestTags.CLOSE).performClick()
+        env.waitUntilPumpingMain(this) {
+            onAllNodesWithTag(IMAGE_VIEWER_TEST_TAG).fetchSemanticsNodes().isEmpty()
+        }
+        assertEquals(2, env.closeCount.get())
+    }
+
+    @Test
+    fun `changing the image while open keeps one viewer`() = runViewerTest(useOverlay = true) { env ->
+        runOnIdle { env.handler.viewImage("${env.url}?replacement=true") }
+        env.waitUntilPumpingMain(this) {
+            val pixels = onNodeWithTag("ViewerHost").captureToImage().toPixelMap()
+            pixels[pixels.width / 2, pixels.height / 2] == Color.Green
+        }
+        onAllNodesWithTag(IMAGE_VIEWER_TEST_TAG).assertCountEquals(1)
+        assertEquals(0, env.closeCount.get())
+    }
+
+    @Test
+    fun `swipe exit keeps the revealed page visible on every frame`() = runViewerTest(useOverlay = true) { env ->
+        mainClock.advanceTimeBy(1_000)
+        mainClock.autoAdvance = false
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).performTouchInput {
+            down(center)
+            moveBy(Offset(0f, 200f))
+            up()
+        }
+        repeat(60) {
+            mainClock.advanceTimeByFrame()
+            env.mainScheduler.advanceUntilIdle()
+            waitForIdle()
+            if (env.closeCount.get() == 1) {
+                val pixels = onNodeWithTag("ViewerHost").captureToImage().toPixelMap()
+                assertEquals(Color.Magenta, pixels[pixels.width / 2, pixels.height / 2], "exit frame $it")
+                onNodeWithTag(ImageViewerTestTags.CLOSE).assertDoesNotExist()
+            }
+        }
+        assertEquals(1, env.closeCount.get())
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).assertDoesNotExist()
     }
 
     @Test
@@ -187,8 +302,8 @@ class ImageViewerContentTest {
     }
 
     @Test
-    fun `tap on the image closes, drag does not`() = runViewerTest { env ->
-        // 适应窗口时单指拖动没有人消费, zoomimage 的 detectTapGestures 抬起时也会报 tap; 这里要求不关闭
+    fun `tap toggles controls and drag does not`() = runViewerTest { env ->
+        // 拖动保持控件可见, 单击切换控件显隐.
         onNodeWithTag(IMAGE_VIEWER_TEST_TAG).performTouchInput {
             down(center)
             moveBy(Offset(200f, 0f))
@@ -199,10 +314,181 @@ class ImageViewerContentTest {
         env.mainScheduler.advanceUntilIdle()
         waitForIdle()
         assertEquals(0, env.closeCount.get())
+        onNodeWithTag(ImageViewerTestTags.CLOSE).assertIsDisplayed()
 
         onNodeWithTag(IMAGE_VIEWER_TEST_TAG).performTouchInput { down(center); up() }
-        env.waitUntilPumpingMain(this, timeoutMillis = 5_000) { env.closeCount.get() == 1 }
-        assertEquals(1, env.closeCount.get())
+        env.waitUntilPumpingMain(this) {
+            runCatching { onNodeWithTag(ImageViewerTestTags.CLOSE).assertDoesNotExist() }.isSuccess
+        }
+        assertEquals(0, env.closeCount.get())
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).performTouchInput { down(center); up() }
+        env.waitUntilPumpingMain(this) {
+            runCatching { onNodeWithTag(ImageViewerTestTags.CLOSE).assertIsDisplayed() }.isSuccess
+        }
+        assertEquals(0, env.closeCount.get())
+    }
+
+    @Test
+    fun `double tap zooms without hiding controls`() = runViewerTest { env ->
+        val initial = scalePercent()
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).performTouchInput { doubleClick(center) }
+        env.waitUntilPumpingMain(this) { scalePercent() > initial }
+        onNodeWithTag(ImageViewerTestTags.CLOSE).assertIsDisplayed()
+        onNodeWithTag(ImageViewerTestTags.TOOLBAR).assertIsDisplayed()
+        assertEquals(0, env.closeCount.get())
+    }
+
+    @Test
+    fun `vertical drag follows the finger and short drag springs back`() = runViewerTest { env ->
+        val image = onNodeWithTag(IMAGE_VIEWER_TEST_TAG)
+        val initial = image.fetchSemanticsNode().boundsInRoot
+        image.performTouchInput {
+            down(center)
+            moveBy(Offset(20f, 70f))
+        }
+        val dragged = image.fetchSemanticsNode().boundsInRoot
+        assertTrue(dragged.center.y > initial.center.y)
+        assertTrue(dragged.center.x > initial.center.x)
+        assertTrue(dragged.width < initial.width)
+        onNodeWithTag(ImageViewerTestTags.CLOSE).assertDoesNotExist()
+        image.performTouchInput {
+            advanceEventTime(500)
+            up()
+        }
+        env.waitUntilPumpingMain(this) {
+            image.fetchSemanticsNode().boundsInRoot == initial
+        }
+        assertEquals(0, env.closeCount.get())
+        onNodeWithTag(ImageViewerTestTags.CLOSE).assertIsDisplayed()
+    }
+
+    @Test
+    fun `swipe down dismisses the image`() = runViewerTest { env ->
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).performTouchInput {
+            down(center)
+            moveBy(Offset(0f, 200f))
+            up()
+        }
+        env.waitUntilPumpingMain(this) { env.closeCount.get() == 1 }
+    }
+
+    @Test
+    fun `swipe up dismisses the image`() = runViewerTest { env ->
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).performTouchInput {
+            down(center)
+            moveBy(Offset(0f, -200f))
+            up()
+        }
+        env.waitUntilPumpingMain(this) { env.closeCount.get() == 1 }
+    }
+
+    @Test
+    fun `fast short swipe dismisses the image`() = runViewerTest { env ->
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).performTouchInput {
+            down(center)
+            repeat(4) { moveBy(Offset(0f, 20f), delayMillis = 8) }
+            up()
+        }
+        env.waitUntilPumpingMain(this) { env.closeCount.get() == 1 }
+    }
+
+    @Test
+    fun `second finger cancels swipe dismissal`() = runViewerTest { env ->
+        val image = onNodeWithTag(IMAGE_VIEWER_TEST_TAG)
+        val initial = image.fetchSemanticsNode().boundsInRoot
+        image.performTouchInput {
+            down(0, center)
+            moveBy(Offset(0f, 200f))
+            down(1, center + Offset(80f, 0f))
+            up(1)
+            up(0)
+        }
+        env.waitUntilPumpingMain(this) { image.fetchSemanticsNode().boundsInRoot == initial }
+        assertEquals(0, env.closeCount.get())
+        onNodeWithTag(ImageViewerTestTags.CLOSE).assertIsDisplayed()
+    }
+
+    @Test
+    fun `independent window does not dismiss on swipe`() = runViewerTest(dismissOnSwipe = false) { env ->
+        onNodeWithTag(IMAGE_VIEWER_TEST_TAG).performTouchInput {
+            down(center)
+            moveBy(Offset(0f, 200f))
+            up()
+        }
+        mainClock.advanceTimeBy(1_000)
+        env.mainScheduler.advanceUntilIdle()
+        assertEquals(0, env.closeCount.get())
+        onNodeWithTag(ImageViewerTestTags.CLOSE).assertIsDisplayed()
+    }
+
+    @Test
+    fun `vertical drag pans a zoomed image without dismissing`() = runViewerTest { env ->
+        val initial = scalePercent()
+        onNodeWithTag(ImageViewerTestTags.ZOOM_IN).performClick()
+        env.waitUntilPumpingMain(this) { scalePercent() > initial }
+        val image = onNodeWithTag(IMAGE_VIEWER_TEST_TAG)
+        val bounds = image.fetchSemanticsNode().boundsInRoot
+        image.performTouchInput {
+            down(center)
+            moveBy(Offset(0f, 200f))
+            up()
+        }
+        mainClock.advanceTimeBy(1_000)
+        env.mainScheduler.advanceUntilIdle()
+        assertEquals(0, env.closeCount.get())
+        assertEquals(bounds, image.fetchSemanticsNode().boundsInRoot)
+        onNodeWithTag(ImageViewerTestTags.CLOSE).assertIsDisplayed()
+    }
+
+    @Test
+    fun `portrait controls fit a narrow viewport`() = runViewerTest(size = DpSize(280.dp, 600.dp)) {
+        onNodeWithTag(ImageViewerTestTags.CLOSE).assertWidthIsEqualTo(48.dp).assertHeightIsEqualTo(48.dp)
+        val image = onNodeWithTag(IMAGE_VIEWER_TEST_TAG).fetchSemanticsNode().boundsInRoot
+        val toolbar = onNodeWithTag(ImageViewerTestTags.TOOLBAR).fetchSemanticsNode().boundsInRoot
+        assertTrue(toolbar.width > toolbar.height)
+        assertTrue(toolbar.left >= image.left && toolbar.right <= image.right)
+        assertTrue(toolbar.top > image.center.y)
+        onNodeWithTag(ImageViewerTestTags.SAVE).assertWidthIsEqualTo(48.dp).assertIsDisplayed()
+        onNodeWithTag(ImageViewerTestTags.MORE).assertDoesNotExist()
+    }
+
+    @Test
+    fun `landscape controls occupy the right side`() = runViewerTest(size = DpSize(600.dp, 280.dp)) {
+        val image = onNodeWithTag(IMAGE_VIEWER_TEST_TAG).fetchSemanticsNode().boundsInRoot
+        val toolbar = onNodeWithTag(ImageViewerTestTags.TOOLBAR).fetchSemanticsNode().boundsInRoot
+        val close = onNodeWithTag(ImageViewerTestTags.CLOSE).fetchSemanticsNode().boundsInRoot
+        assertTrue(toolbar.height > toolbar.width)
+        assertTrue(toolbar.left > image.center.x)
+        assertTrue(toolbar.top >= close.bottom)
+        assertTrue(toolbar.bottom <= image.bottom)
+        onNodeWithTag(ImageViewerTestTags.CLOSE).assertWidthIsEqualTo(48.dp).assertHeightIsEqualTo(48.dp)
+        onNodeWithTag(ImageViewerTestTags.MORE).assertIsDisplayed()
+        onNodeWithTag(ImageViewerTestTags.MORE).performClick()
+        onNodeWithTag(ImageViewerTestTags.SAVE).assertIsDisplayed()
+    }
+
+    @Test
+    fun `all actions are visible without a menu when space permits`() = runViewerTest(imageClipboard = {}) {
+        listOf(
+            ImageViewerTestTags.ZOOM_IN, ImageViewerTestTags.ZOOM_OUT, ImageViewerTestTags.RESET_ZOOM,
+            ImageViewerTestTags.SAVE, ImageViewerTestTags.COPY,
+        ).forEach { tag ->
+            onNodeWithTag(tag).assertIsDisplayed().assertWidthIsEqualTo(48.dp).assertHeightIsEqualTo(48.dp)
+        }
+        onNodeWithTag(ImageViewerTestTags.MORE).assertDoesNotExist()
+    }
+
+    @Test
+    fun `only overflowing actions appear in the menu`() = runViewerTest(
+        imageClipboard = {},
+        size = DpSize(280.dp, 600.dp),
+    ) {
+        onNodeWithTag(ImageViewerTestTags.RESET_ZOOM).assertIsDisplayed()
+        onNodeWithTag(ImageViewerTestTags.SAVE).assertDoesNotExist()
+        onNodeWithTag(ImageViewerTestTags.COPY).assertDoesNotExist()
+        onNodeWithTag(ImageViewerTestTags.MORE).performClick()
+        onNodeWithTag(ImageViewerTestTags.SAVE).assertIsDisplayed()
+        onNodeWithTag(ImageViewerTestTags.COPY).assertIsDisplayed()
     }
 
     @Test
@@ -215,7 +501,8 @@ class ImageViewerContentTest {
     @Test
     fun `save exports the image and reports success`() {
         val saved = CopyOnWriteArrayList<ImageViewerExportedFile>()
-        runViewerTest(fileSaver = { saved.add(it); true }) { env ->
+        runViewerTest(fileSaver = { saved.add(it); true }, size = DpSize(220.dp, 600.dp)) { env ->
+            onNodeWithTag(ImageViewerTestTags.MORE).performClick()
             env.waitUntilPumpingMain(this, timeoutMillis = 10_000) {
                 runCatching { onNodeWithTag(ImageViewerTestTags.SAVE).assertIsEnabled() }.isSuccess
             }
@@ -231,7 +518,8 @@ class ImageViewerContentTest {
     @Test
     fun `copy button and shortcut copy the exported image`() {
         val copied = CopyOnWriteArrayList<ImageViewerExportedFile>()
-        runViewerTest(imageClipboard = { copied.add(it) }) { env ->
+        runViewerTest(imageClipboard = { copied.add(it) }, size = DpSize(280.dp, 600.dp)) { env ->
+            onNodeWithTag(ImageViewerTestTags.MORE).performClick()
             env.waitUntilPumpingMain(this, timeoutMillis = 10_000) {
                 runCatching { onNodeWithTag(ImageViewerTestTags.COPY).assertIsEnabled() }.isSuccess
             }
@@ -253,16 +541,20 @@ class ImageViewerContentTest {
     @Test
     fun `no copy button when the platform has no image clipboard`() = runViewerTest(imageClipboard = null) {
         onNodeWithTag(ImageViewerTestTags.COPY).assertDoesNotExist()
+        onNodeWithTag(ImageViewerTestTags.SAVE).assertIsDisplayed()
+        onNodeWithTag(ImageViewerTestTags.MORE).assertDoesNotExist()
     }
 
     @Test
     fun `cancelled save shows nothing, failed save reports error`() {
         val attempts = AtomicInteger()
         runViewerTest(
+            size = DpSize(220.dp, 600.dp),
             fileSaver = {
                 if (attempts.getAndIncrement() == 0) false else error("disk full")
             },
         ) { env ->
+            onNodeWithTag(ImageViewerTestTags.MORE).performClick()
             env.waitUntilPumpingMain(this, timeoutMillis = 10_000) {
                 runCatching { onNodeWithTag(ImageViewerTestTags.SAVE).assertIsEnabled() }.isSuccess
             }
@@ -271,6 +563,7 @@ class ImageViewerContentTest {
             waitForIdle()
             assertTrue(env.toasts.isEmpty(), "cancel should not toast, got ${env.toasts}")
 
+            onNodeWithTag(ImageViewerTestTags.MORE).performClick()
             onNodeWithTag(ImageViewerTestTags.SAVE).performClick()
             env.waitUntilPumpingMain(this) { env.toasts.isNotEmpty() }
             assertEquals(listOf(runBlocking { getString(Lang.image_viewer_save_failed) }), env.toasts)
@@ -278,17 +571,15 @@ class ImageViewerContentTest {
     }
 
     private fun AniComposeUiTest.scalePercent(): Int {
-        val node = onNodeWithTag(ImageViewerTestTags.SCALE_TEXT).fetchSemanticsNode()
-        val text = node.config.getOrNull(SemanticsProperties.Text)
-            ?.joinToString("") { it.text }
-            ?: return -1
+        val node = onNodeWithTag(IMAGE_VIEWER_TEST_TAG).fetchSemanticsNode()
+        val text = node.config.getOrNull(SemanticsProperties.StateDescription) ?: return -1
         return text.removeSuffix("%").toIntOrNull() ?: -1
     }
 
-    private fun encodedRaster(width: Int, height: Int): ByteArray {
+    private fun encodedRaster(width: Int, height: Int, color: Int = 0xFF6750A4.toInt()): ByteArray {
         val surface = Surface.makeRasterN32Premul(width, height)
         try {
-            surface.canvas.clear(0xFF6750A4.toInt())
+            surface.canvas.clear(color)
             return requireNotNull(
                 surface.makeImageSnapshot().encodeToData(EncodedImageFormat.PNG, 100),
             ).bytes
