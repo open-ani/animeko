@@ -12,30 +12,36 @@ package me.him188.ani.app.domain.watchtogether
 import kotlinx.atomicfu.atomic
 import me.him188.ani.utils.platform.currentTimeMillis
 
+/** Estimates server time from the fastest of the latest sixteen accepted round trips. */
 class ServerClock(
     private val localNowMillis: () -> Long = ::currentTimeMillis,
 ) {
-    private val offsetMillis = atomic<Double?>(null)
+    private data class Sample(val offset: Double, val rtt: Long, val receivedAt: Long)
+    private val samples = atomic<List<Sample>>(emptyList())
 
-    fun now(): Long = (localNowMillis() + (offsetMillis.value ?: 0.0)).toLong()
+    /** Age of the most recently accepted sample, or null when the sample window is empty. */
+    fun latestSampleAgeMillis(): Long? = samples.value.maxOfOrNull { it.receivedAt }
+        ?.let { (localNowMillis() - it).coerceAtLeast(0L) }
+
+    fun now(): Long = (localNowMillis() + currentOffsetMillis()).toLong()
 
     fun recordSample(serverTimeMillis: Long, sentAtMillis: Long, receivedAtMillis: Long): Boolean {
-        val roundTripMillis = receivedAtMillis - sentAtMillis
-        if (roundTripMillis !in 0..MAX_SAMPLE_RTT_MILLIS) return false
-        val midpoint = sentAtMillis + roundTripMillis / 2.0
-        val sample = serverTimeMillis - midpoint
+        val rtt = receivedAtMillis - sentAtMillis
+        if (rtt !in 0..MAX_SAMPLE_RTT_MILLIS) return false
+        val sample = Sample(serverTimeMillis - (sentAtMillis + rtt / 2.0), rtt, receivedAtMillis)
         while (true) {
-            val current = offsetMillis.value
-            val updated = current?.let { it * (1.0 - EWMA_ALPHA) + sample * EWMA_ALPHA } ?: sample
-            if (offsetMillis.compareAndSet(current, updated)) break
+            val current = samples.value
+            val updated = (current + sample)
+                .sortedBy { it.receivedAt }
+                .takeLast(SAMPLE_COUNT)
+            if (samples.compareAndSet(current, updated)) return true
         }
-        return true
     }
 
-    internal fun currentOffsetMillis(): Double = offsetMillis.value ?: 0.0
+    internal fun currentOffsetMillis(): Double = samples.value.minByOrNull { it.rtt }?.offset ?: 0.0
 
     private companion object {
-        const val EWMA_ALPHA = 0.2
+        const val SAMPLE_COUNT = 16
         const val MAX_SAMPLE_RTT_MILLIS = 2_000L
     }
 }

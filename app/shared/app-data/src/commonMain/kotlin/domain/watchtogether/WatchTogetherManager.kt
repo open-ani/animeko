@@ -155,6 +155,32 @@ class WatchTogetherManager(
     fun serverNowMillis(): Long =
         (_state.value as? WatchTogetherState.InRoom)?.session?.serverClock?.now() ?: localNowMillis()
 
+    fun alignToHost() {
+        val session = (_state.value as? WatchTogetherState.InRoom)?.session ?: return
+        if (session.isHost || !isCurrent(session)) return
+        if (HostAlignment.unavailableReason(
+                session.snapshot.value.playback?.info,
+                playbackBridge.localWatching.value,
+                playbackBridge.isAligning,
+                playbackBridge.alignmentCooldownUntil.value - localNowMillis(),
+            ) != null
+        ) return
+        playbackBridge.requestAlignment(session, localNowMillis())
+    }
+
+    /** Uses the existing report path only when its clock sample has expired. */
+    suspend fun refreshAlignmentClock(session: RoomSession): Boolean {
+        if (!isCurrent(session)) return false
+        val age = session.serverClock.latestSampleAgeMillis()
+        if (age == null || age > HostAlignment.CLOCK_MAX_AGE_MILLIS) reportOnce(session)
+        return isCurrent(session) &&
+                (session.serverClock.latestSampleAgeMillis() ?: Long.MAX_VALUE) <= HostAlignment.CLOCK_MAX_AGE_MILLIS
+    }
+
+    suspend fun notifyAlignmentFinished(success: Boolean) {
+        effectChannel.send(WatchTogetherEffect.HostAlignmentFinished(success))
+    }
+
     private suspend fun deactivate(clearRemembered: Boolean) {
         autoJoinJob?.cancel()
         autoJoinJob = null
@@ -266,12 +292,12 @@ class WatchTogetherManager(
                 launch(CoroutineName("report-periodic")) { runPeriodicReports(session) }
                 launch(CoroutineName("report-discontinuities")) {
                     playbackBridge.discontinuities.collect {
-                        if (appForeground.value || session.isHost) reportOnce(session)
+                        if (!playbackBridge.isAligning && (appForeground.value || session.isHost)) reportOnce(session)
                     }
                 }
                 launch(CoroutineName("report-on-foreground")) {
                     appForeground.drop(1).collect { foreground ->
-                        if (foreground) reportOnce(session)
+                        if (foreground && !playbackBridge.isAligning) reportOnce(session)
                     }
                 }
                 launch(CoroutineName("follower-mode")) { observeFollowerMode(session) }
@@ -406,6 +432,7 @@ class WatchTogetherManager(
     private suspend fun runPeriodicReports(session: RoomSession) {
         while (currentCoroutineContext().isActive && isCurrent(session)) {
             delay(REPORT_CHECK_INTERVAL_MILLIS)
+            if (playbackBridge.isAligning) continue
             val now = localNowMillis()
             val watching = playbackBridge.localWatching.value
             if (!appForeground.value && !(session.isHost && watching != null)) continue
@@ -624,7 +651,7 @@ class WatchTogetherManager(
     private suspend fun runContinuousCorrection(session: RoomSession) {
         while (currentCoroutineContext().isActive && isCurrent(session)) {
             delay(CORRECTION_INTERVAL_MILLIS)
-            if (session.isHost || !session.following.value) continue
+            if (session.isHost || !session.following.value || playbackBridge.isAligning) continue
             val playback = session.snapshot.value.playback ?: continue
             playbackBridge.setTargetPlayback(playback)
             val host = playback.info
