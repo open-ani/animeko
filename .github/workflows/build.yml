@@ -3171,116 +3171,6 @@ jobs:
           update-e2e/**/*.txt
         if-no-files-found: 'ignore'
       if: 'failure()'
-  verify_github-macos-14:
-    name: 'Verify (macOS 14 AArch64 (GitHub))'
-    runs-on:
-    - 'macos-14'
-    permissions:
-      actions: 'read'
-    needs:
-    - 'build_self-hosted-macos-15'
-    if: '${{ needs.build_self-hosted-macos-15.result == ''success'' }}'
-    steps:
-    - id: 'step-0'
-      uses: 'actions/checkout@v4'
-    - id: 'step-1'
-      name: 'Delete libraries from system'
-      continue-on-error: true
-      run: |-
-        sudo rm -rfv /usr/local/lib/libssl* || true
-        sudo rm -rfv /usr/local/lib/libcrypto* || true
-        sudo rm -rfv /opt/homebrew/lib/libssl* || true
-        sudo rm -rfv /opt/homebrew/lib/libcrypto* || true
-    - id: 'step-2'
-      name: 'Download DMG (Attempt #1)'
-      continue-on-error: true
-      uses: 'actions/download-artifact@v8'
-      with:
-        name: 'ani-macos-aarch64.dmg'
-    - id: 'step-3'
-      name: 'Download DMG (Attempt #2)'
-      continue-on-error: true
-      uses: 'actions/download-artifact@v8'
-      with:
-        name: 'ani-macos-aarch64.dmg'
-      if: '${{ steps.step-2.outcome == ''failure'' }}'
-    - id: 'step-4'
-      name: 'Download DMG (Attempt #3)'
-      continue-on-error: false
-      uses: 'actions/download-artifact@v8'
-      with:
-        name: 'ani-macos-aarch64.dmg'
-      if: '${{ steps.step-3.outcome == ''failure'' }}'
-    - id: 'step-5'
-      name: 'Check that Anitorrent can be loaded'
-      timeout-minutes: 5
-      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg anitorrent-load-test'
-    - id: 'step-6'
-      name: 'Check that Dandanplay APP ID is valid'
-      timeout-minutes: 5
-      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg dandanplay-app-id'
-      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
-    - id: 'step-7'
-      name: 'Check that sentryDsn is valid'
-      timeout-minutes: 5
-      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
-      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
-    - id: 'step-8'
-      name: 'Download update E2E runner (Attempt #1)'
-      continue-on-error: true
-      uses: 'actions/download-artifact@v4'
-      with:
-        name: 'ani-update-e2e-macos-aarch64'
-        path: '${{ github.workspace }}/update-e2e-runner'
-    - id: 'step-9'
-      name: 'Download update E2E runner (Attempt #2)'
-      continue-on-error: true
-      uses: 'actions/download-artifact@v4'
-      with:
-        name: 'ani-update-e2e-macos-aarch64'
-        path: '${{ github.workspace }}/update-e2e-runner'
-      if: '${{ steps.step-8.outcome == ''failure'' }}'
-    - id: 'step-10'
-      name: 'Download update E2E runner (Attempt #3)'
-      continue-on-error: false
-      uses: 'actions/download-artifact@v4'
-      with:
-        name: 'ani-update-e2e-macos-aarch64'
-        path: '${{ github.workspace }}/update-e2e-runner'
-      if: '${{ steps.step-9.outcome == ''failure'' }}'
-    - id: 'step-11'
-      name: 'Extract DMG for the update E2E test'
-      shell: 'bash'
-      run: |-
-        rm -rf extracted_dmg && mkdir extracted_dmg
-        MOUNT_POINT="$(mktemp -d)"
-        echo y | hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT_POINT" "$GITHUB_WORKSPACE"/*.dmg > /dev/null
-        for app in "$MOUNT_POINT"/*.app; do ditto "$app" "extracted_dmg/$(basename "$app")"; done
-        hdiutil detach "$MOUNT_POINT"
-        ls -l extracted_dmg extracted_dmg/*/Contents/MacOS
-    - id: 'step-12'
-      name: 'Setup JDK 21 for the update E2E test'
-      uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-    - id: 'step-13'
-      name: 'Desktop update E2E test'
-      timeout-minutes: 40
-      shell: 'bash'
-      run: 'java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/extracted_dmg" --work-dir "${{ github.workspace }}/update-e2e"'
-    - id: 'step-14'
-      name: 'Upload desktop update E2E logs'
-      uses: 'actions/upload-artifact@v4'
-      with:
-        name: 'update-e2e-github-macos-14'
-        path: |-
-          update-e2e/**/*.log
-          update-e2e/**/*.json
-          update-e2e/**/*.jsonl
-          update-e2e/**/*.txt
-        if-no-files-found: 'ignore'
-      if: 'failure()'
   verify_github-macos-15-apple:
     name: 'Verify (macOS 15 AArch64 (GitHub))'
     runs-on:
@@ -3384,6 +3274,116 @@ jobs:
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'update-e2e-github-macos-15-apple'
+        path: |-
+          update-e2e/**/*.log
+          update-e2e/**/*.json
+          update-e2e/**/*.jsonl
+          update-e2e/**/*.txt
+        if-no-files-found: 'ignore'
+      if: 'failure()'
+  verify_github-macos-26:
+    name: 'Verify (macOS 26 AArch64 (GitHub))'
+    runs-on:
+    - 'macos-26'
+    permissions:
+      actions: 'read'
+    needs:
+    - 'build_self-hosted-macos-15'
+    if: '${{ needs.build_self-hosted-macos-15.result == ''success'' }}'
+    steps:
+    - id: 'step-0'
+      uses: 'actions/checkout@v4'
+    - id: 'step-1'
+      name: 'Delete libraries from system'
+      continue-on-error: true
+      run: |-
+        sudo rm -rfv /usr/local/lib/libssl* || true
+        sudo rm -rfv /usr/local/lib/libcrypto* || true
+        sudo rm -rfv /opt/homebrew/lib/libssl* || true
+        sudo rm -rfv /opt/homebrew/lib/libcrypto* || true
+    - id: 'step-2'
+      name: 'Download DMG (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v8'
+      with:
+        name: 'ani-macos-aarch64.dmg'
+    - id: 'step-3'
+      name: 'Download DMG (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v8'
+      with:
+        name: 'ani-macos-aarch64.dmg'
+      if: '${{ steps.step-2.outcome == ''failure'' }}'
+    - id: 'step-4'
+      name: 'Download DMG (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/download-artifact@v8'
+      with:
+        name: 'ani-macos-aarch64.dmg'
+      if: '${{ steps.step-3.outcome == ''failure'' }}'
+    - id: 'step-5'
+      name: 'Check that Anitorrent can be loaded'
+      timeout-minutes: 5
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg anitorrent-load-test'
+    - id: 'step-6'
+      name: 'Check that Dandanplay APP ID is valid'
+      timeout-minutes: 5
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg dandanplay-app-id'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
+    - id: 'step-7'
+      name: 'Check that sentryDsn is valid'
+      timeout-minutes: 5
+      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
+      if: '${{ (github.repository == ''open-ani/animeko'') && ((!(github.event_name == ''pull_request'')) || (github.event.pull_request.head.repo.full_name == github.repository)) }}'
+    - id: 'step-8'
+      name: 'Download update E2E runner (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-aarch64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+    - id: 'step-9'
+      name: 'Download update E2E runner (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-aarch64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+      if: '${{ steps.step-8.outcome == ''failure'' }}'
+    - id: 'step-10'
+      name: 'Download update E2E runner (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/download-artifact@v4'
+      with:
+        name: 'ani-update-e2e-macos-aarch64'
+        path: '${{ github.workspace }}/update-e2e-runner'
+      if: '${{ steps.step-9.outcome == ''failure'' }}'
+    - id: 'step-11'
+      name: 'Extract DMG for the update E2E test'
+      shell: 'bash'
+      run: |-
+        rm -rf extracted_dmg && mkdir extracted_dmg
+        MOUNT_POINT="$(mktemp -d)"
+        echo y | hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT_POINT" "$GITHUB_WORKSPACE"/*.dmg > /dev/null
+        for app in "$MOUNT_POINT"/*.app; do ditto "$app" "extracted_dmg/$(basename "$app")"; done
+        hdiutil detach "$MOUNT_POINT"
+        ls -l extracted_dmg extracted_dmg/*/Contents/MacOS
+    - id: 'step-12'
+      name: 'Setup JDK 21 for the update E2E test'
+      uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+    - id: 'step-13'
+      name: 'Desktop update E2E test'
+      timeout-minutes: 40
+      shell: 'bash'
+      run: 'java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "${{ github.workspace }}/update-e2e-runner/desktop-update-e2e.jar" --app "${{ github.workspace }}/extracted_dmg" --work-dir "${{ github.workspace }}/update-e2e"'
+    - id: 'step-14'
+      name: 'Upload desktop update E2E logs'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'update-e2e-github-macos-26'
         path: |-
           update-e2e/**/*.log
           update-e2e/**/*.json

@@ -353,14 +353,6 @@ sealed class Runner(
         labels = setOf("windows-11-arm"),
     )
 
-    object GithubMacOS14 : GithubHosted(
-        id = "github-macos-14",
-        displayName = "macOS 14 AArch64 (GitHub)",
-        os = OS.MACOS,
-        arch = Arch.AARCH64,
-        labels = setOf("macos-14"),
-    )
-
     object GithubMacOS15Intel : GithubHosted(
         id = "github-macos-15-intel",
         displayName = "macOS 15 x86_64 (GitHub)",
@@ -375,6 +367,14 @@ sealed class Runner(
         os = OS.MACOS,
         arch = Arch.AARCH64,
         labels = setOf("macos-15"),
+    )
+
+    object GithubMacOS26 : GithubHosted(
+        id = "github-macos-26",
+        displayName = "macOS 26 AArch64 (GitHub)",
+        os = OS.MACOS,
+        arch = Arch.AARCH64,
+        labels = setOf("macos-26"),
     )
 
     object GithubUbuntu2404 : GithubHosted(
@@ -1169,8 +1169,8 @@ workflow(
             // 不在自托管 Mac 上验证: 它与 GithubMacOS15AppleSilicon 系统和架构相同, 验证的是同一个 DMG,
             // 而这台 Mac 是所有 run 共用的瓶颈.
             listOf(
-                Runner.GithubMacOS14,
                 Runner.GithubMacOS15AppleSilicon,
+                Runner.GithubMacOS26,
             ).forEach { runner ->
                 addVerifyJob(build, runner, build.result.eq(AbstractResult.Status.Success))
             }
