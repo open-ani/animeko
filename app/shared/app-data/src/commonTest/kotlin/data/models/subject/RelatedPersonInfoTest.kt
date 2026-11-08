@@ -29,7 +29,7 @@ class RelatedPersonInfoTest {
     )
 
     @Test
-    fun `重要职位靠前, 其余按index排序`() {
+    fun `重要职位靠前 其余按index排序`() {
         // 导演兼分镜、演出、原画: 导演行排在前面, 其余职位按服务端顺序排在不重要的尾部
         val sorted = listOf(
             info(index = 67, personId = 100, position = PersonPosition.KeyAnimation),
