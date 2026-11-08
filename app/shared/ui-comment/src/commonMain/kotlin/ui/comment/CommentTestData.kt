@@ -54,6 +54,7 @@ fun createTestCommentState(
  * 用固定数据构造的 thread 状态: 根评论与回复都不走网络.
  *
  * @param root 加载到的根评论, `null` 表示不存在
+ * @param loadRoot 自定义根评论的加载过程 (例如让它比回复晚到), 默认立刻返回 [root]
  */
 @TestOnly
 fun createTestCommentThreadState(
@@ -62,10 +63,11 @@ fun createTestCommentThreadState(
     root: UIComment?,
     replies: List<UIComment> = emptyList(),
     snapshot: UIComment? = null,
+    loadRoot: suspend () -> UIComment? = { root },
 ): CommentThreadState = CommentThreadState(
     key = key,
     snapshot = snapshot,
-    loadRoot = { root },
+    loadRoot = loadRoot,
     repliesPager = { onTotal ->
         onTotal(replies.size)
         // 带 "已到末页" 的加载状态, 让页面像真实分页加载完一样显示空占位

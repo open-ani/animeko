@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.comment.thread
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,7 +62,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.domain.foundation.LoadError
@@ -85,6 +88,7 @@ import me.him188.ani.app.ui.lang.comment_thread_title
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 object CommentThreadTestTags {
@@ -111,6 +115,16 @@ object CommentThreadDefaults {
      * 通知进入时为了找到要定位的回复最多翻的页数, 翻不到就停在顶部.
      */
     const val MaxFocusPages = 10
+
+    /**
+     * 定位到的回复高亮的时长. 这段时间里布局再变 (表头长高、底部回复栏出现、图片加载) 也把它留在可视区域内.
+     */
+    val FocusHighlightDuration = 1.5.seconds
+
+    /**
+     * 定位前最多等根评论加载这么久: 表头的高度和底部回复栏有没有都取决于它.
+     */
+    val FocusRootSettleTimeout = 5.seconds
 
     /**
      * 回复列表前的表头项数: 根评论 (或占位) 与分组标题在同一项里.
@@ -432,7 +446,11 @@ private fun ThreadEmptyState(
 
 /**
  * 通知进入时定位到 [CommentThreadKey.focusReplyId]: 回复按时间正序分页, 目标不在已加载的页里就继续翻, 最多翻
- * [CommentThreadDefaults.MaxFocusPages] 页; 找到后滚到它并高亮 1.5 秒, 找不到就停在顶部不提示.
+ * [CommentThreadDefaults.MaxFocusPages] 页; 找到后滚到它并高亮 [CommentThreadDefaults.FocusHighlightDuration], 找不到就停在顶部不提示.
+ *
+ * 滚动之前先等根评论加载结束 (最多 [CommentThreadDefaults.FocusRootSettleTimeout]): 独立路由没有快照, 根评论常常比回复晚一点到,
+ * 到了表头才长到最终高度, 底部回复栏也才出现. 目标在末尾时列表只能停在最底, 先滚再缩小可视区域会把它压到回复栏下面.
+ * 高亮期间继续盯着布局, 目标被挤出可视区域就挪回来; 用户自己开始滚动则不再干预.
  */
 @Composable
 private fun FocusReplyEffect(
@@ -448,10 +466,17 @@ private fun FocusReplyEffect(
             snapshotFlow { items.loadState }.first { it.refresh !is LoadState.Loading && it.append !is LoadState.Loading }
             val index = items.itemSnapshotList.indexOfFirst { it?.stableId == focusReplyId }
             if (index >= 0) {
-                gridState.scrollToItem(index + CommentThreadDefaults.HeaderItemCount)
+                withTimeoutOrNull(CommentThreadDefaults.FocusRootSettleTimeout) {
+                    state.root.first { it !is CommentThreadRootState.Loading }
+                }
+                val itemIndex = index + CommentThreadDefaults.HeaderItemCount
+                gridState.scrollToItem(itemIndex)
                 currentOnHighlight(focusReplyId)
-                delay(1.5.seconds)
-                currentOnHighlight(null)
+                try {
+                    gridState.keepItemVisible(itemIndex, CommentThreadDefaults.FocusHighlightDuration)
+                } finally {
+                    currentOnHighlight(null)
+                }
                 return@LaunchedEffect
             }
             val loaded = items.itemCount
@@ -464,6 +489,30 @@ private fun FocusReplyEffect(
                 snapshotFlow { items.itemCount != loaded || items.loadState.append.endOfPaginationReached }.first { it }
             } ?: return@LaunchedEffect
         }
+    }
+}
+
+/**
+ * 在 [duration] 内盯着布局, 第 [index] 项有一部分露出可视区域时把它挪回来; 项比可视区域还高时对齐它的顶部.
+ * 用户的滚动手势会打断这里的滚动 (更高优先级的 mutator 取消当前调用), 那之后就交给用户, 不再挪.
+ */
+private suspend fun LazyGridState.keepItemVisible(index: Int, duration: Duration) {
+    try {
+        withTimeoutOrNull(duration) {
+            snapshotFlow { layoutInfo }.collect { info ->
+                val item = info.visibleItemsInfo.firstOrNull { it.index == index } ?: return@collect
+                val bottomOverflow = item.offset.y + item.size.height - info.viewportEndOffset
+                val topOverflow = info.viewportStartOffset - item.offset.y
+                val delta = when {
+                    bottomOverflow > 0 -> minOf(bottomOverflow, -topOverflow).coerceAtLeast(0)
+                    topOverflow > 0 -> -topOverflow
+                    else -> 0
+                }
+                if (delta != 0) scrollBy(delta.toFloat())
+            }
+        }
+    } catch (e: CancellationException) {
+        currentCoroutineContext().ensureActive()
     }
 }
 

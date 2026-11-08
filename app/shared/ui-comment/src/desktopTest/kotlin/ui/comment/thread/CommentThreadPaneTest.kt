@@ -9,18 +9,25 @@
 
 package me.him188.ani.app.ui.comment.thread
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CompletableDeferred
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.navigation.CommentThreadTarget
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.comment.CommentItemTestFixtures
@@ -36,6 +43,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.hours
 
 /**
@@ -71,10 +79,19 @@ class CommentThreadPaneTest {
         var backs = 0
     }
 
+    /**
+     * @param focusReplyId 通知落地要定位的回复
+     * @param paneHeight 限制页面高度, 让回复列表需要滚动; `null` 时占满窗口
+     * @param loadRoot 自定义根评论的加载 (例如比回复晚到), 默认立刻返回 [root]
+     */
     private fun ComposeUiTest.setPane(
         root: UIComment?,
         replies: List<UIComment> = emptyList(),
         withBack: Boolean = false,
+        focusReplyId: String? = null,
+        paneHeight: Dp? = null,
+        snapshot: UIComment? = root,
+        loadRoot: suspend () -> UIComment? = { root },
     ): Harness {
         lateinit var harness: Harness
         setContent {
@@ -84,18 +101,31 @@ class CommentThreadPaneTest {
                 ) {
                     val scope = rememberCoroutineScope()
                     harness = remember {
-                        Harness(createTestCommentThreadState(scope, root = root, replies = replies, snapshot = root))
+                        Harness(
+                            createTestCommentThreadState(
+                                scope,
+                                key = CommentThreadKey(CommentThreadTarget.Episode(1, 1), "test:root", focusReplyId),
+                                root = root,
+                                replies = replies,
+                                snapshot = snapshot,
+                                loadRoot = loadRoot,
+                            ),
+                        )
                     }
-                    CommentThreadPane(
-                        state = harness.state,
-                        onClickUrl = {},
-                        onClickImage = {},
-                        onReply = { harness.replies += it },
-                        modifier = Modifier.fillMaxSize(),
-                        onBack = if (withBack) {
-                            { harness.backs++ }
-                        } else null,
-                    )
+                    Box(
+                        if (paneHeight != null) Modifier.size(width = 480.dp, height = paneHeight) else Modifier.fillMaxSize(),
+                    ) {
+                        CommentThreadPane(
+                            state = harness.state,
+                            onClickUrl = {},
+                            onClickImage = {},
+                            onReply = { harness.replies += it },
+                            modifier = Modifier.fillMaxSize(),
+                            onBack = if (withBack) {
+                                { harness.backs++ }
+                            } else null,
+                        )
+                    }
                 }
             }
         }
@@ -109,6 +139,19 @@ class CommentThreadPaneTest {
     private fun ComposeUiTest.awaitNoTag(tag: String) {
         waitUntil(timeoutMillis = 10_000) { onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isEmpty() }
     }
+
+    /**
+     * [tag] 整个在页面可视区域内, 且没有任何部分被底部回复栏盖住. 两者有一个还没出现时为 `false`.
+     */
+    private fun ComposeUiTest.isFullyVisibleAboveReplyBar(tag: String): Boolean {
+        if (onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isEmpty()) return false
+        if (onAllNodes(hasTestTag(CommentThreadTestTags.ReplyBar)).fetchSemanticsNodes().isEmpty()) return false
+        val item = onNodeWithTag(tag).getUnclippedBoundsInRoot()
+        val bar = onNodeWithTag(CommentThreadTestTags.ReplyBar).getUnclippedBoundsInRoot()
+        return item.top >= 0.dp && item.bottom <= bar.top
+    }
+
+    private fun manyReplies(count: Int) = (1..count).map { reply("ani:$it", "user$it") }
 
     @Test
     fun `reply bar targets the root by default`() = runAniComposeUiTest {
@@ -209,5 +252,39 @@ class CommentThreadPaneTest {
         setPane(CommentItemTestFixtures.aniComment(), withBack = false)
         awaitTag(CommentThreadTestTags.Root)
         onAllNodesWithTag(CommentThreadTestTags.BackButton).assertCountEquals(0)
+    }
+
+    @Test
+    fun `focus scrolls the target reply fully into view`() = runAniComposeUiTest {
+        val replies = manyReplies(12)
+        setPane(CommentItemTestFixtures.aniComment(), replies, focusReplyId = "ani:12", paneHeight = 400.dp)
+        awaitTag(CommentThreadTestTags.reply("ani:12"))
+
+        waitUntil(timeoutMillis = 10_000) { isFullyVisibleAboveReplyBar(CommentThreadTestTags.reply("ani:12")) }
+        // 列表确实滚到了末尾: 开头的回复已经不在可视区域里
+        onNodeWithTag(CommentThreadTestTags.reply("ani:1")).assertDoesNotExist()
+    }
+
+    @Test
+    fun `focused last reply stays above the reply bar when the root arrives after the replies`() = runAniComposeUiTest {
+        val rootArrival = CompletableDeferred<UIComment?>()
+        val replies = manyReplies(12)
+        setPane(
+            root = null,
+            replies = replies,
+            focusReplyId = "ani:12",
+            paneHeight = 400.dp,
+            snapshot = null,
+            loadRoot = { rootArrival.await() },
+        )
+        // 回复先到, 根评论还在加载: 表头只有分组标题, 没有回复栏
+        awaitTag(CommentThreadTestTags.RepliesTitle)
+        onAllNodesWithTag(CommentThreadTestTags.ReplyBar).assertCountEquals(0)
+
+        rootArrival.complete(CommentItemTestFixtures.aniComment())
+        awaitTag(CommentThreadTestTags.ReplyBar)
+
+        waitUntil(timeoutMillis = 10_000) { isFullyVisibleAboveReplyBar(CommentThreadTestTags.reply("ani:12")) }
+        assertTrue(isFullyVisibleAboveReplyBar(CommentThreadTestTags.reply("ani:12")))
     }
 }
