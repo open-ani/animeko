@@ -9,19 +9,44 @@
 
 package me.him188.ani.app.ui.mediaselect.selector
 
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.mediaselect.auto.AutoMatchPageTestTags
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class MediaSelectorWebColumnTest {
+    @Test
+    fun `temporarily unavailable channel remains available for manual selection`() = runAniComposeUiTest {
+        val channel = WebSourceChannel("line-1", isTemporarilyUnavailable = true)
+        var selected: WebSourceChannel? = null
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                MediaSelectorWebSourcesColumn(
+                    listOf(source("a", isError = false).copy(channels = listOf(channel), isPreferred = true)),
+                    selectedSource = { null },
+                    selectedChannel = { null },
+                    onSelect = { _, chosen -> selected = chosen },
+                    onRefresh = {},
+                    onResolveCaptcha = {},
+                    onRequestManualSearch = null,
+                )
+            }
+        }
+        onNodeWithText("line-1").assertIsEnabled().performClick()
+        assertEquals(channel, selected)
+    }
+
     private fun source(id: String, isError: Boolean) = WebSource(
         instanceId = id,
         mediaSourceId = id,

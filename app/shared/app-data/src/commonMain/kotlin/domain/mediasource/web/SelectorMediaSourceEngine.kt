@@ -11,9 +11,9 @@ package me.him188.ani.app.domain.mediasource.web
 
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.statement.bodyAsText
 import io.ktor.client.request.accept
 import io.ktor.client.request.prepareGet
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLBuilder
@@ -45,6 +45,7 @@ import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.SubtitleKind
+import me.him188.ani.datasources.api.WebMediaRoute
 import me.him188.ani.datasources.api.matcher.WebVideo
 import me.him188.ani.datasources.api.matcher.WebVideoMatcher
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -223,11 +224,18 @@ abstract class SelectorMediaSourceEngine {
         query: SelectorSearchQuery,
         mediaSourceId: String,
         subjectName: String,
+        subjectUrl: String? = null,
+        configurationId: String = MediaSourceEngineHelpers.playbackConfigurationId(Json.encodeToString(SelectorSearchConfig.serializer(), config)),
+        ambiguousChannels: Set<String?> = emptySet(),
     ): SelectMediaResult {
         val parser = LabelFirstRawTitleParser()
-        val originalMediaList = episodes.mapNotNull { info ->
+        val episodeList = episodes.toList()
+        // 同一线路名下同一集出现多个地址，不能证明它们属于同一条线路，跨集记忆按保守策略停用。
+        val ambiguous = ambiguousChannels + episodeList.ambiguousChannelNames()
+        val originalMediaList = episodeList.mapNotNull { info ->
             val episodeSort = info.matchingEpisodeSort(query.episodeSort, query.episodeEp) ?: return@mapNotNull null
-            createMedia(info, episodeSort, config, mediaSourceId, subjectName, parser)
+            createMedia(info, episodeSort, config, mediaSourceId, subjectName, parser,
+                subjectUrl.takeUnless { info.channel in ambiguous }, configurationId)
         }.toList()
 
         return with(query.toFilterContext()) {
@@ -251,6 +259,8 @@ abstract class SelectorMediaSourceEngine {
         mediaSourceId: String,
         subjectName: String,
         parser: LabelFirstRawTitleParser = LabelFirstRawTitleParser(),
+        subjectUrl: String? = null,
+        configurationId: String = MediaSourceEngineHelpers.playbackConfigurationId(Json.encodeToString(SelectorSearchConfig.serializer(), config)),
     ): DefaultMedia {
         val subtitleLanguages = guessSubtitleLanguageIds(info.channel, info.name, parser)
         return DefaultMedia(
@@ -288,6 +298,7 @@ abstract class SelectorMediaSourceEngine {
                 alliance = info.channel ?: "",
                 size = FileSize.Unspecified,
                 subtitleKind = SubtitleKind.EMBEDDED,
+                webRoute = subjectUrl?.let { WebMediaRoute(it, info.channel.orEmpty(), configurationId) },
             ),
             episodeRange = episodeSort?.let { EpisodeRange.single(it) },
             location = MediaSourceLocation.Online,

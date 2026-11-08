@@ -91,7 +91,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         PlaybackHistoryPendingOpEntity::class,
         EpisodeCollectionPendingOpEntity::class,
     ],
-    version = 28,
+    version = 29,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -119,6 +119,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         AutoMigration(from = 25, to = 26, spec = Migrations.Migration_25_26::class),
         AutoMigration(from = 26, to = 27, spec = Migrations.Migration_26_27::class),
         AutoMigration(from = 27, to = 28, spec = Migrations.Migration_27_28::class),
+        AutoMigration(from = 28, to = 29, spec = Migrations.Migration_28_29::class),
     ],
     exportSchema = true,
 )
@@ -455,6 +456,12 @@ internal object Migrations {
      * Added [SubjectRelations.splitSeason]: 服务端识别的拆分季.
      */
     class Migration_27_28 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /** 搜索缓存保存线路身份判定；旧缓存缺少分组证据，身份判定为不可靠。 */
+    class Migration_28_29 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }

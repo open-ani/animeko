@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,9 +46,14 @@ import me.him188.ani.app.domain.media.fetch.createFetchFetchSession
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
+import me.him188.ani.app.domain.media.selector.PlaybackSourceMemory
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
+import me.him188.ani.app.domain.mediasource.playbackConfigurationIdOrNull
 import me.him188.ani.app.domain.player.ExtensionException
+import me.him188.ani.app.domain.player.PlaybackRecoveryPolicy
+import me.him188.ani.app.domain.player.PlaybackSourceObserver
 import me.him188.ani.app.domain.player.PlayerExtensionManager
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.player.analytics.EpisodeFlowExtension
 import me.him188.ani.app.domain.player.analytics.PlayFlowFetchObserver
 import me.him188.ani.app.domain.player.analytics.PlayFlowMediaLoadListener
@@ -58,18 +64,24 @@ import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
 import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
 import me.him188.ani.app.domain.player.extension.PlayerExtension
 import me.him188.ani.app.domain.player.extension.PlayerExtensionEvent
+import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
+import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
+import me.him188.ani.app.platform.MeteredNetworkDetector
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeSwitch
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
+import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.isMediaLoaded
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.TimeSource
 
 
 /**
@@ -105,7 +117,11 @@ class EpisodeFetchSelectPlayState(
      * 本播放页的加载流程埋点记录器. 页面 (ViewModel) 创建它并在进入页面时记录 `enter`; 这里为每个 [EpisodeSession] 分配剧集尝试.
      */
     val playFlow: PlayFlowRecorder = PlayFlowRecorder(subjectId),
+    private val playbackTimeSource: TimeSource = TimeSource.Monotonic,
 ) {
+    /** 本播放页共享，生命周期长于单集会话。 */
+    val playbackSourceMemory = PlaybackSourceMemory()
+
     interface AnalyticsContext {
         suspend fun isFullscreen(): Boolean? = false
     }
@@ -114,6 +130,8 @@ class EpisodeFetchSelectPlayState(
     private val mediaSourceManager by koin.inject<MediaSourceManager>()
     private val playHistoryRepository by koin.inject<EpisodePlayHistoryRepository>()
     private val automationGate by koin.inject<PlaybackAutomationGate>()
+    private val getVideoScaffoldConfig by koin.inject<GetVideoScaffoldConfigUseCase>()
+    private val getMediaSelectorSettings by koin.inject<GetMediaSelectorSettingsFlowUseCase>()
     private val getSourceTiers: GetMediaSelectorSourceTiersUseCase? by lazy { koin.getOrNull<GetMediaSelectorSourceTiersUseCase>() }
 
     /**
@@ -279,6 +297,20 @@ class EpisodeFetchSelectPlayState(
 
     fun onUIReady() {
         if (uiReady.complete(Unit)) {
+            koin.getOrNull<MeteredNetworkDetector>()?.let { detector ->
+                backgroundScope.launch {
+                    observePlaybackEnvironment(detector)
+                }
+            }
+            koin.getOrNull<MediaSourceManager>()?.let { manager ->
+                backgroundScope.launch {
+                    manager.allInstances.collect { instances ->
+                        playbackSourceMemory.retainConfigurations(instances.associate { instance ->
+                            instance.mediaSourceId to instance.source.playbackConfigurationIdOrNull
+                        })
+                    }
+                }
+            }
             getSourceTiers?.let { useCase ->
                 backgroundScope.launch {
                     useCase().collect { latestSourceTiers.value = it }
@@ -303,10 +335,35 @@ class EpisodeFetchSelectPlayState(
         }
     }
 
+    private suspend fun observePlaybackEnvironment(detector: MeteredNetworkDetector) {
+        detector.networkEnvironmentFlow.collect { environment ->
+            val before = playbackSourceMemory.snapshot()
+            playbackSourceMemory.updateEnvironment(environment)
+            val after = playbackSourceMemory.snapshot()
+            val networkRecovered = before.networkAvailable == false && after.networkAvailable != false
+            if (after.generation != before.generation || networkRecovered) {
+                recoverPlaybackAfterNetworkChange()
+            }
+        }
+    }
+
+    private suspend fun recoverPlaybackAfterNetworkChange() {
+        val session = episodeSessionFlow.value
+        val selected = session.fetchSelectFlow.replayCache.lastOrNull()?.mediaSelector?.selected?.value
+        val retryFailedPlayback = if (selected == null) false else PlaybackRecoveryPolicy.canRetryAfterNetworkChange(
+            selected,
+            getMediaSelectorSettings().first().preferKind,
+            getVideoScaffoldConfig().first().autoSwitchMediaOnPlayerError,
+        )
+        // 新环境重建失败尝试，播放器里保留的旧错误不能作为新环境的失败证据。
+        restartPlaybackIfNeeded(session, retryFailedPlayback)
+    }
+
     /**
      * Called when view model is cleared
      */
     suspend fun onClose() {
+        playbackSourceMemory.clear()
         extensionManager.call { it.onClose() }
         playerSession.stopPlayback()
         fetchObserver.close()
@@ -320,6 +377,25 @@ class EpisodeFetchSelectPlayState(
      */
     fun restartLoad() {
         episodeSessionFlow.value.restartLoad()
+    }
+
+    /** 明确重新检测失败线路。正常播放只恢复候选资格；报错或尚未选中资源时重建当前集尝试。 */
+    suspend fun retryFailedPlaybackSources() {
+        val session = episodeSessionFlow.value
+        session.fetchSelectFlow.replayCache.lastOrNull()?.autoSelectionState?.reset()
+        playbackSourceMemory.retryFailures()
+        restartPlaybackIfNeeded(session)
+    }
+
+    private suspend fun restartPlaybackIfNeeded(session: EpisodeSession, retryFailedPlayback: Boolean = true) {
+        if (episodeSessionFlow.value !== session) return
+        val awaitingSelection = session.fetchSelectFlow.replayCache.lastOrNull()?.mediaSelector?.selected?.value == null &&
+            !player.state.value.isMediaLoaded
+        val failed = player.state.value.mediaStatus is MediaStatus.Error ||
+            playerSession.videoLoadingState.value is VideoLoadingState.Failed
+        if (awaitingSelection || retryFailedPlayback && failed) {
+            switchEpisode(session.episodeId, EpisodeSwitchTrigger.RETRY)
+        }
     }
 
     private suspend fun EpisodeSession.startSessionScopeTasks() {
@@ -383,26 +459,39 @@ class EpisodeFetchSelectPlayState(
 
                         // `filterNotNull()` is needed. Even when media is unselect, we should not stop the player.
                         fetchSelect.mediaSelector.selected.filterNotNull().collectLatest { media ->
+                            fetchSelect.autoSelectionState.reset()
                             val episodeInfo = episodeSession.infoBundleFlow
                                 .filterNotNull()
                                 .first()
                                 .episodeInfo
 
                             callOnBeforeLoadMedia(episodeSession)
-                            playerSession.loadMedia(
-                                media,
-                                episodeInfo.toEpisodeMetadata(),
-                                startPositionMillis(episodeInfo.episodeId),
-                                listener = PlayFlowMediaLoadListener(playFlow, episodeSession.playFlowEpisode, media) {
-                                    // 切集时第 1 步就取消 session scope, 此时 episodeSessionFlow 里还是旧 session; 用户换源只取消内层的收集, scope 仍然活着
-                                    when {
-                                        !backgroundScope.isActive -> "left_page"
-                                        !episodeSession.sessionScope.isActive -> "episode_switched"
-                                        else -> "user_switched"
+                            val attempt = playbackSourceMemory.beginAttempt(episodeInfo.episodeId, media)
+                            val observer = PlaybackSourceObserver(playbackSourceMemory, playbackTimeSource)
+                            val ready = CompletableDeferred<Boolean>()
+                            try {
+                                coroutineScope {
+                                    launch {
+                                        if (ready.await()) observer.observe(player, attempt)
                                     }
-                                },
-                            )
-                            onMediaLoaded(episodeInfo.episodeId)
+                                    val analytics = PlayFlowMediaLoadListener(playFlow, episodeSession.playFlowEpisode, media) {
+                                        when {
+                                            !backgroundScope.isActive -> "left_page"
+                                            !episodeSession.sessionScope.isActive -> "episode_switched"
+                                            else -> "user_switched"
+                                        }
+                                    }
+                                    playerSession.loadMedia(
+                                        media,
+                                        episodeInfo.toEpisodeMetadata(),
+                                        startPositionMillis(episodeInfo.episodeId),
+                                        listener = observer.loadListener(analytics, attempt, ready),
+                                    )
+                                    onMediaLoaded(episodeInfo.episodeId)
+                                }
+                            } finally {
+                                playbackSourceMemory.finishAttempt(attempt)
+                            }
                         }
                     }
                 }

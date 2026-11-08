@@ -17,6 +17,9 @@ import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 /**
  * 测试 [SelectorMediaSourceEngine.selectMedia] 把剧集转成 media 时使用的集号, 以及
@@ -50,6 +53,7 @@ class SelectorMediaSourceEngineSelectMediaTest {
     private fun selectMedia(
         episodes: List<WebSearchEpisodeInfo>,
         episodeSort: EpisodeSort = EpisodeSort(1),
+        subjectUrl: String? = null,
     ) = engine.selectMedia(
         episodes.asSequence(),
         SelectorSearchConfig.Empty,
@@ -62,7 +66,44 @@ class SelectorMediaSourceEngineSelectMediaTest {
         ),
         mediaSourceId = "test",
         subjectName = SUBJECT_NAME,
+        subjectUrl = subjectUrl,
     )
+
+    @Test
+    fun `route identity uses the subject and channel across episodes and isolates configurations`() {
+        val config = SelectorSearchConfig.Empty
+        val first = engine.createMedia(
+            numbered(1), EpisodeSort(1), config, "web", SUBJECT_NAME,
+            subjectUrl = "https://example.com/subject/1",
+        )
+        val next = engine.createMedia(
+            numbered(2), EpisodeSort(2), config, "web", SUBJECT_NAME,
+            subjectUrl = "https://example.com/subject/1",
+        )
+        val changed = engine.createMedia(
+            numbered(2), EpisodeSort(2), config.copy(rawBaseUrl = "https://other.example"), "web", SUBJECT_NAME,
+            subjectUrl = "https://example.com/subject/1",
+        )
+
+        assertNotEquals(first.originalUrl, next.originalUrl)
+        assertEquals(first.properties.webRoute, next.properties.webRoute)
+        assertNotEquals(next.properties.webRoute, changed.properties.webRoute)
+        val route = assertNotNull(first.properties.webRoute)
+        assertEquals("https://example.com/subject/1", route.subjectUrl)
+        assertEquals("线路1", route.channel)
+        assertEquals(64, route.configuration.length)
+    }
+
+    @Test
+    fun `ambiguous same named channels have no cross episode identity`() {
+        val episode = numbered(1)
+        val result = selectMedia(
+            listOf(episode, episode.copy(playUrl = "https://example.com/other/1")),
+            subjectUrl = "https://example.com/subject/1",
+        )
+        assertEquals(2, result.originalList.size)
+        result.originalList.forEach { assertNull(it.properties.webRoute) }
+    }
 
     @Test
     fun `whole work labels are matched as episode 01`() {
