@@ -53,6 +53,11 @@ import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_danmaku_cancel
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_add_confirm
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_blacklist_add_description
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_blacklist_add_format_hint
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_blacklist_add_multiline_hint
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_blacklist_add_title
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_blacklist_invalid_ip
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 import org.jetbrains.compose.resources.stringResource
@@ -104,13 +109,13 @@ fun AddBlockedIPDialog(
 
     AlertDialog(
         onDismissRequest = dismiss,
-        title = { Text("添加 IP 地址") },
+        title = { Text(stringResource(Lang.settings_media_torrent_peer_blacklist_add_title)) },
         text = {
             Column {
-                Text("向 IP 地址黑名单添加新的 IP 地址")
-                Text("支持 IPv4 或 IPv6 地址，且 IPv6 地址必须为完整格式的地址")
+                Text(stringResource(Lang.settings_media_torrent_peer_blacklist_add_description))
+                Text(stringResource(Lang.settings_media_torrent_peer_blacklist_add_format_hint))
                 if (LocalPlatform.current is Platform.Desktop) {
-                    Text("可输入多行，按 Enter 确认添加，Ctrl+Enter 换行")
+                    Text(stringResource(Lang.settings_media_torrent_peer_blacklist_add_multiline_hint))
                 }
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
@@ -146,7 +151,7 @@ fun AddBlockedIPDialog(
                         ProvideContentColor(MaterialTheme.colorScheme.error) {
                             Icon(Icons.Default.Close, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("IP 地址格式错误")
+                            Text(stringResource(Lang.settings_media_torrent_peer_blacklist_invalid_ip))
                         }
                     }
                 }

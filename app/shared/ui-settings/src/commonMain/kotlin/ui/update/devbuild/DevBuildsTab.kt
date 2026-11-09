@@ -69,6 +69,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.currentAniBuildConfig
+import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_debug_dev_builds_artifact
@@ -225,7 +226,7 @@ fun DevBuildsTabContent(
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
-    val timeFormatter = remember { TimeFormatter() }
+    val timeFormatter = LocalTimeFormatter.current
     var pendingInstall by remember { mutableStateOf<PendingInstall?>(null) }
 
     // 列表最多几十项, 不需要懒加载; 由外层的设置页容器提供滚动

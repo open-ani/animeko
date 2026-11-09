@@ -18,14 +18,6 @@ import kotlin.test.assertTrue
 
 class WebCaptchaSupportTest {
     @Test
-    fun `displayName matches ui copy`() {
-        assertEquals("图片验证码", WebCaptchaKind.Image.displayName())
-        assertEquals("Cloudflare 验证", WebCaptchaKind.Cloudflare.displayName())
-        assertEquals("Cloudflare Turnstile 验证", WebCaptchaKind.CloudflareTurnstile.displayName())
-        assertEquals("验证码", WebCaptchaKind.Unknown.displayName())
-    }
-
-    @Test
     fun `normalizedSessionHost strips www and lowercases`() {
         assertEquals("example.com", normalizedSessionHost("https://WWW.Example.com/search?q=1"))
         assertEquals("play.example.com", normalizedSessionHost("https://play.example.com/embed/1"))

@@ -134,14 +134,6 @@ object WebCaptchaDetector {
     }
 }
 
-fun WebCaptchaKind.displayName(): String = when (this) {
-    WebCaptchaKind.Image -> "图片验证码"
-    WebCaptchaKind.Cloudflare -> "Cloudflare 验证"
-    WebCaptchaKind.CloudflareTurnstile -> "Cloudflare Turnstile 验证"
-    WebCaptchaKind.Unknown -> "验证码"
-    WebCaptchaKind.SliderCaptcha -> "滑动验证"
-}
-
 /**
  * 会话注册表与 cookie/UA 归属使用的 host key: 小写, 去 `www.` 前缀.
  */

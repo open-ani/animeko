@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bt_legacy_cache_unsupported">旧 BT 引擎的缓存已不被支持，请重新缓存</string>
+    <string name="choose_video_player">选择播放器</string>
+</resources>

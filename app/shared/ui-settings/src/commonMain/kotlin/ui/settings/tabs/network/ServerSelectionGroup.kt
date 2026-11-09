@@ -29,6 +29,8 @@ import me.him188.ani.app.data.network.danmaku.AniBangumiSeverBaseUrls
 import me.him188.ani.app.platform.AniServers
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_network_danmaku
+import me.him188.ani.app.ui.lang.settings_network_danmaku_auto
+import me.him188.ani.app.ui.lang.settings_network_danmaku_auto_hint
 import me.him188.ani.app.ui.lang.settings_network_danmaku_connection_test
 import me.him188.ani.app.ui.lang.settings_network_danmaku_global
 import me.him188.ani.app.ui.lang.settings_network_danmaku_global_acceleration
@@ -59,7 +61,7 @@ internal fun SettingsScope.ServerSelectionGroup(
 
         // Danmaku source selection: null = automatic, true = global, false = mainland/HK
         val options = listOf(
-            null to "自动",
+            null to stringResource(Lang.settings_network_danmaku_auto),
             true to stringResource(Lang.settings_network_danmaku_global_acceleration),
             false to stringResource(Lang.settings_network_danmaku_mainland),
         )
@@ -76,7 +78,7 @@ internal fun SettingsScope.ServerSelectionGroup(
                                 } else {
                                     stringResource(Lang.settings_network_danmaku_mainland)
                                 }
-                                "自动选择：$autoSelected"
+                                stringResource(Lang.settings_network_danmaku_auto_hint, autoSelected)
                             }
 
                             true -> stringResource(Lang.settings_network_danmaku_global_acceleration_description)
