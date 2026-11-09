@@ -448,7 +448,8 @@ private fun ThreadEmptyState(
  * 通知进入时定位到 [CommentThreadKey.focusReplyId]: 回复按时间正序分页, 目标不在已加载的页里就继续翻, 最多翻
  * [CommentThreadDefaults.MaxFocusPages] 页; 找到后滚到它并高亮 [CommentThreadDefaults.FocusHighlightDuration], 找不到就停在顶部不提示.
  *
- * 滚动之前先等根评论加载结束 (最多 [CommentThreadDefaults.FocusRootSettleTimeout]): 独立路由没有快照, 根评论常常比回复晚一点到,
+ * 定位是这次进入的目的, 所以一直等到楼加载成功为止 ([awaitThreadLoaded]): 打开时断网之类的失败不算完, 用户重试成功后照样定位.
+ * 等的内容里包括根评论 (最多 [CommentThreadDefaults.FocusRootSettleTimeout]): 独立路由没有快照, 根评论常常比回复晚一点到,
  * 到了表头才长到最终高度, 底部回复栏也才出现. 目标在末尾时列表只能停在最底, 先滚再缩小可视区域会把它压到回复栏下面.
  * 高亮期间继续盯着布局, 目标被挤出可视区域就挪回来; 用户自己开始滚动则不再干预.
  */
@@ -462,13 +463,11 @@ private fun FocusReplyEffect(
     val focusReplyId = state.key.focusReplyId ?: return
     val currentOnHighlight by rememberUpdatedState(onHighlight)
     LaunchedEffect(state, items) {
+        awaitThreadLoaded(state, items)
         repeat(CommentThreadDefaults.MaxFocusPages) {
             snapshotFlow { items.loadState }.first { it.refresh !is LoadState.Loading && it.append !is LoadState.Loading }
             val index = items.itemSnapshotList.indexOfFirst { it?.stableId == focusReplyId }
             if (index >= 0) {
-                withTimeoutOrNull(CommentThreadDefaults.FocusRootSettleTimeout) {
-                    state.root.first { it !is CommentThreadRootState.Loading }
-                }
                 val itemIndex = index + CommentThreadDefaults.HeaderItemCount
                 gridState.scrollToItem(itemIndex)
                 currentOnHighlight(focusReplyId)
@@ -489,6 +488,26 @@ private fun FocusReplyEffect(
                 snapshotFlow { items.itemCount != loaded || items.loadState.append.endOfPaginationReached }.first { it }
             } ?: return@LaunchedEffect
         }
+    }
+}
+
+/**
+ * 等到回复首页加载成功、根评论加载结束, 而且回复列表在屏幕上.
+ *
+ * 回复首页失败 (比如从通知进入时断网) 就等用户重试后的下一次结果, 直到成功. 根评论最多等 [CommentThreadDefaults.FocusRootSettleTimeout];
+ * 但它没有快照又失败时整个区域是错误卡, 列表根本不在屏幕上, 这时同样等重试让它重新开始加载, 再从头等一遍.
+ */
+private suspend fun awaitThreadLoaded(state: CommentThreadState, items: LazyPagingItems<UIComment>) {
+    while (true) {
+        snapshotFlow { items.loadState.refresh }.first { it is LoadState.NotLoading }
+        val root = withTimeoutOrNull(CommentThreadDefaults.FocusRootSettleTimeout) {
+            state.root.first { it !is CommentThreadRootState.Loading }
+        }
+        if (root is CommentThreadRootState.Failed && root.snapshot == null) {
+            state.root.first { it is CommentThreadRootState.Loading }
+            continue
+        }
+        return
     }
 }
 

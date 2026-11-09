@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CompletableDeferred
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.navigation.CommentThreadTarget
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
@@ -83,6 +84,7 @@ class CommentThreadPaneTest {
      * @param focusReplyId 通知落地要定位的回复
      * @param paneHeight 限制页面高度, 让回复列表需要滚动; `null` 时占满窗口
      * @param loadRoot 自定义根评论的加载 (例如比回复晚到), 默认立刻返回 [root]
+     * @param loadReplies 自定义回复首页的加载 (例如先失败一次), 默认立刻返回 [replies]
      */
     private fun ComposeUiTest.setPane(
         root: UIComment?,
@@ -92,6 +94,7 @@ class CommentThreadPaneTest {
         paneHeight: Dp? = null,
         snapshot: UIComment? = root,
         loadRoot: suspend () -> UIComment? = { root },
+        loadReplies: suspend () -> List<UIComment> = { replies },
     ): Harness {
         lateinit var harness: Harness
         setContent {
@@ -109,6 +112,7 @@ class CommentThreadPaneTest {
                                 replies = replies,
                                 snapshot = snapshot,
                                 loadRoot = loadRoot,
+                                loadReplies = loadReplies,
                             ),
                         )
                     }
@@ -286,5 +290,30 @@ class CommentThreadPaneTest {
 
         waitUntil(timeoutMillis = 10_000) { isFullyVisibleAboveReplyBar(CommentThreadTestTags.reply("ani:12")) }
         assertTrue(isFullyVisibleAboveReplyBar(CommentThreadTestTags.reply("ani:12")))
+    }
+
+    @Test
+    fun `focus still scrolls to the target after the first load failed and a retry succeeded`() = runAniComposeUiTest {
+        // 从通知进入时断网: 没有快照, 根评论和回复首页都失败, 整个区域是错误卡
+        var online = false
+        val replies = manyReplies(12)
+        val harness = setPane(
+            root = null,
+            replies = replies,
+            focusReplyId = "ani:12",
+            paneHeight = 400.dp,
+            snapshot = null,
+            loadRoot = { if (online) CommentItemTestFixtures.aniComment() else throw RepositoryNetworkException("offline") },
+            loadReplies = { if (online) replies else throw RepositoryNetworkException("offline") },
+        )
+        waitUntil(timeoutMillis = 10_000) { harness.state.root.value is CommentThreadRootState.Failed }
+        onAllNodesWithTag(CommentThreadTestTags.RepliesTitle).assertCountEquals(0)
+
+        // 联网后点错误卡上的重试 (它调用的就是 refresh): 这次进入的目的仍是那条回复, 加载成功后照样定位到它
+        online = true
+        runOnIdle { harness.state.refresh() }
+        awaitTag(CommentThreadTestTags.reply("ani:12"))
+        waitUntil(timeoutMillis = 10_000) { isFullyVisibleAboveReplyBar(CommentThreadTestTags.reply("ani:12")) }
+        onNodeWithTag(CommentThreadTestTags.reply("ani:1")).assertDoesNotExist()
     }
 }
