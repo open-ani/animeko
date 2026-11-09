@@ -14,16 +14,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.UIKitView
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.useContents
 import me.him188.ani.app.platform.SwiftBridge
+import me.him188.ani.app.videoplayer.player.AniAVKitMediampPlayer
+import me.him188.ani.app.videoplayer.subtitle.LocalSubtitleAppearance
+import me.him188.ani.app.videoplayer.subtitle.LocalSubtitleSafeArea
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.avkit.AVKitMediampPlayer
 import org.openani.mediamp.features.AspectRatioMode
 import org.openani.mediamp.features.VideoAspectRatio
 import platform.AVFoundation.AVPlayerLayer
+import platform.UIKit.NSLayoutConstraint
 
 /**
  * Displays a video player itself. There is no control bar or any other UI elements.
@@ -37,9 +42,14 @@ actual fun VideoPlayer(
     player: MediampPlayer,
     modifier: Modifier
 ) {
-    check(player is AVKitMediampPlayer) { "MediampPlayer in iOS must be AVKitMediampPlayer, but got $player" }
+    check(player is AniAVKitMediampPlayer) { "MediampPlayer in iOS must be AniAVKitMediampPlayer, but got $player" }
 
     val avPlayer = player.impl
+    val subtitleText by player.subtitleText.collectAsState()
+    val subtitleAppearance = LocalSubtitleAppearance.current
+    val subtitleSafeArea = LocalSubtitleSafeArea.current
+    val subtitleOverlay = remember(player) { IosSubtitleOverlay() }
+    val nativeSubtitleStyle = remember(player) { IosNativeSubtitleStyle(avPlayer) }
     val enhancementMode by IosVideoLayerRegistry.enhancementMode(player).collectAsState()
     val aspectRatioMode by produceState(AspectRatioMode.FIT, player) {
         val feature = player.features[VideoAspectRatio.Key] ?: return@produceState
@@ -52,11 +62,22 @@ actual fun VideoPlayer(
                 val view = SwiftBridge.createEnhancedPlayerView(avPlayer) {
                     IosVideoLayerRegistry.enhancementFailures(player).tryEmit(Unit)
                 }
+                view.addSubview(subtitleOverlay)
+                NSLayoutConstraint.activateConstraints(
+                    listOf(
+                        subtitleOverlay.leadingAnchor.constraintEqualToAnchor(view.leadingAnchor, 0.0),
+                        subtitleOverlay.trailingAnchor.constraintEqualToAnchor(view.trailingAnchor, 0.0),
+                        subtitleOverlay.topAnchor.constraintEqualToAnchor(view.topAnchor),
+                        subtitleOverlay.bottomAnchor.constraintEqualToAnchor(view.bottomAnchor, 0.0),
+                    ),
+                )
                 IosVideoLayerRegistry.register(player, view.layer as AVPlayerLayer)
                 view
             },
             modifier = modifier,
             update = { view ->
+                subtitleOverlay.update(subtitleText, subtitleAppearance, subtitleSafeArea)
+                nativeSubtitleStyle.update(subtitleAppearance, subtitleSafeArea, view.bounds.useContents { size.height })
                 SwiftBridge.updateEnhancedPlayerView(
                     view,
                     enhancementMode.ordinal,
@@ -66,6 +87,7 @@ actual fun VideoPlayer(
                         AspectRatioMode.CROP -> 2
                     },
                 )
+                view.bringSubviewToFront(subtitleOverlay)
             },
             onRelease = { view ->
                 IosVideoLayerRegistry.unregister(player)

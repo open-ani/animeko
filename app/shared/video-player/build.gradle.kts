@@ -63,6 +63,9 @@ kotlin {
     }
     sourceSets.appleMain.dependencies {
         api(libs.mediamp.avkit)
+        implementation(projects.utils.ktorClient)
+        implementation(projects.utils.io)
+        implementation(projects.utils.logging)
 //        api(libs.mediamp.avkit.compose)
     }
 }

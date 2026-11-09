@@ -1935,6 +1935,10 @@
     <string name="settings_mediasource_jsonapi_unknown_variables">Unknown variables: %1$s</string>
     <string name="settings_mediasource_jsonapi_play_open_video">Open video URL</string>
     <string name="settings_mediasource_jsonapi_play_copy">Copy</string>
+    <string name="video_player_subtitle_settings">Subtitle settings</string>
+    <string name="video_player_subtitle_font_size">Subtitle size: %1$d%%</string>
+    <string name="video_player_subtitle_preview">Subtitle preview\nA second line stays below the first</string>
+    <string name="video_player_subtitle_reset">Reset</string>
 </resources>
 
 <!--@formatter:on-->

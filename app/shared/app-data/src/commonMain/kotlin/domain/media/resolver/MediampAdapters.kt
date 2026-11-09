@@ -18,6 +18,7 @@ internal fun MediaExtraFiles.toMediampMediaExtraFiles(): org.openani.mediamp.sou
                 uri = it.uri,
                 mimeType = it.mimeType,
                 language = it.language,
+                label = it.label,
             )
         },
     )

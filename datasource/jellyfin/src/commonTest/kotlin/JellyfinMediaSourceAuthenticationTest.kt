@@ -344,7 +344,7 @@ class JellyfinMediaSourceAuthenticationTest {
             client = mockClient { request ->
                 assertEquals("/Items", request.url.encodedPath)
                 itemsCount++
-                assertEquals("emby-user-id", request.url.parameters["userId"])
+                assertEquals("emby-user-id", request.url.parameters["UserId"])
                 assertEquals(
                     """MediaBrowser Token="emby-api-key"""",
                     request.headers[HttpHeaders.Authorization],
