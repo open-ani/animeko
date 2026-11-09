@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
@@ -79,6 +80,7 @@ import androidx.compose.ui.window.Dialog
 import me.him188.ani.app.data.network.WatchTogetherJoinFailure
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.watch_together_align_to_host
 import me.him188.ani.app.ui.lang.watch_together_cancel
 import me.him188.ani.app.ui.lang.watch_together_chip_following
 import me.him188.ani.app.ui.lang.watch_together_chip_free
@@ -132,6 +134,7 @@ internal const val WATCH_TOGETHER_DIALOG_TEST_TAG = "watch_together_dialog"
 internal const val WATCH_TOGETHER_ROOM_NAME_TEST_TAG = "watch_together_room_name"
 internal const val WATCH_TOGETHER_PASSWORD_TEST_TAG = "watch_together_password"
 internal const val WATCH_TOGETHER_JOIN_TEST_TAG = "watch_together_join"
+internal const val WATCH_TOGETHER_ALIGN_TEST_TAG = "watch_together_align"
 internal const val WATCH_TOGETHER_FOLLOW_TEST_TAG = "watch_together_follow"
 internal const val WATCH_TOGETHER_OPTIONS_TEST_TAG = "watch_together_options"
 internal const val WATCH_TOGETHER_DISABLE_TEST_TAG = "watch_together_disable"
@@ -191,6 +194,7 @@ internal fun WatchTogetherDialogContent(
                         },
                         onDisable = { confirmDisable = true },
                         onCollapse = onDismissRequest,
+                        onAlignToHost = { onIntent(WatchTogetherIntent.AlignToHost) },
                     )
 
                     else -> JoinRoomContent(
@@ -465,6 +469,7 @@ private fun RoomContent(
     onLeave: () -> Unit,
     onDisable: () -> Unit,
     onCollapse: () -> Unit,
+    onAlignToHost: () -> Unit,
 ) {
     val room = checkNotNull(state.room)
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -543,6 +548,17 @@ private fun RoomContent(
         )
     }
 
+    if (!state.isSelfHost) {
+        state.alignmentUnavailableReason?.let { reason ->
+            Text(
+                stringResource(reason.messageResource()),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
@@ -555,6 +571,16 @@ private fun RoomContent(
                 ),
                 color = MaterialTheme.colorScheme.error,
             )
+        }
+        if (!state.isSelfHost) {
+            Button(
+                onClick = onAlignToHost,
+                enabled = state.alignmentUnavailableReason == null,
+                modifier = Modifier.testTag(WATCH_TOGETHER_ALIGN_TEST_TAG),
+            ) {
+                Icon(Icons.Rounded.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text(stringResource(Lang.watch_together_align_to_host), Modifier.padding(start = 6.dp))
+            }
         }
         TextButton(onClick = onCollapse) {
             Text(stringResource(Lang.watch_together_collapse))

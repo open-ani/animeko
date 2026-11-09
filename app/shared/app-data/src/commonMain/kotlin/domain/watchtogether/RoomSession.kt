@@ -102,6 +102,7 @@ sealed interface WatchTogetherEffect {
     ) : WatchTogetherEffect
 
     data class RoomEnded(val reason: WatchTogetherRoomEndReason) : WatchTogetherEffect
+    data class HostAlignmentFinished(val success: Boolean) : WatchTogetherEffect
     data object Rejoined : WatchTogetherEffect
     data object RejoinFailed : WatchTogetherEffect
 
