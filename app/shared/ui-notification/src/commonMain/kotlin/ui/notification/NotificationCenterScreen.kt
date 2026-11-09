@@ -83,6 +83,8 @@ import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
 import me.him188.ani.app.data.models.notification.NotificationGroup
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
@@ -119,7 +121,8 @@ import kotlin.math.floor
  *
  * 每个分组 ([NotificationCenterViewModel.groups]) 是一个标签页, 有自己的列表、滚动位置和本地已读状态.
  * 点击通知时按 [notificationOpenTarget] 打开: 详情在窄屏调用 [onNavigateToDetail] 打开单独的页面, 宽屏为双栏, 显示在右侧;
- * 账号设置在窄屏和宽屏都调用 [NotificationActions.onOpenAccountSettings]. 打开一条通知或执行它的行内操作都会立即把它标为已读.
+ * 账号设置在窄屏和宽屏都调用 [NotificationActions.onOpenAccountSettings]; 评论被回复直接前往那条回复所在的评论详情.
+ * 打开一条通知或执行它的行内操作都会立即把它标为已读.
  * 标签页已加载的通知中有客户端不认识的类型 ([isUnknownType]) 时, 列表顶部提示更新 ([NotificationActions.onCheckUpdate]).
  *
  * 列表不会自动加载新到的通知, 而未读数由后台定时刷新. 所以 "全部标为已读" 之后, 以及某个分组的未读数增加到超过它的列表中的未读通知时,
@@ -253,13 +256,18 @@ fun NotificationCenterScreen(
     val coroutineScope = rememberCoroutineScope()
     val layoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective)
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    val browserNavigator = rememberAsyncBrowserNavigator()
+    val context = LocalContext.current
 
     fun openNotification(notification: AppNotification) {
         onOpenNotification(notification)
-        when (notificationOpenTarget(notification.content)) {
-            NotificationOpenTarget.ACCOUNT_SETTINGS -> actions.onOpenAccountSettings()
+        when (val target = notificationOpenTarget(notification)) {
+            NotificationOpenTarget.AccountSettings -> actions.onOpenAccountSettings()
 
-            NotificationOpenTarget.DETAIL -> if (layoutParameters.preferSinglePane) {
+            is NotificationOpenTarget.Destination ->
+                actions.open(target.destination, openUrl = { browserNavigator.openBrowser(context, it) })
+
+            NotificationOpenTarget.Detail -> if (layoutParameters.preferSinglePane) {
                 onNavigateToDetail(notification.id)
             } else {
                 selectedId = notification.id

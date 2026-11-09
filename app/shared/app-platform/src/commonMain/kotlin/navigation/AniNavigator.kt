@@ -247,6 +247,13 @@ interface AniNavigator {
     fun navigateNotificationSettings() {
         navigate(NavRoutes.NotificationSettings)
     }
+
+    /**
+     * 整页打开一条评论的详情 (thread). 见 [NavRoutes.CommentThread].
+     */
+    fun navigateCommentThread(target: CommentThreadTarget, commentId: String, focusReplyId: String? = null) {
+        navigate(NavRoutes.CommentThread(target, commentId, focusReplyId))
+    }
 }
 
 fun AniNavigator(): AniNavigator = AniNavigatorImpl()

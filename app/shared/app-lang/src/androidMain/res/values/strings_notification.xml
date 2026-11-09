@@ -65,6 +65,10 @@
     <string name="notification_go_to_subject">Go to anime</string>
     <string name="notification_go_to_person">Go to person</string>
     <string name="notification_go_to_character">Go to character</string>
+    <string name="notification_go_to_comment">Go to comment</string>
+
+    <string name="notification_comment_reply_row_title">%1$s replied to your comment</string>
+    <string name="notification_comment_reply_detail_title">Reply to your comment</string>
 
     <string name="notification_account_third_party_unbound">%1$s account unlinked</string>
     <string name="notification_account_third_party_unbound_generic">Third-party account unlinked</string>
@@ -79,6 +83,8 @@
     <string name="notification_settings_system_group_description">When off, those notifications are hidden on this device and not counted as unread.</string>
     <string name="notification_settings_report_result_item">A comment you reported has a result</string>
     <string name="notification_settings_account_security_item">Your account has a security alert</string>
+    <string name="notification_settings_group_interaction">Interaction</string>
+    <string name="notification_settings_comment_reply_item">Someone replies to your comment</string>
     <string name="notification_settings_group_announcements">Announcements</string>
     <string name="notification_settings_announcement_item">You receive a new announcement</string>
     <string name="notification_settings_announcement_description">When off, new announcements don’t put a dot on your avatar.</string>

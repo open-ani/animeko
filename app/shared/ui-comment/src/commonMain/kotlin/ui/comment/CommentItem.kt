@@ -87,6 +87,8 @@ import me.him188.ani.app.ui.lang.comment_dislike
 import me.him188.ani.app.ui.lang.comment_expand_replies
 import me.him188.ani.app.ui.lang.comment_like
 import me.him188.ani.app.ui.lang.comment_more_actions
+import me.him188.ani.app.ui.lang.comment_reply_to_deleted
+import me.him188.ani.app.ui.lang.comment_reply_to_name
 import me.him188.ani.app.ui.rating.FiveRatingStars
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.RichTextDefaults
@@ -101,6 +103,7 @@ object CommentItemTestTags {
     const val MoreButton = "CommentItem:more"
     const val Actions = "CommentItem:actions"
     const val RepliesBlock = "CommentItem:replies"
+    const val ReplyTarget = "CommentItem:replyTarget"
 }
 
 /**
@@ -136,8 +139,10 @@ class CommentMenuHandlers(
  * @param comment 要展示的评论. 若使用 [CommentState], 传入 [CommentState.withOverlay] 的结果.
  * @param showRating 是否在头行右侧显示评分星 (条目评价).
  * @param reactionsClipped 贴纸行是否为列表模式 (最多一行, 溢出渐隐). 在独立 thread 页应传 `false` 以自动换行.
+ * @param showReplies 是否显示简要回复块. thread 页的根评论下面就是全部回复, 传 `false`.
+ * @param showReplyTarget 回复了另一条回复时 ([UIComment.parentStableId] 有值), 在头行作者名后显示 "回复 @某人". 只在 thread 页的回复项上开.
  * @param onClickReply 点击评论主体回复. 仅当评论可回复 ([UIComment.canReply]) 时生效.
- * @param onExpandReplies 点击 "展开 N 条回复". `null` 时回落到 [onClickReply].
+ * @param onExpandReplies 点击回复块 ("展开 N 条回复"). `null` 时回落到 [onClickReply]; 有值时 Bangumi 评论的回复块也可点.
  * @param onToggleVote 点击点赞/点踩按钮, 参数为按下的按钮. `null` 时隐藏投票按钮.
  * @param onToggleReaction 贴纸回应 (点击已有贴纸或从选择器中选择). `null` 时隐藏贴纸按钮并禁用贴纸点击.
  * @param menu 上下文菜单回调. `null` 时不显示菜单入口.
@@ -150,6 +155,8 @@ fun CommentItem(
     modifier: Modifier = Modifier,
     showRating: Boolean = false,
     reactionsClipped: Boolean = true,
+    showReplies: Boolean = true,
+    showReplyTarget: Boolean = false,
     onClickReply: ((UIComment) -> Unit)? = null,
     onExpandReplies: ((UIComment) -> Unit)? = null,
     onToggleVote: ((UIComment, UICommentVote) -> Unit)? = null,
@@ -213,11 +220,27 @@ fun CommentItem(
             title = {
                 Text(
                     text = comment.author?.nickname ?: comment.author?.id.toString(),
+                    modifier = Modifier.weight(1f, fill = false),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.outline,
                     style = MaterialTheme.typography.bodySmall,
                 )
+                if (showReplyTarget && comment.parentStableId != null) {
+                    val replyToName = comment.replyTo?.let { it.nickname ?: it.id }
+                    Text(
+                        text = if (replyToName != null) {
+                            stringResource(Lang.comment_reply_to_name, replyToName)
+                        } else {
+                            stringResource(Lang.comment_reply_to_deleted)
+                        },
+                        modifier = Modifier.padding(start = 6.dp).testTag(CommentItemTestTags.ReplyTarget),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             },
             titleTrailing = if (showRating && (comment.rating ?: 0) > 0) {
                 {
@@ -251,7 +274,7 @@ fun CommentItem(
                     )
                 }
             } else null,
-            replies = if (comment.briefReplies.isNotEmpty()) {
+            replies = if (showReplies && comment.briefReplies.isNotEmpty()) {
                 {
                     CommentItemDefaults.RepliesBlock(
                         replies = comment.briefReplies,
