@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.ui.foundation
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -22,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.imageviewer.ImageViewerContent
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -66,7 +67,7 @@ fun rememberImageViewerHandler(): ImageViewerHandler {
  * 页面级图片查看器. 支持手势/滚轮/键盘缩放, 保存图片; 桌面端还支持把图片文件拖拽到其他应用.
  *
  * - 桌面端: 在真实窗口内时用独立窗口显示, 不遮挡页面; 预览/测试环境没有宿主窗口时回退到页面内覆盖层.
- * - Android/iOS: 覆盖整个页面的全屏层, 单击图片关闭.
+ * - Android/iOS: 覆盖整个页面的全屏层, 单击图片切换控件显隐.
  *
  * 在页面布局的最外层调用, 与 [ImageViewerBackHandler] 配合使用.
  */
@@ -80,7 +81,7 @@ expect fun ImageViewer(handler: ImageViewerHandler, onClose: () -> Unit)
 expect fun ImageViewerBackHandler(handler: ImageViewerHandler)
 
 /**
- * 覆盖整个页面的全屏查看器, 单击图片关闭.
+ * 覆盖整个页面的全屏查看器, 单击图片切换控件显隐.
  */
 @Composable
 internal fun ImageViewerOverlay(
@@ -88,19 +89,23 @@ internal fun ImageViewerOverlay(
     onClose: () -> Unit,
 ) {
     val model by handler.imageModel.collectAsStateWithLifecycle()
-    AniAnimatedVisibility(
-        visible = handler.viewing.value,
-        enter = LocalAniMotionScheme.current.animatedVisibility.standardEnter,
-        exit = LocalAniMotionScheme.current.animatedVisibility.standardExit,
+    val animation = LocalAniMotionScheme.current.animatedVisibility
+    AnimatedContent(
+        targetState = model.takeIf { handler.viewing.value },
         modifier = Modifier.fillMaxSize(),
-    ) {
-        ImageViewerContent(
-            model = model,
-            onClose = onClose,
-            modifier = Modifier.fillMaxSize(),
-            closeOnTap = true,
-            showCloseButton = true,
-        )
+        transitionSpec = { (animation.standardEnter togetherWith animation.standardExit).using(null) },
+        contentKey = { it != null },
+        label = "ImageViewerOverlay",
+    ) { displayedModel ->
+        // AnimatedContent 在退场结束前保留非空模型; 图片之间的切换复用同一个查看器.
+        if (displayedModel != null) {
+            ImageViewerContent(
+                model = displayedModel,
+                onClose = onClose,
+                modifier = Modifier.fillMaxSize(),
+                showCloseButton = true,
+            )
+        }
     }
 }
 
