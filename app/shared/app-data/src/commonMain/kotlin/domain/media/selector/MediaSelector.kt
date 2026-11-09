@@ -221,7 +221,7 @@ interface MediaSelector {
      *
      * 该操作优先级高于任何其他的选择. 即会覆盖 [trySelectDefault] 和 [trySelectCached] 的结果.
      *
-     * 重复 [select] 同一个 [Media] 时, 本函数立即返回 `false`, 不会做重复广播事件等.
+     * 重复选择当前 [Media] 时仍更新偏好, 但不广播资源切换事件、不重新加载媒体, 返回 `false`.
      *
      * @param trigger 广播的 [SelectEvent.trigger]. 选择会照常更新偏好, 与来源无关.
      * @return 当成功将 [selected] 更新为 [candidate] 时返回 `true`. 当 [selected] 已经是 [candidate] 时返回 `false`.
@@ -549,8 +549,8 @@ class DefaultMediaSelector(
      *
      * 设置当前选中的 [Media]，并在必要时更新用户偏好设置及广播事件。
      *
-     * 此函数会发出 [onBeforeSelect] 与 [onSelect] 两个事件，分别用于监听前置逻辑和最终结果。
-     * 若传入的 [candidate] 与当前选中的媒体相同，且 [force] 为 false，则不会进行任何操作。
+     * 资源切换时发出 [onBeforeSelect] 与 [onSelect] 两个事件，分别用于监听前置逻辑和最终结果。
+     * 当前资源的正式选择只记录偏好, 不广播资源切换事件; 临时选择相同资源不产生副作用。
      *
      * @param candidate 待选中的媒体项。
      * @param updatePreference 是否根据此媒体更新用户偏好（如分辨率、联盟、字幕语言等）。
@@ -566,8 +566,10 @@ class DefaultMediaSelector(
     ): Boolean {
         val previous = selected.value
 
-        // 若未启用强制切换，且目标与当前项相同，则跳过
-        if (!force && previous == candidate) return false
+        if (!force && previous == candidate) {
+            if (updatePreference) rememberPreference(candidate)
+            return false
+        }
 
         val event = SelectEvent(
             media = candidate,
@@ -581,24 +583,26 @@ class DefaultMediaSelector(
         selected.value = candidate // MSF, will not trigger new emit
 
         // 更新用户偏好
-        if (updatePreference) {
-            alliance.preferWithoutBroadcast(candidate.properties.alliance)
-            resolution.preferWithoutBroadcast(candidate.properties.resolution)
-            mediaSourceId.preferWithoutBroadcast(candidate.mediaSourceId)
-            candidate.properties.subtitleLanguageIds.singleOrNull()?.let {
-                subtitleLanguageId.preferWithoutBroadcast(it)
-            }
-
-            broadcastChangePreference()
-            if (candidate.kind == MediaSourceKind.WEB) {
-                broadcastWebSourcePreference(candidate.mediaSourceId)
-            }
-        }
+        if (updatePreference) rememberPreference(candidate)
 
         // 发出选择完成事件
         events.onSelect.emit(event)
 
         return true
+    }
+
+    private suspend fun rememberPreference(candidate: Media) {
+        alliance.preferWithoutBroadcast(candidate.properties.alliance)
+        resolution.preferWithoutBroadcast(candidate.properties.resolution)
+        mediaSourceId.preferWithoutBroadcast(candidate.mediaSourceId)
+        candidate.properties.subtitleLanguageIds.singleOrNull()?.let {
+            subtitleLanguageId.preferWithoutBroadcast(it)
+        }
+
+        broadcastChangePreference()
+        if (candidate.kind == MediaSourceKind.WEB) {
+            broadcastWebSourcePreference(candidate.mediaSourceId)
+        }
     }
 
     override fun unselect() {
