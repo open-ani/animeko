@@ -13,6 +13,8 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import me.him188.ani.utils.platform.currentPlatform
+import me.him188.ani.utils.platform.isAndroidTv
 
 /**
  * 播放器内核 (而非播放页 UI) 的配置. 每项只对使用对应内核的平台生效.
@@ -35,9 +37,12 @@ data class PlayerKernelConfig(
      * Media3 requires the effect graph to exist before the first prepare in order to
      * support switching effects while playback is active.
      *
+     * 提前建立 effect graph 会让画面改走 GPU 合成链路, 电视厂商的系统功能 (例如运动补偿)
+     * 可能因此无法生效, 所以 TV 上默认关闭.
+     *
      * @see [me.him188.ani.app.videoplayer.videoenhancement.ExoPlayerVideoEnhancementController]
      */
-    val exoPlayerInitEffectGraphInAdvance: Boolean = true,
+    val exoPlayerInitEffectGraphInAdvance: Boolean = !currentPlatform().isAndroidTv(),
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {
