@@ -1,0 +1,144 @@
+<!--
+  ~ Copyright (C) 2024-2026 OpenAni and contributors.
+  ~
+  ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+  ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+  ~
+  ~ https://github.com/open-ani/ani/blob/main/LICENSE
+  -->
+
+<!--@formatter:off-->
+
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <!-- Remote control -->
+    <string name="tv_player_seek_preview">پیش‌نمایش در موقعیت انتخاب‌شده</string>
+    <string name="tv_player_remote_confirm">تأیید</string>
+    <string name="tv_player_remote_back">بازگشت</string>
+    <string name="tv_player_seek_jump">پرش</string>
+    <string name="tv_player_show_recommendations">نمایش پیشنهادها</string>
+    <string name="tv_player_collapse_recommendations">بالا یا بازگشت برای بستن</string>
+    <string name="tv_player_scroll_hint">پیمایش با ↑↓</string>
+    <string name="tv_player_scroll_reveal_hint">پیمایش با ↑↓ · دکمهٔ تأیید برای نمایش محتوای پنهان</string>
+    <string name="tv_player_scroll_hide_hint">پیمایش با ↑↓ · دکمهٔ تأیید برای پنهان کردن دوبارهٔ محتوا</string>
+    <string name="tv_player_adjusting">در حال تنظیم</string>
+    <string name="tv_player_following_host_hint">در حال پیروی از میزبان. ابتدا حالت پیروی را در %1$s خاموش کنید.</string>
+
+    <string name="tv_rating_controls_hint">تنظیم امتیاز با ←/→ · تأیید برای ثبت · بازگشت برای لغو</string>
+
+    <!-- Playback -->
+    <string name="video_player_danmaku_on">دانماکو روشن</string>
+    <string name="video_player_danmaku_off">دانماکو خاموش</string>
+    <string name="video_player_retry">امتحان دوبارهٔ پخش</string>
+    <string name="video_player_select_another_source">انتخاب منبعی دیگر</string>
+    <string name="video_player_fast_forwarding">جلو بردن سریع با سرعت %1$s ▶▶</string>
+    <string name="video_player_no_subtitle_tracks">این منبع زیرنویس قابل تغییری ندارد</string>
+    <string name="video_player_operation_failed">عملیات ناموفق بود. دوباره امتحان کنید، و برای اقدامات مربوط به حساب مطمئن شوید که وارد شده‌اید.</string>
+    <string name="video_player_chapter">بخش</string>
+    <plurals name="video_player_skip_countdown">
+        <item quantity="one">رد کردن %2$s تا %1$d ثانیهٔ دیگر</item>
+        <item quantity="other">رد کردن %2$s تا %1$d ثانیهٔ دیگر</item>
+    </plurals>
+
+    <!-- Episodes and collection -->
+    <string name="subject_episode_actions">اقدامات قسمت</string>
+    <string name="subject_episode_play_label">پخش %1$s</string>
+    <string name="subject_collection_remove_confirm_short">لغو دنبال کردن این انیمه؟</string>
+    <string name="subject_collection_keep">ادامهٔ دنبال کردن</string>
+    <string name="subject_collection_change_only">فقط تغییر وضعیت مجموعه</string>
+    <string name="subject_collection_mark_all_watched_action">علامت‌گذاری همهٔ قسمت‌ها به‌عنوان دیده‌شده</string>
+
+    <!-- Recommendations -->
+    <string name="subject_episode_recommendations_loading">در حال بارگذاری پیشنهادها…</string>
+    <string name="subject_episode_recommendations_empty">پیشنهادی موجود نیست</string>
+
+    <!-- Empty states -->
+    <string name="foundation_empty_content">بدون محتوا</string>
+    <string name="foundation_loading">در حال بارگذاری…</string>
+    <string name="foundation_anonymous">ناشناس</string>
+
+    <!-- Comments -->
+    <string name="comment_read_full">خواندن نظر کامل</string>
+    <string name="comment_full">نظر کامل</string>
+    <string name="comment_load_failed">بارگذاری نظرات ناموفق بود</string>
+    <string name="comment_show_hidden">نمایش محتوای پنهان</string>
+    <string name="comment_hide_hidden">پنهان کردن دوبارهٔ محتوا</string>
+    <string name="comment_preview_quote">[نقل‌قول]</string>
+    <string name="comment_preview_image">[تصویر]</string>
+
+    <!-- Danmaku -->
+    <string name="episode_danmaku_sources_timing">منابع و زمان‌بندی دانماکو</string>
+    <string name="episode_danmaku_timing">تنظیم زمان‌بندی</string>
+    <string name="episode_danmaku_match_title">تطبیق دانماکو</string>
+    <string name="episode_danmaku_match_instructions">یک انیمه را جستجو کرده و قسمت منطبق را انتخاب کنید</string>
+    <string name="episode_danmaku_match_subject_name">نام انیمه</string>
+    <string name="episode_danmaku_match_searching">در حال جستجو…</string>
+    <string name="episode_danmaku_match_no_results">نتیجه‌ای یافت نشد. نام را تغییر داده و دوباره امتحان کنید.</string>
+    <string name="episode_danmaku_match_back">بازگشت به نتایج انیمه</string>
+    <string name="episode_danmaku_match_retry">جستجوی دوباره</string>
+    <string name="episode_danmaku_match_empty_query">نام یک انیمه را وارد کنید</string>
+    <string name="episode_danmaku_match_failed">بارگذاری نتایج ناموفق بود. دوباره امتحان کنید.</string>
+    <string name="episode_danmaku_match_updated">تطبیق دانماکو به‌روزرسانی شد</string>
+    <string name="episode_danmaku_match_approximate">تطبیق تقریبی: %1$s · %2$s</string>
+    <string name="episode_danmaku_matched_current">منطبق با این قسمت</string>
+    <string name="episode_danmaku_match_with_count">دانماکو: %2$d · %1$s</string>
+
+    <!-- Sources -->
+    <string name="media_selector_default_line">خط پیش‌فرض</string>
+    <string name="media_selector_select_source_short">منبع</string>
+    <string name="media_selector_show_excluded">نمایش منابع مستثنی‌شده</string>
+    <string name="media_selector_source_count">منابع داده: %1$d</string>
+    <string name="media_selector_query_again">جستجوی دوباره</string>
+    <string name="media_selector_querying">در حال جستجوی منابع…</string>
+    <string name="media_selector_no_online_sources">هیچ منبع آنلاینی در دسترس نیست. یکی در «تنظیمات» اضافه کنید.</string>
+    <string name="media_selector_no_lines">هیچ خط در دسترسی یافت نشد</string>
+    <string name="media_selector_results_excluded">نتایج مستثنی شدند</string>
+    <string name="media_selector_no_resources">هیچ منبعی یافت نشد</string>
+    <string name="media_selector_waiting_query">در انتظار جستجو</string>
+    <string name="media_selector_result_count">نتایج: %1$d</string>
+    <string name="media_selector_resource">منبع پخش</string>
+    <string name="media_selector_exclusion_manual">مستثنی‌شده: %1$s · همچنان می‌توانید آن را به‌صورت دستی انتخاب کنید</string>
+    <string name="media_selector_exclusion_complete_single_episode">منبع تک‌قسمتی برای یک انیمهٔ کامل‌شده</string>
+    <string name="media_selector_exclusion_possibly_unsupported">ممکن است پخش‌کننده از این منبع پشتیبانی نکند</string>
+    <string name="media_selector_exclusion_sequel">ممکن است متعلق به دنباله باشد</string>
+    <string name="media_selector_exclusion_other_season">ممکن است متعلق به فصل دیگری باشد</string>
+    <string name="media_selector_episode_info_failed">بارگذاری اطلاعات قسمت ناموفق بود. دوباره جستجو کنید.</string>
+
+    <!-- Watch together -->
+    <string name="watch_together_leave_explanation">پیروی از میزبان متوقف خواهد شد و می‌توانید به‌طور مستقل به تماشا ادامه دهید.</string>
+    <string name="watch_together_invite_helper">برای تماشای گروهی، نام اتاق و گذرواژه را با دوستان خود به اشتراک بگذارید.</string>
+    <string name="tv_settings_sources_description">مشاهدهٔ منابع و مدیریت در دسترس بودن آن‌ها.</string>
+    <string name="tv_settings_subscriptions_description">فعال یا غیرفعال کردن یک اشتراک، وضعیت همهٔ منابع آن را نیز تغییر می‌دهد. منابع جداگانه را می‌توان به‌طور مستقل تغییر وضعیت داد.</string>
+    <string name="tv_settings_subscription_sources_count">%1$d منبع داده</string>
+    <string name="tv_settings_reorder_hint">انتخاب مورد با ↑↓ · انتخاب برای جابه‌جایی · بازگشت برای پایان مرتب‌سازی</string>
+    <string name="tv_settings_moving_hint">جابه‌جایی با ↑↓ · انتخاب برای تأیید موقعیت · بازگشت برای لغو این جابه‌جایی</string>
+    <string name="tv_settings_open_on_tv">باز کردن در این تلویزیون</string>
+    <string name="tv_settings_scan_link">برای باز کردن این صفحه با گوشی خود اسکن کنید</string>
+    <string name="tv_exploration_more_details">جزئیات بیشتر</string>
+    <string name="tv_nav_schedule">برنامهٔ پخش</string>
+    <string name="tv_login_or">یا</string>
+    <string name="tv_login_qr_title">ورود با گوشی تلفن همراه</string>
+    <string name="tv_login_qr_hint">از «اسکن برای ورود» در Animeko در گوشی خود استفاده کنید، یا با دوربین گوشی اسکن کنید</string>
+    <string name="tv_login_qr_expires_in">کد QR تا %1$s دیگر بازخوانی می‌شود</string>
+    <string name="tv_login_qr_content_description">کد QR ورود</string>
+    <string name="tv_login_qr_loading">در حال بارگذاری کد QR…</string>
+    <string name="tv_login_qr_scanned">اسکن شد</string>
+    <string name="tv_login_qr_scanned_hint">در گوشی خود روی «تأیید» ضربه بزنید</string>
+    <string name="tv_login_qr_scanned_account">حساب: %1$s</string>
+    <string name="tv_login_qr_success">وارد شدید</string>
+    <string name="tv_login_qr_rejected">در گوشی رد شد</string>
+    <string name="tv_login_qr_failed">کد QR بارگذاری نشد. شبکهٔ خود را بررسی کنید</string>
+    <string name="tv_login_qr_refresh">بازخوانی کد QR</string>
+    <string name="tv_settings_network">شبکه</string>
+    <string name="tv_settings_proxy_address_invalid">یک آدرس پروکسی معتبر HTTP(S) یا SOCKS وارد کنید</string>
+    <string name="tv_update_download">دانلود به‌روزرسانی</string>
+    <string name="tv_update_install">نصب</string>
+    <string name="tv_update_cancel_download">لغو دانلود</string>
+    <string name="tv_update_later">بعداً</string>
+    <string name="tv_update_downloading">در حال دانلود… %1$s</string>
+    <string name="tv_update_download_failed">دانلود ناموفق بود</string>
+    <string name="tv_update_install_hint">اگر برنامهٔ نصب باز نشد، در تنظیمات سیستم به Animeko TV اجازهٔ نصب برنامه‌های ناشناخته را بدهید، سپس دوباره «نصب» را انتخاب کنید.</string>
+    <string name="tv_update_expired_message">این نسخه دیگر پشتیبانی نمی‌شود. برای ادامهٔ استفاده از Animeko برنامه را به‌روزرسانی کنید. همچنین می‌توانید آخرین نسخه را از https://myani.org دانلود کنید</string>
+    <string name="tv_update_expired_message_with_latest">این نسخه دیگر پشتیبانی نمی‌شود. برای ادامهٔ استفاده از Animeko به نسخهٔ %1$s به‌روزرسانی کنید. همچنین می‌توانید آن را از https://myani.org دانلود کنید</string>
+</resources>
+
+<!--@formatter:on-->
