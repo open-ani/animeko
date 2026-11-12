@@ -35,6 +35,17 @@ data class UISettings(
     val appLanguage: @Serializable(LocaleSerializer::class) Locale? = null,
 
     /**
+     * 新番时间表显示放送时刻所使用的时区 ID (如 `Asia/Tokyo`).
+     *
+     * 为 `null` 时使用系统时区 ([kotlinx.datetime.TimeZone.currentSystemDefault]).
+     * 该偏好同时决定时间表的日期划分: 放送时刻换算到该时区后, 归属到对应的那一天.
+     *
+     * @since 6.3.0
+     * @see me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
+     */
+    val scheduleTimeZoneId: String? = null,
+
+    /**
      * 启动 App 时的初始页面
      */
     val mainSceneInitialPage: MainScreenPage = MainScreenPage.Exploration,
