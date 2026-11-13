@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
@@ -589,6 +590,7 @@ fun PlayerGestureHost(
     onTogglePauseResume: () -> Unit = {},
     onToggleDanmaku: () -> Unit = {},
     onTogglePlayerStats: () -> Unit = {},
+    shortcuts: PlayerShortcutConfig = PlayerShortcutConfig.Default,
 ) {
     val onTogglePauseResumeState by rememberUpdatedState(onTogglePauseResume)
     val isFullscreen = fullscreenState.isFullscreen
@@ -625,6 +627,7 @@ fun PlayerGestureHost(
         val playerFocusState = controllerState.focusState
 
         val keyboardHandler = rememberPlayerKeyboardShortcuts(
+            shortcuts = shortcuts,
             seekerState = seekerState,
             fastSkipState = fastSkipState,
             currentPlaybackSpeed = playbackSpeedControllerState?.currentSpeed,

@@ -67,6 +67,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.player.ChunkState
@@ -258,6 +259,7 @@ internal fun EpisodeVideoImpl(
     ),
     enableFoldableHoverMode: Boolean = true,
     fastForwardSpeed: Float = 3f,
+    shortcuts: PlayerShortcutConfig = PlayerShortcutConfig.Default,
     contentWindowInsets: WindowInsets = WindowInsets(0.dp),
     pictureInPictureController: PictureInPictureController = NoOpPictureInPictureController,
     isInPictureInPicture: Boolean = false,
@@ -432,6 +434,7 @@ internal fun EpisodeVideoImpl(
                     family = gestureFamily,
                     indicatorState,
                     fastForwardSpeed = fastForwardSpeed,
+                    shortcuts = shortcuts,
                 )
             },
             playerStatsOverlay = {
