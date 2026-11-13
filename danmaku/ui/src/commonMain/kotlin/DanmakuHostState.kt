@@ -476,7 +476,7 @@ class DanmakuHostState(
      * - For fixed danmakus, ensures placement time and [FixedDanmaku.y] coordinate are set.
      */
     private fun calculateDanmakuInFrame() {
-        for (danmaku in DanmakuCollectionIterator(floatingTrack)) {
+        forEachFloatingDanmaku { danmaku ->
             // calculate y once
             if (danmaku.y.isNaN()) danmaku.y = danmaku.calculatePosY()
         }
@@ -782,13 +782,21 @@ class DanmakuHostState(
 //        }
     }
 
-    internal fun forEachFixedDanmaku(block: (FixedDanmaku<StyledDanmaku>) -> Unit) {
-        DanmakuCollectionIterator(topTrack).forEach { block(it) }
-        DanmakuCollectionIterator(bottomTrack).forEach { block(it) }
+    /** Track lists must not be structurally modified during [block]. */
+    internal inline fun forEachFixedDanmaku(block: (FixedDanmaku<StyledDanmaku>) -> Unit) {
+        for (index in topTrack.indices) {
+            topTrack[index].forEachDanmaku(block)
+        }
+        for (index in bottomTrack.indices) {
+            bottomTrack[index].forEachDanmaku(block)
+        }
     }
 
-    internal fun forEachFloatingDanmaku(block: (FloatingDanmaku<StyledDanmaku>) -> Unit) {
-        DanmakuCollectionIterator(floatingTrack).forEach { block(it) }
+    /** Track lists must not be structurally modified during [block]. */
+    internal inline fun forEachFloatingDanmaku(block: (FloatingDanmaku<StyledDanmaku>) -> Unit) {
+        for (index in floatingTrack.indices) {
+            floatingTrack[index].forEachDanmaku(block)
+        }
     }
 
 

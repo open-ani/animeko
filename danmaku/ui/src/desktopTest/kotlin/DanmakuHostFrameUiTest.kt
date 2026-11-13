@@ -44,10 +44,11 @@ class DanmakuHostFrameUiTest {
         id: String,
         playTimeMillis: Long,
         text: String = "danmaku $id",
+        location: DanmakuLocation = DanmakuLocation.NORMAL,
     ) = DanmakuPresentation(
         DanmakuInfo(
             id, DanmakuServiceId("test"), "sender",
-            DanmakuContent(playTimeMillis, 0xffffff, text, DanmakuLocation.NORMAL),
+            DanmakuContent(playTimeMillis, 0xffffff, text, location),
         ),
         isSelf = false,
     )
@@ -55,6 +56,12 @@ class DanmakuHostFrameUiTest {
     private fun DanmakuHostState.allFloating(): List<FloatingDanmaku<StyledDanmaku>> {
         val result = mutableListOf<FloatingDanmaku<StyledDanmaku>>()
         forEachFloatingDanmaku { result.add(it) }
+        return result
+    }
+
+    private fun DanmakuHostState.allFixed(): List<FixedDanmaku<StyledDanmaku>> {
+        val result = mutableListOf<FixedDanmaku<StyledDanmaku>>()
+        forEachFixedDanmaku { result.add(it) }
         return result
     }
 
@@ -175,6 +182,57 @@ class DanmakuHostFrameUiTest {
                 "danmaku from before the seek should be gone",
             )
             assertNotNull(state.floatingById("c"), "danmaku at the seek target should be visible")
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun `frame traversal preserves track order`() = runAniComposeUiTest {
+        mainClock.autoAdvance = false
+        val state = DanmakuHostState(
+            mutableStateOf(DanmakuConfig(displayArea = 1.0f, speed = 20f, enableBottom = true)),
+        )
+        val scope = CoroutineScope(Dispatchers.Main + Job())
+
+        try {
+            setContent {
+                DanmakuHost(state, Modifier.size(500.dp, 300.dp))
+            }
+            mainClock.advanceTimeByFrame()
+            waitUntil("all track types created", timeoutMillis = 10_000) {
+                mainClock.advanceTimeByFrame()
+                state.floatingTrack.isNotEmpty() && state.topTrack.isNotEmpty() && state.bottomTrack.isNotEmpty()
+            }
+
+            val placements = mutableListOf<Boolean>()
+            scope.launch {
+                placements.add(state.trySend(danmaku("floating", 5_000)))
+                placements.add(state.trySend(danmaku("top", 5_000, location = DanmakuLocation.TOP)))
+                placements.add(state.trySend(danmaku("bottom", 5_000, location = DanmakuLocation.BOTTOM)))
+            }
+            waitUntil("all danmaku placed", timeoutMillis = 10_000) {
+                mainClock.advanceTimeByFrame()
+                placements.size == 3 && state.allFixed().size == 2
+            }
+            assertTrue(placements.all { it })
+
+            val template = state.allFloating().single().danmaku
+            state.floatingTrack[0].place(template, 1_000)
+            state.floatingTrack[1].place(template, 2_000)
+            state.topTrack.first { it.currentDanmaku == null }.place(template, 3_000)
+            assertEquals(3, state.allFloating().size)
+            assertEquals(3, state.allFixed().size)
+
+            assertEquals(DanmakuCollectionIterator(state.floatingTrack).toList(), state.allFloating())
+            assertEquals(
+                DanmakuCollectionIterator(state.topTrack + state.bottomTrack).toList(),
+                state.allFixed(),
+            )
+            assertEquals(
+                listOf("top", "floating", "bottom"),
+                state.allFixed().map { it.danmaku.presentation.danmaku.id },
+            )
         } finally {
             scope.cancel()
         }
