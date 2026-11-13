@@ -152,6 +152,21 @@ class TvNavigationRailUiTest {
     }
 
     @Test
+    fun playbackHistoryIsReachableFromTheRailAndKeepsTheShell() = runAniComposeUiTest {
+        val fixture = mount()
+        key(Key.Menu)
+        awaitRailFocus("Explore")
+        repeat(3) { key(Key.DirectionDown) }
+        awaitRailFocus("Playback History")
+        key(Key.DirectionCenter)
+        settle()
+        awaitContentFocus()
+        assertEquals(TvShellContent.PlaybackHistory, fixture.page)
+        onNodeWithTag("rail-test-page").assertExists()
+        onNodeWithTag("tv-main-navigation").assertExists()
+    }
+
+    @Test
     fun outgoingTabCannotTakeFocusDuringTheShellTransition() = runAniComposeUiTest {
         val fixture = mount()
         val outgoing = fixture.scopes.getValue(TvShellContent.Exploration)
@@ -212,7 +227,7 @@ class TvNavigationRailUiTest {
     private fun AniComposeUiTest.railItem(label: String): SemanticsNodeInteraction =
         onNode(hasContentDescription(label) and hasAnyAncestor(hasTestTag("tv-main-navigation")))
 
-    private val railLabels = listOf("Search", "Explore", "Schedule", "Collection", "Settings", "Sign In")
+    private val railLabels = listOf("Search", "Explore", "Schedule", "Collection", "Playback History", "Settings", "Sign In")
 
     private fun AniComposeUiTest.assertItemWidths(expected: Float) {
         railLabels.forEach { label ->
