@@ -92,6 +92,7 @@ import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.subtitleTracks
 import org.openani.mediamp.source.MediaData
 import org.openani.mediamp.togglePlayWhenReady
+import kotlin.math.abs
 
 /**
  * 将共享播放状态映射为 TV 展示状态，并将遥控器 Intent 接入共享播放操作。
@@ -117,6 +118,11 @@ class TvEpisodeViewModel(
     private val playerOptions = MutableStateFlow(TvPlayerOptionsState())
     private val danmakuMatch = MutableStateFlow(TvDanmakuMatchState())
     private var matchingJob: Job? = null
+
+    /** 已提交 seek 的目标; 播放位置追上后清除预览点, 避免指示器与时间回跳. */
+    private var committedSeekTarget: Long? = null
+    private var committedSeekWaitJob: Job? = null
+    private var committedSeekTimeout: Job? = null
     private val sourceSelection = MutableStateFlow(TvSourceSelectionState())
     private val events = Channel<TvEpisodeEvent>(Channel.BUFFERED)
     val actionEvents = events.receiveAsFlow()
@@ -249,10 +255,45 @@ class TvEpisodeViewModel(
         player.togglePlayWhenReady()
     }
 
-    private fun seekTo(positionMillis: Long) {
-        if (!canControlPlayback()) return
+    private fun seekTo(positionMillis: Long): Boolean {
+        if (!canControlPlayback()) return false
         val duration = player.mediaProperties.value?.durationMillis?.takeIf { it > 0 } ?: Long.MAX_VALUE
         player.seekTo(positionMillis.coerceIn(0, duration))
+        return true
+    }
+
+    /**
+     * 提交 seek 后保留预览点, 等界面显示的位置追上目标 (或超时) 再清除.
+     *
+     * seek 是异步的; 而界面位置来自 [positionFlow] 的 500ms 采样, 会在 seek 落地后仍短暂停留在旧值.
+     * 必须以 [positionFlow] (界面实际显示的位置) 为准, 否则预览点会先被清除, 时间和指示器回跳约半秒.
+     */
+    private fun trackCommittedSeek(targetMillis: Long) {
+        committedSeekTarget = targetMillis
+        committedSeekWaitJob?.cancel()
+        committedSeekTimeout?.cancel()
+        committedSeekWaitJob = backgroundScope.launch(Dispatchers.Main) {
+            positionFlow.first { position -> abs(position - targetMillis) <= COMMITTED_SEEK_SETTLE_DISTANCE_MILLIS }
+            clearCommittedSeekPreview(targetMillis)
+        }
+        committedSeekTimeout = backgroundScope.launch(Dispatchers.Main) {
+            delay(COMMITTED_SEEK_GRACE_TIMEOUT_MILLIS)
+            clearCommittedSeekPreview(targetMillis)
+        }
+    }
+
+    private fun clearCommittedSeekPreview(targetMillis: Long) {
+        if (committedSeekTarget != targetMillis) return
+        cancelCommittedSeekPreview()
+        playbackInteraction.setPreview(null)
+    }
+
+    private fun cancelCommittedSeekPreview() {
+        committedSeekTarget = null
+        committedSeekWaitJob?.cancel()
+        committedSeekWaitJob = null
+        committedSeekTimeout?.cancel()
+        committedSeekTimeout = null
     }
 
     private fun requestEpisode(episodeId: Int) {
@@ -382,6 +423,8 @@ class TvEpisodeViewModel(
             TvEpisodeIntent.CancelAutoSkip -> cancelAutoSkip()
             TvEpisodeIntent.TogglePause -> togglePause()
             is TvEpisodeIntent.PreviewBy -> {
+                // 重新开始调整: 旧的提交目标不再驱动预览点的清除.
+                cancelCommittedSeekPreview()
                 val duration = player.mediaProperties.value?.durationMillis ?: 0
                 if (duration > 0) {
                     val base = playbackInteraction.scrubMillis ?: player.getCurrentPositionMillis()
@@ -389,10 +432,19 @@ class TvEpisodeViewModel(
                 }
             }
             is TvEpisodeIntent.PreviewSeek -> {
+                if (intent.positionMillis == null) cancelCommittedSeekPreview()
                 val duration = player.mediaProperties.value?.durationMillis ?: 0
                 playbackInteraction.setPreview(intent.positionMillis?.coerceIn(0, duration.coerceAtLeast(0)))
             }
-            is TvEpisodeIntent.SeekTo -> seekTo(intent.positionMillis)
+            is TvEpisodeIntent.SeekTo -> {
+                if (seekTo(intent.positionMillis)) {
+                    trackCommittedSeek(intent.positionMillis)
+                } else {
+                    // 播放器未接受 seek: 预览点立即清除, 不阻塞界面.
+                    cancelCommittedSeekPreview()
+                    playbackInteraction.setPreview(null)
+                }
+            }
             is TvEpisodeIntent.SwitchNeighbor -> switchToNeighborEpisode(intent.offset)
             TvEpisodeIntent.NextEpisode -> switchToNeighborEpisode(1)
             is TvEpisodeIntent.HoldSpeed -> setSpeedHold(intent.engaged)
@@ -876,5 +928,11 @@ class TvEpisodeViewModel(
     companion object {
         /** 弹幕列表面板保留上限. */
         const val DANMAKU_LIST_CAP = 500
+
+        /** 播放位置与已提交 seek 目标的距离小于该值即视为追上, 可以清除预览点. */
+        private const val COMMITTED_SEEK_SETTLE_DISTANCE_MILLIS = 1_000L
+
+        /** seek 迟迟未落地时的兜底时长: 超时无条件清除预览点. */
+        private const val COMMITTED_SEEK_GRACE_TIMEOUT_MILLIS = 5_000L
     }
 }

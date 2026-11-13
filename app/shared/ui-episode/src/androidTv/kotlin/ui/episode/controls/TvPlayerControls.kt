@@ -73,12 +73,8 @@ import androidx.tv.material3.Text
 import kotlinx.coroutines.delay
 import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.tv_player_remote_back
-import me.him188.ani.app.ui.lang.tv_player_remote_confirm
-import me.him188.ani.app.ui.lang.tv_player_seek_jump
 import me.him188.ani.app.ui.lang.tv_player_seek_preview
 import me.him188.ani.app.ui.lang.tv_player_show_recommendations
-import me.him188.ani.app.ui.lang.video_player_cancel
 import me.him188.ani.app.ui.lang.video_player_chapter
 import me.him188.ani.app.ui.lang.video_player_danmaku_off
 import me.him188.ani.app.ui.lang.video_player_danmaku_on
@@ -92,7 +88,6 @@ import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.tv.ui.episode.TvEpisodeTitle
 import me.him188.ani.tv.ui.episode.TvPlayerOptionsState
-import me.him188.ani.tv.ui.episode.components.TvRemoteHint
 import me.him188.ani.tv.ui.episode.presentation.TvPlayerPanel
 import me.him188.ani.tv.ui.episode.presentation.title
 import me.him188.ani.tv.ui.episode.source.TvSourceIcon
@@ -201,6 +196,8 @@ internal fun TvPlayerTitleBar(title: TvEpisodeTitle, modifier: Modifier = Modifi
  * 播放器底部控制层:
  * 选集条/面板/预览 -> 胶囊行 -> 进度条行 -> 图标行 -> 推荐提示.
  *
+ * [timelineOnly] (隐藏状态下按键唤出的拖动预览) 只组合预览块与进度条行, 其余行不出现.
+ *
  * 纯视图组件: 焦点锚点/按键语义由 Screen 组装成 modifier 注入
  * ([seekBarModifier]/[iconRowModifier], §14.7-2), 本层只画状态.
  */
@@ -214,6 +211,7 @@ internal fun TvPlayerControlsOverlay(
     cacheProgress: MediaCacheProgressInfo?,
     hasNextEpisode: Boolean,
     scrubMillis: Long?,
+    timelineOnly: Boolean,
     speedLabel: String,
     aspectLabel: String,
     activePanel: TvPlayerPanel?,
@@ -329,15 +327,11 @@ internal fun TvPlayerControlsOverlay(
                                 val name = chapter.name ?: stringResource(Lang.video_player_chapter)
                                 if (name.isNotBlank()) Text(name, color = TvOptionDefaults.Muted, style = MaterialTheme.typography.bodySmall)
                             }
-                            Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                TvRemoteHint(stringResource(Lang.tv_player_remote_confirm), stringResource(Lang.tv_player_seek_jump))
-                                TvRemoteHint(stringResource(Lang.tv_player_remote_back), stringResource(Lang.video_player_cancel))
-                            }
                         }
                     }
                 }
 
-                TvOptionsRow(
+                if (!timelineOnly) TvOptionsRow(
                     rowModifier = Modifier.padding(4.dp).testTag("tv-player-chips"),
                     anchors = optionAnchors,
                     activeKey = activePanel,
@@ -401,7 +395,7 @@ internal fun TvPlayerControlsOverlay(
                 }
 
                 // 图标行: 左组 (播放暂停/下一集/选集/弹幕) · 右组 (数据源/倍速/字幕/画面比例)
-                Row(
+                if (!timelineOnly) Row(
                     iconRowModifier
                         .fillMaxWidth()
                         .testTag("tv-player-icon-row")
@@ -479,7 +473,7 @@ internal fun TvPlayerControlsOverlay(
             }
         }
 
-        Row(
+        if (!timelineOnly) Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(top = 8.dp)
