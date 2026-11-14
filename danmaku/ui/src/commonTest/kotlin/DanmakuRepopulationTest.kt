@@ -17,10 +17,24 @@ import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 
 class DanmakuRepopulatorTest {
+
+    @Test
+    fun `location enabled follows each danmaku setting`() {
+        val config = DanmakuConfig(
+            enableFloating = false,
+            enableTop = true,
+            enableBottom = false,
+        )
+
+        assertFalse(config.isLocationEnabled(DanmakuLocation.NORMAL))
+        assertTrue(config.isLocationEnabled(DanmakuLocation.TOP))
+        assertFalse(config.isLocationEnabled(DanmakuLocation.BOTTOM))
+    }
 
     @Test
     fun `repopulate with empty list - onSend should not be called`() = runTest {

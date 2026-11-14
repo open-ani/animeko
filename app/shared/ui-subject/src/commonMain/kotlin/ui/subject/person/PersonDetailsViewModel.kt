@@ -28,8 +28,8 @@ import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.person.PersonCommentRepository
 import me.him188.ani.app.data.repository.person.PersonDetailsRepository
-import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.comment.GetCommentImageStatusUseCase
+import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.comment.UploadCommentImageUseCase
 import me.him188.ani.app.ui.comment.BangumiCommentSticker
 import me.him188.ani.app.ui.comment.CommentEditorState
@@ -41,6 +41,8 @@ import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.EditCommentSticker
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.reportSnapshotText
+import me.him188.ani.app.ui.comment.thread.CommentThreadHost
+import me.him188.ani.app.ui.comment.thread.personCommentThreadState
 import me.him188.ani.app.ui.comment.toDataReason
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
@@ -155,6 +157,9 @@ abstract class PeopleDetailsViewModel(
             reportState = reportState,
             editorState = editorState,
             originalCommentsUrl = originalCommentsUrl,
+            threadHost = CommentThreadHost { key, snapshot ->
+                personCommentThreadState(key, commentTarget, snapshot, commentRepository, backgroundScope)
+            },
             onRefresh = {
                 commentsRestarter.restart()
                 detailsRestarter.restart()

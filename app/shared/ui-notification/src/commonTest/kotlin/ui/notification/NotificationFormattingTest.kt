@@ -24,6 +24,7 @@ import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.notification.AccountSecurityEvent
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
+import me.him188.ani.app.data.models.notification.CommentReplier
 import me.him188.ani.app.data.models.notification.NotificationDestination
 import me.him188.ani.app.data.models.notification.NotificationDisplay
 import me.him188.ani.app.data.models.notification.NotificationIcon
@@ -35,7 +36,9 @@ import me.him188.ani.app.ui.lang.exploration_schedule_episode
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound_generic
 import me.him188.ani.app.ui.lang.notification_account_third_party_unbound_supporting
+import me.him188.ani.app.ui.lang.notification_comment_reply_row_title
 import me.him188.ani.app.ui.lang.notification_go_to_character
+import me.him188.ani.app.ui.lang.notification_go_to_comment
 import me.him188.ani.app.ui.lang.notification_go_to_episode
 import me.him188.ani.app.ui.lang.notification_go_to_person
 import me.him188.ani.app.ui.lang.notification_go_to_subject
@@ -205,6 +208,7 @@ class NotificationFormattingTest {
                 onOpenSubject = { subjectId, placeholder -> calls += "subject:$subjectId:${placeholder?.nameCN}" },
                 onOpenPerson = { calls += "person:$it" },
                 onOpenCharacter = { calls += "character:$it" },
+                onOpenCommentThread = { target, commentId, replyId -> calls += "comment:$target:$commentId:$replyId" },
                 onReauthorizeBangumi = noop.onReauthorizeBangumi,
                 onOpenAccountSettings = noop.onOpenAccountSettings,
                 onCheckUpdate = noop.onCheckUpdate,
@@ -336,12 +340,109 @@ class NotificationFormattingTest {
     @Test
     fun `account security opens account settings and other types open the detail`() {
         for (event in AccountSecurityEvent.entries) {
-            assertEquals(NotificationOpenTarget.ACCOUNT_SETTINGS, notificationOpenTarget(accountSecurity(event)))
+            assertEquals(
+                NotificationOpenTarget.AccountSettings,
+                notificationOpenTarget(createTestAccountSecurity(event = event)),
+            )
         }
-        assertEquals(NotificationOpenTarget.DETAIL, notificationOpenTarget(createTestReportResult().content))
-        assertEquals(NotificationOpenTarget.DETAIL, notificationOpenTarget(createTestSystemNotification().content))
-        assertEquals(NotificationOpenTarget.DETAIL, notificationOpenTarget(createTestBangumiExpired().content))
-        assertEquals(NotificationOpenTarget.DETAIL, notificationOpenTarget(createTestGenericNotification().content))
+        assertEquals(NotificationOpenTarget.Detail, notificationOpenTarget(createTestReportResult()))
+        assertEquals(NotificationOpenTarget.Detail, notificationOpenTarget(createTestSystemNotification()))
+        assertEquals(NotificationOpenTarget.Detail, notificationOpenTarget(createTestBangumiExpired()))
+        assertEquals(NotificationOpenTarget.Detail, notificationOpenTarget(createTestGenericNotification()))
+    }
+
+    // endregion
+
+    // region comment reply
+
+    private val episodeThread = NotificationDestination.CommentThread(
+        NotificationDestination.Episode(400602, 1227087),
+        "ani:root-1",
+        "ani:reply-1",
+    )
+
+    @Test
+    fun `comment reply opens the thread directly and falls back to the detail without a host`() {
+        assertEquals(NotificationOpenTarget.Destination(episodeThread), notificationOpenTarget(createTestCommentReply()))
+        val person = createTestCommentReply(
+            targetType = CommentReportTargetType.PERSON_COMMENT,
+            subjectId = null,
+            episodeId = null,
+            personId = 7,
+            targetName = "種﨑敦美",
+        )
+        assertEquals(
+            NotificationOpenTarget.Destination(
+                NotificationDestination.CommentThread(NotificationDestination.Person(7), "ani:root-1", "ani:reply-1"),
+            ),
+            notificationOpenTarget(person),
+        )
+        // 内容里没有评论所在的对象时退回通用展示内容中的位置; 两边都没有时打开详情
+        val noHost = createTestCommentReply(subjectId = null, episodeId = null, target = NotificationTarget(subjectId = 3))
+        assertEquals(
+            NotificationOpenTarget.Destination(NotificationDestination.Subject(3)),
+            notificationOpenTarget(noHost),
+        )
+        assertEquals(
+            NotificationOpenTarget.Detail,
+            notificationOpenTarget(createTestCommentReply(subjectId = null, episodeId = null, target = null)),
+        )
+    }
+
+    @Test
+    fun `comment reply row shows the target the replier and the first line of the reply`() {
+        val notification = createTestCommentReply(body = "\n同意\n作画太好了")
+        assertEquals(
+            NotificationRowText(
+                headline = NotificationText.Res(Lang.notification_comment_reply_row_title, listOf(plain("Bob"))),
+                supporting = plain("同意"),
+                overline = NotificationText.Words(listOf(plain("葬送的芙莉莲"), episode("1"))),
+            ),
+            notificationRowText(notification, useOriginalTitle = false),
+        )
+        assertEquals(
+            NotificationText.Words(listOf(plain("葬送のフリーレン"), episode("1"))),
+            notificationRowText(notification, useOriginalTitle = true).overline,
+        )
+        assertNull(notificationRowText(createTestCommentReply(body = null), false).supporting)
+        // 评论所在的位置按自己的规则拼, 不用服务端的那一行
+        assertEquals(
+            plain("葬送的芙莉莲"),
+            notificationRowText(createTestCommentReply(episodeSort = null, overline = "服务端"), false).overline,
+        )
+        assertEquals(
+            plain("種﨑敦美"),
+            notificationRowText(
+                createTestCommentReply(targetType = CommentReportTargetType.PERSON_COMMENT, targetName = "種﨑敦美"),
+                false,
+            ).overline,
+        )
+    }
+
+    @Test
+    fun `comment reply with an unknown target type uses the display overline`() {
+        val unknown = createTestCommentReply(targetType = null, overline = " 某个新位置 ")
+        assertEquals(plain("某个新位置"), notificationRowText(unknown, false).overline)
+        assertNull(notificationRowText(createTestCommentReply(targetType = null, overline = null), false).overline)
+        // 去处仍然可以从内容里拼出来
+        assertEquals(NotificationOpenTarget.Destination(episodeThread), notificationOpenTarget(unknown))
+    }
+
+    @Test
+    fun `comment reply rows show the reply icon and the replier avatar`() {
+        val notification = createTestCommentReply()
+        assertEquals(Icons.AutoMirrored.Rounded.Reply, NotificationListItemDefaults.iconFor(notification))
+        assertEquals("https://example.com/bob.png", NotificationListItemDefaults.imageUrlFor(notification))
+        // 头像来自回复者, 不是通用展示内容的图片
+        val otherImage = notification.copy(display = notification.display.copy(imageUrl = "https://example.com/x.png"))
+        assertEquals("https://example.com/bob.png", NotificationListItemDefaults.imageUrlFor(otherImage))
+        assertNull(
+            NotificationListItemDefaults.imageUrlFor(
+                createTestCommentReply(replier = CommentReplier(id = "u", nickname = "匿名", avatarUrl = null)),
+            ),
+        )
+        assertFalse(notification.isUnknownType)
+        assertTrue(notificationInlineActions(notification.content).isEmpty())
     }
 
     // endregion
@@ -442,6 +543,7 @@ class NotificationFormattingTest {
         assertEquals(Icons.Rounded.Flag, NotificationListItemDefaults.iconFor(reportWithOtherIcon))
         assertEquals(Icons.Rounded.Shield, NotificationListItemDefaults.iconFor(createTestAccountSecurity()))
         assertEquals(Icons.Rounded.Info, NotificationListItemDefaults.iconFor(createTestSystemNotification()))
+        assertEquals(Icons.AutoMirrored.Rounded.Reply, NotificationListItemDefaults.iconFor(createTestCommentReply()))
     }
 
     @Test
@@ -458,10 +560,11 @@ class NotificationFormattingTest {
 
     @Test
     fun `only types the client does not know ask for an update`() {
-        assertTrue(createTestGenericNotification(rawType = "comment_reply").isUnknownType)
+        assertTrue(createTestGenericNotification(rawType = "mention").isUnknownType)
         assertTrue(createTestGenericNotification(rawType = "future_type").isUnknownType)
         // 认识的类型缺少自己的内容时用通用展示内容展示, 但更新也不会改变什么
         assertFalse(createTestGenericNotification(rawType = NotificationType.REPORT_RESULT.wireValue).isUnknownType)
+        assertFalse(createTestGenericNotification(rawType = NotificationType.COMMENT_REPLY.wireValue).isUnknownType)
         for (notification in TestNotifications) {
             assertFalse(notification.isUnknownType, notification.id)
         }
@@ -476,6 +579,7 @@ class NotificationFormattingTest {
                 onOpenSubject = { subjectId, placeholder -> calls += "subject:$subjectId:$placeholder" },
                 onOpenPerson = { calls += "person:$it" },
                 onOpenCharacter = { calls += "character:$it" },
+                onOpenCommentThread = { target, commentId, replyId -> calls += "comment:$target:$commentId:$replyId" },
                 onReauthorizeBangumi = noop.onReauthorizeBangumi,
                 onOpenAccountSettings = noop.onOpenAccountSettings,
                 onCheckUpdate = noop.onCheckUpdate,
@@ -486,6 +590,8 @@ class NotificationFormattingTest {
             NotificationDestination.Subject(3) to Lang.notification_go_to_subject,
             NotificationDestination.Person(4) to Lang.notification_go_to_person,
             NotificationDestination.Character(5) to Lang.notification_go_to_character,
+            NotificationDestination.CommentThread(NotificationDestination.Episode(1, 2), "ani:c") to
+                    Lang.notification_go_to_comment,
             NotificationDestination.Url("https://myani.org") to Lang.notification_view_details,
         )
         for ((destination, label) in cases) {
@@ -493,7 +599,14 @@ class NotificationFormattingTest {
             actions.open(destination, openUrl = { calls += "url:$it" })
         }
         assertEquals(
-            listOf("episode:1:2", "subject:3:null", "person:4", "character:5", "url:https://myani.org"),
+            listOf(
+                "episode:1:2",
+                "subject:3:null",
+                "person:4",
+                "character:5",
+                "comment:Episode(subjectId=1, episodeId=2):ani:c:null",
+                "url:https://myani.org",
+            ),
             calls,
         )
     }

@@ -42,7 +42,7 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
     val speedMultiplier: FloatState,
     private val randomizeSpeedFluctuation: Float = 0.0875f,
 ) : DanmakuTrack<T, FloatingDanmaku<T>> {
-    private val danmakuList: MutableList<FloatingDanmaku<T>> = mutableListOf()
+    internal val danmakuList: MutableList<FloatingDanmaku<T>> = mutableListOf()
 
     /**
      * 基础速度. 修改时会以当前帧时间重新锚定轨道内所有弹幕, 保证位置连续 (不跳变), 弹幕立即以新速度运动.
@@ -239,6 +239,18 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
      */
     internal fun getLastDanmaku(): FloatingDanmaku<T>? {
         return danmakuList.lastOrNull()
+    }
+
+    /**
+     * Visits items in track order without creating an iterator.
+     * The track must not be structurally modified during [block].
+     */
+    internal inline fun forEachDanmaku(block: (FloatingDanmaku<T>) -> Unit) {
+        var index = 0
+        while (index < danmakuList.size) {
+            block(danmakuList[index])
+            index++
+        }
     }
 
     /**

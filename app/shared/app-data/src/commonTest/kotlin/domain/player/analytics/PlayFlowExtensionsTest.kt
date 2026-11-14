@@ -124,14 +124,14 @@ class PlayFlowExtensionsTest : AbstractPlayerExtensionTest() {
         val select = step(PlayFlowStep.USER_SELECT).single()
         assertEquals(1L, select["sel_no"])
         assertEquals("auto_page", select["entry"])
-        assertEquals("a", select["media_source_id"])
+        assertEquals("a", select["source"])
         assertEquals("web", select["kind"])
         assertEquals(0L, select["count"])
 
         val load = step(PlayFlowStep.VIDEO_LOAD_DONE).single()
         assertEquals(1L, load["sel_no"])
         assertEquals("ok", load["outcome"])
-        assertEquals("a", load["media_source_id"])
+        assertEquals("a", load["source"])
         assertEquals("other", load["engine"])
 
         val playing = step(PlayFlowStep.PLAYBACK_STARTED).single()

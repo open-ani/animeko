@@ -68,7 +68,7 @@ internal fun MediaSelectorSourceTiers.tierOf(media: Media): Long? {
 internal fun PlaybackException.toPlayFlowReason(): String = "player_" + code.name.lowercase()
 
 /**
- * 数据源网址的主机名 (同 [normalizedSessionHost]: 小写, 去掉 `www.`), 作为 `source_failed.sources_*` 里的源标识;
+ * 数据源网址的主机名 (同 [normalizedSessionHost]: 小写, 去掉 `www.`), 作为事件里的源标识 (见 [PlayFlowRecorder.sourceName]);
  * 没有网址或解析不出主机名时为 `null`.
  */
 internal fun playFlowHost(websiteUrl: String?): String? {

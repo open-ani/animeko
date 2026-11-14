@@ -30,6 +30,19 @@ interface IAnalytics {
     )
 
     fun onAppStart() {}
+
+    /**
+     * 实现在每条事件上自己附加的属性数 (平台、版本、会话等). 它们和调用方传入的属性一起计入 GA4 的 [MAX_EVENT_PROPERTIES] 上限,
+     * 超出时 GA4 只保留其中一部分 (保留哪些不确定), 所以调用方一条事件最多传 `MAX_EVENT_PROPERTIES - extraPropertyCount` 个属性.
+     */
+    val extraPropertyCount: Int get() = 0
+
+    companion object {
+        /**
+         * GA4 单条事件的属性上限, 包含实现附加的 [extraPropertyCount].
+         */
+        const val MAX_EVENT_PROPERTIES = 25
+    }
 }
 
 inline fun IAnalytics.recordEvent(
@@ -105,6 +118,8 @@ abstract class CommonAnalyticsImpl(
         put("\$app_version", config.appVersion)
         put("distro_channel", config.distroChannel)
     }
+
+    override val extraPropertyCount: Int get() = intrinsicProperties.size
 
     final override fun recordEvent(event: AnalyticsEvent, properties: Map<String, Any?>) {
         @Suppress("UNCHECKED_CAST")

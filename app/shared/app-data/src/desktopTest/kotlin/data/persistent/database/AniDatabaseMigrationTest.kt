@@ -27,7 +27,7 @@ import kotlin.test.assertTrue
  * AniDatabase 迁移测试 (infra#10, P0#18).
  *
  * 生产迁移链 (CommonKoinModule): 1..15 destructive, 16 起走
- * AutoMigration 16→17→18→19, 手动 [MIGRATION_19_20], AutoMigration 20→21→22→23→24→25→26→27.
+ * AutoMigration 16→17→18→19, 手动 [MIGRATION_19_20], AutoMigration 20→21→22→23→24→25→26→27→28→29.
  *
  * [MigrationTestHelper] 从 `schemas/<db fqn>/<version>.json` 建旧版本库,
  * runMigrationsAndValidate 会把迁移后的实际 schema 与目标版本 json 逐表逐列校验.
@@ -229,6 +229,58 @@ class AniDatabaseMigrationTest {
         }
         helper.runMigrationsAndValidate(27, emptyList()).use { connection ->
             assertContains(connection.tableNames(), "episode_collection_pending_op")
+        }
+    }
+
+    @Test
+    fun `MIG-10 v28到v29的AutoMigration把subject_person主键扩成含position且保留旧行`() {
+        val helper = createHelper()
+        helper.createDatabase(28).use { connection ->
+            connection.execSQL(
+                "INSERT INTO `subject_collection` (`subjectId`, `name`, `nameCn`, `summary`, `nsfw`, `imageLarge`, " +
+                        "`totalEpisodes`, `airDate`, `aliases`, `tags`, `completeDate`, `collectionType`, " +
+                        "`collection_stats_wish`, `collection_stats_doing`, `collection_stats_done`, `collection_stats_onHold`, " +
+                        "`collection_stats_dropped`, `rating_rank`, `rating_total`, `rating_score`, `rating_count_s1`, " +
+                        "`rating_count_s2`, `rating_count_s3`, `rating_count_s4`, `rating_count_s5`, `rating_count_s6`, " +
+                        "`rating_count_s7`, `rating_count_s8`, `rating_count_s9`, `rating_count_s10`, `self_rating_score`, " +
+                        "`self_rating_tags`, `self_rating_isPrivate`, `cachedStaffUpdated`, `cachedCharactersUpdated`) " +
+                        "VALUES (1, 'n', 'cn', '', 0, '', 12, 0, X'5B5D', X'5B5D', 0, " +
+                        "'DOING', 0, 0, 0, 0, 0, 0, 0, '0', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, X'5B5D', 0, 1000, 1000)",
+            )
+            connection.execSQL(
+                "INSERT INTO `person` (`personId`, `name`, `nameCn`, `imageLarge`, `imageMedium`, `type`, `summary`) " +
+                        "VALUES (100, 'p', '', '', '', 1, '')",
+            )
+            // 旧主键 (subjectId, personId) 下同一人只剩最后 upsert 的一个职位
+            connection.execSQL(
+                "INSERT INTO `subject_person` (`subjectId`, `index`, `personId`, `position`) VALUES (1, 67, 100, 20)",
+            )
+        }
+        helper.runMigrationsAndValidate(29, emptyList()).use { connection ->
+            // 旧行保留
+            connection.prepare("SELECT `index`, `position` FROM `subject_person` WHERE `subjectId` = 1").use { statement ->
+                assertTrue(statement.step())
+                assertEquals(67, statement.getInt(0))
+                assertEquals(20, statement.getInt(1))
+                assertFalse(statement.step())
+            }
+            // position 进入主键, 同一人的另一个职位可以共存
+            connection.execSQL(
+                "INSERT INTO `subject_person` (`subjectId`, `index`, `personId`, `position`) VALUES (1, 1, 100, 2)",
+            )
+            connection.prepare("SELECT COUNT(*) FROM `subject_person` WHERE `subjectId` = 1 AND `personId` = 100")
+                .use { statement ->
+                    assertTrue(statement.step())
+                    assertEquals(2, statement.getInt(0))
+                }
+            // 关系缓存标记为过期, 让旧行缺的职位在下次打开条目时补齐
+            connection.prepare(
+                "SELECT `cachedStaffUpdated`, `cachedCharactersUpdated` FROM `subject_collection` WHERE `subjectId` = 1",
+            ).use { statement ->
+                assertTrue(statement.step())
+                assertEquals(0L, statement.getLong(0))
+                assertEquals(0L, statement.getLong(1))
+            }
         }
     }
 

@@ -175,8 +175,11 @@ val SubjectInfo.nameOrNameCn get() = name.ifBlank { nameCn }
 fun SubjectInfo.preferredDisplayName(useOriginalTitle: Boolean): String =
     if (useOriginalTitle) nameOrNameCn else displayName
 
+/**
+ * 导航到详情页时的占位. 封面取列表正在显示的那张 ([listCoverUrl]), 详情页能直接复用内存里的解码结果, 不必先等原图.
+ */
 fun SubjectInfo.toNavPlaceholder(): SubjectDetailPlaceholder {
-    return SubjectDetailPlaceholder(subjectId, name, nameCn, imageLarge)
+    return SubjectDetailPlaceholder(subjectId, name, nameCn, listCoverUrl)
 }
 
 @TestOnly

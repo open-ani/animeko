@@ -88,8 +88,12 @@ object CommentMapperContext {
                     },
                     sourceCommentId = reply.sourceCommentId,
                     canReply = reply.canReply,
+                    likeCount = reply.likeCount,
+                    selfVote = reply.selfVote?.toUICommentVote(),
                     rawContent = reply.content,
                     episodeId = reply.episodeId,
+                    parentStableId = reply.parentStableId,
+                    replyTo = reply.replyTo,
                 )
             },
             replyCount = comment.replyCount,
@@ -104,6 +108,8 @@ object CommentMapperContext {
             selfVote = comment.selfVote?.toUICommentVote(),
             rawContent = comment.content,
             episodeId = comment.episodeId,
+            parentStableId = comment.parentStableId,
+            replyTo = comment.replyTo,
         )
     }
 
@@ -133,7 +139,11 @@ object CommentMapperContext {
                     source = reply.source.toUICommentSource(),
                     sourceCommentId = reply.sourceCommentId,
                     canReply = reply.canReply,
+                    likeCount = reply.likeCount,
+                    selfVote = reply.selfVote?.toUICommentVote(),
                     rawContent = reply.content,
+                    parentStableId = reply.parentStableId,
+                    replyTo = reply.replyTo,
                 )
             },
             replyCount = comment.replyCount,
@@ -144,6 +154,8 @@ object CommentMapperContext {
             likeCount = comment.likeCount,
             selfVote = comment.selfVote?.toUICommentVote(),
             rawContent = comment.content,
+            parentStableId = comment.parentStableId,
+            replyTo = comment.replyTo,
         )
     }
 

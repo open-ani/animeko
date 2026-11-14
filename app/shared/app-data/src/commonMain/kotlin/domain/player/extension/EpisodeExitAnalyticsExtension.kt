@@ -103,7 +103,7 @@ class EpisodeExitAnalyticsExtension(
                 put("buffering_count", stats.buffering.count.toLong())
                 put("buffering_ms", stats.buffering.total(now).inWholeMilliseconds)
                 put("had_error", stats.hadError.toAnalyticsFlag())
-                put("media_source_id", selected?.mediaSourceId?.take(100))
+                put("source", selected?.let { context.playFlow.sourceName(it.mediaSourceId) }?.take(100))
                 put("is_cached", selected?.isLocalCache()?.toAnalyticsFlag())
                 put("source_switch_count", stats.sourceSwitchCount.toLong())
             }

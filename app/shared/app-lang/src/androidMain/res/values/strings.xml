@@ -1477,6 +1477,13 @@
     <string name="comment_dislike">Dislike</string>
     <string name="comment_more_actions">More actions</string>
     <string name="comment_expand_replies">Show %1$d replies</string>
+    <string name="comment_thread_title">Comment details</string>
+    <string name="comment_thread_replies_count">%1$d replies</string>
+    <string name="comment_reply_to_name">Reply to @%1$s</string>
+    <string name="comment_reply_to_deleted">Reply to a deleted comment</string>
+    <string name="comment_thread_no_replies">No replies yet</string>
+    <string name="comment_thread_not_found">This comment does not exist or has been deleted</string>
+    <string name="comment_thread_reply_root">Reply to the original comment instead</string>
     <string name="comment_copy_content">Copy content</string>
     <string name="comment_open_in_bangumi">Open in Bangumi</string>
     <string name="comment_block_user">Block this user</string>

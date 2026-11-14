@@ -21,6 +21,7 @@ enum class NotificationType(val wireValue: String) {
     SYSTEM("system"),
     REPORT_RESULT("report_result"),
     ACCOUNT_SECURITY("account_security"),
+    COMMENT_REPLY("comment_reply"),
     ;
 
     companion object {
