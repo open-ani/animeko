@@ -60,7 +60,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -97,6 +96,7 @@ fun DanmakuHost(
     val density = LocalDensity.current
     val trackStubMeasurer = rememberTextMeasurer(1)
     val danmakuTextMeasurer = rememberTextMeasurer(3000)
+    val renderer = remember { DanmakuRenderer() }
 
     SideEffect {
         state.setUIContext(baseStyle, danmakuTextMeasurer, density)
@@ -124,33 +124,10 @@ fun DanmakuHost(
         // Canvas only subscribes `danmakuUpdateSubscription` and `hostHeight` to re-draw.
         Canvas(
             modifier = Modifier.fillMaxSize()
-                .clipToBounds()
-                .alpha(state.canvasAlpha),
+                .clipToBounds(),
         ) {
             state.danmakuUpdateSubscription // subscribe changes
-
-            state.forEachFloatingDanmaku {
-                // don't draw uninitialized danmaku
-                if (it.y.isNaN()) return@forEachFloatingDanmaku
-
-                with(it.danmaku) {
-                    draw(
-                        screenPosX = hostWidth - it.distanceX,
-                        screenPosY = it.y,
-                    )
-                }
-            }
-            state.forEachFixedDanmaku {
-                // don't draw uninitialized danmaku
-                if (it.y.isNaN()) return@forEachFixedDanmaku
-
-                with(it.danmaku) {
-                    draw(
-                        screenPosX = (hostWidth - danmakuWidth) / 2f,
-                        screenPosY = it.y,
-                    )
-                }
-            }
+            with(renderer) { draw(state, hostWidth) }
         }
 
         if (state.isDebug) {
