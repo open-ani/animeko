@@ -70,6 +70,8 @@ import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.settings.DefaultTimeZoneProvider
+import me.him188.ani.app.domain.settings.TimeZoneProvider
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.files
 import me.him188.ani.utils.io.resolve
@@ -280,6 +282,8 @@ fun KoinApplication.repositoryModules(
     }
 
     single<SettingsRepository> { PreferencesRepositoryImpl(getContext().dataStores.preferencesStore) }
+
+    single<TimeZoneProvider> { DefaultTimeZoneProvider(get(), coroutineScope) }
 
     single<DanmakuRegexFilterRepository> { DanmakuRegexFilterRepositoryImpl(getContext().dataStores.danmakuFilterStore) }
 
