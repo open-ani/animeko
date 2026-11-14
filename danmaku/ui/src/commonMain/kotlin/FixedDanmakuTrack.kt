@@ -96,6 +96,15 @@ internal class FixedDanmakuTrack<T : SizeSpecifiedDanmaku>(
     }
 
     /**
+     * Visits the current danmaku without creating an iterator.
+     * The track must not be structurally modified during [block].
+     */
+    internal inline fun forEachDanmaku(block: (FixedDanmaku<T>) -> Unit) {
+        val current = currentDanmaku
+        if (current != null) block(current)
+    }
+
+    /**
      * 这个迭代器不是线程安全的, 访问迭代器时不保证 danmakuList.
      */
     override fun iterator(): Iterator<FixedDanmaku<T>> {
