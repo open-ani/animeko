@@ -24,6 +24,7 @@ import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.data.models.preference.DanmakuSettings
 import me.him188.ani.app.data.models.preference.DebugSettings
+import me.him188.ani.app.data.models.preference.LocalVideoLibrarySettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
@@ -258,6 +259,7 @@ class DanmakuCacheTest {
         override val defaultMediaPreference: Settings<MediaPreference> by lazy { error("no implemented") }
         override val profileSettings: Settings<ProfileSettings> by lazy { error("no implemented") }
         override val proxySettings: Settings<ProxySettings> by lazy { error("no implemented") }
+        override val localVideoLibrarySettings: Settings<LocalVideoLibrarySettings> by lazy { error("no implemented") }
         override val danmakuSettings: Settings<DanmakuSettings> by lazy { error("no implemented") }
         override val uiSettings: Settings<UISettings> by lazy { error("no implemented") }
         override val themeSettings: Settings<ThemeSettings> by lazy { error("no implemented") }

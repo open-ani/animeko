@@ -11,7 +11,7 @@ package me.him188.ani.app.domain.media.selector
 
 import kotlinx.coroutines.flow.first
 import kotlinx.io.files.Path
-import me.him188.ani.app.domain.media.DroppedFileMedia
+import me.him188.ani.app.domain.media.LocalFileMedia
 import me.him188.ani.app.domain.media.selector.testFramework.RecordedMediaSelectorEvent.OnBeforeSelect
 import me.him188.ani.app.domain.media.selector.testFramework.RecordedMediaSelectorEvent.OnChangePreference
 import me.him188.ani.app.domain.media.selector.testFramework.RecordedMediaSelectorEvent.OnSelect
@@ -28,8 +28,8 @@ import kotlin.test.assertTrue
 
 @TestContainer
 class MediaSelectorTemporarySelectTest {
-    private fun droppedFile(name: String = "episode-01.mkv") =
-        DroppedFileMedia.create(Path("/videos/$name").inSystem)
+    private fun localFile(name: String = "episode-01.mkv") =
+        LocalFileMedia.create(Path("/videos/$name").inSystem)
 
     private suspend fun MediaSelector.currentPreferences() = listOf(
         alliance.finalSelected.first(),
@@ -42,15 +42,15 @@ class MediaSelectorTemporarySelectTest {
     fun `selectTemporarily selects a media outside the candidates without touching preferences`() =
         runSimpleMediaSelectorTestSuite {
             mediaApi.addMedia(media(alliance = "A", resolution = "1080P", subtitleLanguages = listOf("CHS")))
-            val dropped = droppedFile()
+            val local = localFile()
             val preferencesBefore = selector.currentPreferences()
 
             val collected = selector.collectEvents {
-                assertTrue(selector.selectTemporarily(dropped))
+                assertTrue(selector.selectTemporarily(local))
             }
 
-            assertSame(dropped, selector.selected.value)
-            // 拖入的文件是 WEB 类型, 但既不广播 onChangePreference 也不广播 onPreferWebSource
+            assertSame(local, selector.selected.value)
+            // 本地文件是 WEB 类型, 但既不广播 onChangePreference 也不广播 onPreferWebSource
             collected.assertOrder(OnBeforeSelect::class, OnSelect::class)
             assertNull(collected.onSelect.single().event.previousMedia)
             assertEquals(preferencesBefore, selector.currentPreferences())
@@ -62,24 +62,24 @@ class MediaSelectorTemporarySelectTest {
             val online = media(alliance = "A", subtitleLanguages = listOf("CHS"))
             mediaApi.addMedia(online)
             assertTrue(selector.select(online))
-            val dropped = droppedFile()
+            val local = localFile()
 
             val collected = selector.collectEvents {
-                assertTrue(selector.selectTemporarily(dropped))
+                assertTrue(selector.selectTemporarily(local))
             }
 
             assertSame(online, collected.onSelect.single().event.previousMedia)
             assertNull(selector.trySelectDefault())
             assertNull(selector.trySelectCached())
-            assertSame(dropped, selector.selected.value)
+            assertSame(local, selector.selected.value)
         }
 
     @Test
-    fun `selecting the same dropped file again does nothing`() = runSimpleMediaSelectorTestSuite {
-        assertTrue(selector.selectTemporarily(droppedFile()))
+    fun `selecting the same local file again does nothing`() = runSimpleMediaSelectorTestSuite {
+        assertTrue(selector.selectTemporarily(localFile()))
 
         val collected = selector.collectEvents {
-            assertFalse(selector.selectTemporarily(droppedFile()))
+            assertFalse(selector.selectTemporarily(localFile()))
         }
 
         collected.expectNoEvents()
@@ -90,15 +90,15 @@ class MediaSelectorTemporarySelectTest {
         runSimpleMediaSelectorTestSuite {
             val online = media(alliance = "A", resolution = "1080P", subtitleLanguages = listOf("CHS"))
             mediaApi.addMedia(online)
-            val dropped = droppedFile()
-            assertTrue(selector.selectTemporarily(dropped))
+            val local = localFile()
+            assertTrue(selector.selectTemporarily(local))
 
             val collected = selector.collectEvents {
                 assertTrue(selector.select(online))
             }
 
             collected.assertOrder(OnBeforeSelect::class, OnChangePreference::class, OnSelect::class)
-            assertSame(dropped, collected.onSelect.single().event.previousMedia)
+            assertSame(local, collected.onSelect.single().event.previousMedia)
             assertSame(online, selector.selected.value)
             assertEquals("A", selector.alliance.finalSelected.first())
         }

@@ -9,9 +9,11 @@
 
 package me.him188.ani.app.platform
 
+import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
@@ -88,7 +90,21 @@ abstract class AniComponentActivity : ComponentActivity() {
      */
     suspend fun requestExternalDocumentTree(): String? {
         val res = CompletableDeferred<String?>()
-        val handler: (Uri?) -> Unit = { uri: Uri? -> res.complete(uri?.toString()) }
+        val handler: (Uri?) -> Unit = { uri: Uri? ->
+            if (uri != null) {
+                // 目录选择器返回的权限默认只在本次进程有效. 本地视频库需要跨重启访问,
+                // 因此立即申请持久化读取权限.
+                runCatching {
+                    contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                    )
+                }.onFailure {
+                    Log.w("AniComponentActivity", "Failed to persist document tree permission: $uri", it)
+                }
+            }
+            res.complete(uri?.toString())
+        }
 
         if (!requestExternalDocumentTreeHandler.compareAndSet(null, handler)) {
             return null

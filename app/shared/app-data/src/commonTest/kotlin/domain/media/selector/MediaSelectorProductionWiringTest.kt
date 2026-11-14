@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import me.him188.ani.app.data.models.preference.LocalVideoLibrarySettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
@@ -162,6 +163,7 @@ class MediaSelectorProductionWiringTest {
                 override val profileSettings get() = error("not used")
                 override val proxySettings get() = error("not used")
                 override val mediaCacheSettings get() = error("not used")
+                override val localVideoLibrarySettings: Settings<LocalVideoLibrarySettings> get() = error("not used")
                 override val danmakuSettings get() = error("not used")
                 override val uiSettings get() = error("not used")
                 override val themeSettings get() = error("not used")
