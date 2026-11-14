@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.subject.episode.details.components
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -33,6 +34,7 @@ fun VideoEnhancementDropdown(
     videoEnhancement: VideoEnhancementController,
     showDropdown: Boolean,
     onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val mode by videoEnhancement.mode.collectAsState()
     val title = stringResource(Lang.video_player_video_enhancement)
@@ -43,6 +45,8 @@ fun VideoEnhancementDropdown(
     DropdownMenu(
         expanded = showDropdown,
         onDismissRequest = onDismissRequest,
+        // Popup hosts can measure with unbounded height; the menu's scroll viewport must be finite.
+        modifier = modifier.heightIn(max = 320.dp),
     ) {
         Text(
             title,
