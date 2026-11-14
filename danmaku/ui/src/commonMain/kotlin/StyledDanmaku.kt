@@ -74,9 +74,12 @@ data class StyledDanmaku(
     override val danmakuWidth: Int = solidTextLayout.size.width.coerceAtLeast(1)
     override val danmakuHeight: Int = solidTextLayout.size.height.coerceAtLeast(1)
 
-    internal fun DrawScope.draw(screenPosX: Float, screenPosY: Float) {
-        val cachedImage = imageBitmap ?: createDanmakuImageBitmap(solidTextLayout, borderTextLayout)
+    internal fun cachedImage(): ImageBitmapWithOffset =
+        imageBitmap ?: createDanmakuImageBitmap(solidTextLayout, borderTextLayout)
             .also { imageBitmap = it }
+
+    internal fun DrawScope.draw(screenPosX: Float, screenPosY: Float) {
+        val cachedImage = cachedImage()
 
         drawImage(cachedImage.bitmap, Offset(screenPosX, screenPosY) + cachedImage.offset)
     }
