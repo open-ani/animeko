@@ -4,6 +4,8 @@
  */
 package me.him188.ani.tv.ui.main
 
+import android.os.SystemClock
+import android.view.MotionEvent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +39,7 @@ import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.test.platform.app.InstrumentationRegistry
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,7 +52,6 @@ import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
-import me.him188.ani.tv.ui.foundation.semantics.TvVisualSemantics
 import me.him188.ani.tv.ui.foundation.theme.TvApplicationTheme
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationRailDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
@@ -104,27 +106,51 @@ class TvNavigationRailUiTest {
     }
 
     @Test
-    fun railBlurAndDimFollowRailFocusAndClearOnExit() = runAniComposeUiTest {
+    fun railBackdropStaysInsideTheLeadingViewportAndFollowsFocus() = runAniComposeUiTest {
         mount()
         onNodeWithTag("tv-main-rail-blur").assertDoesNotExist()
-        assertEquals(0f, dimAlpha())
         key(Key.Menu)
         awaitRailFocus("Explore")
         settle()
         val shell = onNodeWithTag("tv-main-shell").fetchSemanticsNode().boundsInRoot
         val blur = onNodeWithTag("tv-main-rail-blur").fetchSemanticsNode()
-        assertEquals(true, blur.config[TvVisualSemantics.BackdropBlur])
-        assertEquals(1f, blur.config[TvVisualSemantics.Alpha])
         assertEquals(shell.left, blur.boundsInRoot.left)
+        assertEquals(shell.top, blur.boundsInRoot.top)
         assertEquals(shell.height, blur.boundsInRoot.height)
         assertTrue(abs(blur.boundsInRoot.width - shell.width * TvNavigationRailDefaults.BackgroundBlurWidthFraction) <= 1f,
             "The blur covers the leading part of the page: ${blur.boundsInRoot} in $shell")
-        assertEquals(TvNavigationRailDefaults.BackgroundDimAlpha, dimAlpha())
         key(Key.Menu)
         awaitContentFocus()
         settle()
         onNodeWithTag("tv-main-rail-blur").assertDoesNotExist()
-        assertEquals(0f, dimAlpha())
+    }
+
+    @Test
+    fun unrevealedLabelAreaCannotActivateARailItem() = runAniComposeUiTest {
+        val fixture = mount()
+        key(Key.Menu)
+        awaitRailFocus("Explore")
+        settle()
+        val expanded = railItem("Search").fetchSemanticsNode().boundsInRoot
+        key(Key.Menu)
+        awaitContentFocus()
+        settle()
+
+        key(Key.Menu)
+        awaitRailFocus("Explore")
+        mainClock.advanceTimeBy(80)
+        val revealed = railItem("Search").fetchSemanticsNode().boundsInRoot
+        assertTrue(revealed.right < expanded.right)
+        tapAt((revealed.right + expanded.right) / 2f, revealed.center.y)
+        settle()
+        assertEquals(TvShellContent.Exploration, fixture.page,
+            "The clipped part of a measured label must not receive clicks")
+
+        val search = railItem("Search").fetchSemanticsNode().boundsInRoot
+        tapAt(search.left + search.height / 2f, search.center.y)
+        settle()
+        assertEquals(TvShellContent.Search, fixture.page,
+            "The visible icon must remain clickable")
     }
 
     @Test
@@ -242,6 +268,16 @@ class TvNavigationRailUiTest {
 
     private fun AniComposeUiTest.settle() { mainClock.advanceTimeBy(600); waitForIdle() }
 
-    private fun AniComposeUiTest.dimAlpha(): Float =
-        onNodeWithTag("tv-main-rail-dim").fetchSemanticsNode().config[TvVisualSemantics.Alpha]
+    private fun AniComposeUiTest.tapAt(x: Float, y: Float) {
+        val shell = onNodeWithTag("tv-main-shell").fetchSemanticsNode()
+        val screenX = x - shell.boundsInRoot.left + shell.positionOnScreen.x
+        val screenY = y - shell.boundsInRoot.top + shell.positionOnScreen.y
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val downTime = SystemClock.uptimeMillis()
+        for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+            val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, screenX, screenY, 0)
+            instrumentation.sendPointerSync(event)
+            event.recycle()
+        }
+    }
 }
