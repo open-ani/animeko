@@ -298,8 +298,8 @@ open class PersonsAniApi : ApiClient {
 
 
     /**
-     * 获取人物参与的作品 (按条目分组, 含全部职位), 新条目在前.
-     * 获取人物参与的作品 (按条目分组, 含全部职位), 新条目在前.
+     * 获取人物参与的作品 (按条目分组, 含全部职位和配音), 新条目在前. 只配音、没有制作职位的条目也在其中, 此时 &#x60;positions&#x60; 为空.
+     * 获取人物参与的作品 (按条目分组, 含全部职位和配音), 新条目在前. 只配音、没有制作职位的条目也在其中, 此时 &#x60;positions&#x60; 为空.
      * @param personId
      * @param offset  (optional)
      * @param limit  (optional)
