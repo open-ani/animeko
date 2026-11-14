@@ -81,6 +81,7 @@ import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.layout.tvModalUnderlay
 import me.him188.ani.tv.ui.foundation.semantics.tvBackdropBlur
+import me.him188.ani.tv.ui.foundation.semantics.tvVisualAlpha
 import me.him188.ani.tv.ui.foundation.widgets.TvNavRailItem
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationRailDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationSideRail
@@ -152,8 +153,9 @@ fun TvMainShell(
             }
     }
     var railHasFocus by remember { mutableStateOf(false) }
+    val railRevealTarget = if (railHasFocus || showLogoutConfirmation || restoreAccountFocus != null) 1f else 0f
     val railReveal = animateFloatAsState(
-        if (railHasFocus || showLogoutConfirmation || restoreAccountFocus != null) 1f else 0f,
+        railRevealTarget,
         tween(TvNavigationRailDefaults.ExpandDurationMillis, easing = FastOutSlowInEasing),
         label = "navigation-rail-backdrop",
     )
@@ -252,6 +254,8 @@ fun TvMainShell(
             Box(
                 Modifier.fillMaxSize()
                     .testTag("tv-main-rail-dim")
+                    // Expose the transition target without observing animated alpha in semantics.
+                    .semantics { tvVisualAlpha = railRevealTarget * TvNavigationRailDefaults.BackgroundDimAlpha }
                     .drawBehind {
                         drawRect(surfaceColor, alpha = railReveal.value * TvNavigationRailDefaults.BackgroundDimAlpha)
                     },
