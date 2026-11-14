@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
@@ -63,6 +62,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
@@ -182,11 +182,21 @@ fun TvNavigationSideRail(
             TvNavigationRailDefaults.LabelEndPadding + with(LocalDensity.current) {
         longestLabelWidth.toDp().coerceAtMost(TvNavigationRailDefaults.LabelMaxWidth)
     }
-    val itemWidth by animateDpAsState(
+    val itemWidth = animateDpAsState(
         if (railExpanded) expandedWidth else TvNavigationRailDefaults.ItemSize,
         tween(TvNavigationRailDefaults.ExpandDurationMillis, easing = FastOutSlowInEasing),
         label = "rail-item-width",
     )
+    val itemWidthModifier = remember(itemWidth, expandedWidth) {
+        Modifier.layout { measurable, constraints ->
+            val width = itemWidth.value.roundToPx().coerceIn(constraints.minWidth, constraints.maxWidth)
+            val contentWidth = expandedWidth.roundToPx().coerceIn(constraints.minWidth, constraints.maxWidth)
+            val placeable = measurable.measure(constraints.copy(minWidth = contentWidth, maxWidth = contentWidth))
+            layout(width, placeable.height) {
+                placeable.placeRelative(0, 0)
+            }
+        }
+    }
     Box(modifier.fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
         // 进入门控 (统一焦点框架的组件级重载): 只有"按左"或编程式聚焦 (全局菜单键) 能进,
         // 上/下/右的空间搜索一律取消; 优先恢复路由入口，否则落当前页或默认条目。
@@ -209,7 +219,8 @@ fun TvNavigationSideRail(
                     if (showAvatar) {
                         TvRailAvatar(
                             selfInfo, isLoggedIn, avatarLabel, railExpanded, onExitFocus, onAvatarClick,
-                            avatarModifier.width(itemWidth).testTag("tv-navigation-avatar").onFocusChanged {
+                            itemWidthModifier,
+                            avatarModifier.testTag("tv-navigation-avatar").onFocusChanged {
                                 if (it.isFocused) accountActionsVisible = true
                             },
                         )
@@ -226,7 +237,8 @@ fun TvNavigationSideRail(
                             keepFocusOnClick = item.keepFocusOnClick,
                             returnFocusToContent = returnFocusToContent,
                             onClick = item.onClick,
-                            modifier = item.modifier.width(itemWidth).onFocusChanged {
+                            widthModifier = itemWidthModifier,
+                            modifier = item.modifier.onFocusChanged {
                                 if (it.isFocused) accountActionsVisible = false
                             },
                         )
@@ -242,7 +254,8 @@ fun TvNavigationSideRail(
                         keepFocusOnClick = true,
                         returnFocusToContent = returnFocusToContent,
                         onClick = onLogoutClick,
-                        modifier = logoutModifier.width(itemWidth).testTag("tv-navigation-logout"),
+                        widthModifier = itemWidthModifier,
+                        modifier = logoutModifier.testTag("tv-navigation-logout"),
                     )
                 }
             },
@@ -289,9 +302,10 @@ private fun TvRailAvatar(
     expanded: Boolean,
     onExitFocus: (() -> Unit)?,
     onClick: () -> Unit,
+    widthModifier: Modifier,
     modifier: Modifier = Modifier,
 ) {
-    TvRailItem(label, expanded, { if (!loggedIn) onClick() }, modifier.railExitKeys(onExitFocus)) {
+    TvRailItem(label, expanded, { if (!loggedIn) onClick() }, widthModifier, modifier.railExitKeys(onExitFocus)) {
         if (loggedIn && selfInfo?.avatarUrl != null) {
             AvatarImage(
                 url = selfInfo.avatarUrl,
@@ -316,6 +330,7 @@ private fun TvRailIconItem(
     keepFocusOnClick: Boolean,
     returnFocusToContent: (() -> Unit)?,
     onClick: () -> Unit,
+    widthModifier: Modifier,
     modifier: Modifier = Modifier,
 ) {
     val focusManager = LocalFocusManager.current
@@ -327,6 +342,7 @@ private fun TvRailIconItem(
                 returnFocusToContent?.invoke() ?: focusManager.moveFocus(FocusDirection.Right)
             }
         },
+        widthModifier = widthModifier,
         modifier = modifier
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
             .railExitKeys(onExitFocus),
@@ -341,6 +357,7 @@ private fun TvRailItem(
     label: String,
     expanded: Boolean,
     onClick: () -> Unit,
+    widthModifier: Modifier,
     modifier: Modifier = Modifier,
     icon: @Composable () -> Unit,
 ) {
@@ -364,6 +381,8 @@ private fun TvRailItem(
                 indication = null,
                 onClick = onClick,
             )
+            // Reuse the fully measured row; only the outer pill and its hit bounds resize.
+            .then(widthModifier)
             .height(TvNavigationRailDefaults.ItemSize)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,

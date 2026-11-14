@@ -16,12 +16,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
@@ -33,6 +35,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.LayoutDirection
@@ -104,27 +107,54 @@ class TvNavigationRailUiTest {
     }
 
     @Test
-    fun railBlurAndDimFollowRailFocusAndClearOnExit() = runAniComposeUiTest {
+    fun railBackdropStaysInsideTheLeadingViewportAndFollowsFocus() = runAniComposeUiTest {
         mount()
+        assertEquals(0f, dimTargetAlpha())
         onNodeWithTag("tv-main-rail-blur").assertDoesNotExist()
-        assertEquals(0f, dimAlpha())
         key(Key.Menu)
         awaitRailFocus("Explore")
+        assertEquals(TvNavigationRailDefaults.BackgroundDimAlpha, dimTargetAlpha())
         settle()
         val shell = onNodeWithTag("tv-main-shell").fetchSemanticsNode().boundsInRoot
         val blur = onNodeWithTag("tv-main-rail-blur").fetchSemanticsNode()
-        assertEquals(true, blur.config[TvVisualSemantics.BackdropBlur])
-        assertEquals(1f, blur.config[TvVisualSemantics.Alpha])
         assertEquals(shell.left, blur.boundsInRoot.left)
+        assertEquals(shell.top, blur.boundsInRoot.top)
         assertEquals(shell.height, blur.boundsInRoot.height)
         assertTrue(abs(blur.boundsInRoot.width - shell.width * TvNavigationRailDefaults.BackgroundBlurWidthFraction) <= 1f,
             "The blur covers the leading part of the page: ${blur.boundsInRoot} in $shell")
-        assertEquals(TvNavigationRailDefaults.BackgroundDimAlpha, dimAlpha())
+        key(Key.Menu)
+        awaitContentFocus()
+        assertEquals(0f, dimTargetAlpha())
+        settle()
+        onNodeWithTag("tv-main-rail-blur").assertDoesNotExist()
+    }
+
+    @Test
+    fun unrevealedLabelAreaCannotActivateARailItem() = runAniComposeUiTest {
+        val fixture = mount()
+        key(Key.Menu)
+        awaitRailFocus("Explore")
+        settle()
+        val expanded = railItem("Search").fetchSemanticsNode().boundsInRoot
         key(Key.Menu)
         awaitContentFocus()
         settle()
-        onNodeWithTag("tv-main-rail-blur").assertDoesNotExist()
-        assertEquals(0f, dimAlpha())
+
+        key(Key.Menu)
+        awaitRailFocus("Explore")
+        mainClock.advanceTimeBy(80)
+        val revealed = railItem("Search").fetchSemanticsNode().boundsInRoot
+        assertTrue(revealed.right < expanded.right)
+        tapAt((revealed.right + expanded.right) / 2f, revealed.center.y)
+        settle()
+        assertEquals(TvShellContent.Exploration, fixture.page,
+            "The clipped part of a measured label must not receive clicks")
+
+        val search = railItem("Search").fetchSemanticsNode().boundsInRoot
+        tapAt(search.left + search.height / 2f, search.center.y)
+        settle()
+        assertEquals(TvShellContent.Search, fixture.page,
+            "The visible icon must remain clickable")
     }
 
     @Test
@@ -242,6 +272,12 @@ class TvNavigationRailUiTest {
 
     private fun AniComposeUiTest.settle() { mainClock.advanceTimeBy(600); waitForIdle() }
 
-    private fun AniComposeUiTest.dimAlpha(): Float =
+    private fun AniComposeUiTest.dimTargetAlpha(): Float =
         onNodeWithTag("tv-main-rail-dim").fetchSemanticsNode().config[TvVisualSemantics.Alpha]
+
+    private fun AniComposeUiTest.tapAt(x: Float, y: Float) {
+        val shell = onNodeWithTag("tv-main-shell")
+        val bounds = shell.fetchSemanticsNode().boundsInRoot
+        shell.performTouchInput { click(Offset(x - bounds.left, y - bounds.top)) }
+    }
 }

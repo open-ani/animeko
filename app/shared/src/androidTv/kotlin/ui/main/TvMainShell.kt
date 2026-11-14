@@ -11,6 +11,7 @@ package me.him188.ani.tv.ui.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.EaseIn
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,14 +45,19 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.tv.material3.MaterialTheme
-import dev.chrisbanes.haze.HazeProgressive
+import dev.chrisbanes.haze.ExperimentalHazeApi
+import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -97,7 +104,7 @@ private enum class TvShellFocus : TvFocusKey {
  * TV 主壳。页面占满屏幕；左侧悬浮导航栏展开时压暗页面，并在左侧以渐进模糊衬托。
  * [pageContent] 接收收起态导航栏的避让范围，可分别安排背景和前景内容。
  */
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalHazeApi::class)
 @Composable
 fun TvMainShell(
     uiState: TvMainUiState,
@@ -146,11 +153,13 @@ fun TvMainShell(
             }
     }
     var railHasFocus by remember { mutableStateOf(false) }
-    val railReveal by animateFloatAsState(
-        if (railHasFocus || showLogoutConfirmation || restoreAccountFocus != null) 1f else 0f,
+    val railRevealTarget = if (railHasFocus || showLogoutConfirmation || restoreAccountFocus != null) 1f else 0f
+    val railReveal = animateFloatAsState(
+        railRevealTarget,
         tween(TvNavigationRailDefaults.ExpandDurationMillis, easing = FastOutSlowInEasing),
         label = "navigation-rail-backdrop",
     )
+    val railBackdropVisible by remember { derivedStateOf { railReveal.value > 0f } }
     val restoreContentFocus: () -> Unit = remember(focus, memory) {
         {
             if (memory.lastId == TvShellFocus.Settings) memory.clear()
@@ -185,6 +194,8 @@ fun TvMainShell(
                 Modifier
                     .fillMaxSize()
                     .testTag("tv-main-page-content")
+                    // Sibling focus/dim draws must not re-record an unchanged blur source.
+                    .graphicsLayer()
                     .hazeSource(railBackdrop)
                     .tvFocusAnchor(focus, TvShellFocus.Content),
             ) {
@@ -201,38 +212,54 @@ fun TvMainShell(
                         }
                     }
                 }
-
-                val dimAlpha = railReveal * TvNavigationRailDefaults.BackgroundDimAlpha
-                Box(
-                    Modifier.fillMaxSize()
-                        .testTag("tv-main-rail-dim")
-                        .semantics { tvVisualAlpha = dimAlpha }
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = dimAlpha)),
-                )
             }
 
-            if (railReveal > 0f) {
-                val surfaceColor = MaterialTheme.colorScheme.surface
+            val surfaceColor = MaterialTheme.colorScheme.surface
+            val railGradient = remember(surfaceColor) {
+                Brush.horizontalGradient(
+                    colorStops = Array(21) { step ->
+                        val fraction = step / 20f
+                        fraction to surfaceColor.copy(alpha = 1f - EaseIn.transform(fraction))
+                    },
+                )
+            }
+            val railTints = remember { listOf(HazeTint(Color.Transparent)) }
+            if (railBackdropVisible) {
                 Box(
                     Modifier.fillMaxHeight()
                         .fillMaxWidth(TvNavigationRailDefaults.BackgroundBlurWidthFraction)
                         .testTag("tv-main-rail-blur")
+                        .graphicsLayer {
+                            alpha = railReveal.value
+                        }
                         .semantics {
                             tvBackdropBlur = true
-                            tvVisualAlpha = railReveal
                         }
                         .hazeEffect(railBackdrop) {
                             this.backgroundColor = backgroundColor
                             blurRadius = TvNavigationRailDefaults.BackgroundBlurRadius
-                            progressive = HazeProgressive.horizontalGradient(
-                                startIntensity = 1f, endIntensity = 0f,
-                            )
-                            tints = listOf(HazeTint(surfaceColor))
+                            inputScale = HazeInputScale.Auto
+                            // Native Gaussian blur fades into the page beneath the eased tint.
+                            mask = railGradient
+                            tints = railTints
                             noiseFactor = 0f
-                            alpha = railReveal
                         },
-                )
+                ) {
+                    Box(Modifier.matchParentSize().background(railGradient))
+                }
             }
+
+            // Dim the page and its blurred output together. The blur source contains only
+            // page content, so a reveal animation does not invalidate the captured page.
+            Box(
+                Modifier.fillMaxSize()
+                    .testTag("tv-main-rail-dim")
+                    // Expose the transition target without observing animated alpha in semantics.
+                    .semantics { tvVisualAlpha = railRevealTarget * TvNavigationRailDefaults.BackgroundDimAlpha }
+                    .drawBehind {
+                        drawRect(surfaceColor, alpha = railReveal.value * TvNavigationRailDefaults.BackgroundDimAlpha)
+                    },
+            )
 
             TvNavigationSideRail(
                 selfInfo = selfInfo,
