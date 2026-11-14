@@ -4,8 +4,6 @@
  */
 package me.him188.ani.tv.ui.main
 
-import android.os.SystemClock
-import android.view.MotionEvent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,12 +16,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasContentDescription
@@ -35,11 +35,11 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.test.platform.app.InstrumentationRegistry
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -52,6 +52,7 @@ import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
+import me.him188.ani.tv.ui.foundation.semantics.TvVisualSemantics
 import me.him188.ani.tv.ui.foundation.theme.TvApplicationTheme
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationRailDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvOptionRow
@@ -108,9 +109,11 @@ class TvNavigationRailUiTest {
     @Test
     fun railBackdropStaysInsideTheLeadingViewportAndFollowsFocus() = runAniComposeUiTest {
         mount()
+        assertEquals(0f, dimTargetAlpha())
         onNodeWithTag("tv-main-rail-blur").assertDoesNotExist()
         key(Key.Menu)
         awaitRailFocus("Explore")
+        assertEquals(TvNavigationRailDefaults.BackgroundDimAlpha, dimTargetAlpha())
         settle()
         val shell = onNodeWithTag("tv-main-shell").fetchSemanticsNode().boundsInRoot
         val blur = onNodeWithTag("tv-main-rail-blur").fetchSemanticsNode()
@@ -121,6 +124,7 @@ class TvNavigationRailUiTest {
             "The blur covers the leading part of the page: ${blur.boundsInRoot} in $shell")
         key(Key.Menu)
         awaitContentFocus()
+        assertEquals(0f, dimTargetAlpha())
         settle()
         onNodeWithTag("tv-main-rail-blur").assertDoesNotExist()
     }
@@ -268,16 +272,12 @@ class TvNavigationRailUiTest {
 
     private fun AniComposeUiTest.settle() { mainClock.advanceTimeBy(600); waitForIdle() }
 
+    private fun AniComposeUiTest.dimTargetAlpha(): Float =
+        onNodeWithTag("tv-main-rail-dim").fetchSemanticsNode().config[TvVisualSemantics.Alpha]
+
     private fun AniComposeUiTest.tapAt(x: Float, y: Float) {
-        val shell = onNodeWithTag("tv-main-shell").fetchSemanticsNode()
-        val screenX = x - shell.boundsInRoot.left + shell.positionOnScreen.x
-        val screenY = y - shell.boundsInRoot.top + shell.positionOnScreen.y
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val downTime = SystemClock.uptimeMillis()
-        for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
-            val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, screenX, screenY, 0)
-            instrumentation.sendPointerSync(event)
-            event.recycle()
-        }
+        val shell = onNodeWithTag("tv-main-shell")
+        val bounds = shell.fetchSemanticsNode().boundsInRoot
+        shell.performTouchInput { click(Offset(x - bounds.left, y - bounds.top)) }
     }
 }
