@@ -137,9 +137,9 @@ private fun TvExplorationContent(
     val lifecycleState by lifecycle.currentStateFlow.collectAsState()
     val density = LocalDensity.current
     val accessibility = LocalAccessibilityManager.current
-    val carouselItems = (0 until trendsPager.itemCount)
-        .mapNotNull { trendsPager.peek(it) }.distinctBy { it.bangumiId }
-    val carouselIds = carouselItems.map { it.bangumiId }
+    val trendsSnapshot = trendsPager.itemSnapshotList
+    val carouselItems = remember(trendsSnapshot) { trendsSnapshot.items.distinctBy { it.bangumiId } }
+    val carouselIds = remember(carouselItems) { carouselItems.map { it.bangumiId } }
     val selectedIndex = carouselIds.indexOf(carouselId).coerceAtLeast(0)
     val featuredSubject = carouselItems.getOrNull(selectedIndex)
         ?.let { TvHeroSubject(it.bangumiId, it.nameCn, it.imageLarge) }
@@ -157,18 +157,26 @@ private fun TvExplorationContent(
         val index = (0 until trendsPager.itemCount).firstOrNull { trendsPager.peek(it)?.bangumiId == carouselId }
         if (index != null) trendsPager[index]
     }
-    val recommendationIndices = (0 until recommendations.itemCount)
-        .filter { recommendations.peek(it) is RecommendedSubjectInfo }
-    val rows = buildList {
-        if (followed.itemCount > 0) add(TvExplorationRow.ContinueWatching(followed))
-        else if (followed.loadState.refresh is LoadState.Loading) {
-            add(TvExplorationRow.Loading(TvExplorationArea.ContinueWatching, columns))
-        }
-        if (recommendations.itemCount == 0 && recommendations.loadState.refresh is LoadState.Loading) {
-            add(TvExplorationRow.Loading(TvExplorationArea.Recommendations, columns))
-        }
-        repeat((recommendationIndices.size + columns - 1) / columns) {
-            add(TvExplorationRow.RecommendationGrid(recommendations, recommendationIndices, it, columns))
+    val recommendationSnapshot = recommendations.itemSnapshotList
+    val followedSnapshot = followed.itemSnapshotList
+    val recommendationIndices = remember(recommendationSnapshot) {
+        (0 until recommendationSnapshot.size).filter { recommendationSnapshot[it] is RecommendedSubjectInfo }
+    }
+    val rows = remember(
+        followed, followedSnapshot, followed.loadState.refresh,
+        recommendations, recommendationSnapshot, recommendations.loadState.refresh, columns,
+    ) {
+        buildList {
+            if (followed.itemCount > 0) add(TvExplorationRow.ContinueWatching(followed))
+            else if (followed.loadState.refresh is LoadState.Loading) {
+                add(TvExplorationRow.Loading(TvExplorationArea.ContinueWatching, columns))
+            }
+            if (recommendations.itemCount == 0 && recommendations.loadState.refresh is LoadState.Loading) {
+                add(TvExplorationRow.Loading(TvExplorationArea.Recommendations, columns))
+            }
+            repeat((recommendationIndices.size + columns - 1) / columns) {
+                add(TvExplorationRow.RecommendationGrid(recommendations, recommendationIndices, it, columns))
+            }
         }
     }
     val currentRows by rememberUpdatedState(rows)
@@ -269,7 +277,9 @@ private fun TvExplorationContent(
     BackHandler(enabled = pageFocused && !expanded) { returnToHero() }
     val cardBeforeUpdate = focusedSubjectId?.let { TvExplorationCardKey(area, it) }
     val cardWasFocused = cardBeforeUpdate?.let(focus::isFocused) == true
-    val rowsIdentity = rows.map { row -> row.area to (0 until row.count).map(row::subjectIdAt) }
+    val rowsIdentity = remember(rows, followedSnapshot, recommendationSnapshot) {
+        rows.map { row -> row.area to (0 until row.count).map(row::subjectIdAt) }
+    }
     LaunchedEffect(rowsIdentity) {
         if (expanded || footerFocused || !cardWasFocused) return@LaunchedEffect
         val previous = cardBeforeUpdate ?: return@LaunchedEffect
