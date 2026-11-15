@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -34,7 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Size
@@ -51,7 +52,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.ExperimentalHazeApi
+import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import me.him188.ani.app.ui.foundation.AsyncImage
@@ -189,8 +194,9 @@ internal val LocalTvDetailsBackdropImage = staticCompositionLocalOf<TvDetailsBac
 /** Only the overview actions sample this page's backdrop; overlays already have their own blur. */
 val LocalTvDetailsActionBackdrop = staticCompositionLocalOf<HazeState?> { null }
 
-/** 全屏背景：左侧和底部线性遮罩，随页面滚动增强模糊与压暗。 */
+/** 全屏背景：清晰图片与固定半径模糊层交叠，滚动控制模糊层透明度及遮罩压暗。 */
 @Composable
+@OptIn(ExperimentalHazeApi::class)
 fun TvDetailsBackdrop(
     url: String,
     blurProgress: () -> Float,
@@ -199,10 +205,14 @@ fun TvDetailsBackdrop(
     onImageLoaded: ((ImageBitmap) -> Unit)? = null,
     onImageError: (() -> Unit)? = null,
 ) {
-    val progress = blurProgress().coerceIn(0f, 1f)
     val loadedImage = LocalTvDetailsBackdropImage.current?.takeIf { it.url == url }?.bitmap
+    val imageBackdrop = rememberHazeState(blurEnabled = true)
+    val imageTints = remember { listOf(HazeTint(Color.Transparent)) }
+    val showBlur by remember(blurProgress) {
+        derivedStateOf { blurProgress().coerceIn(0f, 1f) > 0f }
+    }
     Box(modifier.fillMaxSize().background(TvSubjectDetailsDefaults.Background)) {
-        val imageModifier = Modifier.fillMaxSize().blur(TvSubjectDetailsDefaults.ReaderBlurRadius * progress)
+        val imageModifier = Modifier.fillMaxSize().graphicsLayer().hazeSource(imageBackdrop)
         if (loadedImage != null) {
             Image(
                 loadedImage, contentDescription = null, imageModifier,
@@ -218,23 +228,41 @@ fun TvDetailsBackdrop(
                 onError = { onImageError?.invoke() },
             )
         }
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .35f + .20f * progress)))
+        if (showBlur) {
+            Box(
+                Modifier.fillMaxSize()
+                    .graphicsLayer {
+                        alpha = blurProgress().coerceIn(0f, 1f)
+                        clip = true
+                    }
+                    .hazeEffect(imageBackdrop) {
+                        backgroundColor = Color.Transparent
+                        blurRadius = TvSubjectDetailsDefaults.ReaderBlurRadius
+                        inputScale = HazeInputScale.Auto
+                        tints = imageTints
+                        fallbackTint = HazeTint(Color.Transparent)
+                        noiseFactor = 0f
+                    },
+            )
+        }
         Box(
-            Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(
+            Modifier.fillMaxSize().drawWithCache {
+                val horizontalShade = Brush.horizontalGradient(
                     0f to Color.Black.copy(alpha = .60f),
                     .55f to Color.Black.copy(alpha = .16f),
                     1f to Color.Transparent,
-                ),
-            ),
-        )
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
+                )
+                val verticalShade = Brush.verticalGradient(
                     .45f to Color.Transparent,
                     1f to Color.Black.copy(alpha = .42f),
-                ),
-            ),
+                )
+                onDrawBehind {
+                    val progress = blurProgress().coerceIn(0f, 1f)
+                    drawRect(Color.Black, alpha = .35f + .20f * progress)
+                    drawRect(horizontalShade)
+                    drawRect(verticalShade)
+                }
+            },
         )
     }
 }
