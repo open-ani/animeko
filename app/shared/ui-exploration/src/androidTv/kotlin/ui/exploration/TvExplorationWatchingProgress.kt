@@ -47,6 +47,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -184,7 +185,7 @@ private fun ChargingProgressBar(progress: TvWatchingProgress, counts: String, an
             )
             Box(
                 Modifier.fillMaxWidth(watchedFraction).fillMaxHeight().clip(CircleShape)
-                    .testTag("tv-exploration-watching-watched")
+                    .testTag("tv-exploration-watching-watched").graphicsLayer()
                     .drawWithCache {
                         val fill = Brush.horizontalGradient(watchedGradient)
                         val sheen = Brush.verticalGradient(

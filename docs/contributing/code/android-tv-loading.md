@@ -4,6 +4,10 @@ TV 加载占位使用 `TvPlaceholderBlock` 和 `Modifier.tvPlaceholder`，两者
 `ui.external.placeholder.placeholder` 与 `PlaceholderHighlight.fade`。独立占位块不接收焦点；
 操作控件的占位覆盖整个药丸，保留控件的布局、焦点节点和加载语义，并在加载期间拦截点击。
 
+继续观看进度条的粒子绘制位于独立图层，背景图层与操作按钮的模糊输入独立。
+图层边界保留进度条的尺寸、裁剪和持续动画状态；其性能对照需同时记录 CPU、Draw、GPU
+及相同时间窗口的帧数，不能只凭 FPS 或图层数量推断收益。
+
 探索页分别读取 Hero、继续观看和为你推荐的 Paging refresh 状态。模块首屏加载时显示对应的
 标题、文字或卡片骨架；已有条目刷新时继续显示原内容。上下键跳过正在加载的卡片行，
 其他模块完成加载时保留用户当前的焦点。

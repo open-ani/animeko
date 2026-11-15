@@ -447,7 +447,7 @@ private fun TvExplorationPageLayout(
             .background(TvExplorationDefaults.Background).tvFocusNavSignal(focus),
     ) {
         val actionBackdrop = rememberHazeState()
-        backdrop(Modifier.fillMaxSize().hazeSource(actionBackdrop))
+        backdrop(Modifier.fillMaxSize().graphicsLayer().hazeSource(actionBackdrop))
         CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec, LocalTvDetailsActionBackdrop provides actionBackdrop) {
             LazyColumn(
                 Modifier.fillMaxSize().padding(navigationRailInsets).testTag("tv-exploration-scroll"),
