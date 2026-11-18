@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalClipboard
 import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
+import me.him188.ani.app.data.models.preference.LocalVideoLibrarySettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.ui.foundation.getClipEntryText
@@ -57,6 +58,7 @@ import org.jetbrains.compose.resources.stringResource
 @Stable
 class CacheDirectoryGroupState(
     val mediaCacheSettingsState: SettingsState<MediaCacheSettings>,
+    val localVideoLibrarySettingsState: SettingsState<LocalVideoLibrarySettings>,
     val permissionManager: PermissionManager,
     val onGetBackupData: suspend () -> String,
     val onRestoreSettings: suspend (String) -> Boolean,

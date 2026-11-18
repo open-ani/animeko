@@ -30,6 +30,12 @@ import me.him188.ani.app.ui.lang.settings_storage_bt_cache_location_description
 import me.him188.ani.app.ui.lang.settings_storage_choose_directory
 import me.him188.ani.app.ui.lang.settings_storage_directory_create_failed
 import me.him188.ani.app.ui.lang.settings_storage_directory_not_exist
+import me.him188.ani.app.ui.lang.settings_storage_local_video_library_choose
+import me.him188.ani.app.ui.lang.settings_storage_local_video_library_clear
+import me.him188.ani.app.ui.lang.settings_storage_local_video_library_description
+import me.him188.ani.app.ui.lang.settings_storage_local_video_library_not_set
+import me.him188.ani.app.ui.lang.settings_storage_local_video_library_path
+import me.him188.ani.app.ui.lang.settings_storage_local_video_library_title
 import me.him188.ani.app.ui.lang.settings_storage_open_bt_cache_directory
 import me.him188.ani.app.ui.lang.settings_storage_open_directory_chooser
 import me.him188.ani.app.ui.lang.settings_storage_path_is_invalid
@@ -44,6 +50,8 @@ import java.io.File
 
 @Composable
 actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
+    LocalVideoLibraryGroup(state)
+
     Group({ Text(stringResource(Lang.settings_storage_title)) }) {
         val mediaCacheSettings by state.mediaCacheSettingsState
 
@@ -120,4 +128,72 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
         )
     }
     DanmakuCacheSettings(state)
+}
+
+@Composable
+private fun SettingsScope.LocalVideoLibraryGroup(state: CacheDirectoryGroupState) {
+    val settings by state.localVideoLibrarySettingsState
+    val currentDirectory = settings.directory.orEmpty()
+    val toaster = LocalToaster.current
+
+    val chooseText = stringResource(Lang.settings_storage_local_video_library_choose)
+    val pathInvalidText = stringResource(Lang.settings_storage_path_is_invalid)
+
+    val directoryPicker = rememberDirectoryPickerLauncher(
+        directory = currentDirectory.takeIf { it.isNotBlank() && File(it).isDirectory }?.let(::PlatformFile),
+        dialogSettings = FileKitDialogSettings(
+            title = chooseText,
+        ),
+    ) { file ->
+        file?.let {
+            state.localVideoLibrarySettingsState.update(
+                settings.copy(directory = it.file.absolutePath),
+            )
+        }
+    }
+
+    Group(
+        title = { Text(stringResource(Lang.settings_storage_local_video_library_title)) },
+        description = { Text(stringResource(Lang.settings_storage_local_video_library_description)) },
+    ) {
+        TextFieldItem(
+            value = currentDirectory,
+            title = { Text(stringResource(Lang.settings_storage_local_video_library_path)) },
+            placeholder = { Text(stringResource(Lang.settings_storage_local_video_library_not_set)) },
+            textFieldDescription = {
+                Text(stringResource(Lang.settings_storage_local_video_library_description))
+            },
+            onValueChangeCompleted = { value ->
+                if (value.isBlank()) {
+                    state.localVideoLibrarySettingsState.update(settings.copy(directory = null))
+                    return@TextFieldItem
+                }
+                val directory = try {
+                    File(value).canonicalFile
+                } catch (e: Exception) {
+                    toaster.toast("$pathInvalidText: ${e.message}")
+                    return@TextFieldItem
+                }
+                if (!directory.exists() || !directory.isDirectory) {
+                    toaster.toast(pathInvalidText)
+                    return@TextFieldItem
+                }
+                state.localVideoLibrarySettingsState.update(
+                    settings.copy(directory = directory.path),
+                )
+            },
+        )
+        RowButtonItem(
+            onClick = { directoryPicker.launch() },
+            title = { Text(chooseText) },
+        )
+        if (currentDirectory.isNotBlank()) {
+            RowButtonItem(
+                onClick = {
+                    state.localVideoLibrarySettingsState.update(settings.copy(directory = null))
+                },
+                title = { Text(stringResource(Lang.settings_storage_local_video_library_clear)) },
+            )
+        }
+    }
 }

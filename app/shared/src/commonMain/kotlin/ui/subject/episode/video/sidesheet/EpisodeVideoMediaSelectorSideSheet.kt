@@ -61,6 +61,7 @@ import org.jetbrains.compose.resources.stringResource
  * @param watching 手动查找与 BT 页的「正在观看」, BT 页的「第 N 话」chip.
  * @param fetchRequest BT 页搜索框的初值; null 时搜索框禁用.
  * @param manualBrowseState null (预览) 时 MANUAL 也画自动匹配页.
+ * @param onRequestLocalFile 自动页的「使用本地视频文件」; null 时不显示按钮 (宿主没有文件选择器).
  */
 @Suppress("UnusedReceiverParameter")
 @Composable
@@ -71,6 +72,7 @@ fun EpisodeVideoSideSheets.MediaSelectorSheet(
     onModeChange: (MediaSelectorMode) -> Unit,
     onDismissRequest: () -> Unit,
     onRestartSource: (instanceId: String) -> Unit,
+    onRequestLocalFile: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     watching: WatchingEpisode? = null,
     fetchRequest: MediaFetchRequest? = null,
@@ -150,6 +152,7 @@ fun EpisodeVideoSideSheets.MediaSelectorSheet(
                 },
                 onRestartSource = onRestartSource,
                 onRequestManualSearch = { onModeChange(MediaSelectorMode.MANUAL) },
+                onRequestLocalFile = onRequestLocalFile,
                 modifier.padding(horizontal = 16.dp)
                     .fillMaxWidth()
                     .navigationBarsPadding(),

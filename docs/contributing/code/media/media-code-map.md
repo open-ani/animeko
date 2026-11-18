@@ -114,28 +114,47 @@
 每次选择都带 `SelectTrigger`（`SelectEvent.trigger`），区分自动匹配页、BT 页、手动查找、拖入文件、TV 与启动时 / 失败换源的自动选择。
 整个流程的埋点见 [播放加载流程埋点](../analytics-play-flow.md)。
 
-### 播放拖入的本地文件（桌面端）
+### 播放本地文件
 
-在播放页将本地视频文件拖入窗口，可以不经过数据源选择，直接在当前剧集播放该文件：
+在播放页可以不经过数据源选择，直接在当前剧集播放本地视频文件，有两个入口：
 
-1. `EpisodeVideoDropHandler`（`app/shared/src/commonMain/.../ui/subject/episode/`）是播放页的
-   `WindowDropHandler`，由 `EpisodeScreenContent` 通过 `WindowDropHandlerEffect` 注册到主窗口的
-   `WindowDropHost`，只在播放页处于组合中时生效。
-2. 松手后 `EpisodeViewModel.playDroppedFile` 用 `DroppedFileMedia.create(...)` 构造一个
+- 将本地视频文件拖入窗口（仅桌面端）：`EpisodeVideoDropHandler`（`app/shared/src/commonMain/.../ui/subject/episode/`）
+  是播放页的 `WindowDropHandler`，由 `EpisodeScreenContent` 通过 `WindowDropHandlerEffect` 注册到主窗口的
+  `WindowDropHost`，只在播放页处于组合中时生效。
+- 自动匹配页的「使用本地视频文件」按钮：宿主用 `rememberLocalVideoFilePicker(...)` 打开系统文件选择器，
+  选中文件后立即播放并关闭所在容器。按钮出现在播放页的数据源选择器里：桌面端是播放器侧边栏；
+  Android 竖屏下播放器工具栏的选源入口只在全屏时出现，详情标签的数据源卡片面板也承载这个按钮。
+  批量下载弹窗不显示该按钮。
+
+文件选择器的实现：
+
+- 桌面端：`LocalVideoFilePicker.desktop.kt`，基于 FileKit，回调 `LocalVideoFile.File`（文件路径）。
+- Android：`LocalVideoFilePicker.android.kt`，用 `ActivityResultContracts.OpenDocument` 选择 `video/*`。
+  选择器返回的 `content://` Uri 以 `LocalVideoFile.Document` 回调，播放器通过 ContentResolver 直接读取，
+  不复制文件到应用缓存。
+- iOS：`LocalVideoFilePicker.ios.kt` 返回 `null`，自动匹配页不显示按钮。
+
+两个入口得到 `LocalVideoFile` 后走同一条路：
+
+1. `EpisodeViewModel.playLocalVideoFile` 把文件路径或 `content://` URI 转换为
    `download = ResourceLocation.LocalFile` 的 `Media`，并调用 `MediaSelector.selectTemporarily(...)`。
-3. 之后与上面的第 8、9 步相同：`LoadMediaOnSelectExtension` 监听到 `selected` 变化，
-   由 `LocalFileMediaResolver` 解析并播放。
+   路径由 `LocalFileMedia.create(...)` 构造，`content://` URI 由 `LocalFileMedia.createFromContentUri(...)` 构造。
+2. 之后与上面的第 8、9 步相同：`LoadMediaOnSelectExtension` 监听到 `selected` 变化，
+   由 `LocalFileMediaResolver` 解析并播放。`SystemFileMediaDataProvider` 按路径读取文件；
+   `content://` URI 使用 `LocalFileUriMediaDataProvider`，由 ExoPlayer 的 ContentResolver 数据源读取。
 
 注意：
 
+- 拖放只在桌面端可用，iOS 没有文件选择器。批量下载弹窗的宿主不传 `onRequestLocalFile`，不显示按钮。
+  桌面端的详情标签不传 `onLocalFilePicked`，详情标签面板不显示按钮，用户从播放器侧边栏进入。
 - 这个 `Media` 不来自任何数据源，不在候选列表中；`mediaSourceId` 固定为
-  `DroppedFileMedia.MEDIA_SOURCE_ID`，可用 `DroppedFileMedia.isDroppedFile(...)` 判断。
+  `LocalFileMedia.MEDIA_SOURCE_ID`，可用 `LocalFileMedia.isLocalFile(...)` 判断。
 - `selectTemporarily` 不更新偏好，也不广播 `onChangePreference` / `onPreferWebSource`，因此只对当前
   `EpisodeSession` 有效；切换剧集会创建新的 `MediaSelector`，照常自动选择。
   关掉「记住选择」时的手动查找点选走这个方法。
 - 已有选择时 `MediaAutoSelector` 不会覆盖它；用户仍可在数据源选择器中换回其他资源。
-- 拖入的文件播放失败时保留报错：`PlayerLoadErrorHandler.handleError` 不会为它自动换源，也不会拉黑它。
-- 跳过 OP/ED 的上报（`EpisodeViewModel.onClickSkipOpEd`）会忽略拖入的文件。
+- 本地文件播放失败时保留报错：`PlayerLoadErrorHandler.handleError` 不会为它自动换源，也不会拉黑它。
+- 跳过 OP/ED 的上报（`EpisodeViewModel.onClickSkipOpEd`）会忽略本地文件。
 
 ## 过滤与选择
 

@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.domain.player.analytics
 
-import me.him188.ani.app.domain.media.DroppedFileMedia
+import me.him188.ani.app.domain.media.LocalFileMedia
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.selector.MatchMetadata.SubjectMatchKind
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
@@ -30,7 +30,7 @@ internal fun MediaSourceKind.toPlayFlowKind(): String = when (this) {
 }
 
 internal fun Media.toPlayFlowKind(): String = when {
-    DroppedFileMedia.isDroppedFile(this) -> "dropped_file"
+    LocalFileMedia.isLocalFile(this) -> "local_file"
     isLocalCache() -> "local_cache"
     else -> kind.toPlayFlowKind()
 }
@@ -58,7 +58,7 @@ internal fun SubjectMatchKind.toPlayFlowMatch(): String = when (this) {
  * 资源的有效阶级. 本地缓存与拖入的文件没有阶级.
  */
 internal fun MediaSelectorSourceTiers.tierOf(media: Media): Long? {
-    if (media.isLocalCache() || DroppedFileMedia.isDroppedFile(media)) return null
+    if (media.isLocalCache() || LocalFileMedia.isLocalFile(media)) return null
     return get(media.mediaSourceId, media.properties.alliance).value.toLong()
 }
 
