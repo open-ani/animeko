@@ -60,6 +60,7 @@ import me.him188.ani.datasources.api.source.serializeArguments
 import me.him188.ani.datasources.ikaros.IkarosMediaSource
 import me.him188.ani.datasources.jellyfin.EmbyMediaSource
 import me.him188.ani.datasources.jellyfin.JellyfinMediaSource
+import me.him188.ani.datasources.webdav.WebDavMediaSource
 import me.him188.ani.datasources.mikan.MikanCNMediaSource
 import me.him188.ani.datasources.mikan.MikanMediaSource
 import me.him188.ani.utils.coroutines.onReplacement
@@ -253,6 +254,7 @@ class MediaSourceManagerImpl(
         add(RssMediaSource.Factory())
         add(JellyfinMediaSource.Factory())
         add(EmbyMediaSource.Factory())
+        add(WebDavMediaSource.Factory())
         add(IkarosMediaSource.Factory())
         add(SelectorMediaSource.Factory(selectorMediaSourceEpisodeCacheRepository, webSessionManager))
         add(JsonApiMediaSource.Factory(selectorMediaSourceEpisodeCacheRepository))

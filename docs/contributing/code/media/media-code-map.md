@@ -48,6 +48,8 @@
   通用 RSS BitTorrent 数据源。
 - 本地缓存以数据源形式暴露：`MediaCacheStorageSource`
   （`app/shared/app-data/.../domain/media/cache/storage/MediaCacheStorage.kt`）。
+- `WebDavMediaSource`（`datasource/webdav`）：通过 `WebDavClient` 发起 WebDAV 目录请求，
+  提供目录索引搜索、浏览与文件名集号匹配；播放时经 `ApiVideoResolver` 提供文件 URL 和 Basic 认证头。
 
 ### Selector 数据源查询/解析管线
 
