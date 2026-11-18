@@ -34,12 +34,21 @@ import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.headersOf
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.repository.media.ManualBrowseMemory
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
@@ -61,7 +70,11 @@ import me.him188.ani.app.ui.mediaselect.common.MediaSelectorChromeTestTags
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.source.MediaSourceInfo
+import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.api.source.MediaSourceTier
+import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.datasources.jellyfin.EmbyMediaSource
+import me.him188.ani.utils.ktor.asScopedHttpClient
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
@@ -75,6 +88,70 @@ import kotlin.test.assertTrue
  */
 @OptIn(TestOnly::class)
 class ManualBrowsePageTest {
+    @Test
+    fun `Emby manual search opens season 37 and plays the selected episode with memory`() = runAniComposeUiTest {
+        val client = HttpClient(MockEngine { request ->
+            val body = when {
+                request.url.parameters["SearchTerm"] != null -> """{"Items":[
+                    {"Name":"辛普森一家大电影","Id":"movie","Type":"Movie","ProductionYear":2007},
+                    {"Name":"辛普森一家","Id":"series","Type":"Series","ProductionYear":1989}
+                ]}"""
+                request.url.encodedPath.endsWith("/Items/series") ->
+                    """{"Name":"辛普森一家","Id":"series","Type":"Series"}"""
+                request.url.encodedPath.endsWith("Seasons") -> """{"Items":[
+                    {"Name":"第 1 季","Id":"s1","Type":"Season"},
+                    {"Name":"第 37 季","Id":"s37","Type":"Season"}
+                ]}"""
+                request.url.parameters["ParentId"] == "s1" -> """{"Items":[]}"""
+                request.url.parameters["ParentId"] == "s37" -> """{"Items":[
+                    {"Name":"终身坏胚子？","Id":"s37e05","Type":"Episode","IndexNumber":5}
+                ]}"""
+                else -> error("Unexpected Emby request: ${request.url.encodedPath}")
+            }
+            respond(body, headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()))
+        }) {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+        try {
+            val source = EmbyMediaSource(
+                MediaSourceConfig(arguments = mapOf("name" to "守候网络", "userId" to "user", "apikey" to "key")),
+                client.asScopedHttpClient(),
+                "emby-server",
+            )
+            assertTrue(source.supportsBrowsing)
+            var picked: ManualBrowsePick? = null
+            var memory: ManualBrowseMemory? = null
+            val harness = setPage(width = 900, height = 800, source = source, createState = { scope, _ ->
+                createTestManualBrowseState(
+                    scope,
+                    source = source,
+                    target = ManualBrowseTarget(1, "辛普森一家", EpisodeSort(5), "5"),
+                    onPlay = { pick, savedMemory ->
+                        picked = pick
+                        memory = savedMemory
+                    },
+                )
+            })
+            onNodeWithTag(ManualBrowsePageTestTags.SEARCH_FIELD).performImeAction()
+            awaitTag(ManualBrowsePageTestTags.result(1))
+            onNodeWithTag(ManualBrowsePageTestTags.SOURCE_SELECTOR).assert(hasText("守候网络"))
+            onNodeWithTag(ManualBrowsePageTestTags.result(1)).performClick()
+            awaitTag(ManualBrowsePageTestTags.channelChip(1))
+            onNodeWithTag(ManualBrowsePageTestTags.channelChip(1)).assert(hasText("第 37 季")).performClick()
+            awaitTag(ManualBrowsePageTestTags.episode(0))
+            onNodeWithTag(ManualBrowsePageTestTags.episode(0)).assertIsSelected().performClick()
+            waitUntil(timeoutMillis = 10_000) { harness.played == 1 }
+            runOnIdle {
+                val media = assertNotNull(picked).media
+                assertEquals("s37e05", (media.download as ResourceLocation.WebVideo).apiParameters?.get("itemId"))
+                assertEquals("s37", assertNotNull(memory).channelName)
+                assertEquals(EpisodeSort(5), assertNotNull(memory).playedAsSort)
+            }
+        } finally {
+            client.close()
+        }
+    }
+
     private val target = ManualBrowseTarget(1, "命运石之门", EpisodeSort(12), "12")
     private val topBarText = "host-top-bar"
 

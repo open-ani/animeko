@@ -36,6 +36,7 @@ internal class JellyfinPasswordAuthenticator(
     private val password: String,
     private val deviceId: String,
     private val client: ScopedHttpClient,
+    private val serverName: String = "Jellyfin",
 ) {
     private val sessionMutex = Mutex()
     private var session: JellyfinLoginSession? = null
@@ -54,7 +55,7 @@ internal class JellyfinPasswordAuthenticator(
 
     private suspend fun authenticate(): JellyfinLoginSession {
         require(username.isNotBlank()) {
-            "Jellyfin username must not be blank when username/password authentication is selected"
+            "$serverName username must not be blank when username/password authentication is selected"
         }
 
         val authorizationHeader = buildAuthorizationHeader(accessToken = null)
@@ -62,6 +63,7 @@ internal class JellyfinPasswordAuthenticator(
             client.use {
                 val response = post("$baseUrl/Users/AuthenticateByName") {
                     header(HttpHeaders.Authorization, authorizationHeader)
+                    header("X-Emby-Authorization", authorizationHeader)
                     contentType(ContentType.Application.Json)
                     setBody(
                         AuthenticateUserByNameRequest(
@@ -71,21 +73,21 @@ internal class JellyfinPasswordAuthenticator(
                     )
                 }
                 if (response.status.isLoginRejected()) {
-                    throw JellyfinLoginException()
+                    throw JellyfinLoginException("$serverName rejected the login request")
                 }
                 response.body<AuthenticationResult>()
             }
         } catch (e: ClientRequestException) {
             if (e.response.status.isLoginRejected()) {
-                throw JellyfinLoginException()
+                throw JellyfinLoginException("$serverName rejected the login request")
             }
             throw e
         }
 
         val accessToken = result.accessToken?.takeIf { it.isNotBlank() }
-            ?: throw JellyfinLoginException("Jellyfin login response did not include an access token")
+            ?: throw JellyfinLoginException("$serverName login response did not include an access token")
         val userId = result.user?.id?.takeIf { it.isNotBlank() }
-            ?: throw JellyfinLoginException("Jellyfin login response did not include a user id")
+            ?: throw JellyfinLoginException("$serverName login response did not include a user id")
 
         return JellyfinLoginSession(
             userId = userId,

@@ -105,6 +105,8 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
     val enableFramePreview: Boolean = true,
     /** 进入播放器时使用的默认超分档位. */
     val videoEnhancementDefaultMode: VideoEnhancementDefaultMode = VideoEnhancementDefaultMode.OFF,
+    /** iOS 文本字幕字号倍率，显示时限制在 0.75 至 2 倍。 */
+    val subtitleFontScale: Float = 1f,
     /**
      * 在编辑弹幕时暂停视频.
      * @since 3.2.0-beta01
