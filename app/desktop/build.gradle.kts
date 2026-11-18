@@ -102,6 +102,7 @@ compose.desktop {
             "-XX:+UseZGC",
             "-XX:+ZGenerational",
             "-XX:SoftMaxHeapSize=512m",
+            "-XX:-UseBASE64Intrinsics",
             "-Dorg.slf4j.simpleLogger.defaultLogLevel=TRACE",
             "-Dsun.java2d.metal=true",
             "-Djogamp.debug.JNILibLoader=true", // JCEF 加载 native 库的日志, 方便 debug
