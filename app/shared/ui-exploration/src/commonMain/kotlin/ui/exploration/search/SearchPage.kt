@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -61,9 +62,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -78,6 +82,8 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.domain.search.SearchSort
@@ -98,7 +104,7 @@ import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_search
 import me.him188.ani.app.ui.lang.exploration_search_back_to_top
-import me.him188.ani.app.ui.lang.settings_mediasource_test_keyword
+import me.him188.ani.app.ui.lang.exploration_search_placeholder
 import me.him188.ani.app.ui.search.TestSearchState
 import me.him188.ani.app.ui.search.collectItemsWithLifecycle
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -118,7 +124,6 @@ fun SearchPage(
     navigationIcon: @Composable () -> Unit = {},
 ) {
     val searchText = stringResource(Lang.exploration_search)
-    val keywordText = stringResource(Lang.settings_mediasource_test_keyword)
     val backToTopText = stringResource(Lang.exploration_search_back_to_top)
     val coroutineScope = rememberCoroutineScope()
     val items = state.searchState.collectItemsWithLifecycle()
@@ -153,7 +158,6 @@ fun SearchPage(
                 expanded = isSearchBarExpanded,
                 onExpandedChange = { isSearchBarExpanded = it },
                 modifier = Modifier.padding(bottom = 16.dp),
-                placeholder = { Text(keywordText) },
                 windowInsets = contentWindowInsets.only(WindowInsetsSides.Horizontal),
             )
         },
@@ -333,15 +337,8 @@ private fun SearchPageSearchBar(
     modifier: Modifier = Modifier,
     inputFieldModifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forSearchBar(),
-    placeholder: @Composable (() -> Unit)? = null,
+    placeholder: @Composable (() -> Unit)? = { Text(stringResource(Lang.exploration_search_placeholder)) },
 ) {
-    var debouncedEditingQuery by remember { mutableStateOf(editingQuery) }
-
-    LaunchedEffect(editingQuery) {
-        delay(800)
-        debouncedEditingQuery = editingQuery
-    }
-
     BackHandler(expanded) {
         onExpandedChange(false)
     }
@@ -372,13 +369,15 @@ private fun SearchPageSearchBar(
                         }
                     }
                     .onEnterKeyEvent {
-                        onExpandedChange(false)
-                        onIntent(
-                            SearchPageIntent.UpdateQuery(
-                                state.query.copy(keywords = editingQuery),
-                                submit = true,
-                            ),
-                        )
+                        if (it.type == KeyEventType.KeyDown) {
+                            onExpandedChange(false)
+                            onIntent(
+                                SearchPageIntent.UpdateQuery(
+                                    state.query.copy(keywords = editingQuery),
+                                    submit = true,
+                                ),
+                            )
+                        }
                         true
                     },
                 placeholder = placeholder,
@@ -414,12 +413,30 @@ private fun SearchPageSearchBar(
         } else {
             SuggestionSearchPreviewType.SUGGESTIONS
         }
-        val values = when (previewType) {
-            SuggestionSearchPreviewType.HISTORY -> state.searchHistoryPager
-            SuggestionSearchPreviewType.SUGGESTIONS -> suggestionsPager(debouncedEditingQuery)
+        val values = remember(previewType, editingQuery, suggestionsPager, state.searchHistoryPager) {
+            when (previewType) {
+                SuggestionSearchPreviewType.HISTORY -> state.searchHistoryPager
+                SuggestionSearchPreviewType.SUGGESTIONS -> flow {
+                    delay(800)
+                    emitAll(suggestionsPager(editingQuery))
+                }
+            }
         }.collectAsLazyPagingItemsWithLifecycle()
+        val lazyListState = rememberLazyListState()
 
-        LazyColumn {
+        LaunchedEffect(previewType, values.itemCount) {
+            if (previewType == SuggestionSearchPreviewType.SUGGESTIONS &&
+                values.itemCount > 0 &&
+                lazyListState.firstVisibleItemIndex > 0
+            ) {
+                lazyListState.scrollToItem(0)
+            }
+        }
+
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier.testTag("search-suggestions"),
+        ) {
             items(
                 count = values.itemCount,
                 key = values.itemKey { "search-suggestion-$it" },
