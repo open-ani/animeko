@@ -37,6 +37,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_back
+import me.him188.ani.app.ui.lang.foundation_done
+import me.him188.ani.app.ui.lang.foundation_refresh
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * app 根部唯一的交互解决对话框 host. 消费 [WebSessionManager.interactiveUi].
@@ -77,14 +82,14 @@ fun InteractiveSolveDialog(ui: InteractiveSolveUi) {
                         IconButton(onClick = ui.onDismiss) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = "返回",
+                                contentDescription = stringResource(Lang.foundation_back),
                                 tint = Color.White,
                             )
                         }
                         IconButton(onClick = ui.onRefresh) {
                             Icon(
                                 imageVector = Icons.Rounded.Refresh,
-                                contentDescription = "刷新",
+                                contentDescription = stringResource(Lang.foundation_refresh),
                                 tint = Color.White,
                             )
                         }
@@ -104,7 +109,7 @@ fun InteractiveSolveDialog(ui: InteractiveSolveUi) {
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Check,
-                            contentDescription = "完成",
+                            contentDescription = stringResource(Lang.foundation_done),
                             tint = Color.White,
                         )
                     }

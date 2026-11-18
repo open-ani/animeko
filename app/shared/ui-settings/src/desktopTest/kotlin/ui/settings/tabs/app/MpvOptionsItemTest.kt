@@ -11,7 +11,6 @@ package me.him188.ani.app.ui.settings.tabs.app
 
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
@@ -43,7 +42,7 @@ class MpvOptionsItemTest {
         waitForIdle()
 
         onNodeWithTag(MpvOptionsItemTestTags.TEXT_FIELD).performTextInput("hwdec=auto\nprofile=fast")
-        onNodeWithText("确认").performClick()
+        onNodeWithTag("settings_text_field_dialog_confirm").performClick()
 
         waitUntil { state.value.mpvOptions == listOf("hwdec=auto", "profile=fast") }
     }

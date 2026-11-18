@@ -55,6 +55,7 @@
     <string name="foundation_empty_content">暫無內容</string>
     <string name="foundation_loading">正在載入…</string>
     <string name="foundation_anonymous">匿名</string>
+    <string name="tv_collection_empty">這裡空空如也，去探索頁找些番劇吧</string>
 
     <!-- Comments -->
     <string name="comment_read_full">查看全文</string>
@@ -115,6 +116,13 @@
     <string name="tv_settings_scan_link">使用手機掃碼開啟此頁面</string>
     <string name="tv_exploration_more_details">更多詳情</string>
     <string name="tv_nav_schedule">時間表</string>
+    <string name="tv_schedule_load_failed">載入失敗了，請檢查網路後重試</string>
+    <string name="tv_schedule_retry">重試</string>
+    <string name="tv_schedule_empty">這一天沒有新番</string>
+    <string name="tv_schedule_subject_cover">%1$s 封面</string>
+    <string name="tv_search_hint">輸入關鍵詞，按軟鍵盤搜尋鍵開始</string>
+    <string name="tv_search_empty">沒有找到相關番劇</string>
+    <string name="tv_search_placeholder">搜尋番劇…</string>
     <string name="tv_login_or">或</string>
     <string name="tv_login_qr_title">手機掃碼登入</string>
     <string name="tv_login_qr_hint">用手機 Animeko 的「掃碼登入」或系統相機掃描</string>
@@ -128,6 +136,21 @@
     <string name="tv_login_qr_rejected">已在手機上拒絕</string>
     <string name="tv_login_qr_failed">QR Code 載入失敗, 請檢查網路</string>
     <string name="tv_login_qr_refresh">重新整理 QR Code</string>
+    <string name="tv_login_title">登入 Animeko</string>
+    <string name="tv_login_email_subtitle">輸入電子郵件，我們將發送 6 位驗證碼</string>
+    <string name="tv_login_sending">發送中…</string>
+    <string name="tv_login_resend_countdown">重新發送 (%1$ds)</string>
+    <string name="tv_login_send_code">發送驗證碼</string>
+    <string name="tv_login_sent_to">已發送至 %1$s</string>
+    <string name="tv_login_existing_account">登入現有帳號</string>
+    <string name="tv_login_new_account">將註冊新帳號</string>
+    <string name="tv_login_otp_placeholder">6 位驗證碼</string>
+    <string name="tv_login_verifying">驗證中…</string>
+    <string name="tv_login_reenter_email">重新輸入電子郵件</string>
+    <string name="tv_login_error_invalid_otp">驗證碼不正確</string>
+    <string name="tv_login_error_rate_limited">發送太頻繁，請稍後再試</string>
+    <string name="tv_login_error_send_failed">發送失敗，請檢查電子郵件地址與網路</string>
+    <string name="tv_login_error_sign_in_failed">登入失敗，請重試</string>
     <string name="tv_settings_network">網路</string>
     <string name="tv_settings_proxy_address_invalid">請輸入有效的 HTTP(S) 或 SOCKS 代理位址</string>
     <string name="tv_update_download">下載更新</string>

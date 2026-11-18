@@ -11,12 +11,20 @@ package me.him188.ani.tv.ui.login
 
 enum class TvLoginStep { Email, Otp }
 
+enum class TvLoginError {
+    InvalidOtp,
+    EmailAlreadyExist,
+    RateLimited,
+    SendFailed,
+    SignInFailed,
+}
+
 data class TvLoginUiState(
     val email: String = "",
     val otp: String = "",
     val step: TvLoginStep = TvLoginStep.Email,
     val busy: Boolean = false,
-    val error: String? = null,
+    val error: TvLoginError? = null,
     val resendRemainSec: Long = 0,
     val isExistingAccount: Boolean? = null,
     val qr: TvQrLoginUiState = TvQrLoginUiState.Loading,

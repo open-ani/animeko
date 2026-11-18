@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bt_legacy_cache_unsupported">Caches from the old BT engine are no longer supported. Cache the anime again.</string>
+    <string name="choose_video_player">Choose a video player</string>
+</resources>
