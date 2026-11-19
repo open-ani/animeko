@@ -48,6 +48,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
@@ -98,7 +99,7 @@ class PlayerKeyboardScopeTest {
         fun RegisterHandler() {
             val seeker = rememberSwipeSeekerState(320, onSeek = { seeks += it })
             val handler = rememberPlayerKeyboardShortcuts(
-                seeker, fastSkip, speed.value, 0.5f..3f, { speed.value = it },
+                PlayerShortcutConfig.Default, seeker, fastSkip, speed.value, 0.5f..3f, { speed.value = it },
                 true, { volume += it }, { volume += it },
                 { pauses++ }, { fullscreen++ }, { danmaku++ }, { stats++ },
             )

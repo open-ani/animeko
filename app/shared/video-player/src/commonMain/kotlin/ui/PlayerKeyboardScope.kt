@@ -105,11 +105,6 @@ internal class PlayerKeyboardState {
     }
 
     fun dispatch(event: KeyEvent): Boolean {
-        if (event.type == KeyEventType.KeyDown && (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed)) {
-            rejected.add(event.key)
-            if (event.key in pressed) cancel()
-            return false
-        }
         if (event.key in rejected) {
             if (event.type == KeyEventType.KeyUp) {
                 rejected.remove(event.key)
@@ -123,7 +118,12 @@ internal class PlayerKeyboardState {
             return false
         }
         if (event.key in cancelled) {
-            if (event.type == KeyEventType.KeyUp) cancelled.remove(event.key)
+            if (event.type == KeyEventType.KeyUp) {
+                cancelled.remove(event.key)
+            } else if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) {
+                rejected.add(event.key)
+                return false
+            }
             return true
         }
         val handler = handler ?: return false
@@ -132,9 +132,16 @@ internal class PlayerKeyboardState {
             handler(event)
             return true
         }
-        if (event.type == KeyEventType.KeyDown && handler(event)) {
+        if (event.type != KeyEventType.KeyDown) return false
+        if (handler(event)) {
             pressed.add(event.key)
             return true
+        }
+        if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) {
+            // A modified press that no binding claims belongs to the page until it is released, and a
+            // modifier pressed during a held shortcut cancels that shortcut.
+            rejected.add(event.key)
+            if (event.key in pressed) cancel()
         }
         return false
     }
