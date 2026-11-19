@@ -40,6 +40,7 @@ import me.him188.ani.utils.coroutines.childScope
 import kotlin.contracts.contract
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 /**
  * @see ObserveWebMediaSourcePreferenceExtension
@@ -102,6 +103,46 @@ class ObserveWebMediaSourcePreferenceExtensionTest : AbstractPlayerExtensionTest
     ) {
         // MediaFetcher is lazy. We perform fetching in testScope (i.e. foreground). `advanceUntilIdle` will wait for the fetching to complete.
         state.mediaFetchSessionFlow.filterNotNull().flatMapLatest { it.cumulativeResults }.launchIn(testScope)
+    }
+
+    /** 自动选择不写入优先源；用户确认当前资源时，优先源事件必须到达持久化入口。 */
+    private suspend fun TestScope.checkConfirmingCurrentMedia(initialPreference: String?) {
+        val web: CompletableDeferred<List<Media>>
+        val (testScope, suite, state) = createCase { _, suite ->
+            web = suite.mediaSelectorTestBuilder.delayedMediaSource("web-c", kind = MediaSourceKind.WEB)
+        }
+        preferredWebMediaSource.value = initialPreference
+        startMediaFetcher(state, testScope)
+        val media = suite.mediaSelectorTestBuilder.createMedia("web-c", kind = MediaSourceKind.WEB)
+        web.complete(listOf(media))
+        advanceUntilIdle()
+
+        val selector = state.mediaSelectorFlow.filterNotNull().first()
+        selector.selectAutomatically(media, expectedSelection = null)
+        advanceUntilIdle()
+        assertEquals(initialPreference, preferredWebMediaSource.value)
+        assertEquals(emptyList(), setPreferenceCalls)
+
+        assertFalse(selector.select(media))
+        advanceUntilIdle()
+        assertEquals("web-c", preferredWebMediaSource.value)
+        assertEquals(listOf(subjectId to "web-c"), setPreferenceCalls)
+
+        // 偏好已经一致时，重复点选不会导致重复持久化。
+        assertFalse(selector.select(media))
+        advanceUntilIdle()
+        assertEquals(listOf(subjectId to "web-c"), setPreferenceCalls)
+        testScope.cancel()
+    }
+
+    @Test
+    fun `confirming current automatic media sets the first preferred source`() = runTest {
+        checkConfirmingCurrentMedia(initialPreference = null)
+    }
+
+    @Test
+    fun `confirming current automatic media replaces a different preferred source`() = runTest {
+        checkConfirmingCurrentMedia(initialPreference = "web-a")
     }
 
     @Test
