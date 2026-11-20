@@ -1,0 +1,85 @@
+<resources>
+    <string name="notification_title">اعلان‌ها</string>
+    <string name="notification_mark_all_read">علامت‌گذاری همه به‌عنوان خوانده‌شده</string>
+    <string name="notification_settings">تنظیمات اعلان‌ها</string>
+    <string name="notification_unread">خوانده‌نشده</string>
+    <string name="notification_has_unread">اعلان‌های خوانده‌نشده</string>
+    <string name="notification_unread_count">%1$d خوانده‌نشده</string>
+    <string name="notification_empty">هنوز اعلانی وجود ندارد</string>
+    <string name="notification_empty_supporting">نتایج گزارش‌های شما و هشدارهای حساب کاربری در اینجا نمایش داده می‌شوند</string>
+    <string name="notification_interaction_empty">هنوز تعاملی وجود ندارد</string>
+    <string name="notification_interaction_empty_supporting">پاسخ‌ها، اشاره‌ها و واکنش‌ها به نظرهای شما در اینجا نمایش داده می‌شوند</string>
+    <string name="notification_detail_placeholder">برای مشاهدهٔ جزئیات، یک اعلان را انتخاب کنید</string>
+    <string name="notification_not_found">این اعلان وجود ندارد</string>
+    <string name="notification_group_notice">اطلاعیه‌ها</string>
+    <string name="notification_group_interaction">تعامل‌ها</string>
+    <string name="notification_view_details">مشاهدهٔ جزئیات</string>
+    <string name="notification_update_hint">ممکن است این نسخه نتواند این اعلان را به‌طور کامل نشان دهد. برای مشاهدهٔ کامل، Animeko را به‌روزرسانی کنید.</string>
+    <string name="notification_check_update">بررسی به‌روزرسانی‌ها</string>
+    <string name="notification_update_banner">برای نمایش کامل برخی اعلان‌ها نسخهٔ جدیدتری لازم است</string>
+    <string name="notification_update_banner_action">به‌روزرسانی</string>
+
+    <string name="notification_time_just_now">همین الان</string>
+    <string name="notification_time_minutes_ago">%1$s دقیقه پیش</string>
+    <string name="notification_time_hours_ago">%1$s ساعت پیش</string>
+    <string name="notification_time_yesterday">دیروز</string>
+    <string name="notification_time_month_day">%3$s %4$s</string>
+    <string name="notification_time_date">%3$s %4$s، %1$s</string>
+    <string name="notification_time_detail_month_day_time">%3$s %4$s، %5$s</string>
+    <string name="notification_time_detail_date_time">%3$s %4$s، %1$s، %5$s</string>
+
+    <string name="notification_announcement_overline">اطلاعیه</string>
+    <string name="notification_announcements_title">اطلاعیه‌ها</string>
+    <string name="notification_announcements_empty">هنوز اطلاعیه‌ای وجود ندارد</string>
+    <string name="notification_announcements_empty_supporting">اعلان‌های تعمیر و نگهداری، نسخه‌های جدید و سایر اطلاعیه‌ها در اینجا نمایش داده می‌شوند</string>
+    <string name="notification_announcement_detail_title">اطلاعیه</string>
+    <string name="notification_announcement_detail_placeholder">برای مشاهدهٔ جزئیات، یک اطلاعیه را انتخاب کنید</string>
+    <string name="notification_announcement_not_found">این اطلاعیه وجود ندارد یا حذف شده است</string>
+    <string name="notification_announcement_pinned">سنجاق‌شده</string>
+    <string name="notification_announcement_tag_general">اطلاعیه</string>
+    <string name="notification_announcement_tag_maintenance">تعمیر و نگهداری</string>
+    <string name="notification_announcement_tag_release">نسخهٔ جدید</string>
+    <string name="notification_announcement_tag_community">جامعه</string>
+
+    <string name="notification_report_result_row_title">به نظری که گزارش کرده بودید رسیدگی شد</string>
+    <string name="notification_report_result_detail_title">نتیجهٔ گزارش</string>
+    <string name="notification_report_result_upheld">گزارش تأیید شد</string>
+    <string name="notification_report_result_description_removed">پس از بررسی، مشخص شد این نظر قوانین انجمن را نقض کرده است و حذف شد. از گزارش شما سپاسگزاریم.</string>
+    <string name="notification_report_result_description_handled">پس از بررسی، مشخص شد این نظر قوانین انجمن را نقض کرده است و اقدام لازم انجام شد. از گزارش شما سپاسگزاریم.</string>
+    <string name="notification_report_reason">دلیل</string>
+    <string name="notification_report_target">محتوای گزارش‌شده</string>
+    <string name="notification_report_reported_at">زمان گزارش</string>
+    <string name="notification_report_handled_at">زمان رسیدگی</string>
+    <string name="notification_report_outcome">نتیجه</string>
+    <string name="notification_report_outcome_removed">نظر حذف شد</string>
+    <string name="notification_report_outcome_handled">اقدام انجام شد</string>
+    <string name="notification_report_snapshot_title">نظر گزارش‌شده (همان‌گونه که هنگام گزارش ثبت شده بود)</string>
+    <string name="notification_report_snapshot_footnote">ممکن است نویسنده، این نظر را پس از آن ویرایش یا حذف کرده باشد. بررسی بر اساس تصویر لحظه‌ای ثبت‌شده هنگام گزارش شما انجام شده است. %1$s</string>
+    <string name="notification_report_privacy_footnote">به نویسنده گفته نخواهد شد چه کسی آن را گزارش کرده است.</string>
+    <string name="notification_report_target_episode_comment">نظر قسمت</string>
+    <string name="notification_report_target_subject_review">نقد و بررسی انیمه</string>
+    <string name="notification_report_target_person_comment">نظر شخص</string>
+    <string name="notification_report_target_character_comment">نظر شخصیت</string>
+    <string name="notification_report_target_comment">نظر</string>
+    <string name="notification_go_to_episode">رفتن به قسمت</string>
+    <string name="notification_go_to_subject">رفتن به انیمه</string>
+    <string name="notification_go_to_person">رفتن به شخص</string>
+    <string name="notification_go_to_character">رفتن به شخصیت</string>
+
+    <string name="notification_account_third_party_unbound">پیوند حساب %1$s قطع شد</string>
+    <string name="notification_account_third_party_unbound_generic">پیوند حساب شخص ثالث قطع شد</string>
+    <string name="notification_account_third_party_unbound_supporting">از آن برای ورود به یک حساب کاربری دیگر در Animeko استفاده شد</string>
+
+    <string name="notification_system_detail_title">پیام سیستم</string>
+    <string name="notification_system_bangumi_expired">مجوز Bangumi منقضی شد</string>
+    <string name="notification_system_bangumi_expired_supporting">همگام‌سازی پیشرفت تماشای شما متوقف شده است. پس از مجوزدهی مجدد ادامه خواهد یافت.</string>
+    <string name="notification_system_bangumi_reauthorize">مجوزدهی مجدد</string>
+
+    <string name="notification_settings_group_system">سیستم</string>
+    <string name="notification_settings_system_group_description">در صورت خاموش بودن، این اعلان‌ها در این دستگاه پنهان می‌شوند و به‌عنوان خوانده‌نشده محاسبه نخواهند شد.</string>
+    <string name="notification_settings_report_result_item">نتیجهٔ بررسی نظری که گزارش کرده بودید مشخص شد</string>
+    <string name="notification_settings_account_security_item">حساب شما یک هشدار امنیتی دارد</string>
+    <string name="notification_settings_group_announcements">اطلاعیه‌ها</string>
+    <string name="notification_settings_announcement_item">یک اطلاعیهٔ جدید دریافت می‌کنید</string>
+    <string name="notification_settings_announcement_description">در صورت خاموش بودن، اطلاعیه‌های جدید نقطه‌ای روی نمایهٔ شما ایجاد نمی‌کنند.</string>
+</resources>
