@@ -9,6 +9,8 @@
 
 package me.him188.ani.datasources.jellyfin
 
+import io.ktor.http.URLBuilder
+import io.ktor.http.appendPathSegments
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.source.MediaSourceConfig
@@ -79,6 +81,11 @@ class EmbyMediaSource(
     }
 
     override fun getDownloadUri(itemId: String, accessToken: String): String {
-        return "$baseUrl/Items/$itemId/Download?api_key=$accessToken"
+        // Static streaming uses playback permission and supports byte range requests.
+        return URLBuilder(baseUrl).apply {
+            appendPathSegments("Videos", itemId, "stream")
+            parameters.append("static", "true")
+            parameters.append("api_key", accessToken)
+        }.buildString()
     }
 }
