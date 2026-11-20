@@ -243,6 +243,69 @@ class WatchTogetherManagerTest {
         assertTrue(api.reports.size > afterPauseEdge, "resume edge must report immediately")
     }
 
+    @Test
+    fun `alignment uses fresh clock without reports and suspends continuous correction`() = runTest {
+        val host = watchingInfo(1, 2, paused = false, positionMillis = 60_000)
+        val api = FakeApi(isHost = false, snapshotPlayback = AniWatchTogetherPlayback(host, 1_000))
+        val bridge = LocalPlaybackBridge()
+        bridge.updateLocalWatching(host.copy(paused = true))
+        val manager = WatchTogetherManager(
+            backgroundScope, api, MutableSettings(WatchTogetherSettings(enabled = true)),
+            FakeSessionStateProvider(), bridge, PlaybackAutomationGate(),
+            localNowMillis = { 1_000 + testScheduler.currentTime },
+        )
+        manager.start()
+        runCurrent()
+        manager.join("Room", "password").getOrThrow()
+        runCurrent()
+        val session = assertIs<WatchTogetherState.InRoom>(manager.state.value).session
+        val directives = mutableListOf<PlaybackDirective>()
+        backgroundScope.launch { bridge.directives.collect { directives += it } }
+        runCurrent()
+        val reportCount = api.reports.size
+        manager.alignToHost()
+        val request = assertNotNull(bridge.alignmentRequest.value)
+        assertTrue(manager.refreshAlignmentClock(session))
+        bridge.updateLocalWatching(host.copy(positionMillis = 65_000, paused = true))
+        advanceTimeBy(4_000)
+        runCurrent()
+        assertEquals(reportCount, api.reports.size)
+        assertTrue(directives.isEmpty())
+        bridge.updateLocalWatching(host.copy(positionMillis = 65_000))
+        bridge.finishAlignment(request)
+        runCurrent()
+        assertEquals(reportCount, api.reports.size)
+        advanceTimeBy(1_001)
+        runCurrent()
+        assertTrue(directives.any { it is PlaybackDirective.Sync })
+    }
+
+    @Test
+    fun `stale alignment clock refreshes through one report only`() = runTest {
+        var now = 1_000L
+        val host = watchingInfo(1, 2, paused = true)
+        val api = FakeApi(isHost = false, snapshotPlayback = AniWatchTogetherPlayback(host, now))
+        val bridge = LocalPlaybackBridge()
+        bridge.updateLocalWatching(host)
+        val manager = WatchTogetherManager(
+            backgroundScope, api, MutableSettings(WatchTogetherSettings(enabled = true)),
+            FakeSessionStateProvider(), bridge, PlaybackAutomationGate(), localNowMillis = { now },
+        )
+        manager.start()
+        runCurrent()
+        manager.join("Room", "password").getOrThrow()
+        runCurrent()
+        val session = assertIs<WatchTogetherState.InRoom>(manager.state.value).session
+        val reportCount = api.reports.size
+        now += 60_001
+        assertTrue(manager.refreshAlignmentClock(session))
+        assertEquals(reportCount + 1, api.reports.size)
+        assertTrue(manager.refreshAlignmentClock(session))
+        assertEquals(reportCount + 1, api.reports.size)
+        manager.leave()
+        assertFalse(manager.refreshAlignmentClock(session))
+    }
+
     private fun watchingInfo(
         subjectId: Int,
         episodeId: Int,
