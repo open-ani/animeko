@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.exploration.search
 
 import me.him188.ani.app.data.models.preference.NsfwMode
+import me.him188.ani.app.data.models.schedule.AnimeSeason
 import me.him188.ani.app.data.models.subject.CanonicalTagKind
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import kotlin.test.Test
@@ -70,6 +71,54 @@ class SearchPageStateTest {
     }
 
     @Test
+    fun `clearTagSelection clears one group and preserves other groups`() {
+        val emptyState = createTestSearchPageState(
+            query = SubjectSearchQuery(""),
+            hasActiveSearch = true,
+        )
+        val firstGroup = emptyState.searchFilterState.chips[0]
+        val secondGroup = emptyState.searchFilterState.chips[1]
+        val firstValue = firstGroup.values.first()
+        val secondValue = secondGroup.values.first()
+        val state = createTestSearchPageState(
+            query = SubjectSearchQuery("", tags = listOf(firstValue, secondValue)),
+            hasActiveSearch = true,
+        )
+
+        val updated = state.clearTagSelection(
+            state.searchFilterState.chips.first { it.kind == firstGroup.kind },
+        )
+
+        assertEquals(listOf(secondValue), updated.query.tags)
+        assertTrue(
+            updated.searchFilterState.chips
+                .first { it.kind == firstGroup.kind }
+                .selected
+                .isEmpty(),
+        )
+        assertEquals(
+            listOf(secondValue),
+            updated.searchFilterState.chips.first { it.kind == secondGroup.kind }.selected,
+        )
+    }
+
+    @Test
+    fun `clearTagSelection removes an existing custom group`() {
+        val customTag = "自定义标签"
+        val state = createTestSearchPageState(
+            query = SubjectSearchQuery("", tags = listOf(customTag)),
+            hasActiveSearch = true,
+        )
+
+        val updated = state.clearTagSelection(
+            state.searchFilterState.chips.first { it.kind == null },
+        )
+
+        assertTrue(updated.query.tags.orEmpty().isEmpty())
+        assertTrue(updated.searchFilterState.chips.none { it.kind == null })
+    }
+
+    @Test
     fun `hide mode does not show rating tag kind`() {
         assertFalse(CanonicalTagKind.Rating in SearchFilterState.tagKinds(NsfwMode.HIDE))
         assertTrue(CanonicalTagKind.Rating in SearchFilterState.tagKinds(NsfwMode.BLUR))
@@ -99,5 +148,28 @@ class SearchPageStateTest {
 
         assertEquals(SearchFilterState.tagKinds(NsfwMode.HIDE), updated.searchFilterState.tagKinds)
         assertTrue(updated.searchFilterState.chips.any { "百合" in it.selected })
+    }
+
+    @Test
+    fun `clearTagSelection keeps hidden tag kinds and date filters`() {
+        val state = createTestSearchPageState(
+            query = SubjectSearchQuery(
+                "",
+                tags = listOf("百合", "R18"),
+                year = 2026,
+                season = AnimeSeason.SPRING,
+            ),
+        ).withTagKinds(SearchFilterState.tagKinds(NsfwMode.HIDE))
+
+        val updated = state.clearTagSelection(
+            state.searchFilterState.chips.first { "百合" in it.values },
+        )
+
+        assertEquals(listOf("R18"), updated.query.tags)
+        assertEquals(2026, updated.query.year)
+        assertEquals(AnimeSeason.SPRING, updated.query.season)
+        assertEquals(SearchFilterState.tagKinds(NsfwMode.HIDE), updated.searchFilterState.tagKinds)
+        assertNull(updated.searchFilterState.chips.find { it.kind == CanonicalTagKind.Rating })
+        assertEquals(listOf("R18"), updated.searchFilterState.chips.single { it.kind == null }.selected)
     }
 }

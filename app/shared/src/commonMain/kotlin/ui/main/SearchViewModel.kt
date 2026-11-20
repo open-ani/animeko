@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -140,6 +141,14 @@ open class SearchViewModel(
 
     init {
         launchInBackground {
+            settingsRepository.uiSettings.flow
+                .map { it.searchSettings.expandedFilterGroups }
+                .distinctUntilChanged()
+                .collect { groups ->
+                    updateSearchPageState { it.copy(expandedFilterGroups = groups) }
+                }
+        }
+        launchInBackground {
             nsfwSettingFlow.collect { nsfwMode ->
                 updateSearchPageState { it.withTagKinds(SearchFilterState.tagKinds(nsfwMode)) }
             }
@@ -163,6 +172,23 @@ open class SearchViewModel(
 
     fun onSearchPageIntent(intent: SearchPageIntent) {
         when (intent) {
+            is SearchPageIntent.ToggleFilterGroup -> {
+                launchInBackground {
+                    settingsRepository.uiSettings.update {
+                        val groups = searchSettings.expandedFilterGroups
+                        copy(
+                            searchSettings = searchSettings.copy(
+                                expandedFilterGroups = if (intent.groupKey in groups) {
+                                    groups - intent.groupKey
+                                } else {
+                                    groups + intent.groupKey
+                                },
+                            ),
+                        )
+                    }
+                }
+            }
+
             SearchPageIntent.ClearSelection -> {
                 updateSearchPageState {
                     if (it.selectedItemIndex == -1) {
