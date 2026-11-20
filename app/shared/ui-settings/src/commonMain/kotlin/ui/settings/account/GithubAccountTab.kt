@@ -62,6 +62,7 @@ import me.him188.ani.app.data.repository.user.DeveloperVerificationInfo
 import me.him188.ani.app.data.repository.user.DeveloperVerificationRepository
 import me.him188.ani.app.data.repository.user.DeveloperVerificationRequestStatus
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
+import me.him188.ani.app.tools.LocalTimeZone
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.icons.OAuthPlatformIcon
@@ -229,7 +230,10 @@ internal fun GithubAccountTabImpl(
                         stringResource(Lang.settings_account_developer_outstanding_contributor)
                     } else {
                         verification.validUntil?.let {
-                            stringResource(Lang.settings_account_developer_valid_until, formatDate(it))
+                            stringResource(
+                                Lang.settings_account_developer_valid_until,
+                                formatDate(it, LocalTimeZone.current),
+                            )
                         }
                     },
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -470,5 +474,5 @@ private fun Banner(
 /**
  * `yyyy-MM-dd`. 有效期只需要精确到天, 而且总是在未来, 不适合用相对时间.
  */
-private fun formatDate(timestampMillis: Long): String =
-    Instant.fromEpochMilliseconds(timestampMillis).toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
+private fun formatDate(timestampMillis: Long, timeZone: TimeZone): String =
+    Instant.fromEpochMilliseconds(timestampMillis).toLocalDateTime(timeZone).date.toString()

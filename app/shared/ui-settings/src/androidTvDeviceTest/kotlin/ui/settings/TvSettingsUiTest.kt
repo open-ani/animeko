@@ -143,8 +143,7 @@ class TvSettingsUiTest {
         mount()
         key(Key.DirectionRight)
         awaitFocus("tv-settings-item-language")
-        key(Key.DirectionDown)
-        awaitFocus("tv-settings-item-nsfw")
+        navigateTo("tv-settings-item-nsfw")
         key(Key.DirectionCenter)
         awaitFocus("tv-settings-choice-1")
         key(Key.DirectionUp)
@@ -457,8 +456,7 @@ class TvSettingsUiTest {
         awaitFocus("tv-settings-item-loading")
         runOnIdle { state = state.copy(loaded = true) }
         awaitFocus("tv-settings-item-language")
-        key(Key.DirectionDown)
-        awaitFocus("tv-settings-item-nsfw")
+        navigateTo("tv-settings-item-nsfw")
     }
 
     @Test

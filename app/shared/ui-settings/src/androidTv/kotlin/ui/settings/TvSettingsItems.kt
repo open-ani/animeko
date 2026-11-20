@@ -86,6 +86,17 @@ internal sealed interface TvSettingsDialog {
         val onSelect: (String) -> Unit,
     ) : TvSettingsDialog
 
+    /**
+     * 带分组标题的单选列表. 用于时区选择: [rows] 里 Region 标题不可聚焦, 选项值 `null` 表示跟随系统时区.
+     */
+    data class TimeZone(
+        override val origin: String,
+        override val title: String,
+        val rows: List<TvTimeZoneRow>,
+        val selectedZoneId: String?,
+        val onSelect: (String?) -> Unit,
+    ) : TvSettingsDialog
+
     data class Input(
         override val origin: String,
         override val title: String,

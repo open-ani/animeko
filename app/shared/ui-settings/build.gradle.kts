@@ -46,6 +46,8 @@ kotlin {
     }
     sourceSets.androidMain.dependencies {
         implementation(libs.androidx.appcompat)
+        // 定位权限申请使用 rememberLauncherForActivityResult
+        implementation(libs.androidx.activity.compose)
     }
     sourceSets.desktopMain.dependencies {
     }

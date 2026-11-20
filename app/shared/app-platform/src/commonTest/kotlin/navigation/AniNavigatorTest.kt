@@ -33,6 +33,17 @@ class AniNavigatorTest {
     }
 
     @Test
+    fun `navigateSettings carries the tab and the detail key`() {
+        val navigator = navigatorWith(main)
+        navigator.navigateSettings(SettingsTab.APPEARANCE, detail = "TimeZone")
+
+        assertEquals(
+            listOf(main, NavRoutes.Settings(SettingsTab.APPEARANCE, "TimeZone")),
+            navigator.backStack,
+        )
+    }
+
+    @Test
     fun `popBackStack removes the top route`() {
         val navigator = navigatorWith(main, NavRoutes.Settings())
         navigator.popBackStack()

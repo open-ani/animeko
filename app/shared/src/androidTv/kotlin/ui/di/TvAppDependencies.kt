@@ -30,6 +30,7 @@ import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
+import me.him188.ani.app.domain.settings.TimeZoneProvider
 import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
@@ -65,6 +66,7 @@ class TvAppDependencies(
     val personCommentRepository: PersonCommentRepository,
     val commentReportService: AniCommentReportService,
     val versionExpiryService: VersionExpiryService,
+    val timeZoneProvider: TimeZoneProvider,
 ) {
     companion object {
         fun fromKoin(koin: Koin): TvAppDependencies = TvAppDependencies(
@@ -94,6 +96,7 @@ class TvAppDependencies(
             personCommentRepository = koin.get(),
             commentReportService = koin.get(),
             versionExpiryService = koin.get(),
+            timeZoneProvider = koin.get(),
         )
     }
 }
