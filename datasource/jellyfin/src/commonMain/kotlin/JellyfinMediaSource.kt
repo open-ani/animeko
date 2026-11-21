@@ -77,6 +77,25 @@ class JellyfinMediaSource(
             description = "仅用户名密码模式使用",
             visibleWhen = authMode.hasValue(AUTH_MODE_USERNAME_PASSWORD),
         )
+        val playMode = simpleEnum(
+            "playMode",
+            PLAY_MODE_DOWNLOAD,
+            PLAY_MODE_STREAM,
+            default = PLAY_MODE_DOWNLOAD,
+            description = "播放模式: download 使用原始下载接口; stream 使用流媒体接口",
+        )
+        val transcode = boolean(
+            "transcode",
+            default = false,
+            description = "仅 stream 模式使用。开启后由服务端转码输出 HLS 流，关闭则直出原流 (static=true)",
+            visibleWhen = playMode.hasValue(PLAY_MODE_STREAM),
+        )
+        val transcodeBitrateMbps = string(
+            "transcodeBitrateMbps",
+            defaultProvider = { DEFAULT_TRANSCODE_BITRATE_MBPS.toString() },
+            description = "仅 stream 转码模式使用。视频目标码率上限 (Mbps)，默认 20",
+            visibleWhen = playMode.hasValue(PLAY_MODE_STREAM),
+        )
     }
 
     class Factory : MediaSourceFactory {
@@ -96,6 +115,12 @@ class JellyfinMediaSource(
     override val info: MediaSourceInfo = INFO
     override val mediaSourceId: String get() = ID
     override val baseUrl = config[Parameters.baseUrl].removeSuffix("/")
+    override val apiKeyQueryParameterName: String get() = "ApiKey"
+    override val playMode: String = config[Parameters.playMode]
+    override val transcode: Boolean = config[Parameters.transcode]
+    override val transcodeBitrateMbps: Int =
+        config[Parameters.transcodeBitrateMbps].trim().toIntOrNull()?.takeIf { it > 0 }
+            ?: DEFAULT_TRANSCODE_BITRATE_MBPS
     private val authMode = config[Parameters.authMode]
     private val userId = config[Parameters.userId]
     private val apiKey = config[Parameters.apikey]
@@ -140,9 +165,5 @@ class JellyfinMediaSource(
         val authenticator = passwordAuthenticator ?: return false
         authenticator.invalidate(authorization.accessToken)
         return true
-    }
-
-    override fun getDownloadUri(itemId: String, accessToken: String): String {
-        return "$baseUrl/Items/$itemId/Download?ApiKey=$accessToken"
     }
 }

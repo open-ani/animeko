@@ -125,6 +125,7 @@ import me.him188.ani.app.domain.player.extension.MediaFetchAnalyticsExtension
 import me.him188.ani.app.domain.player.extension.ObserveWebMediaSourcePreferenceExtension
 import me.him188.ani.app.domain.player.extension.PlaybackSpeedExtension
 import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
+import me.him188.ani.app.domain.player.extension.RememberSubtitlePreferenceExtension
 import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
@@ -200,6 +201,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorState
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.videoplayer.player.applyMpvOptions
+import me.him188.ani.app.videoplayer.player.installMpvExtraSubtitles
 import me.him188.ani.app.videoplayer.player.isMpv
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -366,6 +368,7 @@ open class EpisodeViewModel(
             if (!isMpv()) return@apply
             // datastore 读取很快, 可以接受这里的 blocking coroutine
             runBlocking { applyCustomOptions() }
+            installMpvExtraSubtitles(backgroundScope)
         }
 
     val videoEnhancement = createVideoEnhancementController(
@@ -431,6 +434,7 @@ open class EpisodeViewModel(
             SwitchMediaOnPlayerErrorExtension,
             AutoSelectExtension,
             SaveMediaPreferenceExtension,
+            RememberSubtitlePreferenceExtension,
             ObserveWebMediaSourcePreferenceExtension,
         ),
         koin,

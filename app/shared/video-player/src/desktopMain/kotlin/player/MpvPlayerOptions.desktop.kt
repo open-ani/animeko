@@ -9,13 +9,18 @@
 
 package me.him188.ani.app.videoplayer.player
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
+import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.mpv.MPVHandle
 import org.openani.mediamp.mpv.MpvMediampPlayer
+import org.openani.mediamp.source.MediaData
 
 private val logger = logger<MpvMediampPlayer>()
 
@@ -49,6 +54,53 @@ actual fun MediampPlayer.applyMpvOptions(options: Map<String, String>) {
             logger.warn {
                 "mpv rejected custom option '$key=$value'. " +
                         "The option may not exist, its value may be invalid, or it can only be set at startup."
+            }
+        }
+    }
+}
+
+actual fun MediampPlayer.installMpvExtraSubtitles(scope: CoroutineScope) {
+    if (this !is MpvMediampPlayer) return
+    scope.launch {
+        var lastLoadedData: MediaData? = null
+        combine(state, mediaData) { playbackState, data ->
+            playbackState.mediaStatus to data
+        }.collect { (status, data) ->
+            if (status != MediaStatus.Ready || data == null || data === lastLoadedData) {
+                return@collect
+            }
+            lastLoadedData = data
+            val subtitles = data.extraFiles.subtitles
+            if (subtitles.isEmpty()) return@collect
+            val handle = try {
+                impl as? MPVHandle
+            } catch (e: Throwable) {
+                logger.error(e) { "Failed to obtain MPVHandle for external subtitles" }
+                null
+            } ?: return@collect
+
+            for (subtitle in subtitles) {
+                val title = subtitle.label?.takeIf { it.isNotBlank() }
+                    ?: subtitle.language?.takeIf { it.isNotBlank() }
+                    ?: subtitle.uri.substringAfterLast('/').substringBefore('?')
+                val args = buildList {
+                    add("sub-add")
+                    add(subtitle.uri)
+                    add("auto")
+                    add(title)
+                    subtitle.language?.let { add(it) }
+                }
+                val ok = try {
+                    handle.command(*args.toTypedArray())
+                } catch (e: Throwable) {
+                    logger.error(e) { "Failed to add external subtitle to mpv: ${subtitle.uri}" }
+                    false
+                }
+                if (ok) {
+                    logger.info { "Added external subtitle to mpv: ${subtitle.uri}" }
+                } else {
+                    logger.warn { "Failed to add external subtitle to mpv: ${subtitle.uri}" }
+                }
             }
         }
     }

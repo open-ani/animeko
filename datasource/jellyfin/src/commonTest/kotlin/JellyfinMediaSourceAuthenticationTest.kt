@@ -431,6 +431,231 @@ class JellyfinMediaSourceAuthenticationTest {
         }
     }
 
+    @Test
+    fun `stream mode uses static stream endpoint and appends ApiKey to subtitle uris`() = runTest {
+        val source = JellyfinMediaSource(
+            config = MediaSourceConfig(
+                arguments = mapOf(
+                    "baseUrl" to TEST_BASE_URL,
+                    "authMode" to JellyfinMediaSource.AUTH_MODE_API_KEY,
+                    "userId" to "user-1",
+                    "apikey" to "secret-key",
+                    "playMode" to BaseJellyfinMediaSource.PLAY_MODE_STREAM,
+                ),
+            ),
+            client = mockClient { request ->
+                when (request.url.encodedPath) {
+                    "/Items" -> {
+                        if (request.url.parameters["ids"] == "episode-1") {
+                            respondJson(
+                                """
+                                {
+                                  "Items": [
+                                    {
+                                      "Name": "Episode 1",
+                                      "SeriesName": "Test Anime",
+                                      "Id": "episode-1",
+                                      "IndexNumber": 1,
+                                      "Type": "Episode",
+                                      "MediaStreams": [
+                                        {
+                                          "Title": "SC",
+                                          "Language": "chi",
+                                          "Type": "Subtitle",
+                                          "Codec": "ass",
+                                          "Index": 2,
+                                          "IsExternal": true,
+                                          "IsTextSubtitleStream": true
+                                        },
+                                        {
+                                          "Title": "EN",
+                                          "Language": "eng",
+                                          "Type": "Subtitle",
+                                          "Codec": "srt",
+                                          "Index": 3,
+                                          "IsExternal": true,
+                                          "IsTextSubtitleStream": true
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                                """.trimIndent(),
+                            )
+                        } else {
+                            respondJson(
+                                """
+                                {
+                                  "Items": [
+                                    {
+                                      "Name": "Episode 1",
+                                      "SeriesName": "Test Anime",
+                                      "Id": "episode-1",
+                                      "IndexNumber": 1,
+                                      "Type": "Episode"
+                                    }
+                                  ]
+                                }
+                                """.trimIndent(),
+                            )
+                        }
+                    }
+
+                    else -> error("Unexpected request: ${request.url}")
+                }
+            },
+        )
+
+        val pagedSource = assertIs<PagedSource<MediaMatch>>(source.fetch(testRequest()))
+        val results = assertNotNull(pagedSource.nextPageOrNull())
+        val media = results.single().media
+        val download = assertIs<ResourceLocation.HttpStreamingFile>(media.download)
+
+        assertEquals(
+            "$TEST_BASE_URL/Videos/episode-1/stream?static=true&MediaSourceId=episode-1&ApiKey=secret-key",
+            download.uri,
+        )
+        assertEquals(2, media.extraFiles.subtitles.size)
+        assertEquals(
+            "$TEST_BASE_URL/Videos/episode-1/episode-1/Subtitles/2/0/Stream.ass?ApiKey=secret-key",
+            media.extraFiles.subtitles[0].uri,
+        )
+        assertEquals("text/x-ssa", media.extraFiles.subtitles[0].mimeType)
+        assertEquals(
+            "$TEST_BASE_URL/Videos/episode-1/episode-1/Subtitles/3/0/Stream.srt?ApiKey=secret-key",
+            media.extraFiles.subtitles[1].uri,
+        )
+        assertEquals("application/x-subrip", media.extraFiles.subtitles[1].mimeType)
+    }
+
+    @Test
+    fun `stream mode with transcode enabled sets static false and codecs`() = runTest {
+        val source = JellyfinMediaSource(
+            config = MediaSourceConfig(
+                arguments = mapOf(
+                    "baseUrl" to TEST_BASE_URL,
+                    "authMode" to JellyfinMediaSource.AUTH_MODE_API_KEY,
+                    "userId" to "user-1",
+                    "apikey" to "secret-key",
+                    "playMode" to BaseJellyfinMediaSource.PLAY_MODE_STREAM,
+                    "transcode" to "true",
+                ),
+            ),
+            client = mockClient { request ->
+                when (request.url.encodedPath) {
+                    "/Items" -> respondJson(
+                        """
+                        {
+                          "Items": [
+                            {
+                              "Name": "Episode 1",
+                              "SeriesName": "Test Anime",
+                              "Id": "episode-1",
+                              "IndexNumber": 1,
+                              "Type": "Episode"
+                            }
+                          ]
+                        }
+                        """.trimIndent(),
+                    )
+
+                    else -> error("Unexpected request: ${request.url}")
+                }
+            },
+        )
+
+        val pagedSource = assertIs<PagedSource<MediaMatch>>(source.fetch(testRequest()))
+        val results = assertNotNull(pagedSource.nextPageOrNull())
+        val media = results.single().media
+        val download = assertIs<ResourceLocation.HttpStreamingFile>(media.download)
+
+        assertEquals(
+            "$TEST_BASE_URL/Videos/episode-1/master.m3u8?MediaSourceId=episode-1&VideoCodec=h264&AudioCodec=aac&VideoBitrate=20000000&MaxStreamingBitrate=20000000&ApiKey=secret-key",
+            download.uri,
+        )
+    }
+
+    @Test
+    fun `emby stream mode uses api_key for both video stream and subtitles`() = runTest {
+        val source = EmbyMediaSource(
+            config = MediaSourceConfig(
+                arguments = mapOf(
+                    "baseUrl" to TEST_BASE_URL,
+                    "userId" to "user-1",
+                    "apikey" to "emby-key",
+                    "playMode" to BaseJellyfinMediaSource.PLAY_MODE_STREAM,
+                ),
+            ),
+            client = mockClient { request ->
+                when (request.url.encodedPath) {
+                    "/Items" -> {
+                        if (request.url.parameters["ids"] == "episode-1") {
+                            respondJson(
+                                """
+                                {
+                                  "Items": [
+                                    {
+                                      "Name": "Episode 1",
+                                      "SeriesName": "Test Anime",
+                                      "Id": "episode-1",
+                                      "IndexNumber": 1,
+                                      "Type": "Episode",
+                                      "MediaStreams": [
+                                        {
+                                          "Title": "SC",
+                                          "Language": "chi",
+                                          "Type": "Subtitle",
+                                          "Codec": "vtt",
+                                          "Index": 2,
+                                          "IsExternal": true,
+                                          "IsTextSubtitleStream": true
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                                """.trimIndent(),
+                            )
+                        } else {
+                            respondJson(
+                                """
+                                {
+                                  "Items": [
+                                    {
+                                      "Name": "Episode 1",
+                                      "SeriesName": "Test Anime",
+                                      "Id": "episode-1",
+                                      "IndexNumber": 1,
+                                      "Type": "Episode"
+                                    }
+                                  ]
+                                }
+                                """.trimIndent(),
+                            )
+                        }
+                    }
+
+                    else -> error("Unexpected request: ${request.url}")
+                }
+            },
+        )
+
+        val pagedSource = assertIs<PagedSource<MediaMatch>>(source.fetch(testRequest()))
+        val results = assertNotNull(pagedSource.nextPageOrNull())
+        val media = results.single().media
+        val download = assertIs<ResourceLocation.HttpStreamingFile>(media.download)
+
+        assertEquals(
+            "$TEST_BASE_URL/Videos/episode-1/stream?static=true&MediaSourceId=episode-1&api_key=emby-key",
+            download.uri,
+        )
+        assertEquals(
+            "$TEST_BASE_URL/Videos/episode-1/episode-1/Subtitles/2/0/Stream.vtt?api_key=emby-key",
+            media.extraFiles.subtitles.single().uri,
+        )
+        assertEquals("text/vtt", media.extraFiles.subtitles.single().mimeType)
+    }
+
     private fun passwordConfig() = MediaSourceConfig(
         arguments = mapOf(
             "baseUrl" to TEST_BASE_URL,

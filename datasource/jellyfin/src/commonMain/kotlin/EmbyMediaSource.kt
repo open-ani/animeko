@@ -18,6 +18,7 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.get
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParameters
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParametersBuilder
+import me.him188.ani.datasources.api.source.parameter.hasValue
 import me.him188.ani.utils.ktor.ScopedHttpClient
 
 class EmbyMediaSource(
@@ -48,6 +49,25 @@ class EmbyMediaSource(
             "apikey",
             description = "API Key, 可在 Emby \"控制台 - API 秘钥\" 中添加\n示例: b7292a71d51a6bf3a31036086a6d2e23",
         )
+        val playMode = simpleEnum(
+            "playMode",
+            PLAY_MODE_DOWNLOAD,
+            PLAY_MODE_STREAM,
+            default = PLAY_MODE_DOWNLOAD,
+            description = "播放模式: download 使用原始下载接口; stream 使用流媒体接口",
+        )
+        val transcode = boolean(
+            "transcode",
+            default = false,
+            description = "仅 stream 模式使用。开启后由服务端转码输出 HLS 流，关闭则直出原流 (static=true)",
+            visibleWhen = playMode.hasValue(PLAY_MODE_STREAM),
+        )
+        val transcodeBitrateMbps = string(
+            "transcodeBitrateMbps",
+            defaultProvider = { DEFAULT_TRANSCODE_BITRATE_MBPS.toString() },
+            description = "仅 stream 模式使用。视频目标码率上限 (Mbps)，默认 20",
+            visibleWhen = playMode.hasValue(PLAY_MODE_STREAM),
+        )
     }
 
     class Factory : MediaSourceFactory {
@@ -67,6 +87,12 @@ class EmbyMediaSource(
     override val info: MediaSourceInfo get() = INFO
     override val mediaSourceId: String get() = ID
     override val baseUrl = config[Parameters.baseUrl].removeSuffix("/")
+    override val apiKeyQueryParameterName: String get() = "api_key"
+    override val playMode: String = config[Parameters.playMode]
+    override val transcode: Boolean = config[Parameters.transcode]
+    override val transcodeBitrateMbps: Int =
+        config[Parameters.transcodeBitrateMbps].trim().toIntOrNull()?.takeIf { it > 0 }
+            ?: DEFAULT_TRANSCODE_BITRATE_MBPS
     private val userId = config[Parameters.userId]
     private val apiKey = config[Parameters.apikey]
 
@@ -76,9 +102,5 @@ class EmbyMediaSource(
             accessToken = apiKey,
             headerValue = """MediaBrowser Token="$apiKey"""",
         )
-    }
-
-    override fun getDownloadUri(itemId: String, accessToken: String): String {
-        return "$baseUrl/Items/$itemId/Download?api_key=$accessToken"
     }
 }

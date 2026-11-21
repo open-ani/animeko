@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.videoplayer.player
 
+import kotlinx.coroutines.CoroutineScope
 import org.openani.mediamp.MediampPlayer
 
 actual fun MediampPlayer.isMpv(): Boolean {
@@ -16,5 +17,9 @@ actual fun MediampPlayer.isMpv(): Boolean {
 }
 
 actual fun MediampPlayer.applyMpvOptions(options: Map<String, String>) {
+
+}
+
+actual fun MediampPlayer.installMpvExtraSubtitles(scope: CoroutineScope) {
 
 }

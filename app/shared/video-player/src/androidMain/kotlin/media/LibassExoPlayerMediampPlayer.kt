@@ -318,6 +318,7 @@ private class LibassMediaSourcePipeline(
                 .setUserAgent(data.headers["User-Agent"] ?: DEFAULT_USER_AGENT)
                 .setDefaultRequestProperties(data.headers)
                 .setConnectTimeoutMs(CONNECT_TIMEOUT_MILLIS)
+                .setAllowCrossProtocolRedirects(true)
 
             is SeekableInputMediaData -> {
                 if (data.uri.startsWith("file://")) {
