@@ -43,6 +43,7 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -681,8 +682,11 @@ private fun PreviewSliderItem(
             ) {
                 description?.invoke()
 
+                // 可以自定义 thumb 和 track 的 Slider 只接受 SliderState, 每次重组把外部的 value 同步进去.
+                val state = remember(steps, valueRange) { SliderState(value, steps, valueRange) }
+                state.value = value
                 Slider(
-                    value,
+                    state,
                     onValueChange,
                     Modifier,
                     enabled,
@@ -704,8 +708,6 @@ private fun PreviewSliderItem(
                             drawTick = drawTick,
                         )
                     },
-                    valueRange = valueRange,
-                    steps = steps,
                 )
             }
         },

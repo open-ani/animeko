@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.SliderValueIndicator
 import me.him188.ani.app.ui.foundation.rememberHoverExitFilteredInteractionSource
+import me.him188.ani.app.ui.foundation.rememberUpdatedRangeSliderState
+import me.him188.ani.app.ui.foundation.rememberUpdatedSliderState
 
 
 @SettingsDsl
@@ -142,20 +144,19 @@ fun SettingsScope.RangeSliderItem(
 ) {
     SliderItem(title, modifier, description, valueLabel) {
         RangeSlider(
-            value = value,
+            state = rememberUpdatedRangeSliderState(value, steps, valueRange),
             onValueChange = onValueChange,
             modifier = Modifier,
             enabled = enabled,
-            valueRange = valueRange,
             onValueChangeFinished = onValueChangeFinished,
             colors = colors,
-            startInteractionSource = startInteractionSource,
-            endInteractionSource = endInteractionSource,
+            startThumbInteractionSource = startInteractionSource,
+            endThumbInteractionSource = endInteractionSource,
             startThumb = rangeSliderThumb(
-                startInteractionSource, colors, enabled, { it.activeRangeStart }, valueIndicator,
+                startInteractionSource, colors, enabled, { it.startValue }, valueIndicator,
             ),
             endThumb = rangeSliderThumb(
-                endInteractionSource, colors, enabled, { it.activeRangeEnd }, valueIndicator,
+                endInteractionSource, colors, enabled, { it.endValue }, valueIndicator,
             ),
             track = { rangeSliderState ->
                 // M3E 样式: 小圆角轨道; 刻度点不画 (spec 默认关闭, 密步进下是「豌豆荚」).
@@ -168,7 +169,6 @@ fun SettingsScope.RangeSliderItem(
                     drawTick = { _, _ -> },
                 )
             },
-            steps = steps,
         )
     }
 }
@@ -225,7 +225,7 @@ fun SettingsScope.ThinSliderItem(
 ) {
     SliderItem(title, modifier, description, valueLabel) {
         Slider(
-            value,
+            rememberUpdatedSliderState(value, steps, valueRange),
             onValueChange,
             Modifier,
             enabled,
@@ -247,8 +247,6 @@ fun SettingsScope.ThinSliderItem(
                     drawTick = drawTick,
                 )
             },
-            valueRange = valueRange,
-            steps = steps,
         )
     }
 }

@@ -15,7 +15,7 @@ android {
     val idGroup = "me.him188.ani"
     namespace = "me.him188.ani.app.data.aidl"
     defaultConfig {
-        compileSdk = getIntProperty("android.compile.sdk")
+        compileSdk(aniCompileSdk)
         minSdk = getIntProperty("android.min.sdk")
     }
     buildFeatures {

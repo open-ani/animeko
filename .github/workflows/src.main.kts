@@ -1558,9 +1558,10 @@ class WithMatrix(
                     actionVersion = "v3",
                     inputs = mapOf(
                         "accept-android-sdk-licenses" to "true",
-                        // API 37 起 platform 包 id 带上了 minor version (`android-37.0`, 即 "Android SDK Platform 17").
-                        // 写成 `android-37` 会 Failed to find package. 与 gradle.properties 的 android.compile.sdk 对应.
-                        "packages" to "platform-tools platforms;android-37.0 build-tools;36.0.0",
+                        // API 37 起 platform 包 id 带上了 minor version (`android-37.1`).
+                        // 写成 `android-37` 会 Failed to find package.
+                        // 与 gradle.properties 的 android.compile.sdk 和 android.compile.sdk.minor 对应.
+                        "packages" to "platform-tools platforms;android-37.1 build-tools;36.0.0",
                     ),
                 ),
             )

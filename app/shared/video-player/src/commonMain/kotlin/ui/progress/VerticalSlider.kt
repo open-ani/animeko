@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
+import me.him188.ani.app.ui.foundation.rememberUpdatedSliderState
 
 // copy from https://gist.github.com/Debdutta-Panda/d47a84b3e2f82b4dd4b1f0cf131e73d8
 @Composable
@@ -45,10 +46,8 @@ fun VerticalSlider(
         colors = colors,
         interactionSource = interactionSource,
         onValueChangeFinished = onValueChangeFinished,
-        steps = steps,
-        valueRange = valueRange,
         enabled = enabled,
-        value = value,
+        state = rememberUpdatedSliderState(value, steps, valueRange),
         onValueChange = onValueChange,
         modifier = Modifier
             .graphicsLayer {

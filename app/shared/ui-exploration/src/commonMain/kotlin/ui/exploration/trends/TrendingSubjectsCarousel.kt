@@ -93,7 +93,7 @@ fun TrendingSubjectsCarousel(
             carouselState,
             //            preferredItemWidth = size.preferredWidth,
             Modifier.fillMaxWidth(),
-            maxItemWidth = 300.dp,
+            preferredItemWidth = 300.dp,
             itemSpacing = itemSpacing,
             flingBehavior = CarouselDefaults.multiBrowseFlingBehavior(
                 carouselState,

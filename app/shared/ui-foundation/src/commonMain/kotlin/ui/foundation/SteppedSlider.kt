@@ -74,7 +74,7 @@ fun SteppedSlider(
     }
 
     Slider(
-        value = displayedValue,
+        state = rememberUpdatedSliderState(displayedValue, sliderStepsInRange(valueRange), valueRange),
         onValueChange = {
             dragging = true
             val quantizedValue = quantizeSliderValue(it, valueRange)
@@ -85,10 +85,8 @@ fun SteppedSlider(
             dragging = false
             onValueChangeFinished(displayedValue)
         },
-        valueRange = valueRange,
-        steps = sliderStepsInRange(valueRange),
         interactionSource = interactionSource,
-        thumb = { sliderState ->
+        thumb = {
             Label(
                 label = {
                     SliderValueIndicator {
@@ -99,7 +97,6 @@ fun SteppedSlider(
             ) {
                 SliderDefaults.Thumb(
                     interactionSource = interactionSource,
-                    sliderState = sliderState,
                     colors = colors,
                 )
             }

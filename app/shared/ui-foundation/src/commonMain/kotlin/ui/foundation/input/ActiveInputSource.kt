@@ -89,16 +89,20 @@ fun PointerType.asGesturePointerType(): PointerType = when (this) {
 fun Modifier.trackActiveInputSource(state: ActiveInputSourceState): Modifier =
     pointerInput(state) {
         awaitPointerEventScope {
+            val mouseMovement = MouseMovementTracker()
             while (true) {
                 val event = awaitPointerEvent(PointerEventPass.Initial)
+                val isMouseMovement = mouseMovement.isMouseMovement(event)
                 // Enter/Exit 即使用户正在用手指也会带着 PointerType.Mouse 到达 (鼠标指针仍停在窗口里),
-                // 据此判断会把刚切过去的触摸又翻回鼠标.
+                // 据此判断会把刚切过去的触摸又翻回鼠标. 位置没有变化的鼠标 Move 同理, 见 MouseMovementTracker.
                 val interactive = when (event.type) {
                     PointerEventType.Press,
-                    PointerEventType.Move,
                     PointerEventType.Release,
                     PointerEventType.Scroll,
                         -> true
+
+                    PointerEventType.Move ->
+                        isMouseMovement || event.changes.firstOrNull()?.type != PointerType.Mouse
 
                     else -> false
                 }

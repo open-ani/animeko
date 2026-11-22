@@ -45,17 +45,19 @@ class PreviewPopupScreenshotTest {
             debounceMillis = 0,
         )
         setContent {
-            MediaProgressSlider(
-                PlayerProgressSliderState(
-                    currentPositionMillis = { 30_000L },
-                    totalDurationMillis = { 100_000L },
-                    chapters = { emptyList() },
-                    onPreview = {},
-                    onPreviewFinished = {},
-                ),
-                cacheProgressInfoFlow = { null },
-                framePreview = framePreview,
-            )
+            ProgressSliderAtWindowBottom {
+                MediaProgressSlider(
+                    PlayerProgressSliderState(
+                        currentPositionMillis = { 30_000L },
+                        totalDurationMillis = { 100_000L },
+                        chapters = { emptyList() },
+                        onPreview = {},
+                        onPreviewFinished = {},
+                    ),
+                    cacheProgressInfoFlow = { null },
+                    framePreview = framePreview,
+                )
+            }
         }
         waitForIdle()
         runOnUiThread {

@@ -9,11 +9,13 @@
 
 package me.him188.ani.utils.selectorworkflow
 
+import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.platform.registerSkikoComposeImplementation
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import me.him188.ani.utils.selectorworkflow.draw.WorkflowLayout
@@ -31,6 +33,13 @@ import kotlin.time.Duration
  * 画得出来 (不抛异常)、画出了东西 (不是一整块底色)、每个阶段都有内容.
  */
 class WorkflowRenderTest {
+
+    init {
+        // Compose 的 Skia 图形实现由它的入口 (application、窗口、ImageComposeScene、UI 测试) 注册.
+        // 这里不经过任何入口, 直接往 ImageBitmap 上画, 所以自己注册. 重复注册没有副作用.
+        @OptIn(InternalComposeUiApi::class)
+        registerSkikoComposeImplementation()
+    }
 
     private val palette = workflowPaletteOf(
         primary = Color(0xFFD0BCFF),
