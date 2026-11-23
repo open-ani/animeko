@@ -10,17 +10,28 @@
 package me.him188.ani.app.tools
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.staticCompositionLocalOf
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
+import me.him188.ani.app.platform.currentSystemTimeZone
 import kotlin.time.Instant
 
 val LocalTimeFormatter = androidx.compose.runtime.compositionLocalOf<TimeFormatter> {
     error("No TimeFormatter provided")
 }
+
+/**
+ * 绝对日期时间显示使用的时区. App 根节点提供用户选择的时区; 偏好跟随系统时即为系统时区.
+ *
+ * 默认值是设备系统时区, 供未提供该值的预览与测试使用.
+ * 相对时间 ("5 分钟前") 与时区无关, 不受影响.
+ */
+val LocalTimeZone: ProvidableCompositionLocal<TimeZone> = staticCompositionLocalOf { currentSystemTimeZone() }
 
 /**
  * @see TimeFormatter
@@ -46,8 +57,9 @@ fun formatDateTime(
     showTime: Boolean = true,
 ): String {
     val formatter by rememberUpdatedState(LocalTimeFormatter.current)
-    return remember(dateTime, showTime) {
-        val instant = dateTime.toInstant(TimeZone.currentSystemDefault())
+    val timeZone = LocalTimeZone.current
+    return remember(dateTime, showTime, timeZone) {
+        val instant = dateTime.toInstant(timeZone)
         if (instant.toEpochMilliseconds() == 0L) ""
         else formatter.format(instant, showTime)
     }
@@ -61,8 +73,9 @@ fun formatDateAsWeek(
     timestamp: Long, // millis
     showTime: Boolean = true,
 ): String {
-    return remember(timestamp, showTime) {
+    val timeZone = LocalTimeZone.current
+    return remember(timestamp, timeZone) {
         if (timestamp == 0L) ""
-        else WeekFormatter.System.format(Instant.fromEpochMilliseconds(timestamp))
+        else WeekFormatter.System.format(Instant.fromEpochMilliseconds(timestamp), timeZone)
     }
 }

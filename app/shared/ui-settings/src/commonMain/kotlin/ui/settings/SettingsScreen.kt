@@ -129,6 +129,7 @@ import me.him188.ani.app.ui.lang.settings_about_build_info
 import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_title
 import me.him188.ani.app.ui.lang.settings_account_github_title
+import me.him188.ani.app.ui.lang.settings_app_time_zone
 import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
 import me.him188.ani.app.ui.lang.settings_category_app_ui
 import me.him188.ani.app.ui.lang.settings_category_data_playback
@@ -184,6 +185,7 @@ import me.him188.ani.app.ui.settings.tabs.media.source.rememberMediaSourceSelect
 import me.him188.ani.app.ui.settings.tabs.network.ConfigureProxyGroup
 import me.him188.ani.app.ui.settings.tabs.network.ServerSelectionGroup
 import me.him188.ani.app.ui.settings.tabs.theme.ThemeGroup
+import me.him188.ani.app.ui.settings.time.TimeZoneSettingsPage
 import me.him188.ani.app.ui.update.devbuild.DevBuildsTab
 import me.him188.ani.utils.platform.hasScrollingBug
 import org.jetbrains.compose.resources.getString
@@ -212,7 +214,15 @@ fun SettingsScreen(
      * 调试页「打开播放流程悬浮窗」. 悬浮窗由宿主在页面之上显示.
      */
     onOpenPlayFlowDebugWindow: () -> Unit = {},
+    /**
+     * 首次组合时直接进入的二级页的 key (见 [detailPaneRouteOfKey], 例如 [TIME_ZONE_DETAIL_KEY]).
+     * 未知的 key 会被忽略, 停留在 [initialTab] 对应的分节.
+     */
+    initialDetailKey: String? = null,
 ) {
+    var pendingDetailRoute by rememberSaveable {
+        mutableStateOf(initialDetailKey?.let(::detailPaneRouteOfKey))
+    }
     val navigator: ThreePaneScaffoldNavigator<Nothing?> = rememberListDetailPaneScaffoldNavigator(
         initialDestinationHistory = buildList {
             add(ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List))
@@ -376,7 +386,10 @@ fun SettingsScreen(
                                 onNavigateToQrLogin = onNavigateToQrLogin,
                             )
 
-                            SettingsTab.APPEARANCE -> AppearanceGroup(vm.uiSettings)
+                            SettingsTab.APPEARANCE -> AppearanceGroup(
+                                vm.uiSettings,
+                                onNavigateToTimeZone = { navigateTo(DetailPaneRoutes.TimeZone) },
+                            )
                             SettingsTab.THEME -> ThemeGroup(vm.themeSettings)
                             SettingsTab.UPDATE -> SoftwareUpdateGroup(vm.softwareUpdateGroupState)
                             SettingsTab.PLAYER -> {
@@ -465,6 +478,9 @@ fun SettingsScreen(
                 vm.editMediaSourceState,
             )
         },
+        timeZonePageContent = {
+            TimeZoneSettingsPage(vm.uiSettings)
+        },
         subscriptionPageContent = { subscriptionId ->
             MediaSourceSubscriptionPageContent(
                 subscriptionId,
@@ -478,6 +494,8 @@ fun SettingsScreen(
         navigationIcon = navigationIcon,
         layoutParameters = layoutParameters,
         loadOpenSourceLibrariesJsons = loadOpenSourceLibrariesJsons,
+        pendingDetailRoute = pendingDetailRoute,
+        onPendingDetailRouteHandled = { pendingDetailRoute = null },
     )
 }
 
@@ -496,11 +514,16 @@ internal fun SettingsPageLayout(
     subscriptionPageTitle: @Composable (subscriptionId: String) -> String = { "" },
     subscriptionPageActions: @Composable (subscriptionId: String) -> Unit = {},
     subscriptionPageContent: @Composable SettingsDetailPaneScope.(subscriptionId: String) -> Unit = {},
+    // [DetailPaneRoutes.TimeZone] 页面. 由调用方提供, 因为它依赖设置页的状态.
+    timeZonePageContent: @Composable SettingsDetailPaneScope.() -> Unit = {},
     modifier: Modifier = Modifier,
     contentWindowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
     navigationIcon: @Composable () -> Unit = {},
+    // 深链接: 首次组合时要进入的二级页, 进入后由调用方清空.
+    pendingDetailRoute: DetailPaneRoutes? = null,
+    onPendingDetailRouteHandled: () -> Unit = {},
     loadOpenSourceLibrariesJsons: suspend () -> List<ByteArray>,
 ) = SettingsPageSurface(containerColor) {
     val layoutParametersState by rememberUpdatedState(layoutParameters)
@@ -662,6 +685,14 @@ internal fun SettingsPageLayout(
                     if (detailPaneBackStack.size > 1) {
                         detailPaneBackStack.removeAt(detailPaneBackStack.lastIndex)
                     }
+                }
+                // 深链接: 进入详情区时先落到指定的二级页, 之后由用户自己导航
+                LaunchedEffect(pendingDetailRoute) {
+                    val route = pendingDetailRoute ?: return@LaunchedEffect
+                    if (detailPaneBackStack.lastOrNull() != route) {
+                        detailPaneBackStack.add(route)
+                    }
+                    onPendingDetailRouteHandled()
                 }
 
                 @Composable
@@ -958,6 +989,28 @@ internal fun SettingsPageLayout(
                             }
                         }
                     }
+                    entry<DetailPaneRoutes.TimeZone> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings_app_time_zone)) },
+                                    navigationIcon = {
+                                        BackNavigationIconButton(navigateUp)
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            // 页面自带 LazyColumn, 不能套在 verticalScroll 里
+                            RouteContent(scrollable = false) {
+                                timeZonePageContent()
+                            }
+                        }
+                    }
                     },
                 )
             }
@@ -1093,10 +1146,34 @@ sealed class DetailPaneRoutes : NavKey {
     data object DevBuilds : DetailPaneRoutes()
 
     @Serializable
+    data object TimeZone : DetailPaneRoutes()
+
+    @Serializable
     data class MediaSourceSubscription(val subscriptionId: String) : DetailPaneRoutes()
 }
 
 private const val MEDIA_SOURCE_SUBSCRIPTION_ROUTE_PREFIX = "MediaSourceSubscription:"
+
+/**
+ * 时区二级页在深链接参数 (`NavRoutes.Settings.detail`) 与返回栈快照中使用的 key.
+ */
+const val TIME_ZONE_DETAIL_KEY = "TimeZone"
+
+/**
+ * 把二级页的持久化 key 映射回路由. 未知 key 返回 `null`, 调用方自行决定回退到哪一页.
+ */
+internal fun detailPaneRouteOfKey(key: String): DetailPaneRoutes? = when (key) {
+    TIME_ZONE_DETAIL_KEY -> DetailPaneRoutes.TimeZone
+    "Acknowledgements" -> DetailPaneRoutes.Acknowledgements
+    "OpenSourceLicenses" -> DetailPaneRoutes.OpenSourceLicenses
+    "Developers" -> DetailPaneRoutes.Developers
+    "BuildInfo" -> DetailPaneRoutes.BuildInfo
+    "BangumiSync" -> DetailPaneRoutes.BangumiSync
+    "GithubAccount" -> DetailPaneRoutes.GithubAccount
+    "DevBuilds" -> DetailPaneRoutes.DevBuilds
+    "Main" -> DetailPaneRoutes.Main
+    else -> null
+}
 
 private val DetailPaneBackStackSaver: Saver<SnapshotStateList<DetailPaneRoutes>, Any> = listSaver(
     save = { stack ->
@@ -1118,16 +1195,7 @@ private val DetailPaneBackStackSaver: Saver<SnapshotStateList<DetailPaneRoutes>,
                         name.removePrefix(MEDIA_SOURCE_SUBSCRIPTION_ROUTE_PREFIX),
                     )
                 }
-                when (name) {
-                    "Acknowledgements" -> DetailPaneRoutes.Acknowledgements
-                    "OpenSourceLicenses" -> DetailPaneRoutes.OpenSourceLicenses
-                    "Developers" -> DetailPaneRoutes.Developers
-                    "BuildInfo" -> DetailPaneRoutes.BuildInfo
-                    "BangumiSync" -> DetailPaneRoutes.BangumiSync
-                    "GithubAccount" -> DetailPaneRoutes.GithubAccount
-                    "DevBuilds" -> DetailPaneRoutes.DevBuilds
-                    else -> DetailPaneRoutes.Main
-                }
+                detailPaneRouteOfKey(name) ?: DetailPaneRoutes.Main
             }.toMutableStateList()
         }
     },

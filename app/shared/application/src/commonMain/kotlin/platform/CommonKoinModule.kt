@@ -530,6 +530,8 @@ private fun KoinApplication.otherModules(
 
     // Caching
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
+    // 粗略定位匹配时区, 桌面与 iOS 的实现恒返回不支持
+    single<LocationTimeZoneProvider> { createLocationTimeZoneProvider(getContext()) }
     single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory() }
 }
 

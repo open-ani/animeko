@@ -169,8 +169,11 @@ interface AniNavigator {
         navigate(NavRoutes.PlaybackHistorySyncStatus)
     }
 
-    fun navigateSettings(tab: SettingsTab? = null) {
-        navigate(NavRoutes.Settings(tab))
+    /**
+     * @param detail 打开后直接进入的二级页的 key, 见 [NavRoutes.Settings.detail]
+     */
+    fun navigateSettings(tab: SettingsTab? = null, detail: String? = null) {
+        navigate(NavRoutes.Settings(tab, detail))
     }
 
     fun navigateSubjectSearch(search: NavRoutes.SubjectSearch = NavRoutes.SubjectSearch()) {

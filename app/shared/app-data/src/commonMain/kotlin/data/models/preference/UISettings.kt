@@ -48,6 +48,15 @@ data class UISettings(
     val episodeProgress: EpisodeProgressSettings = EpisodeProgressSettings.Default,
     val subjectAppearance: SubjectAppearanceSettings = SubjectAppearanceSettings.Default,
     val desktopCloseBehavior: DesktopCloseBehavior = DesktopCloseBehavior.EXIT,
+
+    /**
+     * 全局时区偏好, 为 IANA 时区 ID (例如 `Asia/Shanghai`).
+     *
+     * 为 `null` 时跟随系统时区. 所有绝对日期时间的显示都以它为准.
+     *
+     * @see me.him188.ani.app.domain.settings.TimeZoneProvider
+     */
+    val timeZoneId: String? = null,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {

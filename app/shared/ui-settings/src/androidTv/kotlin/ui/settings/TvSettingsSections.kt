@@ -5,18 +5,22 @@
 package me.him188.ani.tv.ui.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.text.intl.Locale
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.datetime.offsetAt
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.HlsAdFilteringMode
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
+import me.him188.ani.app.platform.currentSystemTimeZone
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.SupportedLocales
@@ -28,6 +32,7 @@ import me.him188.ani.app.ui.lang.settings_app_nsfw_blur
 import me.him188.ani.app.ui.lang.settings_app_nsfw_content
 import me.him188.ani.app.ui.lang.settings_app_nsfw_display
 import me.him188.ani.app.ui.lang.settings_app_nsfw_hide
+import me.him188.ani.app.ui.lang.settings_app_time_zone
 import me.him188.ani.app.ui.lang.settings_danmaku_add_regex_filter
 import me.him188.ani.app.ui.lang.settings_danmaku_export_to_clipboard
 import me.him188.ani.app.ui.lang.settings_danmaku_import_from_clipboard
@@ -113,6 +118,8 @@ import me.him188.ani.app.ui.lang.settings_search_visibility_description
 import me.him188.ani.app.ui.lang.settings_tab_player
 import me.him188.ani.app.ui.lang.settings_theme_mode_auto
 import me.him188.ani.app.ui.lang.settings_theme_palette
+import me.him188.ani.app.ui.lang.settings_time_zone_follow_system_row
+import me.him188.ani.app.ui.lang.settings_time_zone_id_with_offset
 import me.him188.ani.app.ui.lang.tv_settings_subscription_sources_count
 import me.him188.ani.app.ui.settings.tabs.media.MediaSelectorWorkflowDemoState
 import me.him188.ani.app.ui.lang.video_player_enable_danmaku
@@ -121,6 +128,8 @@ import me.him188.ani.app.ui.lang.video_player_performance
 import me.him188.ani.app.ui.lang.video_player_quality
 import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
+import me.him188.ani.app.ui.settings.time.formatUtcOffset
+import me.him188.ani.app.ui.settings.time.timeZoneCatalog
 import me.him188.ani.app.ui.theme.themeColorOptions
 import me.him188.ani.datasources.api.topic.Resolution
 import me.him188.ani.datasources.api.topic.SubtitleLanguage
@@ -137,6 +146,7 @@ internal fun TvSettingsItems.appearance() {
         "language", stringResource(Lang.settings_app_language), appearance.appLanguage, languages,
         languages.map { renderLocale(it) },
     ) { locale -> onIntent(TvSettingsIntent.Appearance { copy(appLanguage = locale) }) }
+    appearanceTimeZone()
     choice(
         "nsfw", stringResource(Lang.settings_app_nsfw_content), appearance.searchSettings.nsfwMode, NsfwMode.entries,
         listOf(
@@ -150,6 +160,42 @@ internal fun TvSettingsItems.appearance() {
         description = stringResource(Lang.settings_search_visibility_description),
     ) { value ->
         onIntent(TvSettingsIntent.Appearance { copy(searchSettings = searchSettings.copy(ignoreDoneAndDroppedSubjects = value)) })
+    }
+}
+
+/**
+ * 时区条目: 次级文字显示当前时区, 确认键打开按时区分组的选择对话框.
+ *
+ * 目录只用于生成展示顺序与偏移, 进入分节时取一次系统时区与时刻.
+ */
+@Composable
+private fun TvSettingsItems.appearanceTimeZone() {
+    val systemZone = remember { currentSystemTimeZone() }
+    val now = remember(systemZone) { Clock.System.now() }
+    val systemOffsetLabel = remember(systemZone, now) { formatUtcOffset(systemZone.offsetAt(now).totalSeconds) }
+    val followSystemLabel = stringResource(Lang.settings_time_zone_follow_system_row, systemZone.id, systemOffsetLabel)
+    val selectedZoneId = state.appearance.timeZoneId
+    val title = stringResource(Lang.settings_app_time_zone)
+    val value = if (selectedZoneId == null) {
+        followSystemLabel
+    } else {
+        stringResource(
+            Lang.settings_time_zone_id_with_offset,
+            selectedZoneId,
+            timeZoneOffsetLabel(selectedZoneId, now) ?: systemOffsetLabel,
+        )
+    }
+    val sections = remember(now, systemZone) { timeZoneCatalog(now, systemZone) }
+    action("time-zone", title, value) {
+        open(
+            TvSettingsDialog.TimeZone(
+                origin = "time-zone",
+                title = title,
+                rows = tvTimeZoneRows(sections, selectedZoneId, followSystemLabel),
+                selectedZoneId = selectedZoneId,
+                onSelect = { zoneId -> onIntent(tvTimeZoneIntent(zoneId)) },
+            ),
+        )
     }
 }
 

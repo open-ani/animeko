@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.roundToInt
+import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_browser_open_failed_copied
@@ -28,11 +29,15 @@ import me.him188.ani.app.ui.lang.settings_mediasource_rss_copied_to_clipboard
 import me.him188.ani.app.ui.lang.settings_save_failed
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * @param initialTab 入口指定的设置分节, 见 [SettingsTab]. 其余 tab 落到默认分节.
+ */
 @Composable
 fun TvSettingsRoute(
     viewModel: TvSettingsViewModel,
     modifier: Modifier = Modifier,
     onCheckUpdate: () -> Unit = {},
+    initialTab: SettingsTab? = null,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -77,5 +82,6 @@ fun TvSettingsRoute(
             viewModel.onIntent(TvSettingsIntent.ImportRegex(text))
         },
         onCheckUpdate = onCheckUpdate,
+        initialTab = initialTab,
     )
 }

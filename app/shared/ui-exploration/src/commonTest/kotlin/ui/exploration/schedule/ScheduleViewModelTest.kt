@@ -26,6 +26,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
@@ -61,6 +62,7 @@ import kotlin.time.TimeSource
  * - [ScheduleViewModel.delayUntilNextMidnight] / [ScheduleViewModel.delayUntilNextMinute] 的纯计算 (含夏令时);
  * - 跨过本地午夜时 "今天" 变化: 在新的响应到达之前先发出以新的今天为基准的占位状态, 日期列 (表头) 和列内容一起移动,
  *   [ScheduleViewModel.pageState] 的日期列与 presentation 同源, 然后用新的今天重新请求;
+ * - 全局时区变化后以新时区重新计算今天、重新请求, 日期列与每个条目的时刻一起变化, 不需要手动刷新;
  * - [ScheduleViewModel.refresh] 重新调用 use case, 新响应到达前显示占位状态, 出错后可以恢复.
  *
  * ViewModel 的 flow 跑在它自己的 backgroundScope (真实线程) 上, 所以等待都在 [Dispatchers.Default] 上带真实超时进行,
@@ -151,16 +153,18 @@ class ScheduleViewModelTest {
     }
 
     /**
-     * 记录每次调用的 `today`; 返回 [handler] 生成的 flow.
+     * 记录每次调用的 `today` 与 `timeZone`; 返回 [handler] 生成的 flow.
      */
     private class FakeGetAnimeScheduleFlowUseCase(
         private val handler: (today: LocalDate, callIndex: Int) -> Flow<List<AiringScheduleForDate>>,
     ) : GetAnimeScheduleFlowUseCase {
         val calls = MutableStateFlow<List<LocalDate>>(emptyList())
+        val zoneCalls = MutableStateFlow<List<TimeZone>>(emptyList())
 
         override fun invoke(today: LocalDate, timeZone: TimeZone): Flow<List<AiringScheduleForDate>> {
             val index = calls.value.size
             calls.update { it + today }
+            zoneCalls.update { it + timeZone }
             return handler(today, index)
         }
     }
@@ -212,8 +216,12 @@ class ScheduleViewModelTest {
     private val fixtureScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val viewModels = mutableListOf<ScheduleViewModel>()
 
-    private fun newViewModel(useCase: GetAnimeScheduleFlowUseCase, clock: Clock): ScheduleViewModel =
-        ScheduleViewModel(koin = koinWith(useCase), timeZone = timeZone, clock = clock).also { viewModels += it }
+    private fun newViewModel(
+        useCase: GetAnimeScheduleFlowUseCase,
+        clock: Clock,
+        timeZoneFlow: MutableStateFlow<TimeZone> = MutableStateFlow(timeZone),
+    ): ScheduleViewModel =
+        ScheduleViewModel(koin = koinWith(useCase), timeZoneFlow = timeZoneFlow, clock = clock).also { viewModels += it }
 
     @AfterTest
     fun tearDown() {
@@ -241,6 +249,23 @@ class ScheduleViewModelTest {
             "columns must cover exactly the days of the header (placeholder=${presentation.isPlaceholder})",
         )
     }
+
+    /**
+     * [date] 列里 [subjectId] 条目的显示时刻.
+     */
+    private fun SchedulePagePresentation.timeOf(date: LocalDate, subjectId: Int): LocalTime? =
+        airingSchedules.first { it.date == date }.episodes
+            .filterIsInstance<AiringScheduleColumnItem.Data>()
+            .first { it.item.subjectId == subjectId }
+            .item.time
+
+    /**
+     * 当前时间指示器所在的日期列.
+     */
+    private fun SchedulePagePresentation.indicatorDays(): List<LocalDate> =
+        airingSchedules.filter { schedule ->
+            schedule.episodes.any { it is AiringScheduleColumnItem.CurrentTimeIndicator }
+        }.map { it.date }
 
     @Test
     fun `initial state uses today from the injected clock and time zone`() = runTest {
@@ -294,6 +319,43 @@ class ScheduleViewModelTest {
         val otherColumn = presentation.airingSchedules.first { it.date != today }.episodes
         assertEquals(2, otherColumn.size)
         assertTrue(otherColumn.none { it is AiringScheduleColumnItem.CurrentTimeIndicator })
+
+        subscription.cancel()
+    }
+
+    @Test
+    fun `changing the global time zone moves today and re-renders item times`() = runTest {
+        // 2026-09-04 23:30 Asia/Shanghai (UTC+8) == 2026-09-04T15:30Z == 2026-09-05 00:30 Asia/Tokyo (UTC+9)
+        val dayInShanghai = LocalDate(2026, 9, 4)
+        val dayInTokyo = LocalDate(2026, 9, 5)
+        val tokyo = TimeZone.of("Asia/Tokyo")
+        val useCase = FakeGetAnimeScheduleFlowUseCase { day, _ -> flow { emit(scheduleFor(day)) } }
+        val clock = OffsetClock(LocalDateTime(2026, 9, 4, 23, 30).toInstant(timeZone))
+        val timeZoneFlow = MutableStateFlow(timeZone)
+        val vm = newViewModel(useCase, clock, timeZoneFlow)
+        val subscription = fixtureScope.launch { vm.presentationFlow.collect {} }
+
+        val before = awaitReal { vm.presentationFlow.first { !it.isPlaceholder } }
+        assertEquals(listOf(timeZone), useCase.zoneCalls.value)
+        assertEquals(listOf(dayInShanghai), useCase.calls.value)
+        assertEquals(dayInShanghai, before.days.today())
+        assertEquals(listOf(dayInShanghai), before.indicatorDays())
+        assertEquals(LocalTime(20, 0), before.timeOf(dayInShanghai, subjectId = 2))
+
+        // 用户把全局时区改成东京. 不需要手动刷新
+        timeZoneFlow.value = tokyo
+
+        val after = awaitReal { vm.presentationFlow.first { !it.isPlaceholder && it.days.today() == dayInTokyo } }
+        // 请求参数跟随时区: today 变成东京的今天, 请求也带上了东京时区
+        assertEquals(listOf(timeZone, tokyo), useCase.zoneCalls.value)
+        assertEquals(listOf(dayInShanghai, dayInTokyo), useCase.calls.value)
+        // 日期分组跟随时区, 页面状态与列内容同源
+        assertEquals(dayInTokyo, after.days.today())
+        assertEquals(dayInTokyo, vm.pageState.days.today())
+        assertColumnsMatchDays(after)
+        assertEquals(listOf(dayInTokyo), after.indicatorDays())
+        // 同一个绝对时刻在新时区显示为晚一小时的时刻
+        assertEquals(LocalTime(21, 0), after.timeOf(dayInTokyo, subjectId = 2))
 
         subscription.cancel()
     }

@@ -19,6 +19,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
+import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 
 sealed interface TvNavigationEvent {
@@ -27,6 +28,11 @@ sealed interface TvNavigationEvent {
     data class Character(val characterId: Int) : TvNavigationEvent
     data class VoiceActor(val personId: Int) : TvNavigationEvent
     data class Staff(val personId: Int) : TvNavigationEvent
+
+    /**
+     * 打开设置页, 落在 [tab] 对应的分节上. TV 没有二级页, 不携带二级页参数.
+     */
+    data class Settings(val tab: SettingsTab?) : TvNavigationEvent
     data object LoggedIn : TvNavigationEvent
     data object Login : TvNavigationEvent
 }

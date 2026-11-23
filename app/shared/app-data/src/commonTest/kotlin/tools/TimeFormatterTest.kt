@@ -12,7 +12,6 @@ package me.him188.ani.app.tools
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format.char
-import kotlinx.datetime.toInstant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Instant
@@ -35,6 +34,7 @@ class TimeFormatterTest {
     }
 
     private val timeFormatter = TimeFormatter(
+        timeZone = TimeZone.UTC,
         formatterWithTime = formatter,
         getTimeNow = { fixedTime },
     )
@@ -93,11 +93,22 @@ class TimeFormatterTest {
 
     @Test
     fun testUsingFormatter() {
-        // 超出相对时间的窗口后, 按系统时区输出完整日期时间.
-        // 取距 now 12 天的本地时间: 任何时区偏移 (-12h..+14h) 下与 now 的差都超过 2 天, 一定走这个分支;
-        // 期望值用同一个系统时区往返得到, 因此与运行机器的时区无关.
-        val local = LocalDateTime(2019, 12, 20, 10, 0, 0)
-        val timestamp = local.toInstant(TimeZone.currentSystemDefault())
-        assertEquals("2019-12-20 10:00:00", timeFormatter.format(timestamp))
+        // 超出相对时间的窗口后, 按格式化器的时区输出完整日期时间.
+        // 距 now 12 天: 任何时区偏移 (-12h..+14h) 下与 now 的差都超过 2 天, 一定走这个分支.
+        val instant = Instant.parse("2019-12-20T10:00:00Z")
+        assertEquals("2019-12-20 10:00:00", timeFormatter.format(instant))
+    }
+
+    @Test
+    fun testFormatterUsesProvidedTimeZone() {
+        val instant = Instant.parse("2019-12-20T10:00:00Z")
+        fun formatIn(timeZone: TimeZone): String = TimeFormatter(
+            timeZone = timeZone,
+            formatterWithTime = formatter,
+            getTimeNow = { fixedTime },
+        ).format(instant)
+
+        assertEquals("2019-12-20 10:00:00", formatIn(TimeZone.UTC))
+        assertEquals("2019-12-20 18:00:00", formatIn(TimeZone.of("Asia/Shanghai")))
     }
 }
