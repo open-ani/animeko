@@ -120,7 +120,7 @@ class MediaSelectorEventOrderTest {
     }
 
     @Test
-    fun `EVT-01 重复 select 同一 media 返回 false 且零事件`() = runSimpleMediaSelectorTestSuite {
+    fun `EVT-01 reselecting current media saves preferences without selection events`() = runSimpleMediaSelectorTestSuite {
         val target = media(alliance = "字幕组", subtitleLanguages = listOf("CHS"))
         mediaApi.addMedia(target)
 
@@ -131,9 +131,10 @@ class MediaSelectorEventOrderTest {
             assertEquals(1, onSelect.size)
         }
 
-        // PINNED: EVT-01 重复 select 不发任何事件 (包括 onBeforeSelect), 与 onBeforeSelect KDoc 矛盾
+        // 重复点选当前资源仍写入偏好。返回 false 表示资源没有切换，不能广播触发重新加载的选择事件。
+        // 此处是 BT 资源，只有 onChangePreference；WEB 资源还会广播 onPreferWebSource。
         selector.collectEvents {
             assertFalse(selector.select(target))
-        }.expectNoEvents()
+        }.assertOrder(OnChangePreference::class)
     }
 }

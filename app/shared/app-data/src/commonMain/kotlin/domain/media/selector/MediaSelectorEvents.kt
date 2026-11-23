@@ -24,8 +24,7 @@ interface MediaSelectorEvents {
 
     /**
      * 此事件会在 media 切换前 emit.
-     * 注意, 只要 [MediaSelector.select] 被调用就会广播这个事件. 这也就包括了重复选择同一个 media. 
-     * 所以在广播这个事件后不一定会广播 [onSelect].
+     * [MediaSelector.select] 重复选择当前 media 时只记录偏好, 不广播此事件或 [onSelect].
      */
     val onBeforeSelect: Flow<SelectEvent>
 
