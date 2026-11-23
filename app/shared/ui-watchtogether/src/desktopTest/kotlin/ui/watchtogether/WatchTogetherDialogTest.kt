@@ -9,13 +9,18 @@
 
 package me.him188.ani.app.ui.watchtogether
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import kotlinx.coroutines.runBlocking
+import me.him188.ani.app.domain.watchtogether.HostAlignmentUnavailableReason
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
@@ -80,6 +85,29 @@ class WatchTogetherDialogTest {
         runOnIdle {
             assertEquals(WatchTogetherIntent.SetFollowing(false), received)
         }
+    }
+
+    @Test
+    fun `alignment button dispatches only for available member and is absent for host`() = runAniComposeUiTest {
+        val state = mutableStateOf(inRoomState().copy(alignmentUnavailableReason = null))
+        var received: WatchTogetherIntent? = null
+        setContent {
+            ProvideCompositionLocalsForPreview {
+                WatchTogetherDialog(state.value, { received = it }, {}, {})
+            }
+        }
+        onNodeWithTag(WATCH_TOGETHER_ALIGN_TEST_TAG).performScrollTo().assertIsDisplayed().assertIsEnabled().performClick()
+        runOnIdle { assertEquals(WatchTogetherIntent.AlignToHost, received) }
+        for (reason in HostAlignmentUnavailableReason.entries) {
+            runOnIdle { state.value = state.value.copy(alignmentUnavailableReason = reason) }
+            onNodeWithTag(WATCH_TOGETHER_ALIGN_TEST_TAG).assertIsNotEnabled()
+            val message = runBlocking { getString(reason.messageResource()) }
+            onNodeWithText(message).performScrollTo().assertIsDisplayed()
+        }
+        runOnIdle { state.value = state.value.copy(alignmentUnavailableReason = null) }
+        onNodeWithTag(WATCH_TOGETHER_ALIGN_TEST_TAG).assertIsEnabled()
+        runOnIdle { state.value = state.value.copy(isSelfHost = true) }
+        onNodeWithTag(WATCH_TOGETHER_ALIGN_TEST_TAG).assertDoesNotExist()
     }
 
     private fun inRoomState() = WatchTogetherUiState.Initial.copy(

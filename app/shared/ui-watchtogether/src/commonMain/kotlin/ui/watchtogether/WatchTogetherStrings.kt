@@ -11,7 +11,14 @@ package me.him188.ani.app.ui.watchtogether
 
 import androidx.compose.runtime.Composable
 import me.him188.ani.app.data.network.WatchTogetherJoinFailure
+import me.him188.ani.app.domain.watchtogether.HostAlignmentUnavailableReason
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.watch_together_align_cooldown
+import me.him188.ani.app.ui.lang.watch_together_align_different_episode
+import me.him188.ani.app.ui.lang.watch_together_align_host_not_ready
+import me.him188.ani.app.ui.lang.watch_together_align_in_progress
+import me.him188.ani.app.ui.lang.watch_together_align_local_not_ready
+import me.him188.ani.app.ui.lang.watch_together_align_no_host
 import me.him188.ani.app.ui.lang.watch_together_error_invalid_name
 import me.him188.ani.app.ui.lang.watch_together_error_invalid_password
 import me.him188.ani.app.ui.lang.watch_together_error_rate_limited
@@ -39,4 +46,13 @@ fun WatchTogetherJoinFailure.messageResource(): StringResource = when (this) {
     WatchTogetherJoinFailure.INVALID_PASSWORD -> Lang.watch_together_error_invalid_password
     WatchTogetherJoinFailure.RATE_LIMITED -> Lang.watch_together_error_rate_limited
     WatchTogetherJoinFailure.TEMPORARY -> Lang.watch_together_error_temporary
+}
+
+fun HostAlignmentUnavailableReason.messageResource(): StringResource = when (this) {
+    HostAlignmentUnavailableReason.NO_HOST_CONTENT -> Lang.watch_together_align_no_host
+    HostAlignmentUnavailableReason.DIFFERENT_EPISODE -> Lang.watch_together_align_different_episode
+    HostAlignmentUnavailableReason.HOST_NOT_READY -> Lang.watch_together_align_host_not_ready
+    HostAlignmentUnavailableReason.LOCAL_NOT_READY -> Lang.watch_together_align_local_not_ready
+    HostAlignmentUnavailableReason.ALIGNING -> Lang.watch_together_align_in_progress
+    HostAlignmentUnavailableReason.COOLDOWN -> Lang.watch_together_align_cooldown
 }
