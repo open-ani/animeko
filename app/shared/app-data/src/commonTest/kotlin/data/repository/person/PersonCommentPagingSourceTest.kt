@@ -70,9 +70,9 @@ class PersonCommentPagingSourceTest {
         assertEquals("bgm1", ani.reactions.single().value)
         assertEquals(true, ani.reactions.single().selected)
         assertEquals("ani:a1", ani.replies.single().stableId)
-        // 楼中楼继承根评论的来源, 且不可再回复
+        // 楼中楼继承根评论的来源, Ani 来源的回复在 thread 里可以被回复
         assertEquals(PersonCommentSource.ANI, ani.replies.single().source)
-        assertEquals(false, ani.replies.single().canReply)
+        assertEquals(true, ani.replies.single().canReply)
         assertEquals("u", ani.author?.id)
 
         val bangumi = page.data[1]
@@ -215,6 +215,7 @@ class PersonCommentPagingSourceTest {
         createdAtMillis = createdAtMillis,
         author = AniEpisodeCommentAuthor(id = "u2", nickname = "nick2", avatarUrl = null),
         reactions = emptyList(),
+        likeCount = 0,
     )
 
     private fun refresh(loadSize: Int) = PagingSource.LoadParams.Refresh<String>(

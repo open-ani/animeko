@@ -46,7 +46,7 @@ class PlaybackFlowExtension(
                     context.player.state.first { it.isPlaying }
                     recorder.record(PlayFlowStep.PLAYBACK_STARTED, episode) {
                         put("sel_no", episode.selectionNoOf(media.mediaId))
-                        put("media_source_id", media.mediaSourceId)
+                        put("source", recorder.sourceName(media.mediaSourceId))
                         put("kind", media.toPlayFlowKind())
                         put("is_first", !playedOnce)
                         put("duration_ms", selectedAt.elapsedNow())

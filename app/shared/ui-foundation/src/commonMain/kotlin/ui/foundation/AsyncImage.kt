@@ -31,6 +31,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import com.github.panpf.sketch.AsyncImageState
+import com.github.panpf.sketch.Image
 import com.github.panpf.sketch.LocalPlatformContext
 import com.github.panpf.sketch.PlatformContext
 import com.github.panpf.sketch.Sketch
@@ -119,6 +120,10 @@ fun rememberAniSketchInstance(client: ScopedHttpClient): Sketch {
     return sketch
 }
 
+/**
+ * @param thumbnailModel [model] 的低分辨率版本 (例如列表用的缩略图). 内存里已有它的解码结果就立即显示, 否则后台加载它;
+ * [model] 加载完成后再替换, 中途不会空白. 用于从列表进入详情这类 [model] 尚未缓存而缩略图刚显示过的场景.
+ */
 @Composable
 fun AsyncImage(
     model: String?,
@@ -138,6 +143,7 @@ fun AsyncImage(
     clipToBounds: Boolean = true,
     crossfade: Boolean? = null,
     crossfadeDurationMillis: Int? = null,
+    thumbnailModel: String? = null,
 ) {
     val state = rememberAsyncImageState()
     AniAsyncImage(
@@ -159,6 +165,7 @@ fun AsyncImage(
         clipToBounds = clipToBounds,
         crossfade = crossfade,
         crossfadeDurationMillis = crossfadeDurationMillis,
+        thumbnailModel = thumbnailModel,
     )
 }
 
@@ -182,6 +189,7 @@ internal fun AniAsyncImage(
     clipToBounds: Boolean = true,
     crossfade: Boolean? = null,
     crossfadeDurationMillis: Int? = null,
+    thumbnailModel: String? = null,
 ) {
     var requestSize by remember { mutableStateOf<IntSize?>(null) }
 
@@ -189,8 +197,9 @@ internal fun AniAsyncImage(
     val errorStateImage = rememberStateImage(error, "error")
     val fallbackStateImage = rememberStateImage(fallback, "fallback")
 
+    val thumbnail = rememberAniImageThumbnail(model, thumbnailModel)
     val request = ComposableImageRequest(model) {
-        if (placeholderStateImage != null) placeholder(placeholderStateImage)
+        configureAniImagePlaceholder(placeholderStateImage, thumbnail)
         if (errorStateImage != null) error(errorStateImage)
         if (fallbackStateImage != null) fallback(fallbackStateImage)
 
@@ -287,6 +296,65 @@ private fun rememberStateImage(painter: Painter?, role: String): StateImage? =
         }
     }
 
+/**
+ * 缩略图只在 [model] 换值时取一次. Sketch 把缩略图放在请求的 extras 里而不参与请求 key,
+ * 同一 key 下换缩略图会被 [AsyncImageState] 判定为非法请求.
+ */
+@Composable
+private fun rememberAniImageThumbnail(model: String?, thumbnailModel: String?): String? =
+    remember(model) { thumbnailModel?.takeIf { it.isNotBlank() && it != model } }
+
+/**
+ * 有 [thumbnail] 时先显示它: 内存里已有它的解码结果 (列表刚显示过) 就立即占位, 同时在后台加载它;
+ * 主图加载完成后替换. [placeholder] 退为找不到缩略图时的占位.
+ */
+internal fun ImageRequest.Builder.configureAniImagePlaceholder(
+    placeholder: StateImage?,
+    thumbnail: String?,
+) {
+    if (thumbnail == null) {
+        if (placeholder != null) placeholder(placeholder)
+        return
+    }
+    thumbnail(thumbnail)
+    placeholder(CachedUriStateImage(thumbnail, placeholder))
+}
+
+/**
+ * 内存缓存里 [uri] 的解码结果, 不限解码时的尺寸和裁剪; 有多份时取最大的.
+ * 没有时退回 [defaultImage], 再退回全局占位图 (预览和截图测试靠它显示测试图片).
+ *
+ * Sketch 自带的 [com.github.panpf.sketch.state.ThumbnailMemoryCacheStateImage] 要求缓存图与原图等比,
+ * 而列表按卡片比例裁剪解码, 常常匹配不上.
+ */
+internal data class CachedUriStateImage(
+    val uri: String,
+    val defaultImage: StateImage? = null,
+) : StateImage {
+    override val key: String = "AniCachedUri('$uri',${defaultImage?.key})"
+
+    override fun getImage(sketch: Sketch, request: ImageRequest, throwable: Throwable?): Image? {
+        val cached = sketch.memoryCache.entries()
+            .filter { (cacheKey, _) -> isCacheKeyOf(cacheKey, uri) }
+            .maxByOrNull { (_, value) -> value.image.width.toLong() * value.image.height }
+        return cached?.value?.image
+            ?: (defaultImage ?: sketch.globalImageOptions?.placeholder)?.getImage(sketch, request, throwable)
+    }
+
+    override fun toString(): String = "CachedUriStateImage(uri='$uri', defaultImage=$defaultImage)"
+
+    private companion object {
+        /** Sketch 的缓存 key 是 uri 后接 `?_xxx=...` 或 `&_xxx=...` 形式的参数. */
+        fun isCacheKeyOf(cacheKey: String, uri: String): Boolean {
+            if (!cacheKey.startsWith(uri)) return false
+            if (cacheKey.length == uri.length) return true
+            return cacheKey.length > uri.length + 1 &&
+                    (cacheKey[uri.length] == '?' || cacheKey[uri.length] == '&') &&
+                    cacheKey[uri.length + 1] == '_'
+        }
+    }
+}
+
 @Composable
 internal fun rememberAniAsyncImagePainter(
     model: String?,
@@ -294,15 +362,18 @@ internal fun rememberAniAsyncImagePainter(
     requestSize: IntSize?,
     filterQuality: FilterQuality = defaultFilterQuality,
     state: AsyncImageState? = null,
+    thumbnailModel: String? = null,
 ): Painter {
     val rememberedState = rememberAsyncImageState()
     val finalState = state ?: rememberedState
+    val thumbnail = rememberAniImageThumbnail(model, thumbnailModel)
     val request = ComposableImageRequest(model) {
         configureAniImageRequest(
             contentScale = contentScale,
             alignment = Alignment.Center,
             requestSize = requestSize,
         )
+        configureAniImagePlaceholder(placeholder = null, thumbnail = thumbnail)
     }
     return rememberAsyncImagePainter(
         request = request,

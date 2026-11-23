@@ -470,7 +470,7 @@ private fun PersonStrips(
     ) { work ->
         PeopleSubjectCard(
             subject = work.subject,
-            caption = work.positions.firstNotNullOfOrNull { it.nameCn },
+            caption = work.roleNames.firstOrNull(),
             onClick = { navigation.onClickSubject(work.subject) },
         )
     }
@@ -500,7 +500,7 @@ private fun PersonStrips(
             PersonCard(
                 avatarUrl = work.subject.imageLarge,
                 name = work.subject.displayName,
-                relation = work.positions.mapNotNull { it.nameCn }.distinct().joinToString("、"),
+                relation = work.roleNames.joinToString("、"),
                 modifier = Modifier
                     .clip(MaterialTheme.shapes.small)
                     .clickable { navigation.onClickSubject(work.subject) },

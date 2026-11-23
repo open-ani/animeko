@@ -23,6 +23,7 @@ import me.him188.ani.app.data.models.notification.NotificationType
  * @property showAnnouncementDot 没有未读通知但有未读公告时, 头像和头像菜单里的“通知”是否显示红点. 公告列表自己的未读标记不受影响.
  * @property showReportResults 是否显示 [NotificationType.REPORT_RESULT].
  * @property showAccountSecurity 是否显示 [NotificationType.ACCOUNT_SECURITY].
+ * @property showCommentReplies 是否显示 [NotificationType.COMMENT_REPLY].
  */
 @Immutable
 @Serializable
@@ -30,6 +31,7 @@ data class NotificationSettings(
     val showAnnouncementDot: Boolean = true,
     val showReportResults: Boolean = true,
     val showAccountSecurity: Boolean = true,
+    val showCommentReplies: Boolean = true,
 ) {
     /**
      * 本机关闭的类型. 其他类型 (包括没有开关的类型和客户端不认识的类型) 总是显示.
@@ -38,6 +40,7 @@ data class NotificationSettings(
         get() = buildSet {
             if (!showReportResults) add(NotificationType.REPORT_RESULT)
             if (!showAccountSecurity) add(NotificationType.ACCOUNT_SECURITY)
+            if (!showCommentReplies) add(NotificationType.COMMENT_REPLY)
         }
 
     companion object {

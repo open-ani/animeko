@@ -476,7 +476,7 @@ class DanmakuHostState(
      * - For fixed danmakus, ensures placement time and [FixedDanmaku.y] coordinate are set.
      */
     private fun calculateDanmakuInFrame() {
-        for (danmaku in DanmakuCollectionIterator(floatingTrack)) {
+        forEachFloatingDanmaku { danmaku ->
             // calculate y once
             if (danmaku.y.isNaN()) danmaku.y = danmaku.calculatePosY()
         }
@@ -539,6 +539,7 @@ class DanmakuHostState(
         return withContext(Dispatchers.Main.immediate) {
             when (danmaku.danmaku.location) {
                 DanmakuLocation.NORMAL -> {
+                    if (!danmakuConfig.isLocationEnabled(DanmakuLocation.NORMAL)) return@withContext false
                     val floatingDanmaku = floatingTrack.firstNotNullOfOrNull {
                         it.tryPlace(styledDanmaku, placeFrameTimeNanos, overrideSpeedMultiplier)
                     }
@@ -546,6 +547,7 @@ class DanmakuHostState(
                 }
 
                 DanmakuLocation.TOP -> {
+                    if (!danmakuConfig.isLocationEnabled(DanmakuLocation.TOP)) return@withContext false
                     val floatingDanmaku = topTrack.firstNotNullOfOrNull {
                         it.tryPlace(styledDanmaku, placeFrameTimeNanos)
                     }
@@ -553,6 +555,7 @@ class DanmakuHostState(
                 }
 
                 DanmakuLocation.BOTTOM -> {
+                    if (!danmakuConfig.isLocationEnabled(DanmakuLocation.BOTTOM)) return@withContext false
                     val floatingDanmaku = bottomTrack.firstNotNullOfOrNull {
                         it.tryPlace(styledDanmaku, placeFrameTimeNanos)
                     }
@@ -779,13 +782,21 @@ class DanmakuHostState(
 //        }
     }
 
-    internal fun forEachFixedDanmaku(block: (FixedDanmaku<StyledDanmaku>) -> Unit) {
-        DanmakuCollectionIterator(topTrack).forEach { block(it) }
-        DanmakuCollectionIterator(bottomTrack).forEach { block(it) }
+    /** Track lists must not be structurally modified during [block]. */
+    internal inline fun forEachFixedDanmaku(block: (FixedDanmaku<StyledDanmaku>) -> Unit) {
+        for (index in topTrack.indices) {
+            topTrack[index].forEachDanmaku(block)
+        }
+        for (index in bottomTrack.indices) {
+            bottomTrack[index].forEachDanmaku(block)
+        }
     }
 
-    internal fun forEachFloatingDanmaku(block: (FloatingDanmaku<StyledDanmaku>) -> Unit) {
-        DanmakuCollectionIterator(floatingTrack).forEach { block(it) }
+    /** Track lists must not be structurally modified during [block]. */
+    internal inline fun forEachFloatingDanmaku(block: (FloatingDanmaku<StyledDanmaku>) -> Unit) {
+        for (index in floatingTrack.indices) {
+            floatingTrack[index].forEachDanmaku(block)
+        }
     }
 
 
@@ -897,6 +908,13 @@ internal class DanmakuRepopulator(
         }
     }
 }
+
+internal fun DanmakuConfig.isLocationEnabled(location: DanmakuLocation): Boolean =
+    when (location) {
+        DanmakuLocation.NORMAL -> enableFloating
+        DanmakuLocation.TOP -> enableTop
+        DanmakuLocation.BOTTOM -> enableBottom
+    }
 
 private fun <D : SizeSpecifiedDanmaku, DT, T : DanmakuTrack<D, DT>>
         MutableList<T>.setTrackCountImpl(count: Int, newInstance: List<T>.(index: Int) -> T) {

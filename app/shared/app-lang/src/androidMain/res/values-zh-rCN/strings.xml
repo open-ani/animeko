@@ -1509,6 +1509,13 @@
     <string name="comment_dislike">点踩</string>
     <string name="comment_more_actions">更多操作</string>
     <string name="comment_expand_replies">展开 %1$d 条回复</string>
+    <string name="comment_thread_title">评论详情</string>
+    <string name="comment_thread_replies_count">相关回复共 %1$d 条</string>
+    <string name="comment_reply_to_name">回复 @%1$s</string>
+    <string name="comment_reply_to_deleted">回复 已删除的评论</string>
+    <string name="comment_thread_no_replies">还没有回复</string>
+    <string name="comment_thread_not_found">评论不存在或已被删除</string>
+    <string name="comment_thread_reply_root">改为回复原评论</string>
     <string name="comment_copy_content">复制内容</string>
     <string name="comment_open_in_bangumi">在 Bangumi 打开</string>
     <string name="comment_block_user">拉黑此用户</string>
@@ -1805,6 +1812,7 @@
     <string name="image_viewer_copy">复制图片</string>
     <string name="image_viewer_copied">图片已复制</string>
     <string name="image_viewer_copy_failed">复制图片失败</string>
+    <string name="image_viewer_more">更多操作</string>
     <string name="image_viewer_close">关闭</string>
     <!-- Shared playback captcha messages -->
     <string name="media_captcha_required_message">需要处理%1$s</string>

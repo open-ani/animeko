@@ -62,7 +62,7 @@ internal class PlayFlowMediaLoadListener(
             put("outcome", outcome)
             put("stage", stage)
             put("reason", reason)
-            put("media_source_id", media.mediaSourceId)
+            put("source", recorder.sourceName(media.mediaSourceId))
             put("kind", media.toPlayFlowKind())
             put("engine", playFlowEngine(resolverName, engineKey))
             put("duration_ms", elapsed)
