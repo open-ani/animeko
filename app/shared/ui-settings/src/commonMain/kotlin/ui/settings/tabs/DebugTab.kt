@@ -45,6 +45,9 @@ import me.him188.ani.app.ui.lang.settings_debug_metered_network
 import me.him188.ani.app.ui.lang.settings_debug_mode
 import me.him188.ani.app.ui.lang.settings_debug_mode_description
 import me.him188.ani.app.ui.lang.settings_debug_others
+import me.him188.ani.app.ui.lang.settings_debug_play_flow
+import me.him188.ani.app.ui.lang.settings_debug_play_flow_open
+import me.him188.ani.app.ui.lang.settings_debug_play_flow_open_description
 import me.him188.ani.app.ui.lang.settings_debug_show_all_episodes
 import me.him188.ani.app.ui.lang.settings_debug_show_all_episodes_description
 import me.him188.ani.app.ui.lang.settings_debug_status
@@ -64,6 +67,7 @@ fun DebugTab(
     modifier: Modifier = Modifier,
     onDisableDebugMode: () -> Unit = {},
     onNavigateToDevBuilds: () -> Unit = {},
+    onOpenPlayFlowDebugWindow: () -> Unit = {},
 ) {
     val debugSettings by debugSettingsState
     val toaster = LocalToaster.current
@@ -128,6 +132,13 @@ fun DebugTab(
                     onClick = onNavigateToDevBuilds,
                 )
             }
+        }
+        Group(title = { Text(stringResource(Lang.settings_debug_play_flow)) }, useThinHeader = true) {
+            TextItem(
+                title = { Text(stringResource(Lang.settings_debug_play_flow_open)) },
+                description = { Text(stringResource(Lang.settings_debug_play_flow_open_description)) },
+                onClick = onOpenPlayFlowDebugWindow,
+            )
         }
         Group(title = { Text(stringResource(Lang.settings_debug_metered_network)) }, useThinHeader = true) {
             TextItem {

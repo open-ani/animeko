@@ -32,6 +32,7 @@ import me.him188.ani.app.data.network.AniAnnouncementService
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AniEpisodeCommentService
+import me.him188.ani.app.data.network.AniFeatureFlagService
 import me.him188.ani.app.data.network.AniNotificationService
 import me.him188.ani.app.data.network.AniPersonCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
@@ -66,6 +67,7 @@ import me.him188.ani.app.domain.torrent.engines.PikPakEngine
 import me.him188.ani.torrent.pikpak.PikPakCredentials
 import me.him188.ani.torrent.pikpak.PikPakSessionStoreAdapter
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.app.domain.featureflag.FeatureFlagManager
 import me.him188.ani.app.domain.foundation.AniInstallIdFeatureHandler
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
@@ -301,6 +303,7 @@ private fun KoinApplication.otherModules(
     single<AniCommentReportService> { AniCommentReportService(get<AniApiProvider>().commentsApi) }
     single<AniNotificationService> { AniNotificationService(aniApiProvider.notificationsApi) }
     single<AniAnnouncementService> { AniAnnouncementService(aniApiProvider.announcementsApi) }
+    single<AniFeatureFlagService> { AniFeatureFlagService(aniApiProvider.featureFlagsApi) }
     single<NotificationBadgeManager>(createdAtStart = true) {
         NotificationBadgeManagerImpl(
             notificationService = get(),
@@ -336,6 +339,16 @@ private fun KoinApplication.otherModules(
             store = getContext().dataStores.installInfoStore,
             playHistoryRepository = get(),
             api = aniApiProvider.userProfileApi,
+            sessionStateProvider = get(),
+            currentUserId = get<UserRepository>().selfInfoFlow.map { it?.id?.toString() },
+            scope = coroutineScope,
+        ).also { it.start() }
+    }
+    // 功能开关: 先用上次的快照, 登录状态确定后拉取, 身份变化时再拉取 (见 docs/contributing/code/feature-flags.md)
+    single(createdAtStart = true) {
+        FeatureFlagManager(
+            store = getContext().dataStores.featureFlagStore,
+            service = get(),
             sessionStateProvider = get(),
             currentUserId = get<UserRepository>().selfInfoFlow.map { it?.id?.toString() },
             scope = coroutineScope,

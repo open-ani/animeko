@@ -65,6 +65,10 @@
     <string name="notification_go_to_subject">前往该条目</string>
     <string name="notification_go_to_person">前往人物</string>
     <string name="notification_go_to_character">前往角色</string>
+    <string name="notification_go_to_comment">前往该评论</string>
+
+    <string name="notification_comment_reply_row_title">%1$s 回复了你的评论</string>
+    <string name="notification_comment_reply_detail_title">评论回复</string>
 
     <string name="notification_account_third_party_unbound">%1$s 账号已解绑</string>
     <string name="notification_account_third_party_unbound_generic">第三方账号已解绑</string>
@@ -79,6 +83,8 @@
     <string name="notification_settings_system_group_description">关闭后，对应的通知不会在本设备显示，也不计入未读。</string>
     <string name="notification_settings_report_result_item">你举报的评论有处理结果</string>
     <string name="notification_settings_account_security_item">你的账号有安全提醒</string>
+    <string name="notification_settings_group_interaction">互动</string>
+    <string name="notification_settings_comment_reply_item">有人回复了你的评论</string>
     <string name="notification_settings_group_announcements">公告</string>
     <string name="notification_settings_announcement_item">你收到新公告</string>
     <string name="notification_settings_announcement_description">关闭后新公告不会在头像上显示红点。</string>

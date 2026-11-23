@@ -39,10 +39,12 @@ import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
+import me.him188.ani.app.domain.media.selector.MediaAutoSelectOutcome
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.media.selector.ReplayBrowseMemoryUseCase
+import me.him188.ani.app.domain.media.selector.ReplayMissReason
 import me.him188.ani.app.domain.media.selector.ReplayResult
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
@@ -100,9 +102,9 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
         suite.registerComponent<MediaSelectorAutoSelectUseCase> {
             val impl = MediaSelectorAutoSelectUseCaseImpl(koin)
             object : MediaSelectorAutoSelectUseCase {
-                override suspend fun invoke(session: MediaFetchSession, mediaSelector: MediaSelector) {
+                override suspend fun invoke(session: MediaFetchSession, mediaSelector: MediaSelector): MediaAutoSelectOutcome {
                     autoSelectCalls++
-                    impl(session, mediaSelector)
+                    return impl(session, mediaSelector)
                 }
             }
         }
@@ -118,7 +120,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
             GetPreferredWebMediaSourceUseCase { preferredWebMediaSource }
         }
         suite.registerComponent<ReplayBrowseMemoryUseCase> {
-            ReplayBrowseMemoryUseCase { _, _, _ -> ReplayResult.NOT_FOUND }
+            ReplayBrowseMemoryUseCase { _, _, _ -> ReplayResult.NotFound(ReplayMissReason.NO_MEMORY) }
         }
         // 与生产的 CreateMediaFetchSelectBundleFlowUseCaseImpl 同形: bundle 由 infoBundleFlow 派生,
         // 因此扩展拿到 bundle 时 infoBundleFlow.replayCache 已有本集信息, 回放才会被调用.
@@ -346,7 +348,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
             suite.registerComponent<ReplayBrowseMemoryUseCase> {
                 ReplayBrowseMemoryUseCase { _, _, mediaSelector ->
                     mediaSelector.select(memoryMedia)
-                    ReplayResult.SELECTED
+                    ReplayResult.Selected
                 }
             }
         }
@@ -376,7 +378,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
                 ReplayBrowseMemoryUseCase { subjectId, episodeInfo, mediaSelector ->
                     replayCalls += subjectId to episodeInfo
                     selectedAtReplay = mediaSelector.selected.value
-                    ReplayResult.NOT_FOUND
+                    ReplayResult.NotFound(ReplayMissReason.NO_MEMORY)
                 }
             }
         }
@@ -412,7 +414,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
             suite.registerComponent<ReplayBrowseMemoryUseCase> {
                 ReplayBrowseMemoryUseCase { _, _, _ ->
                     replayCalls++
-                    ReplayResult.NOT_FOUND
+                    ReplayResult.NotFound(ReplayMissReason.NO_MEMORY)
                 }
             }
             // 本地源是毫秒级完成的, 会话启动前就已有结果; 缓存记录覆盖本集 (夹具的选择器上下文取自查询请求, 即第 1 话).

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodeSession
+import me.him188.ani.app.domain.episode.EpisodeSwitchTrigger
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.utils.logging.info
@@ -71,7 +72,7 @@ class SwitchNextEpisodeExtension(
                 if (automationGate.suppressed.value) return@collect
                 val nextEpisode = getNextEpisode(session.episodeId)
                 logger.info("播放完毕，切换下一集 $nextEpisode")
-                context.switchEpisode(nextEpisode ?: return@collect)
+                context.switchEpisode(nextEpisode ?: return@collect, EpisodeSwitchTrigger.AUTO_NEXT)
             }
         }
     }

@@ -15,6 +15,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
+import me.him188.ani.app.domain.player.analytics.PlayFlowRecorder
 import org.openani.mediamp.isMediaLoaded
 import org.openani.mediamp.metadata.MediaProperties
 import org.openani.mediamp.source.UriMediaData
@@ -30,6 +31,7 @@ abstract class AbstractPlayerExtensionTest {
 
     fun EpisodePlayerTestSuite.createState(
         extensions: List<EpisodePlayerExtensionFactory<*>> = listOf(),
+        playFlow: PlayFlowRecorder = PlayFlowRecorder(subjectId),
     ): EpisodeFetchSelectPlayState {
         return EpisodeFetchSelectPlayState(
             subjectId,
@@ -39,6 +41,7 @@ abstract class AbstractPlayerExtensionTest {
             extensions = extensions,
             koin,
             mainDispatcher = EmptyCoroutineContext, // no switch
+            playFlow = playFlow,
         )
     }
 

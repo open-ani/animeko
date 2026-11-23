@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.mediasource
 
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
+import me.him188.ani.app.domain.media.fetch.MediaSourceFetchTelemetry
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
@@ -46,6 +48,7 @@ interface KeywordSearchScope {
  *
  * 每个关键词的结果一搜到就发出, 不等整条链结束. 两次向站点发起的搜索之间等待 [requestInterval]
  * (由 [search] 通过 [KeywordSearchScope.beforeOnlineSearch] 触发); 命中搜索缓存的不发请求也不等待.
+ * 每个关键词搜索结束后, 向收集上下文里的 [MediaSourceFetchTelemetry] 报告它是否命中了缓存 (即没有调用 `beforeOnlineSearch`).
  *
  * @param matches 一次搜索的结果里是否有名字能对上请求条目的.
  * @param search 搜索一个关键词, 返回该关键词搜到的全部资源. 先查缓存, 未命中时调用 [KeywordSearchScope.beforeOnlineSearch] 再向站点请求.
@@ -64,15 +67,26 @@ fun keywordSearchChain(
         override val results: Flow<DefaultMedia> = flow {
             var total = 0
             var matched = false
+            val telemetry = currentCoroutineContext()[MediaSourceFetchTelemetry]
             val scope = object : KeywordSearchScope {
                 private var searchedOnline = false
+
+                /** 当前关键词是否向站点发起了搜索. */
+                var currentWentOnline = false
+
                 override suspend fun beforeOnlineSearch() {
                     if (searchedOnline) delay(requestInterval)
                     searchedOnline = true
+                    currentWentOnline = true
                 }
             }
             suspend fun searchAndEmit(name: String) {
-                val media = scope.search(name)
+                scope.currentWentOnline = false
+                val media = try {
+                    scope.search(name)
+                } finally {
+                    telemetry?.onSearch(name, !scope.currentWentOnline)
+                }
                 if (!matched && matches(media)) matched = true
                 total += media.size
                 emitAll(media.asFlow())

@@ -134,6 +134,7 @@ class SelectorEngineService(
 
         val allSubjectNames = context.subjectNames.toSet()
         val medias = mutableListOf<DefaultMedia>()
+        val allSubjects = mutableListOf<WebSubjectCandidate>()
 
         val namesToSearch = context.subjectNames.take(config.autoMatch.searchUseSubjectNamesCount.coerceAtLeast(1))
         // 验证码自动解决失败时, 终止整个数据源的流程: 不再换搜索词硬试, 也不对站点继续发请求
@@ -203,8 +204,39 @@ class SelectorEngineService(
                         ?: error("配置无效: 条目格式 (subjectFormat) 的必填项为空或 selector 语法错误")
                 } ?: continue
                 if (subjects.isEmpty()) continue
+                allSubjects += subjects.mapIndexed { index, info ->
+                    WebSubjectCandidate(
+                        keyword = subjectName,
+                        name = info.name,
+                        fullUrl = info.fullUrl,
+                        partialUrl = info.partialUrl,
+                        order = index,
+                    )
+                }
+                if (input.listSubjectsOnly) continue
 
-                for (subjectInfo in subjects.take(input.maxSubjectsPerName.coerceAtLeast(1))) {
+                // 指定了条目就只展开指定的; 否则按引擎自动匹配顺序取前 maxSubjectsPerName 个
+                val subjectsToExpand = input.subjectUrls?.let { urls ->
+                    val picked = subjects.filter { it.fullUrl in urls || it.partialUrl in urls }
+                    steps += StageResult(
+                        name = "pickSubjects",
+                        status = if (picked.isEmpty()) "failed" else "success",
+                        summary = if (picked.isEmpty()) {
+                            "指定条目不在 \"$subjectName\" 的搜索结果中"
+                        } else {
+                            "按指定条目展开 ${picked.size} 个: ${picked.joinToString { it.name }}"
+                        },
+                        details = buildJsonObject {
+                            putJsonArray("subjectUrls") { urls.forEach { add(JsonPrimitive(it)) } }
+                            put("picked", subjectsJson(picked, cap = 20))
+                        },
+                        errors = if (picked.isEmpty()) listOf("subjectUrls 未命中任何搜索结果") else emptyList(),
+                        durationMillis = 0,
+                    )
+                    picked
+                } ?: subjects.take(input.maxSubjectsPerName.coerceAtLeast(1))
+
+                for (subjectInfo in subjectsToExpand) {
                     val episodePage = runStage(
                         "searchEpisodes", steps,
                         describe = { result: WebPageFetchResult<SelectedChannelEpisodes> ->
@@ -300,6 +332,16 @@ class SelectorEngineService(
             )
         }
 
+        if (input.listSubjectsOnly) {
+            return SelectorResolveEpisodeResult(
+                ok = allSubjects.isNotEmpty(),
+                summary = "搜索到 ${allSubjects.size} 个条目 (仅列出条目, 未访问详情页)",
+                steps = steps,
+                subjects = allSubjects,
+                errors = steps.filter { it.status == "failed" }.flatMap { it.errors },
+            )
+        }
+
         val distinctMedias = medias.distinctBy { it.mediaId }
         val candidates = distinctMedias.map { it.toWebMediaCandidate() }
 
@@ -308,6 +350,7 @@ class SelectorEngineService(
                 ok = false,
                 summary = "引擎全流程执行完毕, 但没有找到匹配的剧集",
                 steps = steps,
+                subjects = allSubjects,
                 errors = steps.filter { it.status == "failed" }.flatMap { it.errors },
             )
         }
@@ -318,6 +361,7 @@ class SelectorEngineService(
                 summary = "找到 ${distinctMedias.size} 个候选播放页 (未运行视频解析)",
                 steps = steps,
                 medias = candidates,
+                subjects = allSubjects,
             )
         }
 
@@ -365,6 +409,7 @@ class SelectorEngineService(
             },
             steps = steps,
             medias = candidates,
+            subjects = allSubjects,
             extractResults = extractResults,
             errors = errors,
             resolvedCount = resolved.size,

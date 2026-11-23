@@ -31,11 +31,12 @@ import me.him188.ani.app.domain.media.createTestMediaProperties
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
-import me.him188.ani.app.domain.media.selector.SelectOrigin
+import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceTier
+import me.him188.ani.app.domain.player.analytics.PlayFlowRecorder
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.MediaFetchResult
 import me.him188.ani.utils.coroutines.childScope
 import kotlin.test.Test
@@ -87,7 +88,8 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
 
     private fun TestScope.start(case: Case) {
         case.state = case.suite.createState(
-            listOf(
+            playFlow = PlayFlowRecorder(subjectId, playSessionId = "sid"),
+            extensions = listOf(
                 EpisodePlayerExtensionFactory { context, _ ->
                     MediaFetchAnalyticsExtension(
                         context,
@@ -131,6 +133,8 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
             mapOf(
                 "subject_id" to subjectId.toLong(),
                 "episode_id" to initialEpisodeId.toLong(),
+                "play_session_id" to "sid",
+                "episode_attempt" to 1L,
                 "outcome" to "selected",
                 "sources_total" to 2L,
                 "sources_succeeded" to 1L,
@@ -142,7 +146,7 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
                 "first_media_ms" to 2_000L,
                 "select_ms" to 3_000L,
                 "selected_by" to "manual",
-                "selected_source_id" to "a",
+                "selected_source" to "a",
                 "selected_tier" to 2L,
                 "selected_match" to "fuzzy",
                 "is_cached" to 0L,
@@ -167,6 +171,8 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
             mapOf(
                 "subject_id" to subjectId.toLong(),
                 "episode_id" to initialEpisodeId.toLong(),
+                "play_session_id" to "sid",
+                "episode_attempt" to 1L,
                 "outcome" to "no_media",
                 "sources_total" to 2L,
                 "sources_succeeded" to 2L,
@@ -221,6 +227,8 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
             mapOf(
                 "subject_id" to subjectId.toLong(),
                 "episode_id" to initialEpisodeId.toLong(),
+                "play_session_id" to "sid",
+                "episode_attempt" to 1L,
                 "outcome" to "left_before_select",
                 "sources_total" to 2L,
                 "sources_succeeded" to 1L,
@@ -251,7 +259,7 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals("selected", event["outcome"])
         assertEquals(1L, event["sources_total"])
         assertEquals(0L, event["sources_succeeded"])
-        assertEquals("cache", event["selected_source_id"])
+        assertEquals("cache", event["selected_source"])
         assertEquals(1L, event["is_cached"])
         assertEquals(1L, event["media_count"])
         assertEquals(0L, event["web_sources_with_media"])
@@ -288,7 +296,7 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals(3L, event["web_sources_exact"])
         // a 的数据源阶级是 0, d 的数据源阶级是 2 但线路阶级是 0
         assertEquals(2L, event["web_sources_instant"])
-        assertEquals("c", event["selected_source_id"])
+        assertEquals("c", event["selected_source"])
         assertEquals(2L, event["selected_tier"])
         assertEquals("exact", event["selected_match"])
         case.scope.cancel()
@@ -319,7 +327,7 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
         start(case)
 
         // 回放的资源由数据源现场创建, 不在候选列表中
-        case.state.mediaSelectorFlow.filterNotNull().first().select(case.createMedia("a"), SelectOrigin.BROWSE_MEMORY)
+        case.state.mediaSelectorFlow.filterNotNull().first().select(case.createMedia("a"), SelectTrigger.BROWSE_MEMORY_REPLAY)
         advanceTimeBy(2_001)
         runCurrent()
 
@@ -347,7 +355,7 @@ class MediaFetchAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals("selected", event["outcome"])
         assertEquals(0L, event["media_count"])
         assertEquals(0L, event["select_ms"])
-        assertEquals("manual", event["selected_source_id"])
+        assertEquals("manual", event["selected_source"])
         assertEquals("manual", event["selected_by"])
         case.scope.cancel()
     }

@@ -14,6 +14,7 @@ import me.him188.ani.app.data.models.subject.CharacterInfo
 import me.him188.ani.app.data.models.subject.CharacterRole
 import me.him188.ani.app.data.models.subject.PersonInfo
 import me.him188.ani.app.data.models.subject.PersonPosition
+import me.him188.ani.app.data.models.subject.nameCn
 
 /**
  * 人物 (声优/制作人员) 详情页数据.
@@ -27,7 +28,7 @@ data class PersonDetailsInfo(
     val infobox: List<InfoboxRowInfo>,
     val collects: Int,
     val commentCount: Int,
-    /** 参与作品数 (去重后的条目数). */
+    /** 参与作品数 (去重后的条目数, 含只配音的条目). */
     val workCount: Int,
     /** 出演角色数 (条目 × 角色). */
     val castCount: Int,
@@ -69,12 +70,25 @@ data class PersonSubjectSummary(
     val displayName get() = nameCn.takeIf { it.isNotBlank() } ?: name
 }
 
-/** 人物参与的一部作品及其全部职位. */
+/** 人物参与的一部作品: 担任的全部职位, 以及配音. */
 @Immutable
 data class PersonWorkInfo(
     val subject: PersonSubjectSummary,
+    /** 制作职位. 只配音的作品为空. */
     val positions: List<PersonPosition>,
-)
+    /** 在这部作品中配音的角色数. Bangumi 里配音不是一种职位, 所以不在 [positions] 里. */
+    val castCount: Int = 0,
+) {
+    /**
+     * 用于展示的参与方式: 配音在前, 之后是各职位的中文名. 已去重, 没有可展示的名字时为空.
+     *
+     * 配音排在最前, 因为声优的职位基本都是主题歌演出, 只显示职位会让人以为这位声优没有给作品配音.
+     */
+    val roleNames: List<String> = buildList {
+        if (castCount > 0) add("配音")
+        positions.mapNotNullTo(this) { it.nameCn }
+    }.distinct()
+}
 
 /** 人物在一部作品中配音的一个角色. */
 @Immutable

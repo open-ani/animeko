@@ -81,6 +81,8 @@ import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
+import me.him188.ani.app.domain.comment.GetCommentImageStatusUseCase
+import me.him188.ani.app.domain.comment.UploadCommentImageUseCase
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.danmaku.DanmakuTextConversionSettings
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
@@ -98,6 +100,8 @@ import me.him188.ani.app.domain.episode.getCurrentEpisodeId
 import me.him188.ani.app.domain.episode.infoBundleFlow
 import me.him188.ani.app.domain.episode.infoLoadErrorFlow
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
+import me.him188.ani.app.domain.featureflag.FeatureFlag
+import me.him188.ani.app.domain.featureflag.FeatureFlagManager
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
@@ -109,6 +113,9 @@ import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.player.CacheProgressProvider
+import me.him188.ani.app.domain.media.selector.SelectTrigger
+import me.him188.ani.app.domain.player.analytics.PlayFlowEpisode
+import me.him188.ani.app.domain.player.analytics.PlayFlowRecorder
 import me.him188.ani.app.domain.player.extension.AnalyticsExtension
 import me.him188.ani.app.domain.player.extension.AutoSelectExtension
 import me.him188.ani.app.domain.player.extension.CacheOnBtPlayExtension
@@ -122,6 +129,17 @@ import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
 import me.him188.ani.app.domain.player.extension.WatchTogetherPlayerExtension
+import me.him188.ani.app.navigation.CommentThreadTarget
+import me.him188.ani.app.ui.comment.UIComment
+import me.him188.ani.app.ui.comment.thread.CommentThreadHost
+import me.him188.ani.app.ui.comment.thread.CommentThreadKey
+import me.him188.ani.app.ui.comment.thread.episodeCommentThreadState
+import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowManualBrowseListener
+import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowMediaSelectorListener
+import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowUserAction
+import me.him188.ani.app.ui.subject.episode.analytics.recordUserAction
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeEnter
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCase
 import me.him188.ani.app.domain.usecase.GlobalKoin
@@ -311,6 +329,7 @@ open class EpisodeViewModel(
     private val downloadManager: MediaDownloadManager by inject()
     private val danmakuRepository: DanmakuRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
+    private val featureFlagManager: FeatureFlagManager by inject()
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()
     private val episodePlayHistoryRepository: EpisodePlayHistoryRepository by inject()
     private val mediaSourceManager: MediaSourceManager by inject()
@@ -319,6 +338,8 @@ open class EpisodeViewModel(
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val setDanmakuEnabledUseCase: SetDanmakuEnabledUseCase by inject()
     private val postCommentUseCase: PostCommentUseCase by inject()
+    private val uploadCommentImageUseCase: UploadCommentImageUseCase by inject()
+    private val getCommentImageStatusUseCase: GetCommentImageStatusUseCase by inject()
     private val autoSkipRepository: AutoSkipRepository by inject()
     private val getMediaSelectorSettings: GetMediaSelectorSettingsUseCase by inject()
     private val getMediaSourceInstances: GetMediaSourceInstancesUseCase by inject()
@@ -366,6 +387,26 @@ open class EpisodeViewModel(
         override ?: config.playbackSpeed
     }.distinctUntilChanged()
 
+    /**
+     * 本播放页的加载流程埋点记录器. 与本 ViewModel 同生命周期, 持有本次播放会话的 `play_session_id`.
+     * 是否向 Analytics 发送由功能开关 `play_flow_report` 的 `threshold` 决定 (默认不发送): 进入页面时读一次缓存的配置并抽一次签
+     * ([PlayFlowRecorder.shouldReport]), 一次播放会话内保持一致, 同时后台再拉取一次供下次播放用.
+     */
+    val playFlow: PlayFlowRecorder = PlayFlowRecorder(
+        subjectId,
+        enabled = PlayFlowRecorder.shouldReport(featureFlagManager.consume(FeatureFlag.PLAY_FLOW_REPORT)),
+    ).also {
+        Analytics.recordEvent(
+            EpisodeEnter,
+            buildMap {
+                put("subject_id", subjectId)
+                put("episode_id", initialEpisodeId)
+                put("is_fullscreen", initialIsFullscreen)
+                putAll(it.legacyProperties(attempt = 1L))
+            },
+        )
+    }
+
     @OptIn(UnsafeEpisodeSessionApi::class)
     protected val fetchPlayState = EpisodeFetchSelectPlayState(
         subjectId, initialEpisodeId, player, backgroundScope,
@@ -399,7 +440,13 @@ open class EpisodeViewModel(
                 return withContext(Dispatchers.Main) { this@EpisodeViewModel.isFullscreen }
             }
         },
+        playFlow = playFlow,
     )
+
+    /**
+     * 当前剧集尝试, 供页面层用户操作的埋点归属.
+     */
+    protected val currentPlayFlowEpisode: PlayFlowEpisode? get() = fetchPlayState.episodeSessionFlow.value.playFlowEpisode
 
     val mediaResolver: MediaResolver get() = fetchPlayState.playerSession.mediaResolver
 
@@ -455,6 +502,7 @@ open class EpisodeViewModel(
         },
         onPlay = { pick, memory -> playBrowsedMedia(pick.media, memory) },
         backgroundScope = backgroundScope,
+        listener = PlayFlowManualBrowseListener(playFlow) { currentPlayFlowEpisode },
     )
 
     // region Subject and episode data info flows
@@ -929,8 +977,43 @@ open class EpisodeViewModel(
             }
         },
         onSend = { context, content -> postCommentUseCase(context, content) },
+        onUploadImage = { uploadCommentImageUseCase(it) },
+        onCheckImageStatus = { getCommentImageStatusUseCase(it) },
         backgroundScope = backgroundScope,
     )
+
+    /**
+     * 评论 tab 里原地打开的评论 thread. 状态放在这里, 旋转屏幕不丢; 切集时由页面关掉.
+     */
+    val commentThreadHost: CommentThreadHost = CommentThreadHost { key, snapshot ->
+        episodeCommentThreadState(
+            key = key,
+            target = key.target as CommentThreadTarget.Episode,
+            snapshot = snapshot,
+            repository = episodeCommentRepository,
+            backgroundScope = backgroundScope,
+        )
+    }
+
+    /**
+     * 从评论列表打开 [comment] 的 thread, 列表里已有的这条评论作为快照先显示.
+     */
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    suspend fun openCommentThread(comment: UIComment) {
+        val episodeId = comment.episodeId?.toInt() ?: fetchPlayState.getCurrentEpisodeId()
+        commentThreadHost.open(
+            CommentThreadKey(CommentThreadTarget.Episode(subjectId, episodeId), comment.stableId),
+            snapshot = comment,
+        )
+    }
+
+    /**
+     * 评论或回复发送成功后刷新评论列表; 打开着 thread 时 thread 也一并刷新, 让新内容立刻出现.
+     */
+    fun refreshComments() {
+        commentStateRestarter.restart()
+        commentThreadHost.current?.onReplySent()
+    }
 
     // Combine original chapters with AutoSkip rules fetched from server
     @OptIn(UnsafeEpisodeSessionApi::class, InternalMediampApi::class)
@@ -1079,7 +1162,11 @@ open class EpisodeViewModel(
                         backgroundScope,
                         webSessionManager,
                         btFilterState,
-                        onUserSelect = { forgetBrowseMemory() },
+                        listener = PlayFlowMediaSelectorListener(
+                            playFlow,
+                            currentEpisode = { currentPlayFlowEpisode },
+                            onUserSelect = { _, _ -> forgetBrowseMemory() },
+                        ),
                     )
                 } else {
                     // TODO: 2025/1/22 We should not use createTestMediaSelectorState
@@ -1209,6 +1296,7 @@ open class EpisodeViewModel(
 
     fun refreshFetch() {
         launchInBackground {
+            playFlow.recordUserAction(currentPlayFlowEpisode, PlayFlowUserAction.REFRESH_ALL)
             // 手动重新查询: 清除本条目的 web 源搜索缓存, 让所有数据源真正重新搜索
             selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
             // Although it's flow, it should be ready.
@@ -1262,6 +1350,7 @@ open class EpisodeViewModel(
                 ?.mediaSourceResults
                 ?.find { it.instanceId == instanceId }
                 ?: return@launchInBackground
+            playFlow.recordUserAction(currentPlayFlowEpisode, PlayFlowUserAction.REFRESH_SOURCE, result.mediaSourceId)
             // 手动刷新单个源: 只清除该源的搜索缓存, 让它真正重新搜索, 不影响其他源的缓存
             selectorEpisodeCacheRepository.clearByRequestedSubjectAndSource(subjectId, result.mediaSourceId)
             result.restart()
@@ -1285,7 +1374,7 @@ open class EpisodeViewModel(
                 .first()
                 ?: return@launchInBackground
             logger.info { "Playing dropped file: $file" }
-            mediaSelector.selectTemporarily(DroppedFileMedia.create(file))
+            mediaSelector.selectTemporarily(DroppedFileMedia.create(file), SelectTrigger.DROPPED_FILE)
         }
     }
 
@@ -1304,7 +1393,7 @@ open class EpisodeViewModel(
             .first()
             ?: return
         if (memory != null) {
-            mediaSelector.select(media)
+            mediaSelector.select(media, SelectTrigger.MANUAL_BROWSE)
             try {
                 manualBrowseMemoryRepository.set(subjectId, memory)
             } catch (e: CancellationException) {
@@ -1313,7 +1402,7 @@ open class EpisodeViewModel(
                 logger.warn(e) { "Failed to save manual browse memory for subject $subjectId" }
             }
         } else {
-            mediaSelector.selectTemporarily(media)
+            mediaSelector.selectTemporarily(media, SelectTrigger.MANUAL_BROWSE)
         }
     }
 
@@ -1444,6 +1533,7 @@ open class EpisodeViewModel(
 
     fun updateFetchRequest(request: MediaFetchRequest) {
         launchInBackground {
+            playFlow.recordUserAction(currentPlayFlowEpisode, PlayFlowUserAction.EDIT_QUERY)
             // 编辑查询条件后会重启所有源的搜索, 同样清除本条目的 web 源搜索缓存
             selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
             fetchPlayState.episodeSessionFlow
@@ -1458,6 +1548,7 @@ open class EpisodeViewModel(
     @OptIn(UnsafeEpisodeSessionApi::class)
     fun retryLoad(error: EpisodePageLoadError) {
         launchInBackground {
+            playFlow.recordUserAction(currentPlayFlowEpisode, PlayFlowUserAction.RETRY_INFO)
             when (error) {
                 is EpisodePageLoadError.SeriesError -> {
                     fetchPlayState.restartLoad()

@@ -353,14 +353,6 @@ sealed class Runner(
         labels = setOf("windows-11-arm"),
     )
 
-    object GithubMacOS14 : GithubHosted(
-        id = "github-macos-14",
-        displayName = "macOS 14 AArch64 (GitHub)",
-        os = OS.MACOS,
-        arch = Arch.AARCH64,
-        labels = setOf("macos-14"),
-    )
-
     object GithubMacOS15Intel : GithubHosted(
         id = "github-macos-15-intel",
         displayName = "macOS 15 x86_64 (GitHub)",
@@ -375,6 +367,14 @@ sealed class Runner(
         os = OS.MACOS,
         arch = Arch.AARCH64,
         labels = setOf("macos-15"),
+    )
+
+    object GithubMacOS26 : GithubHosted(
+        id = "github-macos-26",
+        displayName = "macOS 26 AArch64 (GitHub)",
+        os = OS.MACOS,
+        arch = Arch.AARCH64,
+        labels = setOf("macos-26"),
     )
 
     object GithubUbuntu2404 : GithubHosted(
@@ -1169,8 +1169,8 @@ workflow(
             // 不在自托管 Mac 上验证: 它与 GithubMacOS15AppleSilicon 系统和架构相同, 验证的是同一个 DMG,
             // 而这台 Mac 是所有 run 共用的瓶颈.
             listOf(
-                Runner.GithubMacOS14,
                 Runner.GithubMacOS15AppleSilicon,
+                Runner.GithubMacOS26,
             ).forEach { runner ->
                 addVerifyJob(build, runner, build.result.eq(AbstractResult.Status.Success))
             }
@@ -1238,7 +1238,9 @@ workflow(
                 $$"""
                   set -euo pipefail
 
-                  export RELEASE_NOTES="$(ci-helper/generate-release-notes-with-codex.sh "$${expr { gitTag.tagExpr }}" "$${expr { gitTag.tagVersionExpr }}")"
+                  # 先赋值再 export: `export VAR="$(cmd)"` 的退出码是 export 自己的 0, 脚本失败会被吞掉, 导致用空 notes 建 release.
+                  RELEASE_NOTES="$(ci-helper/generate-release-notes-with-codex.sh "$${expr { gitTag.tagExpr }}" "$${expr { gitTag.tagVersionExpr }}")"
+                  export RELEASE_NOTES
 
                   python3 - <<'PY' > "$RUNNER_TEMP/release-body.md"
                   import os
@@ -2290,7 +2292,7 @@ class WithMatrix(
             env = mapOf("DEV_BUILD_PACKAGE_NAME" to packageName),
         )
         if (matrix.isMacOS) {
-            // macOS 的更新脚本解压后要先通过签名校验才替换 .app. 打包后改动过 .app 而没有重签时这里会失败.
+            // macOS 的应用在下载阶段解压或拼好 .app 后要先通过签名校验才会安装. 打包后改动过 .app 而没有重签时这里会失败.
             run(
                 name = "Verify code signature in $packageName",
                 shell = Shell.Bash,

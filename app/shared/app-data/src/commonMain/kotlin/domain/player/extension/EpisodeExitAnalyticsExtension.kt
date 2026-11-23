@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.domain.episode.EpisodeSession
+import me.him188.ani.app.domain.player.analytics.PlayFlowEpisode
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.isLocalCache
 import me.him188.ani.utils.analytics.Analytics
@@ -53,7 +54,7 @@ class EpisodeExitAnalyticsExtension(
     private val currentStats = MutableStateFlow<EpisodePlaybackStats?>(null)
 
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
-        val stats = EpisodePlaybackStats(episodeSession.episodeId, timeSource.markNow())
+        val stats = EpisodePlaybackStats(episodeSession.playFlowEpisode, timeSource.markNow())
         currentStats.value = stats
 
         backgroundTaskScope.launch("PlayerState") {
@@ -91,7 +92,8 @@ class EpisodeExitAnalyticsExtension(
             val selected = stats.selected
             buildMap<String, Any?> {
                 put("subject_id", context.subjectId.toLong())
-                put("episode_id", stats.episodeId.toLong())
+                put("episode_id", stats.episode.episodeId.toLong())
+                putAll(context.playFlow.legacyProperties(stats.episode))
                 put("exit_reason", exitReason)
                 put("reached_playing", (stats.firstPlaying != null).toAnalyticsFlag())
                 put("first_frame_ms", stats.firstPlaying?.inWholeMilliseconds)
@@ -101,7 +103,7 @@ class EpisodeExitAnalyticsExtension(
                 put("buffering_count", stats.buffering.count.toLong())
                 put("buffering_ms", stats.buffering.total(now).inWholeMilliseconds)
                 put("had_error", stats.hadError.toAnalyticsFlag())
-                put("media_source_id", selected?.mediaSourceId?.take(100))
+                put("source", selected?.let { context.playFlow.sourceName(it.mediaSourceId) }?.take(100))
                 put("is_cached", selected?.isLocalCache()?.toAnalyticsFlag())
                 put("source_switch_count", stats.sourceSwitchCount.toLong())
             }
@@ -123,7 +125,7 @@ class EpisodeExitAnalyticsExtension(
  * 一个 [EpisodeSession] 内的播放统计. 时间都是相对 [start] 的时长.
  */
 private class EpisodePlaybackStats(
-    val episodeId: Int,
+    val episode: PlayFlowEpisode,
     private val start: TimeMark,
 ) {
     var firstPlaying: Duration? = null

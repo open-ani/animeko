@@ -2445,6 +2445,46 @@ class EpisodeVideoControllerTest {
     }
 
     /**
+     * 鼠标停在进度条上并在条内继续移动, 控制器保持显示.
+     *
+     * 鼠标在底栏内移动会源源不断地产生 Move 事件. 底栏的按下跟踪只能对真正的按下计数,
+     * 不能把悬停的 Move 当成一次已松开的按下而撤掉悬停发出的 alwaysOn 请求.
+     */
+    @Test
+    fun `mouse - hover to always on - progress slider while moving inside`() = runAniComposeUiTest {
+        testRequestAlwaysOn(
+            performGesture = {
+                progressSlider.performMouseInput {
+                    moveTo(center, delayMillis = 0)
+                    moveBy(Offset(10f, 0f), delayMillis = 0)
+                    moveBy(Offset(10f, 0f), delayMillis = 0)
+                }
+            },
+            gestureFamily = GestureFamily.MOUSE,
+            expectAlwaysOn = true,
+        )
+    }
+
+    /**
+     * 鼠标在底栏按钮上点击后继续停留, 控制器保持显示: 松开不能撤掉悬停发出的 alwaysOn 请求.
+     */
+    @Test
+    fun `mouse - hover to always on - bottom bar after click`() = runAniComposeUiTest {
+        testRequestAlwaysOn(
+            performGesture = {
+                fullScreenButton.performMouseInput {
+                    moveTo(center, delayMillis = 0)
+                    press()
+                    release()
+                    moveBy(Offset(2f, 0f), delayMillis = 0)
+                }
+            },
+            gestureFamily = GestureFamily.MOUSE,
+            expectAlwaysOn = true,
+        )
+    }
+
+    /**
      * 鼠标悬浮在控制器上, 会保持显示
      */
     @Test

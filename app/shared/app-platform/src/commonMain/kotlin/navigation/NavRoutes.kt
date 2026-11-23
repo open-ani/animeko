@@ -180,6 +180,37 @@ sealed class NavRoutes : NavKey {
      */
     @Serializable
     data object NotificationSettings : NavRoutes()
+
+    /**
+     * 评论详情 (thread): 一条根评论及其全部回复, 整页展示.
+     *
+     * 只给手里没有评论列表的入口使用 (通知落地等). 播放页与人物页的评论列表在原地切换到 thread, 不走这个路由,
+     * 这样视频继续播放, 评论 sheet 也不会被压住.
+     *
+     * @param commentId 根评论的稳定 id (`ani:<uuid>` / `bangumi:<id>`), 即评论列表响应里的 `id`
+     * @param focusReplyId 加载后要定位并高亮的回复的稳定 id, 为 `null` 时停在根评论
+     */
+    @Serializable
+    data class CommentThread(
+        val target: CommentThreadTarget,
+        val commentId: String,
+        val focusReplyId: String? = null,
+    ) : NavRoutes()
+}
+
+/**
+ * 评论挂在哪个对象上, 决定 thread 走剧集还是人物/角色的评论接口.
+ */
+@Serializable
+sealed class CommentThreadTarget {
+    @Serializable
+    data class Episode(val subjectId: Int, val episodeId: Int) : CommentThreadTarget()
+
+    @Serializable
+    data class Person(val personId: Int) : CommentThreadTarget()
+
+    @Serializable
+    data class Character(val characterId: Int) : CommentThreadTarget()
 }
 
 /** Explicit entry identity; a person's asynchronously loaded careers never change their route. */

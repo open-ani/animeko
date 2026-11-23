@@ -29,6 +29,7 @@ import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.app.domain.player.analytics.PlayFlowRecorder
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeExit
 import me.him188.ani.utils.coroutines.childScope
 import org.openani.mediamp.PlaybackErrorCode
@@ -52,7 +53,8 @@ class EpisodeExitAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
         val suite = EpisodePlayerTestSuite(this, scope)
         suite.registerComponent<MediaResolver> { TestUniversalMediaResolver }
         val state = suite.createState(
-            listOf(
+            playFlow = PlayFlowRecorder(subjectId, playSessionId = "sid"),
+            extensions = listOf(
                 EpisodePlayerExtensionFactory { context, _ ->
                     EpisodeExitAnalyticsExtension(context, analytics, testScheduler.timeSource)
                 },
@@ -102,6 +104,8 @@ class EpisodeExitAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
             mapOf(
                 "subject_id" to subjectId.toLong(),
                 "episode_id" to initialEpisodeId.toLong(),
+                "play_session_id" to "sid",
+                "episode_attempt" to 1L,
                 "exit_reason" to "close",
                 "reached_playing" to 1L,
                 "first_frame_ms" to 1_000L,
@@ -111,7 +115,7 @@ class EpisodeExitAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
                 "buffering_count" to 1L,
                 "buffering_ms" to 2_000L,
                 "had_error" to 0L,
-                "media_source_id" to "a",
+                "source" to "a",
                 "is_cached" to 0L,
                 "source_switch_count" to 0L,
             ),
@@ -131,6 +135,8 @@ class EpisodeExitAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
             mapOf(
                 "subject_id" to subjectId.toLong(),
                 "episode_id" to initialEpisodeId.toLong(),
+                "play_session_id" to "sid",
+                "episode_attempt" to 1L,
                 "exit_reason" to "close",
                 "reached_playing" to 0L,
                 "watched_ms" to 0L,
@@ -170,7 +176,7 @@ class EpisodeExitAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals(2_000L, event["watched_ms"])
         assertEquals(0L, event["buffering_count"])
         assertEquals(0L, event["buffering_ms"])
-        assertEquals("b", event["media_source_id"])
+        assertEquals("b", event["source"])
         assertEquals(1L, event["is_cached"])
         assertEquals(1L, event["source_switch_count"])
         case.scope.cancel()
@@ -256,7 +262,7 @@ class EpisodeExitAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals("close", events[1]["exit_reason"])
         assertEquals(0L, events[1]["reached_playing"])
         assertEquals(0L, events[1]["watched_ms"])
-        assertEquals(null, events[1]["media_source_id"])
+        assertEquals(null, events[1]["source"])
         case.scope.cancel()
     }
 }

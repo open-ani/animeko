@@ -249,7 +249,7 @@ TV 的 `Tv*ViewModel` 继承对应功能的共享 ViewModel，复用已有的状
 
 共享 ViewModel 保留原有依赖解析和业务逻辑，仅开放继承与状态复用必需的入口。TV 专用功能由子类实现。
 
-Analytics 事件同样复用：搜索、评分提交、进入剧集、切换剧集和播放统计由共享 ViewModel 与播放扩展记录。手机在页面 composable 中记录的事件，TV 由对应的 `Tv*ViewModel` 在处理 Intent 时记录，事件名和参数与手机一致。例如打开条目记录 `subject_enter`，`source` 标明入口。`TvAniAppContent` 在每个导航页面和主壳标签显示时记录 `screen_view`，`screen_name` 为页面名。
+Analytics 事件同样复用：搜索、评分提交、进入剧集、切换剧集和播放统计由共享 ViewModel 与播放扩展记录。手机在页面 composable 中记录的事件，TV 由对应的 `Tv*ViewModel` 在处理 Intent 时记录，事件名和参数与手机一致。例如打开条目记录 `subject_enter`，`source` 标明入口。`TvAniAppContent` 在每个导航页面和主壳标签显示时记录 `screen_view`，`screen_name` 为页面名。播放页从进入到起播的完整流程由 `play_flow` 事件按会话记录，见 [播放加载流程埋点](code/analytics-play-flow.md)。
 
 TV 播放进度条使用 `video-player` 的 `MediaProgressSlider`、`PlayerProgressSliderState` 和共享播放 ViewModel 的 `cacheProgressInfoFlow` / `progressChaptersFlow`。遥控器层提供预览位置、确认跳转和焦点，缓存分段、章节标记与进度绘制由共享组件处理。播放会话、弹幕加载和自动跳过使用已有共享实现。
 

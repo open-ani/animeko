@@ -18,6 +18,7 @@ import me.him188.ani.app.data.models.notification.Announcement
 import me.him188.ani.app.data.models.notification.AnnouncementTag
 import me.him188.ani.app.data.models.notification.AppNotification
 import me.him188.ani.app.data.models.notification.AppNotificationContent
+import me.him188.ani.app.data.models.notification.CommentReplier
 import me.him188.ani.app.data.models.notification.NotificationBadgeState
 import me.him188.ani.app.data.models.notification.NotificationDisplay
 import me.him188.ani.app.data.models.notification.NotificationGroup
@@ -153,19 +154,86 @@ fun createTestSystemNotification(
 )
 
 /**
- * 当前版本没有专门展示方式的通知, 例如互动. 用通用展示内容展示.
+ * 评论被回复. 服务端的通用展示内容与客户端自己的文案相同, 正文是回复的纯文本.
+ *
+ * @param contentBbcode 回复正文, 通用展示内容的正文默认取它 (预览的正文没有 BBCode 标签).
+ */
+@TestOnly
+fun createTestCommentReply(
+    id: String = "reply-1",
+    read: Boolean = false,
+    createdAtMillis: Long = TestNotificationNowMillis - 30 * MINUTE_MILLIS,
+    targetType: CommentReportTargetType? = CommentReportTargetType.EPISODE_COMMENT,
+    replier: CommentReplier = CommentReplier(id = "bob", nickname = "Bob", avatarUrl = "https://example.com/bob.png"),
+    replyId: String = "ani:reply-1",
+    rootCommentId: String = "ani:root-1",
+    parentCommentId: String = rootCommentId,
+    contentBbcode: String = "同意，这一集的作画太好了",
+    body: String? = contentBbcode,
+    subjectId: Long? = 400602,
+    subjectName: String? = "葬送のフリーレン",
+    subjectNameCn: String? = "葬送的芙莉莲",
+    episodeId: Long? = 1227087,
+    episodeSort: String? = "1",
+    personId: Long? = null,
+    characterId: Long? = null,
+    targetName: String? = null,
+    overline: String? = "葬送的芙莉莲 第 1 话",
+    target: NotificationTarget? = NotificationTarget(
+        subjectId = subjectId,
+        episodeId = episodeId,
+        personId = personId,
+        characterId = characterId,
+        commentId = rootCommentId,
+        replyId = replyId,
+    ),
+): AppNotification = AppNotification(
+    id = id,
+    rawType = NotificationType.COMMENT_REPLY.wireValue,
+    rawCategory = NotificationGroup.INTERACTION.wireValue,
+    createdAtMillis = createdAtMillis,
+    read = read,
+    display = NotificationDisplay(
+        title = "${replier.nickname} 回复了你的评论",
+        body = body,
+        overline = overline,
+        icon = NotificationIcon.REPLY,
+        imageUrl = replier.avatarUrl,
+        target = target,
+    ),
+    content = AppNotificationContent.CommentReply(
+        targetType = targetType,
+        replier = replier,
+        replyId = replyId,
+        rootCommentId = rootCommentId,
+        parentCommentId = parentCommentId,
+        contentBbcode = contentBbcode,
+        createdAtMillis = createdAtMillis,
+        subjectId = subjectId,
+        subjectName = subjectName,
+        subjectNameCn = subjectNameCn,
+        episodeId = episodeId,
+        episodeSort = episodeSort,
+        personId = personId,
+        characterId = characterId,
+        targetName = targetName,
+    ),
+)
+
+/**
+ * 当前版本没有专门展示方式的通知, 例如被提及. 用通用展示内容展示.
  */
 @TestOnly
 fun createTestGenericNotification(
-    id: String = "reply-1",
+    id: String = "generic-1",
     read: Boolean = false,
-    rawType: String = "comment_reply",
+    rawType: String = "mention",
     rawCategory: String = NotificationGroup.INTERACTION.wireValue,
     createdAtMillis: Long = TestNotificationNowMillis - 30 * MINUTE_MILLIS,
     overline: String? = "葬送的芙莉莲 第 1 话",
-    title: String = "Bob 回复了你的评论",
+    title: String = "Bob 在评论中提到了你",
     body: String? = "同意，这一集的作画太好了",
-    icon: NotificationIcon? = NotificationIcon.REPLY,
+    icon: NotificationIcon? = NotificationIcon.MENTION,
     imageUrl: String? = null,
     target: NotificationTarget? = NotificationTarget(subjectId = 400602, episodeId = 1227087),
 ): AppNotification = AppNotification(
@@ -256,7 +324,7 @@ val TestNotifications: List<AppNotification>
 @TestOnly
 val TestInteractionNotifications: List<AppNotification>
     get() = listOf(
-        createTestGenericNotification(),
+        createTestCommentReply(),
         createTestGenericNotification(
             id = "mention-1",
             read = true,
