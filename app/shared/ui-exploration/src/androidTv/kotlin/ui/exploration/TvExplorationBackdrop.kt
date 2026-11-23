@@ -8,16 +8,18 @@
  */
 package me.him188.ani.tv.ui.exploration
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -26,9 +28,15 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.CompositeShader
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.LinearGradientShader
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -51,6 +59,9 @@ internal fun TvExplorationBackdrop(
     val scale by animateFloatAsState(
         if (expanded) 1f else 1.1f, tween(400, easing = ExplorationFocusEasing), label = "home-backdrop-scale",
     )
+    val imageFadeSpec = remember {
+        tween<Float>(TvExplorationDefaults.BackdropFadeMillis, easing = ExplorationFocusEasing)
+    }
     Box(modifier.fillMaxSize().background(TvExplorationDefaults.Background)) {
         Box(
             Modifier.fillMaxSize().testTag("tv-exploration-glow")
@@ -63,50 +74,37 @@ internal fun TvExplorationBackdrop(
                     onDrawBehind { drawRect(wash) }
                 },
         )
-        Crossfade(
-            hero,
+        Box(
             Modifier.fillMaxSize().graphicsLayer { alpha = 1f - scrollProgress().coerceIn(0f, 1f) },
-            animationSpec = tween(TvExplorationDefaults.BackdropFadeMillis, easing = ExplorationFocusEasing),
-            label = "home-backdrop",
-        ) { subject ->
-            val url = subject?.imageUrl.orEmpty()
-            var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(null) }
-            val palette = rememberPaletteState()
-            LaunchedEffect(bitmap) { bitmap?.let { palette.generate(it) } }
-            LaunchedEffect(palette.palette, url) {
-                if (url == currentUrl) {
-                    (palette.palette?.darkVibrantSwatch?.color ?: palette.palette?.dominantSwatch?.color)
-                        ?.let { glowTarget = it }
-                }
+        ) {
+            val transition = updateTransition(hero, label = "home-backdrop")
+            val visibleSubjects = remember { mutableListOf(transition.currentState) }
+            if (transition.currentState == transition.targetState) {
+                visibleSubjects.removeAll { it != transition.targetState }
             }
-            Box(Modifier.fillMaxSize().testTag("tv-exploration-backdrop-${subject?.subjectId}")) {
-                AsyncImage(
-                    url, null,
-                    Modifier.fillMaxSize().graphicsLayer { scaleX = scale; scaleY = scale }
-                        .testTag("tv-exploration-backdrop-image"),
-                    contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -.5f), crossfade = false,
-                    onSuccess = { bitmap = it.bitmap },
-                )
-                Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.horizontalGradient(
-                            0f to TvExplorationDefaults.Background,
-                            .18f to TvExplorationDefaults.Background.copy(alpha = .95f),
-                            .45f to TvExplorationDefaults.Background.copy(alpha = .60f),
-                            .72f to Color.Transparent,
-                        ),
-                    ),
-                )
-                Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(
-                            0f to TvExplorationDefaults.Background.copy(alpha = .1f),
-                            .4f to Color.Transparent,
-                            .78f to TvExplorationDefaults.Background.copy(alpha = .8f),
-                            1f to TvExplorationDefaults.Background,
-                        ),
-                    ),
-                )
+            if (hero !in visibleSubjects) visibleSubjects.add(hero)
+            for (index in 0 until visibleSubjects.size) {
+                val subject = visibleSubjects[index]
+                key(subject) {
+                    val imageAlpha by transition.animateFloat(
+                        transitionSpec = { imageFadeSpec },
+                        label = "image-alpha",
+                    ) { if (it == subject) 1f else 0f }
+                    TvExplorationBackdropImage(
+                        url = subject?.imageUrl.orEmpty(),
+                        scale = { scale },
+                        onPalette = { url, color -> if (url == currentUrl) glowTarget = color },
+                        modifier = Modifier.fillMaxSize().graphicsLayer {
+                            alpha = imageAlpha
+                            // Retain the complete masked image only while it can contribute to the backdrop.
+                            compositingStrategy = if (scrollProgress() >= 1f || (alpha == 0f && subject != hero)) {
+                                CompositingStrategy.Auto
+                            } else {
+                                CompositingStrategy.Offscreen
+                            }
+                        }.testTag("tv-exploration-backdrop-${subject?.subjectId}"),
+                    )
+                }
             }
         }
         Box(
@@ -118,5 +116,49 @@ internal fun TvExplorationBackdrop(
                 onDrawBehind { drawRect(halo) }
             },
         )
+    }
+}
+
+@Composable
+private fun TvExplorationBackdropImage(
+    url: String,
+    scale: () -> Float,
+    onPalette: (String, Color) -> Unit,
+    modifier: Modifier,
+) {
+    var bitmap by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    val palette = rememberPaletteState()
+    LaunchedEffect(bitmap) { bitmap?.let { palette.generate(it) } }
+    LaunchedEffect(palette.palette, url) {
+        (palette.palette?.darkVibrantSwatch?.color ?: palette.palette?.dominantSwatch?.color)
+            ?.let { onPalette(url, it) }
+    }
+    Box(modifier) {
+        AsyncImage(
+            url, null,
+            Modifier.fillMaxSize().graphicsLayer {
+                val currentScale = scale()
+                scaleX = currentScale
+                scaleY = currentScale
+            }.testTag("tv-exploration-backdrop-image"),
+            contentScale = ContentScale.Crop, alignment = BiasAlignment(0f, -.5f), crossfade = false,
+            onSuccess = { bitmap = it.bitmap },
+        )
+        Box(Modifier.fillMaxSize().drawWithCache {
+            val horizontal = LinearGradientShader(
+                Offset.Zero, Offset(size.width, 0f),
+                listOf(TvExplorationDefaults.Background, TvExplorationDefaults.Background.copy(alpha = .95f),
+                    TvExplorationDefaults.Background.copy(alpha = .60f), Color.Transparent),
+                listOf(0f, .18f, .45f, .72f), TileMode.Clamp,
+            )
+            val vertical = LinearGradientShader(
+                Offset.Zero, Offset(0f, size.height),
+                listOf(TvExplorationDefaults.Background.copy(alpha = .1f), Color.Transparent,
+                    TvExplorationDefaults.Background.copy(alpha = .8f), TvExplorationDefaults.Background),
+                listOf(0f, .4f, .78f, 1f), TileMode.Clamp,
+            )
+            val mask = ShaderBrush(CompositeShader(horizontal, vertical, BlendMode.SrcOver))
+            onDrawBehind { drawRect(mask) }
+        })
     }
 }

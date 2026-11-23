@@ -818,6 +818,62 @@ class TvExplorationUiTest {
     }
 
     @Test
+    fun carouselRetainsInterruptedBackgroundsUntilTheFinalSelectionSettles() = runAniComposeUiTest {
+        mount(trendingCount = 5)
+        for (subjectId in 2..4) {
+            key(Key.DirectionRight)
+            settle(100)
+            onNodeWithTag("tv-exploration-dot-${subjectId - 1}").assertIsSelected()
+            for (visibleId in 1..subjectId) {
+                onNodeWithTag("tv-exploration-backdrop-$visibleId").assertExists()
+            }
+            assertEquals(
+                subjectId,
+                onAllNodes(hasTestTag("tv-exploration-backdrop-image")).fetchSemanticsNodes().size,
+            )
+        }
+
+        settle()
+        onNodeWithTag("tv-exploration-backdrop-4").assertExists()
+        for (retiredId in 1..3) {
+            onNodeWithTag("tv-exploration-backdrop-$retiredId").assertDoesNotExist()
+        }
+        assertEquals(1, onAllNodes(hasTestTag("tv-exploration-backdrop-image")).fetchSemanticsNodes().size)
+        onNodeWithTag("tv-exploration-details").assertIsFocused()
+    }
+
+    @Test
+    fun carouselReusesRevisitedBackgroundsAndRetiresThemAfterReversing() = runAniComposeUiTest {
+        mount()
+        key(Key.DirectionRight)
+        settle(100)
+        key(Key.DirectionRight)
+        settle(100)
+        key(Key.DirectionLeft)
+        settle(100)
+        onNodeWithTag("tv-exploration-dot-1").assertIsSelected()
+        for (subjectId in 1..3) {
+            onNodeWithTag("tv-exploration-backdrop-$subjectId").assertExists()
+        }
+        assertEquals(3, onAllNodes(hasTestTag("tv-exploration-backdrop-image")).fetchSemanticsNodes().size)
+
+        key(Key.DirectionLeft)
+        settle(100)
+        onNodeWithTag("tv-exploration-dot-0").assertIsSelected()
+        for (subjectId in 1..3) {
+            onNodeWithTag("tv-exploration-backdrop-$subjectId").assertExists()
+        }
+        assertEquals(3, onAllNodes(hasTestTag("tv-exploration-backdrop-image")).fetchSemanticsNodes().size)
+
+        settle()
+        onNodeWithTag("tv-exploration-backdrop-1").assertExists()
+        onNodeWithTag("tv-exploration-backdrop-2").assertDoesNotExist()
+        onNodeWithTag("tv-exploration-backdrop-3").assertDoesNotExist()
+        assertEquals(1, onAllNodes(hasTestTag("tv-exploration-backdrop-image")).fetchSemanticsNodes().size)
+        onNodeWithTag("tv-exploration-details").assertIsFocused()
+    }
+
+    @Test
     fun carouselWrapsAndAutoAdvanceStopsWhenHeroLosesFocus() = runAniComposeUiTest {
         mount()
         key(Key.DirectionLeft)
