@@ -47,6 +47,7 @@ import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.domain.session.auth.OAuthPlatform
 import me.him188.ani.app.navigation.AniNavigator
+import me.him188.ani.app.navigation.CommentThreadTarget
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
@@ -59,6 +60,8 @@ import me.him188.ani.app.shared.loadOpenSourceLibrariesJsons
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.bangumi.merge.BangumiMergeScreen
 import me.him188.ani.app.ui.bangumi.merge.BangumiMergeViewModel
+import me.him188.ani.app.ui.comment.thread.CommentThreadScreen
+import me.him188.ani.app.ui.comment.thread.CommentThreadViewModel
 import me.him188.ani.app.ui.download.DownloadManagementScreen
 import me.him188.ani.app.ui.download.createDownloadManagementViewModel
 import me.him188.ani.app.ui.download.createSubjectDownloadsViewModel
@@ -542,6 +545,25 @@ private fun AniAppContentImpl(
                 val vm = viewModel { NotificationSettingsViewModel() }
                 NotificationSettingsScreen(
                     vm.notificationSettings,
+                    modifier = Modifier.fillMaxSize(),
+                    navigationIcon = {
+                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                    },
+                    windowInsets = windowInsetsWithoutTitleBar,
+                )
+            }
+            entry<NavRoutes.CommentThread> { route ->
+                CommentThreadScreen(
+                    vm = viewModel(key = route.toString()) { CommentThreadViewModel(route) },
+                    onOpenTarget = {
+                        when (val target = route.target) {
+                            is CommentThreadTarget.Episode ->
+                                aniNavigator.navigateEpisodeDetails(target.subjectId, target.episodeId)
+
+                            is CommentThreadTarget.Person -> aniNavigator.navigatePersonDetails(target.personId)
+                            is CommentThreadTarget.Character -> aniNavigator.navigateCharacterDetails(target.characterId)
+                        }
+                    },
                     modifier = Modifier.fillMaxSize(),
                     navigationIcon = {
                         BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })

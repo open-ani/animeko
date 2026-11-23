@@ -87,6 +87,7 @@ internal fun SubjectDetailsHeader(
     onCoverImageSuccess: (AniImageLoadSuccess) -> Unit = {},
     modifier: Modifier = Modifier,
     onClickCover: (() -> Unit)? = null,
+    coverThumbnailUrl: String? = null,
 ) {
     val useOriginalTitle = LocalSubjectAppearanceSettings.current.useOriginalTitle
     val primaryTitle = info?.preferredDisplayName(useOriginalTitle) ?: ""
@@ -115,6 +116,7 @@ internal fun SubjectDetailsHeader(
             onCoverImageSuccess = onCoverImageSuccess,
             modifier = modifier,
             onClickCover = onClickCover,
+            coverThumbnailUrl = coverThumbnailUrl,
         )
     } else {
         SubjectDetailsHeaderCompact(
@@ -129,6 +131,7 @@ internal fun SubjectDetailsHeader(
             onSuccess = onCoverImageSuccess,
             modifier = modifier,
             onClickCover = onClickCover,
+            coverThumbnailUrl = coverThumbnailUrl,
         )
     }
 }
@@ -148,6 +151,7 @@ fun SubjectDetailsHeaderCompact(
     onSuccess: (AniImageLoadSuccess) -> Unit,
     modifier: Modifier = Modifier,
     onClickCover: (() -> Unit)? = null,
+    coverThumbnailUrl: String? = null,
 ) {
     Column(modifier) {
         Row(Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.Top) {
@@ -168,6 +172,7 @@ fun SubjectDetailsHeaderCompact(
                     contentScale = ContentScale.Crop,
                     crossfadeDurationMillis = 300,
                     onSuccess = onSuccess,
+                    thumbnailModel = coverThumbnailUrl,
                 )
             }
 
@@ -237,6 +242,7 @@ fun SubjectDetailsHeaderWide(
     onCoverImageSuccess: (AniImageLoadSuccess) -> Unit,
     modifier: Modifier = Modifier,
     onClickCover: (() -> Unit)? = null,
+    coverThumbnailUrl: String? = null,
 ) {
     Column(modifier) {
         Row(
@@ -260,6 +266,7 @@ fun SubjectDetailsHeaderWide(
                     contentScale = ContentScale.Crop,
                     crossfadeDurationMillis = 300,
                     onSuccess = onCoverImageSuccess,
+                    thumbnailModel = coverThumbnailUrl,
                 )
             }
 

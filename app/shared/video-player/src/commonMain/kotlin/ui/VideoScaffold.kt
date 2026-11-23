@@ -12,6 +12,7 @@ package me.him188.ani.app.videoplayer.ui
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -303,7 +304,10 @@ fun VideoScaffold(
                                 enter = enterTransition,
                                 exit = exitTransition,
                             ) {
-                                val alwaysOnRequester = rememberAlwaysOnRequester(controllerState, "bottomBar")
+                                // 悬停和按下各用一个 requester: 两者共用时, 松开会把悬停发出的请求一并撤掉,
+                                // 鼠标还停在底栏上控制器却会自动隐藏.
+                                val hoverRequester = rememberAlwaysOnRequester(controllerState, "bottomBar")
+                                val pressRequester = rememberAlwaysOnRequester(controllerState, "bottomBarPress")
                                 Column(
                                     Modifier
                                         .then(
@@ -311,19 +315,22 @@ fun VideoScaffold(
                                                 Modifier
                                             } else {
                                                 Modifier
-                                                    .hoverToRequestAlwaysOn(alwaysOnRequester)
+                                                    .hoverToRequestAlwaysOn(hoverRequester)
                                                     .pointerInput(Unit) {
+                                                        // 按住 bottom bar 里的按钮期间请求 always on.
+                                                        // 必须等到真正按下: 鼠标悬停也会源源不断地产生 Move 事件,
+                                                        // 不能把它们当成一次已松开的按下.
                                                         awaitEachGesture {
-                                                            val event = awaitPointerEvent()
-                                                            if (event.changes.all { it.pressed }) {
-                                                                //点击 bottom bar 里的按钮时 请求 always on
-                                                                alwaysOnRequester.request()
+                                                            awaitFirstDown(requireUnconsumed = false)
+                                                            pressRequester.request()
+                                                            try {
+                                                                var event = awaitPointerEvent()
+                                                                while (event.changes.any { it.pressed }) {
+                                                                    event = awaitPointerEvent()
+                                                                }
+                                                            } finally {
+                                                                pressRequester.cancelRequest()
                                                             }
-                                                            var releaseEvent = awaitPointerEvent()
-                                                            while (releaseEvent.changes.any { it.pressed }) {
-                                                                releaseEvent = awaitPointerEvent()
-                                                            }
-                                                            alwaysOnRequester.cancelRequest()
                                                         }
                                                     }
                                             },

@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.data.models.subject
 
+import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -45,5 +46,17 @@ class SubjectInfoTest {
     fun `preferredDisplayName_with_useOriginalTitleTrue_falls_back_to_nameCn_when_name_is_blank`() {
         val info = subject(name = "", nameCn = "孤独摇滚！")
         assertEquals("孤独摇滚！", info.preferredDisplayName(useOriginalTitle = true))
+    }
+
+    @Test
+    fun `toNavPlaceholder_uses_the_list_cover`() {
+        val info = SubjectInfo.Empty.copy(subjectId = 1, name = "a", nameCn = "b", imageLarge = "large", imageThumb = "thumb")
+        assertEquals(SubjectDetailPlaceholder(1, "a", "b", "thumb"), info.toNavPlaceholder())
+    }
+
+    @Test
+    fun `toNavPlaceholder_falls_back_to_the_large_cover_without_a_thumbnail`() {
+        val info = SubjectInfo.Empty.copy(subjectId = 1, name = "a", nameCn = "b", imageLarge = "large")
+        assertEquals(SubjectDetailPlaceholder(1, "a", "b", "large"), info.toNavPlaceholder())
     }
 }

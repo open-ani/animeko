@@ -35,13 +35,13 @@ class NotificationModelsTest {
     @Test
     fun `only types with their own rendering are known`() {
         assertEquals(
-            listOf("system", "report_result", "account_security"),
+            listOf("system", "report_result", "account_security", "comment_reply"),
             NotificationType.entries.map { it.wireValue },
         )
         for (type in NotificationType.entries) {
             assertEquals(type, NotificationType.fromWireValue(type.wireValue))
         }
-        for (value in listOf("comment_reply", "mention", "reaction", "follow", "direct_message", "future_type")) {
+        for (value in listOf("mention", "reaction", "follow", "direct_message", "future_type")) {
             assertNull(NotificationType.fromWireValue(value), value)
         }
     }
@@ -52,7 +52,11 @@ class NotificationModelsTest {
         assertEquals(NotificationType.REPORT_RESULT, known.type)
         assertEquals(NotificationGroup.NOTICE, known.group)
 
-        val unknown = notification(rawType = "comment_reply", rawCategory = "interaction")
+        val interaction = notification(rawType = "comment_reply", rawCategory = "interaction")
+        assertEquals(NotificationType.COMMENT_REPLY, interaction.type)
+        assertEquals(NotificationGroup.INTERACTION, interaction.group)
+
+        val unknown = notification(rawType = "mention", rawCategory = "interaction")
         assertNull(unknown.type)
         assertEquals(NotificationGroup.INTERACTION, unknown.group)
 
@@ -90,6 +94,29 @@ class NotificationModelsTest {
             NotificationTarget(episodeId = 2, url = "https://example.com").destination,
         )
         assertNull(NotificationTarget().destination)
+    }
+
+    @Test
+    fun `comment target goes to the thread of the comment host`() {
+        val episode = NotificationTarget(subjectId = 1, episodeId = 2, commentId = "ani:c", replyId = "ani:r")
+        assertEquals(
+            NotificationDestination.CommentThread(NotificationDestination.Episode(1, 2), "ani:c", "ani:r"),
+            episode.destination,
+        )
+        assertEquals(
+            NotificationDestination.CommentThread(NotificationDestination.Person(3), "bangumi:9", null),
+            NotificationTarget(personId = 3, commentId = "bangumi:9").destination,
+        )
+        assertEquals(
+            NotificationDestination.CommentThread(NotificationDestination.Character(4), "ani:c"),
+            NotificationTarget(characterId = 4, commentId = "ani:c", url = "https://example.com").destination,
+        )
+        // 评论要挂在剧集、人物或角色上; 只有条目或只有链接时退回到那里
+        assertEquals(NotificationDestination.Subject(1), NotificationTarget(subjectId = 1, commentId = "ani:c").destination)
+        assertEquals(
+            NotificationDestination.Url("https://example.com"),
+            NotificationTarget(commentId = "ani:c", url = "https://example.com").destination,
+        )
     }
 
     @Test
@@ -138,10 +165,15 @@ class NotificationModelsTest {
             setOf(NotificationType.ACCOUNT_SECURITY),
             NotificationSettings(showAccountSecurity = false).excludedTypes,
         )
+        assertEquals(
+            setOf(NotificationType.COMMENT_REPLY),
+            NotificationSettings(showCommentReplies = false).excludedTypes,
+        )
         // 系统消息没有开关
         assertEquals(
-            setOf(NotificationType.REPORT_RESULT, NotificationType.ACCOUNT_SECURITY),
-            NotificationSettings(showReportResults = false, showAccountSecurity = false).excludedTypes,
+            setOf(NotificationType.REPORT_RESULT, NotificationType.ACCOUNT_SECURITY, NotificationType.COMMENT_REPLY),
+            NotificationSettings(showReportResults = false, showAccountSecurity = false, showCommentReplies = false)
+                .excludedTypes,
         )
         assertEquals(emptySet(), NotificationSettings(showAnnouncementDot = false).excludedTypes)
     }

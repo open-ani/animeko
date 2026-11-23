@@ -14,6 +14,7 @@
 在 PR 的 Reviewers 里请求 `openanibot` 会触发 `qa` job：Codex 以测试工程师的身份构建 PR、运行受影响模块的自动化测试、在 Android 模拟器和打包后的 macOS 桌面应用里按用户操作验证功能，然后把带截图的测试报告作为 PR review 提交（approve / request changes / comment）。它只评价行为，不评价代码写法，也不会推送任何内容。
 
 - 只有仓库 write 权限以上的人发起的请求才会触发。bot 的 review 和普通 reviewer 的一样，maintainer 可以 dismiss。
+- 判定以 runner 能做到的为限：PR 的核心声明在模拟器 / 桌面应用里实测通过、范围内没有缺陷就 approve。实体设备和遥控器、iOS / Windows / Linux、真人按键时序、压力测试等 runner 做不到的只列为未测试，不影响结论；只有核心声明本身无法在 runner 上验证（环境导致构建失败、功能只存在于缺失的平台、截图上传失败）才仅 comment。
 - 每次请求都是对当前 head 的一次完整重测，使用全新的 Codex 会话，不复用 `iterate` 的对话；测试进行中收到新请求时取消旧测试，避免对过期 commit 出报告。
 - PR 作者没有 write 权限时，测试固定在请求时刻的 commit，与 `iterate` job 的策略一致。
 - GitHub 不允许把 PR 作者加为 reviewer，所以 openanibot 自己开的 PR 无法用这个方式测试。

@@ -768,6 +768,7 @@ fun SubjectDetailsSingleColumnPage(
                                         coverImageUrl = info?.imageLarge,
                                         Modifier.matchParentSize(),
                                         backgroundColor = backgroundColor,
+                                        coverThumbnailUrl = info?.imageThumb,
                                     )
                                 }
 
@@ -796,6 +797,7 @@ fun SubjectDetailsSingleColumnPage(
                                             .padding(horizontal = windowSizeClass.paneHorizontalPadding),
                                         onCoverImageSuccess = onCoverImageSuccess,
                                         onClickCover = onClickCover,
+                                        coverThumbnailUrl = info?.imageThumb,
                                     )
                                 }
                             }

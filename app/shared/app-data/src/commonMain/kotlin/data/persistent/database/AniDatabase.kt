@@ -91,7 +91,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         PlaybackHistoryPendingOpEntity::class,
         EpisodeCollectionPendingOpEntity::class,
     ],
-    version = 28,
+    version = 29,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -119,6 +119,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         AutoMigration(from = 25, to = 26, spec = Migrations.Migration_25_26::class),
         AutoMigration(from = 26, to = 27, spec = Migrations.Migration_26_27::class),
         AutoMigration(from = 27, to = 28, spec = Migrations.Migration_27_28::class),
+        AutoMigration(from = 28, to = 29, spec = Migrations.Migration_28_29::class),
     ],
     exportSchema = true,
 )
@@ -456,6 +457,16 @@ internal object Migrations {
      */
     class Migration_27_28 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * [SubjectPersonRelationEntity] 主键加入 position, 同一人在同一条目的多个职位不再互相覆盖.
+     * Room 重建表并复制旧行, 但旧行每人只剩一个职位, 所以把关系缓存全部标记为过期, 打开条目时重新拉取.
+     */
+    class Migration_28_29 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+            connection.execSQL("UPDATE `subject_collection` SET `cachedStaffUpdated` = 0, `cachedCharactersUpdated` = 0")
         }
     }
 }

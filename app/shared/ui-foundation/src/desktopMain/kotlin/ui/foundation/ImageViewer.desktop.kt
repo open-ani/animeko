@@ -217,9 +217,9 @@ private fun ImageViewerWindow(
                 model = model,
                 onClose = onClose,
                 modifier = Modifier.fillMaxSize(),
-                // 独立窗口有自己的关闭按钮, 单击图片不再关闭.
-                closeOnTap = false,
+                // 独立窗口由系统提供关闭按钮.
                 showCloseButton = false,
+                dismissOnSwipe = false,
                 fileSaver = remember(window, saveDialogTitle) {
                     // 保存对话框作为查看器窗口的 sheet 弹出
                     FileKitImageFileSaver(FileKitDialogSettings(title = saveDialogTitle, parentWindow = window))

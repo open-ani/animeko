@@ -26,7 +26,8 @@ import kotlinx.serialization.encoding.*
  *
  *
  * @param subject
- * @param positions 该人物在此条目担任的全部职位 (Bangumi position 常量)
+ * @param positions 该人物在此条目担任的全部职位 (Bangumi position 常量). 只配音的条目为空
+ * @param castCount 该人物在此条目配音的角色数. 大于 0 表示参与了配音
  */
 @Serializable
 
@@ -34,8 +35,11 @@ data class AniPersonWork (
 
     @SerialName(value = "subject") @Required val subject: AniSubjectSummary,
 
-    /* 该人物在此条目担任的全部职位 (Bangumi position 常量) */
-    @SerialName(value = "positions") @Required val positions: kotlin.collections.List<kotlin.Int>
+    /* 该人物在此条目担任的全部职位 (Bangumi position 常量). 只配音的条目为空 */
+    @SerialName(value = "positions") @Required val positions: kotlin.collections.List<kotlin.Int>,
+
+    /* 该人物在此条目配音的角色数. 大于 0 表示参与了配音 */
+    @SerialName(value = "castCount") @Required val castCount: kotlin.Int
 
 ) {
 

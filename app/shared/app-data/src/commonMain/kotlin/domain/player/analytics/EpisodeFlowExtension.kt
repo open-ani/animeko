@@ -100,7 +100,7 @@ class EpisodeFlowExtension(
         context.playFlow.record(PlayFlowStep.USER_SELECT, episode) {
             put("sel_no", episode.selectionNoOf(media.mediaId))
             put("entry", event.trigger.toPlayFlowEntry())
-            put("media_source_id", media.mediaSourceId)
+            put("source", context.playFlow.sourceName(media.mediaSourceId))
             put("kind", media.toPlayFlowKind())
             put("match", (match as? MaybeExcludedMedia.Included)?.metadata?.subjectMatchKind?.toPlayFlowMatch())
             put("tier", tiers?.tierOf(media))

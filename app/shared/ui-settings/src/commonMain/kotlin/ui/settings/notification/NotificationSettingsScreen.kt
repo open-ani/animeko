@@ -40,7 +40,9 @@ import me.him188.ani.app.ui.lang.notification_settings
 import me.him188.ani.app.ui.lang.notification_settings_account_security_item
 import me.him188.ani.app.ui.lang.notification_settings_announcement_description
 import me.him188.ani.app.ui.lang.notification_settings_announcement_item
+import me.him188.ani.app.ui.lang.notification_settings_comment_reply_item
 import me.him188.ani.app.ui.lang.notification_settings_group_announcements
+import me.him188.ani.app.ui.lang.notification_settings_group_interaction
 import me.him188.ani.app.ui.lang.notification_settings_group_system
 import me.him188.ani.app.ui.lang.notification_settings_report_result_item
 import me.him188.ani.app.ui.lang.notification_settings_system_group_description
@@ -67,6 +69,7 @@ class NotificationSettingsViewModel(
 object NotificationSettingsTestTags {
     const val REPORT_RESULT = "notification-settings-report-result"
     const val ACCOUNT_SECURITY = "notification-settings-account-security"
+    const val COMMENT_REPLY = "notification-settings-comment-reply"
     const val ANNOUNCEMENT = "notification-settings-announcement"
     const val GROUP_DIVIDER = "notification-settings-group-divider"
 }
@@ -106,15 +109,31 @@ fun NotificationSettingsScreen(
 }
 
 /**
- * 举报结果和账号安全各有一个开关, 关闭后本机不显示也不统计这类通知; 系统消息没有开关. 公告只控制头像上的红点.
+ * 评论被回复、举报结果和账号安全各有一个开关, 关闭后本机不显示也不统计这类通知; 系统消息没有开关. 公告只控制头像上的红点.
  *
- * 两组之间有一条通栏的分隔线.
+ * 各组之间有一条通栏的分隔线.
  */
 @Composable
 fun SettingsScope.NotificationSettingsGroups(state: SettingsState<NotificationSettings>) {
     val settings by state
     // 不使用外层的组间距, 分隔线与两组的距离只来自组自身的内边距
     Column {
+        Group(
+            title = { Text(stringResource(Lang.notification_settings_group_interaction)) },
+            description = { Text(stringResource(Lang.notification_settings_system_group_description)) },
+            useThinHeader = true,
+        ) {
+            SwitchItem(
+                checked = settings.showCommentReplies,
+                onCheckedChange = { state.update(settings.copy(showCommentReplies = it)) },
+                title = { Text(stringResource(Lang.notification_settings_comment_reply_item)) },
+                Modifier.testTag(NotificationSettingsTestTags.COMMENT_REPLY),
+            )
+        }
+        HorizontalDivider(
+            Modifier.testTag(NotificationSettingsTestTags.GROUP_DIVIDER),
+            color = MaterialTheme.colorScheme.outlineVariant,
+        )
         Group(
             title = { Text(stringResource(Lang.notification_settings_group_system)) },
             description = { Text(stringResource(Lang.notification_settings_system_group_description)) },
