@@ -33,7 +33,7 @@ val enableIosFramework = enableIos && buildIosFramework
 kotlin {
     android {
         namespace = "me.him188.ani"
-        compileSdk = getIntProperty("android.compile.sdk")
+        compileSdk(aniCompileSdk)
         minSdk = getIntProperty("android.min.sdk")
         // TODO AGP Migration: Test package optimization
 

@@ -62,11 +62,13 @@ class MediaProgressSliderFramePreviewTest {
             debounceMillis = 0,
         )
         setContent {
-            MediaProgressSlider(
-                createSliderState(),
-                cacheProgressInfoFlow = { null },
-                framePreview = framePreview,
-            )
+            ProgressSliderAtWindowBottom {
+                MediaProgressSlider(
+                    createSliderState(),
+                    cacheProgressInfoFlow = { null },
+                    framePreview = framePreview,
+                )
+            }
         }
 
         waitForIdle()
@@ -96,11 +98,13 @@ class MediaProgressSliderFramePreviewTest {
             debounceMillis = 0,
         )
         setContent {
-            MediaProgressSlider(
-                createSliderState(),
-                cacheProgressInfoFlow = { null },
-                framePreview = framePreview,
-            )
+            ProgressSliderAtWindowBottom {
+                MediaProgressSlider(
+                    createSliderState(),
+                    cacheProgressInfoFlow = { null },
+                    framePreview = framePreview,
+                )
+            }
         }
 
         waitForIdle()
@@ -142,11 +146,13 @@ class MediaProgressSliderFramePreviewTest {
             chunkStates = listOf(ChunkState.NONE),
         )
         setContent {
-            MediaProgressSlider(
-                createSliderState(),
-                cacheProgressInfoFlow = { uncachedInfo },
-                framePreview = framePreview,
-            )
+            ProgressSliderAtWindowBottom {
+                MediaProgressSlider(
+                    createSliderState(),
+                    cacheProgressInfoFlow = { uncachedInfo },
+                    framePreview = framePreview,
+                )
+            }
         }
 
         onNodeWithTag(TAG_PROGRESS_SLIDER).performMouseInput {
@@ -166,11 +172,13 @@ class MediaProgressSliderFramePreviewTest {
     @Test
     fun `no frame preview state keeps time-only popup`() = runAniComposeUiTest {
         setContent {
-            MediaProgressSlider(
-                createSliderState(),
-                cacheProgressInfoFlow = { null },
-                framePreview = null,
-            )
+            ProgressSliderAtWindowBottom {
+                MediaProgressSlider(
+                    createSliderState(),
+                    cacheProgressInfoFlow = { null },
+                    framePreview = null,
+                )
+            }
         }
         onNodeWithTag(TAG_PROGRESS_SLIDER).performMouseInput {
             moveTo(center)

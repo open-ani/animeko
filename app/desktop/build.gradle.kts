@@ -240,6 +240,12 @@ compose.desktop {
     }
 }
 
+// 运行 jpackage 生成 app image 的任务. `createDistributable` 和 `createReleaseDistributable` 自己不产生文件,
+// 只依赖这两个任务并转出它们的输出目录. 对 app image 的后处理要挂在这里, 作为 jpackage 任务的一部分执行:
+// 这样任务输出的快照包含后处理的结果, 所有消费 app image 的任务 (dmg/deb/rpm 打包, zip 发布包) 拿到的也是处理后的目录.
+val debugAppImageTaskName = "createDistributableImpl"
+val releaseAppImageTaskName = "createReleaseDistributableImpl"
+
 afterEvaluate {
     val os = getOs()
     when (os) {
@@ -292,7 +298,7 @@ afterEvaluate {
         Os.MacOS -> {
             // JCEF needs the JBR's Contents/Frameworks (CEF framework + helpers) next to the packed
             // runtime's Home; jpackage only copies Home, so the app crashes at JCEF init without this.
-            listOf("createDistributable", "createReleaseDistributable").forEach { taskName ->
+            listOf(debugAppImageTaskName, releaseAppImageTaskName).forEach { taskName ->
                 tasks.named(taskName, AbstractJPackageTask::class) {
                     val dirsNames = listOf(
                         // From your (JBR's) Java Home to Packed Java Home
@@ -350,7 +356,7 @@ tasks.withType(KotlinCompilationTask::class) {
 
 //kotlin.sourceSets.main.get().resources.srcDir(project(":common").projectDir.resolve("src/androidMain/res/raw"))
 afterEvaluate {
-    tasks.named("createReleaseDistributable", AbstractJPackageTask::class) {
+    tasks.named(releaseAppImageTaskName, AbstractJPackageTask::class) {
         doLast {
             unpackComposeDesktopNativeLibraries()
             reconstructLinuxSolink()

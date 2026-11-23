@@ -35,7 +35,7 @@ val archs = getPropertyOrNull("ani.android.abis")
 
 android {
     namespace = "me.him188.ani.android"
-    compileSdk = getIntProperty("android.compile.sdk")
+    compileSdk(aniCompileSdk)
     defaultConfig {
         applicationId = "me.him188.ani"
         minSdk = getIntProperty("android.min.sdk")

@@ -86,6 +86,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import me.him188.ani.app.ui.foundation.input.asGesturePointerType
+import me.him188.ani.app.ui.foundation.rememberUpdatedSliderState
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerConfig
@@ -571,8 +572,7 @@ fun MediaProgressSlider(
         // draw thumb
         val interactionSource = remember { MutableInteractionSource() }
         Slider(
-            value = state.displayPositionRatio,
-            valueRange = 0f..1f,
+            state = rememberUpdatedSliderState(state.displayPositionRatio),
             onValueChange = {
                 if (handlingTouchInput && touchSeekState?.state == TouchSeekState.State.Idle) {
                     touchSeekState.start()

@@ -88,6 +88,7 @@ import me.him188.ani.app.ui.foundation.ifNotNullThen
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.input.asGesturePointerType
+import me.him188.ani.app.ui.foundation.input.onMouseMoved
 import me.him188.ani.app.ui.foundation.input.trackActiveInputSource
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.video_player_release_to_cancel
@@ -774,13 +775,11 @@ fun PlayerGestureHost(
                 }
                 // 始终挂载, 再按本次事件过滤. 否则触摸后的第一次 Mouse Move 只会切换 family,
                 // 要等第二次 Move 才能显示控制器.
-                .onPointerEventMultiplatform(PointerEventType.Move) { event ->
-                    if (event.changes.firstOrNull()?.type == PointerType.Mouse) {
-                        controllerState.toggleFullVisible(true)
-                        mouseMoveTasker.launch {
-                            delay(VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION)
-                            controllerState.toggleFullVisible(false)
-                        }
+                .onMouseMoved {
+                    controllerState.toggleFullVisible(true)
+                    mouseMoveTasker.launch {
+                        delay(VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION)
+                        controllerState.toggleFullVisible(false)
                     }
                 }
                 // 滚轮只可能来自鼠标, 无需 family 门控; 接了鼠标的 Android 平板同样受益

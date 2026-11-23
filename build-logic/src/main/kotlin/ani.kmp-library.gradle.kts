@@ -50,7 +50,7 @@ configure<KotlinMultiplatformExtension> {
     jvm("desktop")
 
     android {
-        compileSdk = getIntProperty("android.compile.sdk")
+        compileSdk(aniCompileSdk)
         minSdk = getIntProperty("android.min.sdk")
         androidResources.enable = true
 
