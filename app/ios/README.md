@@ -2,6 +2,11 @@
 
 构建与运行方式见 [贡献文档](../../docs/contributing/README.md)。
 
+应用的最低部署目标为 iOS / iPadOS 15.1，与 `onnxruntime-objc` 的最低要求一致。
+Gradle CocoaPods 配置（`build-logic/src/main/kotlin/aniIos.kt`）、`Podfile` 和 Xcode 项目的
+Debug / Release 部署目标必须保持一致。
+打包的原生 framework 也必须兼容该版本；更新依赖时应检查其 `MinimumOSVersion` 和 Mach-O 部署目标。
+
 ## 未捕获异常
 
 Kotlin/Native 的异常钩子在处理异常时获取当前日志 writer，将原始异常与堆栈写入文件并 flush，然后委托给先前的钩子或终止进程。
