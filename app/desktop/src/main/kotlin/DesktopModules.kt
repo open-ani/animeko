@@ -10,7 +10,6 @@
 package me.him188.ani.app.desktop
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.data.persistent.dataStores
@@ -69,7 +68,6 @@ import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.MediampPlayerFactoryLoader
 import org.openani.mediamp.compose.MediampPlayerSurfaceProviderLoader
 import org.openani.mediamp.mpv.compose.MpvMediampPlayerSurfaceProvider
-import java.io.File
 import kotlin.io.path.Path
 
 internal fun isWindowsArm64(): Boolean {
@@ -85,22 +83,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
         val defaultTorrentCachePath = getContext().files.defaultMediaCacheBaseDir
 
         val baseSaveDir = runBlocking {
-            val saveDirSettings = settings.flow.first().saveDir
-            // 首次启动设置默认 dir
-            if (saveDirSettings == null) {
-                val finalPathString = defaultTorrentCachePath.absolutePath
-                settings.update { copy(saveDir = finalPathString) }
-                return@runBlocking finalPathString
-            }
-
-            // 如果当前目录没有权限读写, 直接使用默认目录
-            if (!File(saveDirSettings).run { canRead() && canWrite() }) {
-                val fallbackPathString = defaultTorrentCachePath.absolutePath
-                settings.update { copy(saveDir = fallbackPathString) }
-                return@runBlocking fallbackPathString
-            }
-
-            saveDirSettings
+            resolveDesktopMediaSaveDir(settings, defaultTorrentCachePath.absolutePath)
         }
 
         object : MediaSaveDirProvider {
