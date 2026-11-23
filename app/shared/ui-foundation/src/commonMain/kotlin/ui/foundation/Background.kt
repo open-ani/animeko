@@ -34,18 +34,20 @@ val DEFAULT_BACKGROUND_BRUSH = Brush.verticalGradient(
  * 添加渐变图片背景或默认纯色背景
  * @param data 图片 URL 或文件路径
  * @param fallbackColor 无图片时的纯色
+ * @param thumbnail 先显示的低分辨率版本, 含义同 [AsyncImage] 的 `thumbnailModel`
  */
 fun Modifier.backgroundWithGradient(
     data: String?,
     fallbackColor: Color,
     brush: Brush = DEFAULT_BACKGROUND_BRUSH,
+    thumbnail: String? = null,
 ) =
     if (data == null) {
         composed {
             background(fallbackColor)
         }
     } else {
-        paintBackground(data).background(brush = brush)
+        paintBackground(data, thumbnail = thumbnail).background(brush = brush)
     }
 
 /**
@@ -69,9 +71,14 @@ fun Modifier.paintBackground(painter: Painter): Modifier = composed {
     )
 }
 
-fun Modifier.paintBackground(data: String?): Modifier = paintBackground(data, state = null)
+fun Modifier.paintBackground(data: String?, thumbnail: String? = null): Modifier =
+    paintBackground(data, state = null, thumbnail = thumbnail)
 
-internal fun Modifier.paintBackground(data: String?, state: AsyncImageState?): Modifier = composed {
+internal fun Modifier.paintBackground(
+    data: String?,
+    state: AsyncImageState?,
+    thumbnail: String? = null,
+): Modifier = composed {
     var requestSize by remember { mutableStateOf<IntSize?>(null) }
     onSizeChanged { size ->
         val roundedSize = size.toAniImageRequestSize()
@@ -83,6 +90,7 @@ internal fun Modifier.paintBackground(data: String?, state: AsyncImageState?): M
             requestSize = requestSize,
             filterQuality = defaultFilterQuality,
             state = state,
+            thumbnailModel = thumbnail,
         ),
         contentScale = ContentScale.Crop,
     )

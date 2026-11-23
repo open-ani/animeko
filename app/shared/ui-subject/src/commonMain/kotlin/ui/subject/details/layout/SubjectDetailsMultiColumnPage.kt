@@ -496,6 +496,7 @@ private fun SubjectSidebar(
                 .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
             contentScale = ContentScale.Crop,
             onSuccess = onCoverImageSuccess,
+            thumbnailModel = info.imageThumb,
         )
         // 播放按钮 (定稿: 全宽 Filled; 无选集列表小按钮, 选集操作走中栏网格)
         SubjectProgressButton(

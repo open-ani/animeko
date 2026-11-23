@@ -46,6 +46,7 @@ import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.hasPageAsState
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
+import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import org.jetbrains.compose.resources.stringResource
 
@@ -111,6 +112,8 @@ object EpisodeVideoSideSheets {
         onDismissRequest: () -> Unit,
         onNavigateToFilterSettings: () -> Unit,
         sources: @Composable () -> Unit = {},
+        /** 本次实际拉取到的弹幕来源, 见 [EpisodeVideoSettings]. */
+        danmakuServiceIds: List<DanmakuServiceId> = emptyList(),
     ) {
         val danmakuSettingsText = stringResource(Lang.subject_episode_danmaku_settings_title)
         val closeText = stringResource(Lang.subject_episode_close)
@@ -128,7 +131,12 @@ object EpisodeVideoSideSheets {
                     }
                 },
             ) {
-                EpisodeVideoSettings(viewModel, onNavigateToFilterSettings, sources = sources)
+                EpisodeVideoSettings(
+                    viewModel,
+                    onNavigateToFilterSettings,
+                    sources = sources,
+                    danmakuServiceIds = danmakuServiceIds,
+                )
             }
             return
         }
@@ -154,6 +162,7 @@ object EpisodeVideoSideSheets {
                             viewModel,
                             onNavigateToFilterSettings = { currentPage = DanmakuSettingsPage.REGEX_FILTER },
                             sources = sources,
+                            danmakuServiceIds = danmakuServiceIds,
                         )
                     }
 

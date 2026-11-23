@@ -73,6 +73,7 @@ kotlin {
         implementation(libs.koin.core)
         implementation(libs.atomicfu)
         implementation(libs.ktor.network) // HLS 本地代理 (iOS)
+        implementation(libs.sokkuri.runtime) // 弹幕简繁转换
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)

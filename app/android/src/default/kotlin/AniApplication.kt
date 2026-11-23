@@ -16,6 +16,8 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.generalk1ng.sokkuri.Sokkuri
+import com.generalk1ng.sokkuri.init
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -107,6 +109,9 @@ class AniApplication : Application() {
             // In service process, we don't need any dependency which is use in app process.
             return
         }
+
+        // 弹幕简繁转换 (sokkuri) 需要从 assets 加载词典
+        Sokkuri.init(this)
 
         instance = Instance() // set instance
 

@@ -100,6 +100,7 @@ class PersonDetailsRepository(
                     PersonWorkInfo(
                         subject = it.subject.toSummary(),
                         positions = it.positions.map(::PersonPosition),
+                        castCount = it.castCount,
                     )
                 },
             )

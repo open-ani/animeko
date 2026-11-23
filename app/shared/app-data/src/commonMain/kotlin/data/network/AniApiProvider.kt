@@ -17,6 +17,7 @@ import me.him188.ani.client.apis.CommentsAniApi
 import me.him188.ani.client.apis.DanmakuAniApi
 import me.him188.ani.client.apis.DeveloperVerificationAniApi
 import me.him188.ani.client.apis.EpisodesAniApi
+import me.him188.ani.client.apis.FeatureFlagsAniApi
 import me.him188.ani.client.apis.HomeAniApi
 import me.him188.ani.client.apis.NotificationsAniApi
 import me.him188.ani.client.apis.OAuthAniApi
@@ -66,6 +67,7 @@ class AniApiProvider(
     val watchTogetherApi = ApiInvoker(client) { WatchTogetherAniApi(baseurl, it) }
     val notificationsApi = ApiInvoker(client) { NotificationsAniApi(baseurl, it) }
     val announcementsApi = ApiInvoker(client) { AnnouncementsAniApi(baseurl, it) }
+    val featureFlagsApi = ApiInvoker(client) { FeatureFlagsAniApi(baseurl, it) }
 
     private inline val baseurl get() = ServerListFeatureConfig.Companion.MAGIC_ANI_SERVER
 }

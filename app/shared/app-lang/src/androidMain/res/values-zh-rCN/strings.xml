@@ -112,6 +112,23 @@
     <string name="settings_debug_dev_builds">CI 构建</string>
     <string name="settings_debug_dev_builds_install_commit">安装指定 commit、PR 或安装包</string>
     <string name="settings_debug_dev_builds_install_commit_description">列出 main 分支最近的 commits 及其 CI 构建状态，也可粘贴 commit、PR、artifact 链接或安装包地址，下载 CI 为当前平台构建的安装包并安装</string>
+
+    <string name="settings_debug_play_flow">播放流程</string>
+    <string name="settings_debug_play_flow_open">打开播放流程悬浮窗</string>
+    <string name="settings_debug_play_flow_open_description">悬浮窗实时显示播放加载的每一步，并保留本次运行内最近的播放会话供回看</string>
+    <string name="play_flow_debug_title">播放流程</string>
+    <string name="play_flow_debug_tab_live">实时</string>
+    <string name="play_flow_debug_tab_history">历史</string>
+    <string name="play_flow_debug_empty">还没有播放会话</string>
+    <string name="play_flow_debug_follow">跳到最新</string>
+    <string name="play_flow_debug_close">关闭</string>
+    <string name="play_flow_debug_back">返回</string>
+    <string name="play_flow_debug_session_summary">条目 %1$d · %2$d 条事件</string>
+    <string name="play_flow_debug_attempt">第 %1$d 次尝试 · 剧集 %2$d</string>
+
+    <string name="play_flow_debug_minimize">最小化</string>
+    <string name="play_flow_debug_restore">展开播放流程悬浮窗</string>
+    <string name="play_flow_debug_copy">复制为 JSON</string>
     <string name="settings_debug_dev_builds_unsupported_platform">CI 没有为当前平台生成可安装的安装包</string>
     <string name="settings_debug_dev_builds_token">GitHub Token</string>
     <string name="settings_debug_dev_builds_token_description">下载 GitHub Actions 产物需要 token。Fine-grained token 需要 Actions 读取权限，classic token 需要 public_repo 范围。查询列表不需要 token，但有速率限制。</string>
@@ -1482,7 +1499,9 @@
     <string name="rating_summary">%1$d 人评丨#%2$d</string>
     <string name="comment_send_failed_network">发送失败：网络错误</string>
     <string name="comment_send_failed_unknown">发送失败，请附带日志反馈此问题\n%1$s</string>
-    <string name="comment_ani_only_notice">评论将发送到 Ani，Bangumi 评论为只读</string>
+    <string name="comment_send_failed_invalid_image">评论中的图片已失效，请重新上传</string>
+    <string name="comment_send_failed_too_many_images">一条评论最多只能包含 10 张图片</string>
+    <string name="comment_send_failed_image_processing">有图片仍在处理中，请稍后再发送</string>
     <string name="comment_send_comment">发送评论</string>
     <string name="comment_rendering">渲染中...</string>
     <string name="comment_reply">回复评论</string>
@@ -1491,6 +1510,13 @@
     <string name="comment_dislike">点踩</string>
     <string name="comment_more_actions">更多操作</string>
     <string name="comment_expand_replies">展开 %1$d 条回复</string>
+    <string name="comment_thread_title">评论详情</string>
+    <string name="comment_thread_replies_count">相关回复共 %1$d 条</string>
+    <string name="comment_reply_to_name">回复 @%1$s</string>
+    <string name="comment_reply_to_deleted">回复 已删除的评论</string>
+    <string name="comment_thread_no_replies">还没有回复</string>
+    <string name="comment_thread_not_found">评论不存在或已被删除</string>
+    <string name="comment_thread_reply_root">改为回复原评论</string>
     <string name="comment_copy_content">复制内容</string>
     <string name="comment_open_in_bangumi">在 Bangumi 打开</string>
     <string name="comment_block_user">拉黑此用户</string>
@@ -1514,12 +1540,32 @@
     <string name="comment_underline">下划线</string>
     <string name="comment_strikethrough">删除线</string>
     <string name="comment_mask">遮罩</string>
-    <string name="comment_image">图片</string>
     <string name="comment_link">链接</string>
-    <string name="comment_more_editor_actions">更多评论编辑功能</string>
+    <string name="comment_cut">剪切</string>
+    <string name="comment_copy">复制</string>
+    <string name="comment_paste">粘贴</string>
+    <string name="comment_select_all">全选</string>
+    <string name="comment_image_chip">图片 %1$d</string>
     <string name="comment_edit">编辑</string>
     <string name="comment_preview">预览</string>
     <string name="comment_send">发送</string>
+    <string name="comment_upload_image">上传图片</string>
+    <string name="comment_image_uploading">正在上传图片...</string>
+    <string name="comment_image_processing">正在处理图片...</string>
+    <string name="comment_image_upload_too_large">图片不能超过 10MB</string>
+    <string name="comment_image_upload_invalid_format">无法使用这张图片：仅支持 JPEG、PNG、WebP 和 GIF，且不超过 1 亿像素</string>
+    <string name="comment_image_upload_not_logged_in">请先登录再上传图片</string>
+    <string name="comment_image_upload_forbidden">当前账号暂时无法上传图片</string>
+    <string name="comment_image_upload_rate_limited">上传过于频繁，请稍后再试</string>
+    <string name="comment_image_upload_pending_limit">未发布的图片太多，请先发布评论或稍后再试</string>
+    <string name="comment_image_upload_already_in_comment">评论中已有这张图片，已重新上传</string>
+    <string name="comment_image_upload_failed_network">图片上传失败：网络错误</string>
+    <string name="comment_image_upload_failed_unknown">图片上传失败，请附带日志反馈此问题\n%1$s</string>
+    <string name="comment_image_processing_failed">图片处理失败，请重试</string>
+    <string name="comment_image_remove">删除图片 %1$d</string>
+    <string name="comment_image_retry">重试</string>
+    <string name="comment_image_limit_reached">最多只能添加 %1$d 张图片</string>
+    <string name="comment_send_blocked_failed_images">有图片上传失败，请重试或删除</string>
     <string name="foundation_browser_open_failed_copied">无法打开链接，已将链接复制到剪贴板，请打开浏览器访问</string>
     <string name="foundation_richtext_external_app_link_warning_prefix">此链接可能会打开其他应用，ani 将不会打开此链接：\n</string>
     <string name="foundation_richtext_open_failed_prefix">无法打开此链接：\n</string>
@@ -1640,6 +1686,12 @@
     <string name="subject_episode_video_settings_enable_regex_filter">启用正则弹幕过滤器</string>
     <string name="subject_episode_video_settings_manage_regex_filter">管理正则弹幕过滤器</string>
     <string name="subject_episode_video_settings_debug_mode">弹幕调试模式</string>
+    <string name="subject_episode_video_settings_text_conversion">弹幕文字</string>
+    <string name="subject_episode_video_settings_text_conversion_original">原样</string>
+    <string name="subject_episode_video_settings_text_conversion_simplified">简体</string>
+    <string name="subject_episode_video_settings_text_conversion_traditional">繁体</string>
+    <string name="subject_episode_video_settings_text_conversion_taiwan">台繁</string>
+    <string name="subject_episode_video_settings_text_conversion_hong_kong">港繁</string>
 
     <!-- 人物/角色详情页 -->
     <string name="person_details_basic_info">基本信息</string>
@@ -1761,6 +1813,7 @@
     <string name="image_viewer_copy">复制图片</string>
     <string name="image_viewer_copied">图片已复制</string>
     <string name="image_viewer_copy_failed">复制图片失败</string>
+    <string name="image_viewer_more">更多操作</string>
     <string name="image_viewer_close">关闭</string>
     <!-- Shared playback captcha messages -->
     <string name="media_captcha_required_message">需要处理%1$s</string>
@@ -1826,6 +1879,14 @@
     <string name="qr_login_done">完成</string>
     <string name="qr_login_close">关闭</string>
     <string name="subject_episode_danmaku_sources_title">来源与时间校准</string>
+    <string name="subject_episode_danmaku_text_conversion_item">简繁转换</string>
+    <string name="subject_episode_danmaku_text_conversion_desc">单个来源可以覆盖全部来源的设置</string>
+    <string name="subject_episode_danmaku_text_conversion_preview_hint">示例：</string>
+    <string name="subject_episode_danmaku_text_conversion_override_count">%1$d 个来源已单独设置</string>
+    <string name="subject_episode_danmaku_text_conversion_follow_global">跟随全局</string>
+    <string name="subject_episode_danmaku_text_conversion_section_all">全部来源</string>
+    <string name="subject_episode_danmaku_text_conversion_section_per_source">单个来源</string>
+    <string name="subject_episode_danmaku_text_conversion_reset_overrides">重置单独设置</string>
     <string name="subject_episode_danmaku_sources_empty">暂无可用弹幕源</string>
     <string name="video_player_screenshot">截图</string>
     <string name="video_player_screenshot_share">分享</string>

@@ -51,6 +51,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
  *   [me.him188.ani.app.ui.comment.CommentReportHost] 渲染, 调用方需在 sheet 外层挂一个.
  * @param onClickReply 点击评论回复, 只对可回复 ([UIComment.canReply]) 的 [UICommentSource.ANI] 评论生效. `null` 表示不支持回复 (条目评价).
  * @param onToggleReaction 贴纸回应, 只对 [UICommentSource.ANI] 评论生效. `null` 时隐藏贴纸入口.
+ * @param onExpandReplies 点击评论的回复块, 用来打开评论的 thread. `null` 时回落到 [onClickReply].
  */
 @Composable
 fun SubjectDetailsDefaults.SubjectCommentColumn(
@@ -62,6 +63,7 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
     onOpenOriginal: ((UIComment) -> Unit)? = null,
     onClickReply: ((UIComment) -> Unit)? = null,
     onToggleReaction: ((UIComment, String) -> Unit)? = null,
+    onExpandReplies: ((UIComment) -> Unit)? = null,
     showRating: Boolean = true,
     connectedScrollState: ConnectedScrollState? = null,
     gridState: LazyGridState = rememberLazyGridState(),
@@ -96,6 +98,7 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
                 onClickImage = onClickImage,
                 showRating = showRating,
                 onClickReply = onClickReply,
+                onExpandReplies = onExpandReplies,
                 onToggleVote = { c, vote -> state.toggleVote(c, vote) },
                 onToggleReaction = if (commentWithOverlay.source == UICommentSource.ANI) onToggleReaction else null,
                 menu = CommentMenuHandlers(

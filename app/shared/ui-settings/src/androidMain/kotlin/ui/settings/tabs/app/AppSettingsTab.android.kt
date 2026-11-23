@@ -10,17 +10,20 @@
 package me.him188.ani.app.ui.settings.tabs.app
 
 import android.os.Build
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.intl.Locale
-import androidx.core.os.LocaleListCompat
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.createAppLocaleController
+import me.him188.ani.app.platform.findActivity
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.SupportedLocales
 import me.him188.ani.app.ui.lang.renderLocale
@@ -42,24 +45,24 @@ internal actual fun SettingsScope.LanguageSettingsPlatform(
     state: SettingsState<UISettings>,
 ) {
     val supportedLocales = remember { listOf<Locale?>(null) + SupportedLocales }
+    val context = LocalContext.current
+    val localeController = remember(context) { createAppLocaleController(context) }
+    var selectedLanguageTag by remember(context, LocalConfiguration.current) {
+        mutableStateOf(localeController.languageTag)
+    }
 
     DropdownItem(
         selected = {
-            val languageTag = AppCompatDelegate.getApplicationLocales()
-                .toLanguageTags()
-                .substringBefore(',')
-                .takeUnless { it.isBlank() }
-                ?: return@DropdownItem null
+            val languageTag = selectedLanguageTag ?: return@DropdownItem null
 
             supportedLocales.firstOrNull { it?.toLanguageTag() == languageTag } ?: Locale(languageTag)
         },
         values = { supportedLocales },
         itemText = { Text(renderLocale(it)) },
         onSelect = { locale ->
-            val locales = locale?.let { LocaleListCompat.forLanguageTags(it.toLanguageTag()) }
-                ?: LocaleListCompat.getEmptyLocaleList()
-            if (AppCompatDelegate.getApplicationLocales().toLanguageTags() != locales.toLanguageTags()) {
-                AppCompatDelegate.setApplicationLocales(locales)
+            context.findActivity()?.let { activity ->
+                localeController.setLanguageTag(activity, locale?.toLanguageTag())
+                selectedLanguageTag = localeController.languageTag
             }
         },
         title = { Text(stringResource(Lang.settings_app_language)) },

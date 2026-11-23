@@ -219,9 +219,15 @@ class TorrentMediaResolver(
                 }?.key?.let { return it }
             }
 
-            // 解析失败, 尽可能匹配一个
+            // 解析失败, 尽可能匹配一个. 集数必须独立成段: 1080p 里的 08 和季度标签 S02 里的 02 都不算,
+            // 否则合集里的第一个文件会被所有解析不出集数的剧集选中.
             episodeSort.toString().let { number ->
-                videos.firstOrNull { it.getPath().contains(number, ignoreCase = true) }
+                val standalone = buildString {
+                    append("""(?<![0-9Ss])""")
+                    append(Regex.escape(number))
+                    if (number.lastOrNull()?.isDigit() == true) append("""(?![0-9])""")
+                }.toRegex(RegexOption.IGNORE_CASE)
+                videos.firstOrNull { standalone.containsMatchIn(it.getPath()) }
                     ?.let { return it }
             }
 

@@ -45,7 +45,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -119,7 +119,13 @@ class DownloadMediaPickerState(
      * 本次选源会话的手动查找, 点选的一集作为本集的选择; 为 `null` 时没有手动查找.
      */
     val manualBrowse: ManualBrowseState? = null,
-)
+) {
+    /**
+     * 用户在模式 chip 上选的模式, `null` 表示还没选 (用初值). 放在会话状态上而不是选源页里:
+     * 选集后返回与弹窗隐藏重开都会重建选源页, 用户切过的模式要在本次会话内保持.
+     */
+    var userMode: MediaSelectorMode? by mutableStateOf(null)
+}
 
 /**
  * 选集步骤: 用户已在 [DownloadMediaPickerState] 中选定 [chosen].
@@ -203,21 +209,25 @@ private fun DownloadRequestSheet(
         modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
         contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
     ) {
+        // AnimatedContent 在两步切换时销毁另一步的内容; 用 SaveableStateHolder 保住各步的 rememberSaveable 状态 (列表滚动位置等), 返回选源时回到原处.
+        val stateHolder = rememberSaveableStateHolder()
         AnimatedContent(
             targetState = episodePicker,
             contentKey = { it != null },
             contentAlignment = Alignment.TopCenter,
         ) { picker ->
-            if (picker == null) {
-                DownloadMediaPicker(selection, sourceInfoProvider, settings, onSelect)
-            } else {
-                DownloadEpisodePicker(
-                    picker,
-                    onBack = onBack,
-                    onConfirm = onConfirmEpisodes,
-                    modifier = Modifier.padding(vertical = 12.dp)
-                        .navigationBarsPadding().fillMaxHeight().fillMaxWidth(),
-                )
+            stateHolder.SaveableStateProvider(picker != null) {
+                if (picker == null) {
+                    DownloadMediaPicker(selection, sourceInfoProvider, settings, onSelect)
+                } else {
+                    DownloadEpisodePicker(
+                        picker,
+                        onBack = onBack,
+                        onConfirm = onConfirmEpisodes,
+                        modifier = Modifier.padding(vertical = 12.dp)
+                            .navigationBarsPadding().fillMaxHeight().fillMaxWidth(),
+                    )
+                }
             }
         }
     }
@@ -256,6 +266,8 @@ private fun DownloadMediaPicker(
         selectorState = selectorState,
         sourceResults = presentation,
         hasBt = hasBt,
+        userMode = selection.userMode,
+        onUserModeChange = { selection.userMode = it },
         watching = watching,
         fetchRequest = fetchRequest,
         onFetchRequestChange = selection.fetchSession::setFetchRequest,
@@ -267,10 +279,12 @@ private fun DownloadMediaPicker(
 
 /**
  * 选源步骤的界面: 标题行「数据源」+ 模式 chip, 下方按模式放自动匹配页、手动查找页或 BT 资源页.
- * 模式在本次弹窗内保持; 初值有 BT 源 → BT, 否则 AUTO.
+ * 初值总是 AUTO, 不随 BT 源有无或播放偏好变化: 下载走自动匹配最省事, 要挑种子的用户自己切到 BT 页.
  * 弹窗宽 640dp, BT 页因此总是紧凑列表, 手动查找总是堆叠两页.
  *
  * @param hasBt 会话内是否有 BT 源 (含禁用源). 为 false 时模式菜单没有 BT 项.
+ * @param userMode 用户切过的模式, `null` 用初值. 由宿主持有 ([DownloadMediaPickerState.userMode]): 本页在选集与返回之间会重建, 自己记不住.
+ * @param onUserModeChange 模式 chip 或自动匹配页的救援按钮改了模式.
  * @param watching 要下载的集; BT 页只用它画「第 N 话」chip, 不画「正在观看」卡片.
  * @param fetchRequest 当前生效的查询请求, 供 BT 页搜索框回显与提交; 会话未就绪时为 null.
  * @param onSelect 用户在自动匹配页或 BT 页点了资源; 宿主进入选集步骤, 不关闭弹窗.
@@ -281,6 +295,8 @@ internal fun DownloadMediaPickerContent(
     selectorState: MediaSelectorState,
     sourceResults: MediaSourceResultListPresentation,
     hasBt: Boolean,
+    userMode: MediaSelectorMode?,
+    onUserModeChange: (MediaSelectorMode) -> Unit,
     watching: WatchingEpisode?,
     fetchRequest: MediaFetchRequest?,
     onFetchRequestChange: (MediaFetchRequest) -> Unit,
@@ -289,9 +305,8 @@ internal fun DownloadMediaPickerContent(
     modifier: Modifier = Modifier,
     manualBrowse: ManualBrowseState? = null,
 ) {
-    var userMode by rememberSaveable { mutableStateOf<MediaSelectorMode?>(null) }
     val mode = userMode?.takeIf { it != MediaSelectorMode.MANUAL || manualBrowse != null }
-        ?: if (hasBt) MediaSelectorMode.BT else MediaSelectorMode.AUTO
+        ?: MediaSelectorMode.AUTO
 
     // 手动查找页自己处理水平边距, 并在第二页用自己的顶栏替换标题行, 所以标题行与另外两页各自加水平边距.
     val titleRow = @Composable {
@@ -306,7 +321,7 @@ internal fun DownloadMediaPickerContent(
             )
             MediaSelectorModeChip(
                 mode,
-                onModeChange = { userMode = it },
+                onModeChange = onUserModeChange,
                 showBt = hasBt,
                 showManual = manualBrowse != null,
             )
@@ -351,7 +366,7 @@ internal fun DownloadMediaPickerContent(
                     selectorState,
                     onClickItem = onSelect,
                     onRestartSource = onRestartSource,
-                    onRequestManualSearch = manualBrowse?.let { { userMode = MediaSelectorMode.MANUAL } },
+                    onRequestManualSearch = manualBrowse?.let { { onUserModeChange(MediaSelectorMode.MANUAL) } },
                     modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 12.dp, end = 16.dp),
                 )
             }

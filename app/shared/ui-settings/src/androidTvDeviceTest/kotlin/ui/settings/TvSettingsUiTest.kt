@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
@@ -46,6 +47,9 @@ import kotlin.math.abs
 import kotlin.test.assertTrue
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.preference.NsfwMode
+import me.him188.ani.app.data.models.preference.ProxyAuthorization
+import me.him188.ani.app.data.models.preference.ProxyConfig
+import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.platform.findActivity
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
@@ -78,6 +82,9 @@ class TvSettingsUiTest {
                                 is TvSettingsIntent.Preference -> state.copy(preference = intent.update(state.preference))
                                 is TvSettingsIntent.Selector -> state.copy(selector = intent.update(state.selector))
                                 is TvSettingsIntent.Resolver -> state.copy(resolver = intent.update(state.resolver))
+                                is TvSettingsIntent.SaveProxy -> state.copy(proxy = state.proxy.copy(
+                                    default = state.proxy.default.copy(mode = intent.mode, customConfig = intent.config),
+                                ))
                                 is TvSettingsIntent.SourceEnabled -> state.copy(sources = state.sources.map {
                                     if (it.id == intent.id) it.copy(enabled = intent.enabled) else it
                                 })
@@ -284,7 +291,7 @@ class TvSettingsUiTest {
     fun aboutReturnsOneLevelAtATimeToTheOriginalEntry() = runAniComposeUiTest {
         state = state.copy(libraries = listOf(TvSettingsLibrary("lib", "Library", "1.0", null, "MIT", "Permission is hereby granted.")))
         mount()
-        repeat(5) { key(Key.DirectionDown) }
+        navigateTo("tv-settings-section-About")
         key(Key.DirectionCenter)
         awaitFocus("tv-settings-item-version")
         select("tv-settings-item-developers")
@@ -395,7 +402,7 @@ class TvSettingsUiTest {
     fun loadedLicenseListReceivesFocusAndLongLicenseTextScrollsWithTheRemote() = runAniComposeUiTest {
         state = state.copy(librariesLoading = true)
         mount()
-        repeat(5) { key(Key.DirectionDown) }
+        navigateTo("tv-settings-section-About")
         key(Key.DirectionCenter)
         select("tv-settings-item-acknowledgements")
         select("tv-settings-item-licenses")
@@ -513,9 +520,114 @@ class TvSettingsUiTest {
     }
 
     @Test
+    fun proxyEditingValidatesAndSavesCredentialsWithTheRemote() = runAniComposeUiTest {
+        mount("en", 1.3f)
+        navigateTo("tv-settings-section-Network")
+        key(Key.DirectionRight)
+        awaitFocus("tv-settings-item-proxy")
+        key(Key.DirectionCenter)
+        awaitFocus("tv-settings-proxy-mode-SYSTEM")
+        select("tv-settings-proxy-mode-CUSTOM")
+        key(Key.DirectionDown)
+        awaitFocus("tv-settings-proxy-address")
+        onNodeWithTag("tv-settings-proxy-address").performTextReplacement("invalid")
+        onNodeWithTag("tv-settings-save").assertIsNotEnabled()
+        onNodeWithText("Enter a valid HTTP(S) or SOCKS proxy address").assertIsDisplayed()
+        onNodeWithTag("tv-settings-proxy-address").performTextReplacement("  http://192.168.1.2:7890  ")
+        onNodeWithTag("tv-settings-save").assertIsEnabled()
+        key(Key.DirectionDown)
+        awaitFocus("tv-settings-proxy-username")
+        onNodeWithTag("tv-settings-proxy-username").performTextReplacement("tv-user")
+        key(Key.DirectionDown)
+        awaitFocus("tv-settings-proxy-password")
+        onNodeWithTag("tv-settings-proxy-password").performTextReplacement(" secret ")
+        assertTrue(onNodeWithTag("tv-settings-proxy-password").fetchSemanticsNode().config.contains(SemanticsProperties.Password))
+        assertTrue(intents.isEmpty())
+        key(Key.DirectionDown)
+        awaitFocus("tv-settings-save")
+        key(Key.DirectionUp)
+        awaitFocus("tv-settings-proxy-password")
+        key(Key.DirectionDown)
+        key(Key.DirectionCenter)
+        awaitFocus("tv-settings-item-proxy")
+        assertEquals(ProxyMode.CUSTOM, state.proxy.default.mode)
+        assertEquals(ProxyConfig("http://192.168.1.2:7890", ProxyAuthorization("tv-user", " secret ")), state.proxy.default.customConfig)
+        assertEquals(1, intents.size)
+        key(Key.Back)
+        awaitFocus("tv-settings-section-Network")
+    }
+
+    @Test
+    fun invalidProxyCanBeCancelledWithTheRemote() = runAniComposeUiTest {
+        mount()
+        navigateTo("tv-settings-section-Network")
+        key(Key.DirectionCenter)
+        awaitFocus("tv-settings-item-proxy")
+        key(Key.DirectionCenter)
+        awaitFocus("tv-settings-proxy-mode-SYSTEM")
+        select("tv-settings-proxy-mode-CUSTOM")
+        key(Key.DirectionDown)
+        awaitFocus("tv-settings-proxy-address")
+        onNodeWithTag("tv-settings-proxy-address").performTextReplacement("")
+        onNodeWithTag("tv-settings-save").assertIsNotEnabled()
+        navigateTo("tv-settings-cancel")
+        key(Key.DirectionCenter)
+        awaitFocus("tv-settings-item-proxy")
+        assertTrue(intents.isEmpty())
+        assertEquals(ProxyMode.SYSTEM, state.proxy.default.mode)
+    }
+
+    @Test
+    fun proxyModesKeepCustomSettingsAndBackDiscardsTheDraft() = runAniComposeUiTest {
+        val config = ProxyConfig("socks5://192.168.1.2:1080", ProxyAuthorization("user", "password"))
+        state = state.copy(proxy = state.proxy.copy(default = state.proxy.default.copy(mode = ProxyMode.CUSTOM, customConfig = config)))
+        mount()
+        navigateTo("tv-settings-section-Network")
+        key(Key.DirectionCenter)
+        awaitFocus("tv-settings-item-proxy")
+        key(Key.DirectionCenter)
+        awaitFocus("tv-settings-proxy-mode-CUSTOM")
+        key(Key.DirectionDown)
+        onNodeWithTag("tv-settings-proxy-address").performTextReplacement("http://unsaved:8080")
+        key(Key.Back)
+        awaitFocus("tv-settings-item-proxy")
+        assertTrue(intents.isEmpty())
+        assertEquals(config, state.proxy.default.customConfig)
+
+        for (mode in listOf(ProxyMode.DISABLED, ProxyMode.SYSTEM)) {
+            key(Key.DirectionCenter)
+            awaitFocus("tv-settings-proxy-mode-${state.proxy.default.mode}")
+            navigateTo("tv-settings-proxy-mode-$mode", if (mode == ProxyMode.DISABLED) Key.DirectionUp else Key.DirectionDown)
+            key(Key.DirectionCenter)
+            onNodeWithTag("tv-settings-proxy-address").assertDoesNotExist()
+            select("tv-settings-save")
+            awaitFocus("tv-settings-item-proxy")
+            assertEquals(mode, state.proxy.default.mode)
+            assertEquals(config, state.proxy.default.customConfig)
+        }
+
+        key(Key.DirectionCenter)
+        awaitFocus("tv-settings-proxy-mode-SYSTEM")
+        select("tv-settings-proxy-mode-CUSTOM")
+        key(Key.DirectionDown)
+        awaitFocus("tv-settings-proxy-address")
+        onNodeWithTag("tv-settings-proxy-address").assertTextContains(config.url)
+        key(Key.DirectionDown)
+        awaitFocus("tv-settings-proxy-username")
+        onNodeWithTag("tv-settings-proxy-username").performTextReplacement("")
+        key(Key.DirectionDown)
+        awaitFocus("tv-settings-proxy-password")
+        onNodeWithTag("tv-settings-proxy-password").performTextReplacement("")
+        select("tv-settings-save")
+        awaitFocus("tv-settings-item-proxy")
+        assertEquals(ProxyMode.CUSTOM, state.proxy.default.mode)
+        assertEquals(config.copy(authorization = null), state.proxy.default.customConfig)
+    }
+
+    @Test
     fun linksOfferAScannableCodeAndFocusTheActionInsteadOfTheUrlText() = runAniComposeUiTest {
         mount(fontScale = 1.3f)
-        repeat(5) { key(Key.DirectionDown) }
+        navigateTo("tv-settings-section-About")
         key(Key.DirectionCenter)
         onNodeWithTag("tv-settings-item-qq").assertDoesNotExist()
         listOf("website", "telegram").forEachIndexed { index, entry ->

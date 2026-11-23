@@ -16,7 +16,7 @@ androidx-annotation = "1.9.1"
 androidx-media3 = "1.9.0" # https://developer.android.com/jetpack/androidx/releases/media3
 androidx-lifecycle = "2.11.0" # https://developer.android.com/jetpack/androidx/releases/lifecycle
 paging = "3.4.1" # https://developer.android.com/jetpack/androidx/releases/paging
-datastore = "1.2.0" # https://developer.android.com/jetpack/androidx/releases/datastore
+datastore = "1.3.0" # https://developer.android.com/jetpack/androidx/releases/datastore
 ksp = "2.3.10" # https://github.com/google/ksp/releases
 # note: room 2.7.0-rc01 cannot compile
 room = "2.8.4" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
@@ -93,7 +93,8 @@ posthog-android = "3.11.3"
 posthog-java = "1.2.0"
 onnxruntime = "1.22.0"
 openapi-generator = "7.13.0"
-mediamp = "0.5.2"
+mediamp = "0.5.3"
+sokkuri = "0.2.1" # 简繁转换 (OpenCC 的 KMP 移植, group: com.generalk1ng.sokkuri)
 libass-android = "0.5.0-beta01"
 compose-native-tray = "2.1.1"
 kmpalette = "4.0.0-beta02"
@@ -317,9 +318,13 @@ mediamp-mpv-runtime-windows-arm64 = { module = "org.openani.mediamp:mediamp-mpv-
 mediamp-mpv-runtime-linux-x64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-linux-x64", version.ref = "mediamp" }
 mediamp-mpv-runtime-macos-x64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-macos-x64", version.ref = "mediamp" }
 mediamp-mpv-runtime-macos-arm64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-macos-arm64", version.ref = "mediamp" }
+
+# sokkuri (简繁转换, OpenCC 的 KMP 移植)
+sokkuri-runtime = { module = "com.generalk1ng.sokkuri:sokkuri-runtime", version.ref = "sokkuri" }
 mediamp-source-ktxio = { module = "org.openani.mediamp:mediamp-source-ktxio", version.ref = "mediamp" }
 mediamp-test = { module = "org.openani.mediamp:mediamp-test", version.ref = "mediamp" }
 libass-media = { module = "io.github.peerless2012:ass-media", version.ref = "libass-android" }
+libass-kt = { module = "io.github.peerless2012:ass-kt", version.ref = "libass-android" }
 
 ### All other libraries ###
 

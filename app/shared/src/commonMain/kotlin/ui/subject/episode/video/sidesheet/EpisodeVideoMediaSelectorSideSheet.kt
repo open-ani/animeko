@@ -33,6 +33,7 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_episode_close_selector
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
+import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
@@ -134,7 +135,7 @@ fun EpisodeVideoSideSheets.MediaSelectorSheet(
                 fetchRequest,
                 onFetchRequestChange,
                 onClickItem = {
-                    mediaSelectorState.select(it)
+                    mediaSelectorState.select(it, SelectTrigger.MANUAL_BT_PAGE)
                     onDismissRequest()
                 },
                 onRestartSource = onRestartSource,
@@ -144,7 +145,7 @@ fun EpisodeVideoSideSheets.MediaSelectorSheet(
             AutoMatchPage(
                 mediaSelectorState,
                 onClickItem = {
-                    mediaSelectorState.select(it)
+                    mediaSelectorState.select(it, SelectTrigger.MANUAL_AUTO_PAGE)
                     onDismissRequest()
                 },
                 onRestartSource = onRestartSource,

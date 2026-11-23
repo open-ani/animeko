@@ -70,6 +70,14 @@ data class DanmakuConfig(
      */
     val enableBottom: Boolean = false,
     /**
+     * 弹幕文本的转换目标文字, 默认不转换.
+     *
+     * 实际的转换在 domain 层进行, 渲染层忽略此属性.
+     *
+     * @since 4.9.0
+     */
+    val textConversion: DanmakuTextConversion = DanmakuTextConversion.ORIGINAL,
+    /**
      * 调试模式, 启用发送弹幕的信息和弹幕处理信息.
      */
     val isDebug: Boolean = false,

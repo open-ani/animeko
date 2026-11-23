@@ -239,6 +239,14 @@ class LabelFirstRawTitleParser : RawTitleParser() {
          * 解析 `S1+S2+Movie` 按 "+" 分割出来的部分
          */
         private fun parseEpisodeSection(original: String): EpisodeRange? {
+            // S02E02 可以嵌在没有空格和括号的 scene 命名里, 例如
+            // Cyberpunk.Edgerunners.S02E02.Give.Me.Another.Day.1080p.WEB-DL.x264-GROUP,
+            // 所以要先于 x264 过滤检查, 否则整个 word 会因为编码标签被丢弃.
+            seasonEpisodePattern.find(original)?.let { result ->
+                // TODO: consider season
+                return EpisodeRange.single(EpisodeSort(result.groupValues[2]))
+            }
+
             if (original.contains("x264", ignoreCase = true)
                 || original.contains("x265", ignoreCase = true)
             ) return null
@@ -250,11 +258,6 @@ class LabelFirstRawTitleParser : RawTitleParser() {
             if (original in movieKeywords) {
                 // TODO: 2025/3/10 handle movie
                 return EpisodeRange.unknownSeason()
-            }
-
-            seasonEpisodePattern.matchEntire(original)?.let { result ->
-                // TODO: consider season
-                return EpisodeRange.single(EpisodeSort(result.groupValues[2]))
             }
 
             seasonPattern.matchEntire(original)?.let { result ->
@@ -406,8 +409,10 @@ private val episodeRemove = listOf(
     Regex("""Fin|FIN"""),
 )
 
-// S01E05
-private val seasonEpisodePattern = Regex("""S(\d+)E(\d+)""")
+// S01E05, s01e05v2. 也匹配 Show.Name.S01E05.1080p 这种 scene 命名中间的一段: 前后不能是字母数字,
+// 也不能紧邻 - ~ 等范围符号, S02E01~10 这样的合集范围交给 collectionPattern.
+private val seasonEpisodePattern =
+    Regex("""(?<![A-Za-z0-9~～-])S(\d+)E(\d+)(?:v\d+)?(?![A-Za-z0-9~～-])""", RegexOption.IGNORE_CASE)
 
 // 1998  2022  需要去除, 否则会被匹配为剧集
 private val yearPattern = Regex("""19[0-9]{2}|20[0-3][0-9]""")

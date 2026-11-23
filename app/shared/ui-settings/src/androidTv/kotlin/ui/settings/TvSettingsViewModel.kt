@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -26,6 +27,7 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.mediasource.subscription.displayName
 import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.tabs.about.mergeOpenSourceLibraries
+import me.him188.ani.utils.ktor.ClientProxyConfigValidator
 
 @Stable
 class TvSettingsViewModel(
@@ -50,8 +52,9 @@ class TvSettingsViewModel(
     }
     private val preferences = combine(
         base, settings.defaultMediaPreference.flow, settings.mediaSelectorSettings.flow, settings.videoResolverSettings.flow,
-    ) { state, preference, selector, resolver ->
-        state.copy(preference = preference, selector = selector, resolver = resolver)
+        settings.proxySettings.flow,
+    ) { state, preference, selector, resolver, proxy ->
+        state.copy(preference = preference, selector = selector, resolver = resolver, proxy = proxy)
     }
     private val sources = sourceManager.allInstances.map { instances ->
         instances.filterNot { sourceManager.isLocal(it.factoryId) }.map {
@@ -93,6 +96,13 @@ class TvSettingsViewModel(
                     is TvSettingsIntent.Preference -> settings.defaultMediaPreference.update(intent.update)
                     is TvSettingsIntent.Selector -> settings.mediaSelectorSettings.update(intent.update)
                     is TvSettingsIntent.Resolver -> settings.videoResolverSettings.update(intent.update)
+                    is TvSettingsIntent.SaveProxy -> {
+                        val config = intent.config.copy(url = intent.config.url.trim())
+                        require(intent.mode != ProxyMode.CUSTOM || ClientProxyConfigValidator.isValidProxy(config.url))
+                        settings.proxySettings.update {
+                            copy(default = default.copy(mode = intent.mode, customConfig = config))
+                        }
+                    }
                     is TvSettingsIntent.SourceEnabled -> sourceManager.setEnabled(intent.id, intent.enabled)
                     is TvSettingsIntent.SubscriptionEnabled -> subscriptions.update(intent.id) { current ->
                         sourceManager.setEnabled(

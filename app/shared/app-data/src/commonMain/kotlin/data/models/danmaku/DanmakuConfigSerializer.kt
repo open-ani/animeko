@@ -20,6 +20,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuStyle
+import me.him188.ani.danmaku.ui.DanmakuTextConversion
 
 object DanmakuConfigSerializer : KSerializer<DanmakuConfig> {
 
@@ -33,6 +34,7 @@ object DanmakuConfigSerializer : KSerializer<DanmakuConfig> {
         val enableTop: Boolean = DanmakuConfig.Default.enableTop,
         val enableFloating: Boolean = DanmakuConfig.Default.enableFloating,
         val enableBottom: Boolean = DanmakuConfig.Default.enableBottom,
+        val textConversion: DanmakuTextConversion = DanmakuConfig.Default.textConversion,
         val isDebug: Boolean = DanmakuConfig.Default.isDebug,
     )
 
@@ -68,6 +70,7 @@ object DanmakuConfigSerializer : KSerializer<DanmakuConfig> {
             enableTop = value.enableTop,
             enableFloating = value.enableFloating,
             enableBottom = value.enableBottom,
+            textConversion = value.textConversion,
             isDebug = value.isDebug,
         )
     }
@@ -88,6 +91,7 @@ object DanmakuConfigSerializer : KSerializer<DanmakuConfig> {
             enableTop = value.enableTop,
             enableFloating = value.enableFloating,
             enableBottom = value.enableBottom,
+            textConversion = value.textConversion,
             isDebug = value.isDebug,
         )
 

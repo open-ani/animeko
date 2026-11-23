@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import me.him188.ani.app.navigation.AniNavigator
+import me.him188.ani.app.navigation.CommentThreadTarget
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 
@@ -26,6 +27,8 @@ class NotificationActions(
     val onOpenSubject: (subjectId: Int, placeholder: SubjectDetailPlaceholder?) -> Unit,
     val onOpenPerson: (personId: Int) -> Unit,
     val onOpenCharacter: (characterId: Int) -> Unit,
+    /** 打开一条评论的详情 (thread), [replyId] 有值时定位到那条回复. */
+    val onOpenCommentThread: (target: CommentThreadTarget, commentId: String, replyId: String?) -> Unit,
     val onReauthorizeBangumi: () -> Unit,
     val onOpenAccountSettings: () -> Unit,
     val onCheckUpdate: () -> Unit,
@@ -36,6 +39,7 @@ class NotificationActions(
             onOpenSubject = { _, _ -> },
             onOpenPerson = {},
             onOpenCharacter = {},
+            onOpenCommentThread = { _, _, _ -> },
             onReauthorizeBangumi = {},
             onOpenAccountSettings = {},
             onCheckUpdate = {},
@@ -50,6 +54,7 @@ fun rememberNotificationActions(navigator: AniNavigator): NotificationActions = 
         onOpenSubject = { subjectId, placeholder -> navigator.navigateSubjectDetails(subjectId, placeholder) },
         onOpenPerson = { navigator.navigatePersonDetails(it) },
         onOpenCharacter = { navigator.navigateCharacterDetails(it) },
+        onOpenCommentThread = { target, commentId, replyId -> navigator.navigateCommentThread(target, commentId, replyId) },
         onReauthorizeBangumi = { navigator.navigateBangumiAuthorize() },
         onOpenAccountSettings = { navigator.navigateSettings(SettingsTab.PROFILE) },
         onCheckUpdate = { navigator.navigateSettings(SettingsTab.UPDATE) },

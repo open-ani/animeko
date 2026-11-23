@@ -163,6 +163,7 @@ selector_resolve_episode(subjectId, episodeId, config, extractVideo=false)
 | `selectEpisodes` | 剧集有了但 `episodeSort` 全空 | `matchEpisodeSortFromName` 正则没匹配上剧集名(需要 `(?<ep>)` 分组);对照 details 里的剧集名调正则 |
 | `selectMedia` | `filteredCount=0` 但 original 非空 | 看 details 里的 `filteredOut`: 集数对不上(sort vs ep、电影/OVA 特判)或该条目根本不含目标集。也可临时把 config 的 `autoMatch.filterByEpisodeSort` 设 false 验证是过滤问题还是解析问题 |
 | 全部成功但 `medias` 为空 | 目标条目排名靠后被截断 | 调大 `maxSubjectsPerName`(默认 3,App 内无此限制;条目按名称长度升序排) |
+| 全部成功但 `medias` 来自续季 / 剧场版 / 总集篇 | 引擎模糊匹配(包含或 80% 相似)把同系列条目当成候选 | 先 `listSubjectsOnly=true` 拿 `subjects[]`(各搜索词的全部条目),选定正确条目后把其 `fullUrl` 作为 `subjectUrls` 传入,只展开该条目 |
 
 > `selectSubjects`/`selectEpisodes` 解析不出来时,「配置没写对」和「页面靠 JS 渲染(引擎能力缺口)」
 > 表现相同(都是 0 条)。有 chrome-devtools MCP 就用它一步分辨: `navigate_page` 后 `take_snapshot`

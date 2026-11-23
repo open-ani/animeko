@@ -323,11 +323,13 @@ class DevBuildsState(
         if (installTasker.isRunning.value) return
         installTasker.launch {
             try {
-                val file = preparePackage(target)
-                logger.info { "Dev build package ready: $file" }
+                val downloaded = preparePackage(target)
+                logger.info { "Dev build package ready: $downloaded" }
 
                 if (spec.kind.supportsAutomaticInstall) {
                     _installState.value = DevBuildInstallState.Installing(target)
+                    // 整包下载的 zip 在这里解压; 增量拼出的目录原样返回.
+                    val file = installer.prepareForInstallation(downloaded)
                     val result = withContext(installDispatcher) {
                         installer.install(file, packageUrls = emptyList(), context = context)
                     }
@@ -341,7 +343,7 @@ class DevBuildsState(
                         )
                     }
                 } else {
-                    _installState.value = DevBuildInstallState.ReadyForManualInstall(target, file)
+                    _installState.value = DevBuildInstallState.ReadyForManualInstall(target, downloaded)
                 }
             } catch (e: CancellationException) {
                 _installState.value = DevBuildInstallState.Idle

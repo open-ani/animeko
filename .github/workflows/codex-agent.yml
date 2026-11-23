@@ -8,6 +8,17 @@
 #     the `openanibot` GitHub account. The token must have read/write access to this repo.
 #     Classification also needs organization Issue Fields read access (read:org for a
 #     classic PAT); the bot must be an org member to see member-only fields.
+#   - Repository secrets ANI_TEST_ACCOUNT_EMAIL / ANI_TEST_ACCOUNT_OTP (optional): an Animeko account marked
+#     as a test account in the API server's admin console (users.test-account), which logs in with a fixed
+#     6-digit email verification code and gets no email. The implement, iterate, qa, and respond jobs sign
+#     in to the app with it for runtime verification. Set both or neither. The mark lives in the server's
+#     user database, so the account exists on production (and on a local server using the production
+#     database) but not in a local database; there the agent reads codes from the local server's log.
+#   - Repository secret ANI_SERVER_PROD_MONGODB_CONNECTION_STRING (optional): connection string of the API server's
+#     production MongoDB (a user with readWrite on ani-production and read on animedb) for the
+#     animeko-server-local-test-server skill's --server-db production / --animedb production. The four agent jobs
+#     export it as ANI_SERVER_PROD_MONGODB_CONNECTION_STRING and ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL, which the
+#     skill's start script reads.
 #
 # Triggers:
 #   1. Open an issue                                    -> Codex normalizes its title, assigns labels
@@ -258,7 +269,7 @@ jobs:
             --cd "$CLASSIFIER_DIR"
             --output-schema "$CLASSIFIER_DIR/schema.json"
             --output-last-message "$CLASSIFIER_DIR/classification.json"
-            --model gpt-6-sol
+            --model gpt-6.1-sol
             -c 'model_reasoning_effort="high"'
           )
           codex --ask-for-approval never exec "${CODEX_ARGS[@]}" - \
@@ -443,6 +454,14 @@ jobs:
       REPO: ${{ github.repository }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       ISSUE_URL: ${{ github.event.issue.html_url }}
+      # Test account for signing in during runtime verification: an account marked as a test account in the
+      # API server's admin console (fixed email verification code). Empty when the secrets are not configured.
+      ANI_TEST_ACCOUNT_EMAIL: ${{ secrets.ANI_TEST_ACCOUNT_EMAIL }}
+      ANI_TEST_ACCOUNT_OTP: ${{ secrets.ANI_TEST_ACCOUNT_OTP }}
+      # Production database for the animeko-server-local-test-server skill (--server-db production / --animedb
+      # production); the skill's start script reads these two names. Empty when the secret is not configured.
+      ANI_SERVER_PROD_MONGODB_CONNECTION_STRING: ${{ secrets.ANI_SERVER_PROD_MONGODB_CONNECTION_STRING }}
+      ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL: ${{ secrets.ANI_SERVER_PROD_MONGODB_CONNECTION_STRING }}
     steps:
       - name: Set up tool PATH
         run: |
@@ -498,6 +517,27 @@ jobs:
             echo "IMPORTANT: Do every GitHub action (PRs, comments, reactions, issue/PR reads) with the 'gh' CLI only."
             echo "Do NOT use any GitHub connector / MCP integration — 'gh' authenticates as the CI bot, a connector would act under a personal account."
             echo "GH_TOKEN is already set from the OPENANI_BOT_TOKEN repository secret. Use that existing token; do not run 'gh auth login' or replace it."
+            echo
+            if [ -n "${ANI_SERVER_PROD_MONGODB_CONNECTION_STRING:-}" ]; then
+              echo "Production database: the API server's production database connection strings are in this environment"
+              echo "(ANI_SERVER_PROD_MONGODB_CONNECTION_STRING / ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL), and the"
+              echo "animeko-server-local-test-server skill's start script picks them up with --server-db production --animedb production."
+              echo "Such a local server reads and writes the real database: only do what an ordinary signed-in user does, never run"
+              echo "seeds, admin jobs, or scripts against it, and never print the strings or put them in code, commits, the PR, or comments."
+            fi
+            if [ -n "${ANI_TEST_ACCOUNT_EMAIL:-}" ] && [ -n "${ANI_TEST_ACCOUNT_OTP:-}" ]; then
+              echo "Test account for runtime verification: sign in to the app with email login as $ANI_TEST_ACCOUNT_EMAIL; the verification"
+              echo "code is always $ANI_TEST_ACCOUNT_OTP and no email is sent. The account is marked in the API server's user database, so it"
+              echo "exists on the production server and on a local API server started with --server-db production."
+              echo "The email and the code are secrets: never put them in code, commits, the PR, comments, or screenshots (crop the login screen)."
+            else
+              echo "No test account is configured (ANI_TEST_ACCOUNT_EMAIL / ANI_TEST_ACCOUNT_OTP are empty), so you cannot sign in to the"
+              echo "production server; say in the PR when a signed-in flow could not be verified there."
+            fi
+            echo "Local database: a local API server with a local database (the animeko-server-local-test-server skill's default,"
+            echo "--server-db local) has no production accounts; the skill's start script creates a test account there and writes its"
+            echo "email and fixed verification code to test-sandbox/local-test-account.json in the server checkout. Sign in with that one"
+            echo "on such a server."
             echo
             echo "Steps:"
             echo "1. Make the code changes on a new branch: codex/issue-$ISSUE_NUMBER (branch off $BASE_BRANCH)."
@@ -576,6 +616,14 @@ jobs:
       TRIGGER_URL: ${{ github.event.comment.html_url || github.event.review.html_url }}
       TRIGGER_HEAD_SHA: ${{ needs.authorize.outputs.trigger_head_sha }}
       TRIGGER_PR_AUTHOR: ${{ needs.authorize.outputs.pr_author }}
+      # Test account for signing in during runtime verification: an account marked as a test account in the
+      # API server's admin console (fixed email verification code). Empty when the secrets are not configured.
+      ANI_TEST_ACCOUNT_EMAIL: ${{ secrets.ANI_TEST_ACCOUNT_EMAIL }}
+      ANI_TEST_ACCOUNT_OTP: ${{ secrets.ANI_TEST_ACCOUNT_OTP }}
+      # Production database for the animeko-server-local-test-server skill (--server-db production / --animedb
+      # production); the skill's start script reads these two names. Empty when the secret is not configured.
+      ANI_SERVER_PROD_MONGODB_CONNECTION_STRING: ${{ secrets.ANI_SERVER_PROD_MONGODB_CONNECTION_STRING }}
+      ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL: ${{ secrets.ANI_SERVER_PROD_MONGODB_CONNECTION_STRING }}
     steps:
       - name: Set up tool PATH
         run: |
@@ -775,6 +823,27 @@ jobs:
             echo "  and state that the screenshot upload failed. Never commit verification screenshots or recordings, and never push branches or refs"
             echo "  to host images. App resources and assertScreenshot baselines under src/ are fine to commit."
             echo
+            if [ -n "${ANI_SERVER_PROD_MONGODB_CONNECTION_STRING:-}" ]; then
+              echo "Production database: the API server's production database connection strings are in this environment"
+              echo "(ANI_SERVER_PROD_MONGODB_CONNECTION_STRING / ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL), and the"
+              echo "animeko-server-local-test-server skill's start script picks them up with --server-db production --animedb production."
+              echo "Such a local server reads and writes the real database: only do what an ordinary signed-in user does, never run"
+              echo "seeds, admin jobs, or scripts against it, and never print the strings or put them in code, commits, the PR, or comments."
+            fi
+            if [ -n "${ANI_TEST_ACCOUNT_EMAIL:-}" ] && [ -n "${ANI_TEST_ACCOUNT_OTP:-}" ]; then
+              echo "Test account for runtime verification: sign in to the app with email login as $ANI_TEST_ACCOUNT_EMAIL; the verification"
+              echo "code is always $ANI_TEST_ACCOUNT_OTP and no email is sent. The account is marked in the API server's user database, so it"
+              echo "exists on the production server and on a local API server started with --server-db production."
+              echo "The email and the code are secrets: never put them in code, commits, the PR, comments, or screenshots (crop the login screen)."
+            else
+              echo "No test account is configured (ANI_TEST_ACCOUNT_EMAIL / ANI_TEST_ACCOUNT_OTP are empty), so you cannot sign in to the"
+              echo "production server; say in the PR when a signed-in flow could not be verified there."
+            fi
+            echo "Local database: a local API server with a local database (the animeko-server-local-test-server skill's default,"
+            echo "--server-db local) has no production accounts; the skill's start script creates a test account there and writes its"
+            echo "email and fixed verification code to test-sandbox/local-test-account.json in the server checkout. Sign in with that one"
+            echo "on such a server."
+            echo
             echo "You have full access to git and gh — respond to the feedback however you judge best. Options include:"
             if [ -n "$PUSH_REMOTE" ]; then
               echo "  - adjust the code and update the PR:  git push $PUSH_REMOTE HEAD:$HEAD_REF"
@@ -861,6 +930,14 @@ jobs:
       # The agent pastes this verbatim at the end of the report; the last step looks for it to
       # confirm that a review for this very run was submitted.
       QA_MARKER: '<!-- openanibot:qa-report run=${{ github.run_id }}.${{ github.run_attempt }} -->'
+      # Test account for signing in to the app: an account marked as a test account in the API server's
+      # admin console (fixed email verification code). Empty when the secrets are not configured.
+      ANI_TEST_ACCOUNT_EMAIL: ${{ secrets.ANI_TEST_ACCOUNT_EMAIL }}
+      ANI_TEST_ACCOUNT_OTP: ${{ secrets.ANI_TEST_ACCOUNT_OTP }}
+      # Production database for the animeko-server-local-test-server skill (--server-db production / --animedb
+      # production); the skill's start script reads these two names. Empty when the secret is not configured.
+      ANI_SERVER_PROD_MONGODB_CONNECTION_STRING: ${{ secrets.ANI_SERVER_PROD_MONGODB_CONNECTION_STRING }}
+      ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL: ${{ secrets.ANI_SERVER_PROD_MONGODB_CONNECTION_STRING }}
     steps:
       - name: Set up tool PATH
         run: |
@@ -1015,10 +1092,34 @@ jobs:
             echo "PR title/body/labels, no closing or merging. Local, uncommitted edits that only serve testing (pointing the build at"
             echo "a local server, a temporary log line) are fine; mention them in the report when they could affect a result."
             echo
+            if [ -n "${ANI_SERVER_PROD_MONGODB_CONNECTION_STRING:-}" ]; then
+              echo "Production database: the API server's production database connection strings are in this environment"
+              echo "(ANI_SERVER_PROD_MONGODB_CONNECTION_STRING / ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL), and the"
+              echo "animeko-server-local-test-server skill's start script picks them up with --server-db production --animedb production."
+              echo "Such a local server reads and writes the real database: only do what an ordinary signed-in user does, never run"
+              echo "seeds, admin jobs, or scripts against it, and never print the strings or put them in the report."
+            fi
+            if [ -n "${ANI_TEST_ACCOUNT_EMAIL:-}" ] && [ -n "${ANI_TEST_ACCOUNT_OTP:-}" ]; then
+              echo "Test account: sign in to the app with email login as $ANI_TEST_ACCOUNT_EMAIL; the verification code is always"
+              echo "$ANI_TEST_ACCOUNT_OTP and no email is sent. The account is marked as a test account in the API server's user"
+              echo "database, so it exists on the production server and on a local API server started with --server-db production."
+              echo "On the production server never change the account's email, password, or bound accounts, and never delete it."
+              echo "The email and the code are secrets: never write them into the report, and never embed a screenshot that shows"
+              echo "either of them (crop the login screen or leave it out)."
+            else
+              echo "No test account is configured (ANI_TEST_ACCOUNT_EMAIL / ANI_TEST_ACCOUNT_OTP are empty), so you cannot sign in to"
+              echo "the production server; report scenarios that need a signed-in user there as not tested."
+            fi
+            echo "Local database: a local API server with a local database (the skill's default, --server-db local) has no production"
+            echo "accounts; the skill's start script creates a test account there and writes its email and fixed verification code to"
+            echo "test-sandbox/local-test-account.json in the server checkout. Sign in with that one on such a server."
+            echo
             echo "How to test (follow AGENTS.md and the repo skills in .agents/skills — they are auto-loaded; actually run them):"
             echo "1. Plan. From the title, body, diff, and linked issues write down: what the PR claims (features, fixes), the user"
             echo "   journeys it touches, the platforms it affects, and the adjacent behaviour that could regress. Test the PR's own"
-            echo "   claims first, then regressions nearby. Do not test unrelated parts of the app."
+            echo "   claims first, then regressions nearby. Do not test unrelated parts of the app. Sort every scenario into what this"
+            echo "   runner can exercise and what it cannot (step 4 lists the limits): only the first group decides the verdict, the"
+            echo "   second is reported as not tested."
             echo "2. Build the affected targets. A build or compile failure caused by the PR is a defect; one caused by the runner"
             echo "   environment is not — tell them apart and say which it was."
             echo "3. Run the existing automated tests of the affected modules (unit tests, runAniComposeUiTest UI tests, Android"
@@ -1030,9 +1131,13 @@ jobs:
             echo "   change implies (empty states, errors, resize/rotation, restart persistence, repeated actions), and the"
             echo "   neighbouring flows. Use screen recording + frame diff for transient glitches. Check logcat / app.log for"
             echo "   exceptions during every scenario, not only when something looks wrong."
-            echo "   This runner offers the Android emulator and the macOS desktop app. Behaviour that only exists on other platforms"
-            echo "   (iOS, Windows, Linux, TV devices) or needs resources you lack (accounts, paid services) is reported as not"
-            echo "   tested with the reason — never guessed."
+            echo "   This runner offers the Android emulator and the macOS desktop app, driven by adb and the skills' input proxies."
+            echo "   Whatever needs more than that is out of reach: other platforms (iOS, Windows, Linux), physical devices and their"
+            echo "   input hardware (a real TV, a real remote control, a USB or Bluetooth keyboard), the exact timing of human key"
+            echo "   presses, accounts or paid services you lack, long soak or stress runs, and states the real app cannot reach here"
+            echo "   (a window narrower than its minimum). Report such scenarios as not tested with the reason — never guessed — and"
+            echo "   move on. Automated tests and emulated input that cover the same logic are the evidence this runner can give:"
+            echo "   say so, and do not count the missing hardware against the PR."
             echo "5. For every defect: reproduce it, record exact steps, expected vs actual, a screenshot or recording frame, and the"
             echo "   relevant log excerpt. When it is cheap, check whether the same thing happens on $BASE_REF so you can tell a"
             echo "   regression from a pre-existing bug; otherwise say you did not check."
@@ -1054,12 +1159,18 @@ jobs:
             echo "7. The last line, verbatim, on its own line:"
             echo "   $QA_MARKER"
             echo
-            echo "Verdict:"
-            echo "  --approve          every in-scope scenario was tested with embedded screenshot evidence and no defect was found in the PR's scope."
+            echo "Verdict — judge what this runner could test, not what a lab with every device could:"
+            echo "  --approve          the PR's core claims were verified at runtime with embedded screenshot evidence, every other in-scope"
+            echo "                     scenario was either verified or listed as not tested with its reason, and no defect was found in the"
+            echo "                     PR's scope. Not-tested rows never block an approve: an approve says QA found nothing wrong in what can"
+            echo "                     be tested here, and the maintainer knows this runner's limits. Do not withhold it because a real"
+            echo "                     device, a real remote control, or a human's key timing might behave differently — that is true of"
+            echo "                     every PR — and do not invent stress or timing scenarios only to count their absence against the PR."
             echo "  --request-changes  you reproduced at least one defect within the PR's scope: a crash, wrong behaviour, a regression,"
             echo "                     or a claim of the PR that does not hold. Speculation is not a defect."
-            echo "  --comment          anything else: you could not test enough (environment-caused build failure, platform not available,"
-            echo "                     screenshot upload failed), or you found only out-of-scope or pre-existing issues."
+            echo "  --comment          the core claims could not be verified at runtime: the build failed for environment reasons, the PR's"
+            echo "                     main behaviour exists only on a platform this runner lacks, the screenshot upload failed, or the run"
+            echo "                     ended before the core claims were covered. Say precisely what is missing and why."
             echo "Never approve from reading code, and never approve without embedded screenshots. Pre-existing bugs and out-of-scope"
             echo "observations do not change the verdict; they belong in section 5."
             echo
@@ -1147,6 +1258,14 @@ jobs:
       COMMENT_URL: ${{ github.event.comment.html_url }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       ISSUE_URL: ${{ github.event.issue.html_url }}
+      # Test account for signing in during runtime verification: an account marked as a test account in the
+      # API server's admin console (fixed email verification code). Empty when the secrets are not configured.
+      ANI_TEST_ACCOUNT_EMAIL: ${{ secrets.ANI_TEST_ACCOUNT_EMAIL }}
+      ANI_TEST_ACCOUNT_OTP: ${{ secrets.ANI_TEST_ACCOUNT_OTP }}
+      # Production database for the animeko-server-local-test-server skill (--server-db production / --animedb
+      # production); the skill's start script reads these two names. Empty when the secret is not configured.
+      ANI_SERVER_PROD_MONGODB_CONNECTION_STRING: ${{ secrets.ANI_SERVER_PROD_MONGODB_CONNECTION_STRING }}
+      ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL: ${{ secrets.ANI_SERVER_PROD_MONGODB_CONNECTION_STRING }}
     steps:
       - name: Set up tool PATH
         run: |
@@ -1205,6 +1324,27 @@ jobs:
             echo "IMPORTANT: Do every GitHub action (PRs, comments, reactions, issue/PR reads) with the 'gh' CLI only."
             echo "Do NOT use any GitHub connector / MCP integration — 'gh' authenticates as the CI bot, a connector would act under a personal account."
             echo "GH_TOKEN is already set from the OPENANI_BOT_TOKEN repository secret. Use that existing token; do not run 'gh auth login' or replace it."
+            echo
+            if [ -n "${ANI_SERVER_PROD_MONGODB_CONNECTION_STRING:-}" ]; then
+              echo "Production database: the API server's production database connection strings are in this environment"
+              echo "(ANI_SERVER_PROD_MONGODB_CONNECTION_STRING / ANI_SERVER_PROD_ANIMEDB_CONNECTION_URL), and the"
+              echo "animeko-server-local-test-server skill's start script picks them up with --server-db production --animedb production."
+              echo "Such a local server reads and writes the real database: only do what an ordinary signed-in user does, never run"
+              echo "seeds, admin jobs, or scripts against it, and never print the strings or put them in code, commits, the PR, or comments."
+            fi
+            if [ -n "${ANI_TEST_ACCOUNT_EMAIL:-}" ] && [ -n "${ANI_TEST_ACCOUNT_OTP:-}" ]; then
+              echo "Test account for runtime verification: sign in to the app with email login as $ANI_TEST_ACCOUNT_EMAIL; the verification"
+              echo "code is always $ANI_TEST_ACCOUNT_OTP and no email is sent. The account is marked in the API server's user database, so it"
+              echo "exists on the production server and on a local API server started with --server-db production."
+              echo "The email and the code are secrets: never put them in code, commits, the PR, comments, or screenshots (crop the login screen)."
+            else
+              echo "No test account is configured (ANI_TEST_ACCOUNT_EMAIL / ANI_TEST_ACCOUNT_OTP are empty), so you cannot sign in to the"
+              echo "production server; say in the PR when a signed-in flow could not be verified there."
+            fi
+            echo "Local database: a local API server with a local database (the animeko-server-local-test-server skill's default,"
+            echo "--server-db local) has no production accounts; the skill's start script creates a test account there and writes its"
+            echo "email and fixed verification code to test-sandbox/local-test-account.json in the server checkout. Sign in with that one"
+            echo "on such a server."
             echo
             echo "Follow AGENTS.md. Do what the comment actually asks — you have full access to git and gh. Options include:"
             echo "  - answer by commenting on the issue: gh issue comment $ISSUE_NUMBER --body ..."

@@ -46,6 +46,10 @@ kotlin {
         implementation(libs.mediamp.test)
         implementation(libs.kotlinx.coroutines.test)
     }
+    sourceSets.getByName("androidDeviceTest").dependencies {
+        implementation(libs.libass.kt)
+        implementation(libs.mediamp.source.ktxio)
+    }
     sourceSets.desktopMain.dependencies {
         api(compose.desktop.currentOs) {
             exclude("org.jetbrains.compose.material:material") // We use material3

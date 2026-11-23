@@ -1,0 +1,99 @@
+#  Copyright (C) 2024-2026 OpenAni and contributors.
+#
+#  此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+#  Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+#
+#  https://github.com/open-ani/ani/blob/main/LICENSE
+
+# 构建 tools/datasource-test-mcp 的 Windows 发行包, 内置带 JCEF 的 JBR, 解压即可运行, 不依赖仓库与构建环境.
+# 产物作为 artifact 上传, 下载与使用见 tools/datasource-test-mcp/README.md.
+# 只构建 Windows: Linux 上 mpv 的渲染上下文必须加入播放窗口的 GLX 环境, 没有桌面时无法实播.
+name: Build datasource-test-mcp
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    paths:
+      - 'tools/datasource-test-mcp/**'
+      - '.github/workflows/datasource-test-mcp.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (windows-x64)
+    runs-on: windows-2022
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      DIST: tools/datasource-test-mcp/build/install/datasource-test-mcp
+      JBR: jbr_jcef-21.0.11-windows-x64-b1163.116.tar.gz
+    steps:
+      - uses: actions/checkout@v4
+
+      # 构建与打包用同一份 JBR: jbr_jcef 运行时自带 javac, 编译 WebView 代码也需要它的 jcef 模块
+      - name: Get JBR
+        id: jbr
+        run: python .github/workflows/download_jbr.py
+        env:
+          RUNNER_TOOL_CACHE: ${{ runner.tool_cache }}
+          JBR_URL: https://cache-redirector.jetbrains.com/intellij-jbr/${{ env.JBR }}
+          JBR_CHECKSUM_URL: https://cache-redirector.jetbrains.com/intellij-jbr/${{ env.JBR }}.checksum
+
+      - name: Setup JBR
+        uses: gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d
+        with:
+          java-version: '21'
+          distribution: 'jdkfile'
+          jdkFile: ${{ steps.jbr.outputs.jbrLocation }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Write local.properties
+        run: |
+          echo "jvm.toolchain.version=21" >> local.properties
+          echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-disabled: true
+
+      - name: Build
+        run: ./gradlew :tools:datasource-test-mcp:installDist --stacktrace
+
+      - name: Bundle JBR
+        env:
+          JBR_ARCHIVE: ${{ steps.jbr.outputs.jbrLocation }}
+        run: |
+          mkdir -p "$DIST/jbr"
+          tar -xzf "$JBR_ARCHIVE" --force-local --strip-components=1 -C "$DIST/jbr"
+          cat > "$DIST/build-info.txt" <<EOF
+          commit: $GITHUB_SHA
+          ref: $GITHUB_REF_NAME
+          run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          jbr: $JBR
+          EOF
+
+      - name: Smoke test
+        run: python "$DIST/smoke-test.py"
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: datasource-test-mcp-windows-x64
+          path: ${{ env.DIST }}
+          retention-days: 30
+          if-no-files-found: error
