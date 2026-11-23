@@ -108,6 +108,11 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.main.SearchViewModel",
         "me.him188.ani.app.ui.exploration.ExplorationPageState",
         "me.him188.ani.app.ui.exploration.search.",
+        // 播放记录状态层复用 (D3: 只放行 ViewModel 与展示数据类; 手机端播放记录 UI composable 仍禁用)
+        "me.him188.ani.app.ui.playback.PlaybackHistoryViewModel",
+        "me.him188.ani.app.ui.playback.PlaybackHistoryUiItem",
+        "me.him188.ani.app.ui.playback.PendingSyncEpisode",
+        "me.him188.ani.app.ui.playback.PlaybackHistorySyncStatusUiItem",
         // 登录态 UI 状态 (SelfInfoUiState/SelfInfoStateProducer)
         "me.him188.ani.app.ui.user.",
         "me.him188.ani.app.ui.update.AppUpdateViewModel",
@@ -250,6 +255,7 @@ class TvArchitectureTest {
             "TvExplorationViewModel" to "ExplorationPageViewModel",
             "TvScheduleViewModel" to "ScheduleViewModel",
             "TvCollectionViewModel" to "UserCollectionsViewModel",
+            "TvPlaybackHistoryViewModel" to "PlaybackHistoryViewModel",
             "TvSearchViewModel" to "SearchViewModel",
             "TvLoginViewModel" to "EmailLoginViewModel",
             "TvSettingsViewModel" to "SettingsViewModel",

@@ -139,6 +139,9 @@
     <string name="tv_update_install_hint">If the installer does not open, allow Animeko TV to install unknown apps in system settings, then select Install again.</string>
     <string name="tv_update_expired_message">This version is no longer supported. Update to keep using Animeko. You can also download the latest version from https://myani.org</string>
     <string name="tv_update_expired_message_with_latest">This version is no longer supported. Update to %1$s to keep using Animeko. You can also download it from https://myani.org</string>
+    <string name="tv_playback_history_refresh">Refresh</string>
+    <string name="tv_playback_history_select">Select</string>
+    <string name="tv_playback_history_close">Close</string>
 </resources>
 
 <!--@formatter:on-->

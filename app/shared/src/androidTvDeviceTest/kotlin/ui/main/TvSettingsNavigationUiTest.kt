@@ -111,10 +111,10 @@ class TvSettingsNavigationUiTest {
             onAllNodes(hasTestTag("tv-main-navigation") and hasAnyDescendant(isFocused()))
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        listOf("Search", "Explore", "Schedule", "Collection", "Settings", "Sign In").forEach {
+        listOf("Search", "Explore", "Schedule", "Collection", "Playback History", "Settings", "Sign In").forEach {
             onNode(hasText(it) and hasAnyAncestor(hasTestTag("tv-main-navigation"))).assertExists()
         }
-        repeat(2) { key(Key.DirectionDown) }
+        repeat(3) { key(Key.DirectionDown) }
         onNodeWithText("Settings").assertIsFocused()
         key(Key.Menu)
         awaitFocus("home-second-content")
@@ -124,7 +124,7 @@ class TvSettingsNavigationUiTest {
             onAllNodes(hasTestTag("tv-main-navigation") and hasAnyDescendant(isFocused()))
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        repeat(2) { key(Key.DirectionDown) }
+        repeat(3) { key(Key.DirectionDown) }
         onNodeWithText("Settings").assertIsFocused()
         key(Key.DirectionCenter)
         awaitFocus("tv-settings-section-Appearance")
