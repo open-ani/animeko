@@ -72,6 +72,11 @@ interface MediaSourceFetchResult {
      * 随后使用 [results] 将会发起查询.
      */
     fun enable()
+
+    /**
+     * 当前这一代查询的搜索统计, 数据源不报告时为 `null`. 每次 [restart] 重新计数.
+     */
+    val searchStats: StateFlow<MediaSourceSearchStats?> get() = NoSearchStats
 }
 
 val MediaSourceFetchResult.hasCompletedOrDisabled: Flow<Boolean>

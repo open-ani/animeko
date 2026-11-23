@@ -64,6 +64,7 @@ import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.ListDetailAnimatedPane
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
+import me.him188.ani.app.ui.foundation.layout.withoutAutoFocus
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 
 
@@ -145,9 +146,10 @@ fun <T> AniListDetailPaneScaffold(
     val layoutParametersState by rememberUpdatedState(layoutParameters)
     val contentWindowInsetsState by rememberUpdatedState(contentWindowInsets)
     val scaffoldValueState by rememberUpdatedState(scaffoldValue)
+    val directive = remember(navigator.scaffoldDirective) { navigator.scaffoldDirective.withoutAutoFocus() }
 
     ListDetailPaneScaffold(
-        navigator.scaffoldDirective,
+        directive,
         scaffoldValue,
         listPane = {
             val threePaneScaffoldScope = this

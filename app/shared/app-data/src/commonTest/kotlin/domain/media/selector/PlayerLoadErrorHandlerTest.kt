@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.media.selector
 
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
@@ -27,6 +28,7 @@ import me.him188.ani.app.domain.media.selector.testFramework.runSimpleMediaSelec
 import me.him188.ani.app.domain.media.selector.testFramework.tier
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.player.extension.PlayerLoadErrorHandler
+import me.him188.ani.app.domain.player.extension.PlayerLoadErrorHandling
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceKind.WEB
 import me.him188.ani.test.DisabledOnNative
@@ -34,6 +36,7 @@ import me.him188.ani.utils.io.inSystem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
@@ -66,7 +69,7 @@ class PlayerLoadErrorHandlerTest {
             getPreferKind = { MediaSourceKind.WEB },
             getSourceTiers = { preferenceApi.sourceTiers!! },
         )
-        val job = testScope().launch { handler.handleError(session, selector) }
+        val job = testScope().async { handler.handleError(session, selector) }
         testScope().runCurrent()
 
         // PINNED: ERR-05 先拉黑当前 selected, 再 delay 1s, delay 期间不换源
@@ -87,6 +90,8 @@ class PlayerLoadErrorHandlerTest {
         assertTrue(job.isCompleted)
         assertEquals(mediaB.mediaId, selector.selected.value?.mediaId)
         assertEquals(setOf(mediaA.mediaId), handler.blacklist)
+        val outcome = assertIs<PlayerLoadErrorHandling.Attempted>(job.await()).outcome
+        assertEquals(mediaB.mediaId, assertIs<MediaAutoSelectOutcome.Selected>(outcome).media.mediaId)
     }
 
     @Test
@@ -108,8 +113,9 @@ class PlayerLoadErrorHandlerTest {
             getPreferKind = { MediaSourceKind.WEB },
             getSourceTiers = { preferenceApi.sourceTiers!! },
         )
+        var handling: PlayerLoadErrorHandling? = null
         val collected = selector.collectEvents {
-            val job = testScope().launch { handler.handleError(session, selector) }
+            val job = testScope().launch { handling = handler.handleError(session, selector) }
             testScope().advanceTimeBy(10.seconds)
             testScope().runCurrent()
             assertTrue(job.isCompleted)
@@ -118,6 +124,7 @@ class PlayerLoadErrorHandlerTest {
         collected.expectNoEvents()
         assertEquals(dropped, selector.selected.value)
         assertTrue(handler.blacklist.isEmpty())
+        assertEquals(PlayerLoadErrorHandling.SkippedDroppedFile, handling)
     }
 
     @Test
@@ -222,13 +229,14 @@ class PlayerLoadErrorHandlerTest {
             getPreferKind = { MediaSourceKind.BitTorrent },
             getSourceTiers = { preferenceApi.sourceTiers!! },
         )
-        val job = testScope().launch { handler.handleError(session, selector) }
+        val job = testScope().async { handler.handleError(session, selector) }
         testScope().advanceUntilIdle()
 
         // PINNED: ERR-05 preferKind=BT 无自动换源, 但当前 media 仍在 delay 前被拉黑
         assertTrue(job.isCompleted)
         assertEquals(mediaA.mediaId, selector.selected.value?.mediaId)
         assertEquals(setOf(mediaA.mediaId), handler.blacklist)
+        assertEquals(PlayerLoadErrorHandling.SkippedPreferKind(MediaSourceKind.BitTorrent), job.await())
     }
 
     @Test

@@ -127,18 +127,21 @@ object NotificationListItemDefaults {
 
     /**
      * 列表行的图标. 客户端认识的类型使用固定的图标, 其他通知使用通用展示内容中的图标 ([iconFor]).
+     * 评论被回复显示回复者的头像 ([imageUrlFor]), 图标只在头像加载前和没有头像时显示.
      */
     fun iconFor(notification: AppNotification): ImageVector = when (notification.content) {
         is AppNotificationContent.ReportResult -> Icons.Rounded.Flag
         is AppNotificationContent.AccountSecurity -> Icons.Rounded.Shield
         is AppNotificationContent.System -> Icons.Rounded.Info
+        is AppNotificationContent.CommentReply -> Icons.AutoMirrored.Rounded.Reply
         AppNotificationContent.Unknown -> iconFor(notification.display.icon)
     }
 
     /**
-     * 列表行左侧代替图标显示的图片, 例如对方的头像. 只有用通用展示内容展示的通知有.
+     * 列表行左侧代替图标显示的图片: 评论被回复是回复者的头像, 用通用展示内容展示的通知是服务端给的图片.
      */
-    fun imageUrlFor(notification: AppNotification): String? = when (notification.content) {
+    fun imageUrlFor(notification: AppNotification): String? = when (val content = notification.content) {
+        is AppNotificationContent.CommentReply -> content.replier.avatarUrl?.takeIf { it.isNotBlank() }
         AppNotificationContent.Unknown -> notification.display.imageUrl?.takeIf { it.isNotBlank() }
         is AppNotificationContent.ReportResult,
         is AppNotificationContent.AccountSecurity,

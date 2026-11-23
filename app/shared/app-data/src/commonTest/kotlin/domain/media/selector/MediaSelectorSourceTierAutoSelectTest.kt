@@ -314,7 +314,7 @@ class MediaSelectorSourceTierAutoSelectTest {
         MediaAutoSelector(selector).select(
             session,
             MediaAutoSelector.Config(web = MediaAutoSelector.Web(preferenceApi.sourceTiers!!)),
-        )
+        ).selectedMedia
     }.asFlow()
 
     private fun MediaSelectorTestSuite.initSubject() {

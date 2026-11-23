@@ -44,6 +44,7 @@ import me.him188.ani.app.ui.foundation.layout.ListDetailAnimatedPane
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.layout.materialWindowMarginPadding
+import me.him188.ani.app.ui.foundation.layout.withoutAutoFocus
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
@@ -151,7 +152,7 @@ fun <A : MediaSourceArguments> MediaSourceEditorScaffold(
         }
 
         ListDetailPaneScaffold(
-            navigator.scaffoldDirective,
+            remember(navigator.scaffoldDirective) { navigator.scaffoldDirective.withoutAutoFocus() },
             navigator.scaffoldValue,
             listPane = {
                 ListDetailAnimatedPane(Modifier.preferredWidth(480.dp)) {

@@ -49,6 +49,7 @@ import me.him188.ani.app.ui.lang.media_selector_mode_manual
 import me.him188.ani.app.ui.lang.media_selector_sources
 import me.him188.ani.app.ui.lang.subject_episode_close_selector
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
+import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediaselect.MediaSelectorLayoutDefaults
 import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
@@ -234,7 +235,7 @@ fun MediaSelectorDialogContent(
                     fetchRequest,
                     onFetchRequestChange,
                     onClickItem = {
-                        mediaSelectorState.select(it)
+                        mediaSelectorState.select(it, SelectTrigger.MANUAL_BT_PAGE)
                         onPlayed()
                     },
                     onRestartSource = onRestartSource,

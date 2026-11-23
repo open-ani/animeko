@@ -11,6 +11,8 @@ package me.him188.ani.utils.ktor
 
 import io.ktor.http.ParametersBuilder
 import io.ktor.http.URLBuilder
+import io.ktor.http.URLProtocol
+import io.ktor.http.Url
 import io.ktor.http.takeFrom
 
 object UrlHelpers {
@@ -33,5 +35,28 @@ object UrlHelpers {
         } catch (_: Exception) {
             null
         }
+    }
+
+    /**
+     * 与浏览器一致: 站点常把 https 页面的链接硬编码为绝对 http (浏览器会经 301 跳转).
+     * 同 host (允许 `www.` 差异) 的默认端口 http 链接升级为 https, 其余原样返回.
+     */
+    fun computeSelectorUrl(baseUrl: String, rawUrl: String): String {
+        val absolute = computeAbsoluteUrl(baseUrl, rawUrl)
+        val base = runCatching { Url(baseUrl) }.getOrNull() ?: return absolute
+        if (base.protocol != URLProtocol.HTTPS) return absolute
+        val target = runCatching { Url(absolute) }.getOrNull() ?: return absolute
+        if (target.protocol != URLProtocol.HTTP) return absolute
+        if (!isSameHost(base.host, target.host)) return absolute
+        if (target.port != URLProtocol.HTTP.defaultPort) return absolute
+        return URLBuilder(target).apply {
+            protocol = URLProtocol.HTTPS
+            port = URLProtocol.HTTPS.defaultPort
+        }.buildString()
+    }
+
+    private fun isSameHost(a: String, b: String): Boolean {
+        fun normalize(host: String) = host.removePrefix("www.").lowercase()
+        return normalize(a) == normalize(b)
     }
 }

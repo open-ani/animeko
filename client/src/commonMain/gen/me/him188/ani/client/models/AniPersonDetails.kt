@@ -29,7 +29,7 @@ import kotlinx.serialization.encoding.*
  * @param career 职业, 如 `seiyu`, `mangaka` (Bangumi career 常量)
  * @param collects 收藏人数
  * @param commentCount 评论数 (吐槽箱)
- * @param workCount 参与作品数 (去重后的条目数)
+ * @param workCount 参与作品数 (去重后的条目数, 含只配音的条目)
  * @param castCount 出演角色数 (条目 × 角色)
  */
 @Serializable
@@ -47,7 +47,7 @@ data class AniPersonDetails (
     /* 评论数 (吐槽箱) */
     @SerialName(value = "commentCount") @Required val commentCount: kotlin.Int,
 
-    /* 参与作品数 (去重后的条目数) */
+    /* 参与作品数 (去重后的条目数, 含只配音的条目) */
     @SerialName(value = "workCount") @Required val workCount: kotlin.Int,
 
     /* 出演角色数 (条目 × 角色) */

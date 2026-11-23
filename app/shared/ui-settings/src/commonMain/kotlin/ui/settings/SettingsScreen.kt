@@ -208,6 +208,10 @@ fun SettingsScreen(
      * 前往扫码登录其他设备. 为 `null` (当前平台不能扫码) 时不显示入口
      */
     onNavigateToQrLogin: (() -> Unit)? = null,
+    /**
+     * 调试页「打开播放流程悬浮窗」. 悬浮窗由宿主在页面之上显示.
+     */
+    onOpenPlayFlowDebugWindow: () -> Unit = {},
 ) {
     val navigator: ThreePaneScaffoldNavigator<Nothing?> = rememberListDetailPaneScaffoldNavigator(
         initialDestinationHistory = buildList {
@@ -353,6 +357,7 @@ fun SettingsScreen(
                         onNavigateToDevBuilds = {
                             navigateTo(DetailPaneRoutes.DevBuilds)
                         },
+                        onOpenPlayFlowDebugWindow = onOpenPlayFlowDebugWindow,
                     )
 
                     else -> SettingsTab(

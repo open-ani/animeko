@@ -14,6 +14,7 @@ import me.him188.ani.test.TestFactory
 import me.him188.ani.test.runDynamicTests
 import me.him188.ani.utils.ktor.UrlHelpers.computeAbsoluteUrl
 import me.him188.ani.utils.ktor.UrlHelpers.computeAbsoluteUrlOrNull
+import me.him188.ani.utils.ktor.UrlHelpers.computeSelectorUrl
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -29,6 +30,61 @@ class UrlHelpersTest {
         assertNull(computeAbsoluteUrlOrNull("https://example.com/", "1:foo"))
         assertNull(computeAbsoluteUrlOrNull("https://example.com/", "https://host:bad/video.m3u8"))
         assertNull(computeAbsoluteUrlOrNull("", "/video.m3u8"))
+    }
+
+    @TestFactory
+    fun computeSelectorUrlTest() = runDynamicTests {
+        fun case(
+            expected: String,
+            baseUrl: String,
+            rawUrl: String,
+        ) = add("$baseUrl + $rawUrl = $expected") {
+            assertEquals(expected, computeSelectorUrl(baseUrl, rawUrl))
+        }
+
+        // 同 host 的绝对 http 链接升级为 https
+        case(
+            "https://www.example.com/detail/20230207",
+            "https://www.example.com/search?query=x", "http://www.example.com/detail/20230207",
+        )
+
+        // www 前缀差异视为同 host
+        case(
+            "https://example.com/detail/20230207",
+            "https://www.example.com/search?query=x", "http://example.com/detail/20230207",
+        )
+        case(
+            "https://www.example.com/detail/20230207",
+            "https://example.com/search?query=x", "http://www.example.com/detail/20230207",
+        )
+
+        // 跨 host / 非默认端口 / base 非 https: 原样返回
+        case(
+            "http://other.example.com/detail/1.html",
+            "https://www.example.com/search?query=x", "http://other.example.com/detail/1.html",
+        )
+        case(
+            "http://www.example.com:8080/detail/1.html",
+            "https://www.example.com/search", "http://www.example.com:8080/detail/1.html",
+        )
+        case(
+            "http://www.example.com/detail/20230207",
+            "http://www.example.com/search?query=x", "http://www.example.com/detail/20230207",
+        )
+
+        // 相对链接解析后已是 https; query/fragment 保留
+        case(
+            "https://www.example.com/detail/1.html",
+            "https://www.example.com/search", "/detail/1.html",
+        )
+        case(
+            "https://www.example.com/detail/20230207?from=search#frag",
+            "https://www.example.com/search", "https://www.example.com/detail/20230207?from=search#frag",
+        )
+        case(
+            "https://www.example.com/detail/1.html?from=search#frag",
+            "https://www.example.com/search", "http://www.example.com/detail/1.html?from=search#frag",
+        )
     }
 
     @TestFactory

@@ -91,6 +91,7 @@ import me.him188.ani.app.domain.episode.SubjectRecommendation
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
+import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
@@ -608,7 +609,7 @@ fun EpisodeDetails(
                             AutoMatchPage(
                                 mediaSelectorState,
                                 onClickItem = {
-                                    mediaSelectorState.select(it)
+                                    mediaSelectorState.select(it, SelectTrigger.MANUAL_AUTO_PAGE)
                                     closeSelector()
                                 },
                                 onRestartSource = onRestartSource,
@@ -638,7 +639,7 @@ fun EpisodeDetails(
                                 fetchRequest,
                                 onFetchRequestChange,
                                 onClickItem = {
-                                    mediaSelectorState.select(it)
+                                    mediaSelectorState.select(it, SelectTrigger.MANUAL_BT_PAGE)
                                     closeSelector()
                                 },
                                 onRestartSource = onRestartSource,
@@ -678,7 +679,7 @@ fun EpisodeDetails(
                         AutoMatchPage(
                             mediaSelectorState,
                             onClickItem = {
-                                mediaSelectorState.select(it)
+                                mediaSelectorState.select(it, SelectTrigger.MANUAL_AUTO_PAGE)
                                 closeSelector()
                             },
                             onRestartSource = onRestartSource,
@@ -706,7 +707,7 @@ fun EpisodeDetails(
                             fetchRequest,
                             onFetchRequestChange,
                             onClickItem = {
-                                mediaSelectorState.select(it)
+                                mediaSelectorState.select(it, SelectTrigger.MANUAL_BT_PAGE)
                                 closeSelector()
                             },
                             onRestartSource = onRestartSource,

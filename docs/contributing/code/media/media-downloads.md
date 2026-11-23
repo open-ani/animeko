@@ -113,7 +113,7 @@ presenter 持有当前会话并把会话状态映射为页面状态：
 - `AwaitingSelection` 与 `SelectingEpisodes` 共用同一个底部弹窗（`DownloadMediaPickerState` 以查询会话为准，
   两步之间保持同一实例），分别显示选源视图与选集视图（`DownloadEpisodePicker`）。
   选源视图与播放页的[选源界面](media-selector-ui.md)共用页面，有自动匹配、手动查找与 BT 资源三种模式；
-  会话里有 BT 源时默认 BT。手动查找的状态由 presenter 随 `DownloadMediaPickerState` 一起创建，
+  默认自动匹配，不随 BT 源有无或播放偏好变化；切过的模式挂在 `DownloadMediaPickerState` 上，选集后返回或隐藏弹窗再打开都不重置。手动查找的状态由 presenter 随 `DownloadMediaPickerState` 一起创建，
   点选的一集与自动匹配页点选的资源一样通过 `select` 交给会话，条目的其他集按线路里的位置生成的资源一起交给会话。底部弹窗的宽度不足以放表格，BT 列表与播放页 BT 资源页共用紧凑列表组件。
   选集视图列出条目的全部剧集，可下载的集可勾选，默认勾选本话及之后，并提供仅本话 / 本话及之后 / 全部的快捷选择；
   已下载与未匹配的集不可勾选。`Finished(error)` 对应添加失败的提示；取消或完成后不显示任何弹窗。

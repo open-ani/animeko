@@ -16,6 +16,7 @@
 
 package me.him188.ani.client.models
 
+import me.him188.ani.client.models.AniCommentVoteValue
 import me.him188.ani.client.models.AniEpisodeCommentAuthor
 import me.him188.ani.client.models.AniEpisodeCommentReaction
 
@@ -32,7 +33,11 @@ import kotlinx.serialization.encoding.*
  * @param contentBbcode
  * @param createdAtMillis
  * @param reactions
+ * @param likeCount
  * @param author
+ * @param parentId
+ * @param replyToAuthor
+ * @param selfVote
  */
 @Serializable
 
@@ -50,7 +55,15 @@ data class AniEpisodeCommentReply (
 
     @SerialName(value = "reactions") @Required val reactions: kotlin.collections.List<AniEpisodeCommentReaction>,
 
-    @SerialName(value = "author") val author: AniEpisodeCommentAuthor? = null
+    @SerialName(value = "likeCount") @Required val likeCount: kotlin.Int,
+
+    @SerialName(value = "author") val author: AniEpisodeCommentAuthor? = null,
+
+    @SerialName(value = "parentId") val parentId: kotlin.String? = null,
+
+    @SerialName(value = "replyToAuthor") val replyToAuthor: AniEpisodeCommentAuthor? = null,
+
+    @SerialName(value = "selfVote") val selfVote: AniCommentVoteValue? = null
 
 ) {
 

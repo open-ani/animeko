@@ -20,6 +20,8 @@ import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.person.PersonCommentTarget
 import me.him188.ani.app.domain.comment.CommentContext
+import me.him188.ani.app.domain.comment.CommentImageStatusResult
+import me.him188.ani.app.domain.comment.CommentImageUploadResult
 import me.him188.ani.app.domain.comment.CommentSendResult
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentItemTestTags
@@ -28,6 +30,8 @@ import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.UIRichText
 import me.him188.ani.app.ui.comment.createTestCommentState
+import me.him188.ani.app.ui.comment.createTestCommentThreadState
+import me.him188.ani.app.ui.comment.thread.CommentThreadHost
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
@@ -56,9 +60,14 @@ class PersonCommentsSheetTest {
                 stickers = stateOf(emptyList()),
                 richTextRenderer = { UIRichText(emptyList()) },
                 onSend = { _, _ -> CommentSendResult.Ok },
+                onUploadImage = { CommentImageUploadResult.Ready("https://example.com/image.webp") },
+                onCheckImageStatus = { CommentImageStatusResult.Ok(emptyMap()) },
                 backgroundScope = scope,
             ),
             originalCommentsUrl = "https://bgm.tv/person/42",
+            threadHost = CommentThreadHost { key, snapshot ->
+                createTestCommentThreadState(scope, key = key, root = snapshot, replies = emptyList(), snapshot = snapshot)
+            },
             onRefresh = {},
         )
     }

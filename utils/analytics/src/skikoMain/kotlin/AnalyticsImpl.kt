@@ -99,6 +99,9 @@ class AnalyticsImpl(
 //        recordEvent(AnalyticsEvent.SessionStart)
     }
 
+    // postEvent 在 intrinsicProperties 之外还附加 session_id 与 engagement_time_msec
+    override val extraPropertyCount: Int get() = super<CommonAnalyticsImpl>.extraPropertyCount + 2
+
     override fun recordEventImpl(event: AnalyticsEvent, properties: Map<String, Any>) {
         if (_initialized && !eventQueue.trySend(RecordEvent(event, properties)).isSuccess) {
             logger.warn { "Failed to enqueue event: $event" }

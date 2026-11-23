@@ -64,6 +64,17 @@ interface UpdateInstaller {
     fun createDeltaPackageAssembler(client: ScopedHttpClient): DeltaPackageAssembler? = null
 
     /**
+     * 把下载好的安装包整理成 [install] 开销最小的形态, 返回整理好的包; 不需要整理的平台或包原样返回.
+     *
+     * 桌面端把 zip 解压成能直接换进安装目录的目录 (macOS 还校验签名), 这样用户点「重启更新」后只剩交换目录,
+     * 不用等解压和校验. 自动更新在下载阶段就调用它, [UpdateInstallationRunner] 安装前再调用一次, 已整理好的包原样返回.
+     *
+     * 安装包本身有问题 (里面没有应用、签名无效) 时抛 [PackagePreparationException], 换个下载源也不会好;
+     * 其他异常是环境问题 (磁盘满、工具缺失), 由调用方当作下载或安装失败.
+     */
+    suspend fun prepareForInstallation(file: SystemPath): SystemPath = file
+
+    /**
      * 如果 [install] 可能返回 [InstallationResult.Failed], 则需实现
      */
     suspend fun openForManualInstallation(file: SystemPath, context: ContextMP): Boolean = false
@@ -103,7 +114,9 @@ class UpdateInstallationRunner(
     ) {
         _state.value = UpdateInstallationState.Installing
         try {
-            _state.value = when (val result = installer.install(file, packageUrls, context)) {
+            // 自动更新下载时已经整理过, 这里原样返回; 拖拽安装的 zip 在这里解压.
+            val prepared = installer.prepareForInstallation(file)
+            _state.value = when (val result = installer.install(prepared, packageUrls, context)) {
                 InstallationResult.Succeed -> UpdateInstallationState.Succeed
                 is InstallationResult.Failed -> UpdateInstallationState.Failed(result)
             }
@@ -138,6 +151,12 @@ sealed class InstallationResult {
         val message: String? = null,
     ) : InstallationResult()
 }
+
+/**
+ * [UpdateInstaller.prepareForInstallation] 发现安装包本身不可用: 里面没有当前应用, 或签名校验不通过.
+ * 内容已经按清单或校验和核对过, 重新下载或换下载源都不会好, 调用方应直接报失败.
+ */
+class PackagePreparationException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
 enum class InstallationFailureReason {
     /**

@@ -119,7 +119,7 @@ class DeltaPackageDownloaderOkHttpTest {
         val downloader = DeltaPackageDownloader(
             client.asScopedHttpClient(),
             installRoot = installRoot,
-            output = PackageOutput.Directory,
+            output = PackageOutput.Directory(stripTopLevel = true),
         )
         val result = withTimeout(60_000) {
             downloader.download(listOf("$baseUrl/pkg.zip"), saveDir = saveDir.toKtPath().inSystem)

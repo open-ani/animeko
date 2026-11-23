@@ -17,6 +17,7 @@
 package me.him188.ani.client.models
 
 import me.him188.ani.client.models.AniNotificationAccountSecurity
+import me.him188.ani.client.models.AniNotificationCommentReply
 import me.him188.ani.client.models.AniNotificationReportResult
 import me.him188.ani.client.models.AniNotificationSystem
 import me.him188.ani.client.models.AniNotificationTarget
@@ -29,7 +30,7 @@ import kotlinx.serialization.encoding.*
  *
  *
  * @param id
- * @param type 类型. 已知: `system`, `report_result`, `account_security`. 取值会增加, 客户端对不认识的类型用通用展示字段 (`title`, `body`, `overline`, `icon`, `imageUrl`, `target`) 展示
+ * @param type 类型. 已知: `system`, `report_result`, `account_security`, `comment_reply`. 取值会增加, 客户端对不认识的类型用通用展示字段 (`title`, `body`, `overline`, `icon`, `imageUrl`, `target`) 展示
  * @param category 分类, 由服务端按类型决定. 已知: `notice` (`system`, `report_result`, `account_security`), `interaction` (`comment_reply`, `mention`, `reaction`, `follow`), `direct_message` (`direct_message`). 列表接口按分类查询
  * @param createdAtMillis 创建时间 (epoch 毫秒)
  * @param read
@@ -42,6 +43,7 @@ import kotlinx.serialization.encoding.*
  * @param reportResult
  * @param accountSecurity
  * @param system
+ * @param commentReply
  */
 @Serializable
 
@@ -49,7 +51,7 @@ data class AniNotification (
 
     @SerialName(value = "id") @Required val id: kotlin.String,
 
-    /* 类型. 已知: `system`, `report_result`, `account_security`. 取值会增加, 客户端对不认识的类型用通用展示字段 (`title`, `body`, `overline`, `icon`, `imageUrl`, `target`) 展示 */
+    /* 类型. 已知: `system`, `report_result`, `account_security`, `comment_reply`. 取值会增加, 客户端对不认识的类型用通用展示字段 (`title`, `body`, `overline`, `icon`, `imageUrl`, `target`) 展示 */
     @SerialName(value = "type") @Required val type: kotlin.String,
 
     /* 分类, 由服务端按类型决定. 已知: `notice` (`system`, `report_result`, `account_security`), `interaction` (`comment_reply`, `mention`, `reaction`, `follow`), `direct_message` (`direct_message`). 列表接口按分类查询 */
@@ -81,7 +83,9 @@ data class AniNotification (
 
     @SerialName(value = "accountSecurity") val accountSecurity: AniNotificationAccountSecurity? = null,
 
-    @SerialName(value = "system") val system: AniNotificationSystem? = null
+    @SerialName(value = "system") val system: AniNotificationSystem? = null,
+
+    @SerialName(value = "commentReply") val commentReply: AniNotificationCommentReply? = null
 
 ) {
 

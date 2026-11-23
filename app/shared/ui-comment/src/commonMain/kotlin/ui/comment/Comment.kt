@@ -186,6 +186,14 @@ class UIComment(
      * 评论所属的剧集 ID. 仅剧集评论有值; 提交投票/举报时应优先用它而不是当前播放的剧集.
      */
     val episodeId: Long? = null,
+    /**
+     * 楼中楼回复直接回复的另一条回复的稳定 id; 回复的是根评论, 或本身是根评论时为 `null`. 只在 thread 页的回复项上使用.
+     */
+    val parentStableId: String? = null,
+    /**
+     * [parentStableId] 的作者, 显示为 "回复 @某人". [parentStableId] 有值而它为 `null` 时父评论已被删除.
+     */
+    val replyTo: UserInfo? = null,
 )
 
 /**
@@ -221,6 +229,8 @@ private fun UIComment.copyWithReactions(reactions: List<UICommentReaction>): UIC
         selfVote = selfVote,
         rawContent = rawContent,
         episodeId = episodeId,
+        parentStableId = parentStableId,
+        replyTo = replyTo,
     )
 }
 
@@ -242,6 +252,8 @@ private fun UIComment.copyWithVote(likeCount: Int, selfVote: UICommentVote?): UI
         selfVote = selfVote,
         rawContent = rawContent,
         episodeId = episodeId,
+        parentStableId = parentStableId,
+        replyTo = replyTo,
     )
 }
 

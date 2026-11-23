@@ -54,7 +54,11 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.player.data.suppliedFramePreview
 import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
+import me.him188.ani.app.domain.media.selector.SelectTrigger
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowUserAction
+import me.him188.ani.app.ui.subject.episode.analytics.recordUserAction
+import me.him188.ani.app.ui.subject.episode.analytics.toPlayFlowOutcome
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
@@ -187,7 +191,7 @@ class TvEpisodeViewModel(
     @OptIn(UnsafeEpisodeSessionApi::class)
     private fun selectMedia(media: Media, requestId: Long) {
         backgroundScope.launch {
-            fetchPlayState.mediaSelectorFlow.filterNotNull().first().select(media)
+            fetchPlayState.mediaSelectorFlow.filterNotNull().first().select(media, SelectTrigger.MANUAL_TV)
             events.send(TvEpisodeEvent.MediaSelected(requestId))
         }
     }
@@ -645,16 +649,19 @@ class TvEpisodeViewModel(
     private fun retrySources(instanceId: String?) = runAction {
         val session = fetchPlayState.episodeSessionFlow.value
         if (session.infoLoadErrorStateFlow.value != null) {
+            playFlow.recordUserAction(session.playFlowEpisode, PlayFlowUserAction.RETRY_INFO)
             session.restartLoad()
             return@runAction
         }
         val bundle = session.fetchSelectFlow.filterNotNull().first()
         if (instanceId == null) {
+            playFlow.recordUserAction(session.playFlowEpisode, PlayFlowUserAction.REFRESH_ALL)
             selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
             bundle.mediaFetchSession.restartAll()
         } else {
             val source =
                 bundle.mediaFetchSession.mediaSourceResults.find { it.instanceId == instanceId } ?: return@runAction
+            playFlow.recordUserAction(session.playFlowEpisode, PlayFlowUserAction.REFRESH_SOURCE, source.mediaSourceId)
             selectorEpisodeCacheRepository.clearByRequestedSubjectAndSource(subjectId, source.mediaSourceId)
             source.restart()
         }
@@ -668,7 +675,11 @@ class TvEpisodeViewModel(
         val request = (source.state.value as? MediaSourceFetchState.CaptchaRequired)?.request ?: return@runAction
         resolvingCaptchaSources.update { it + instanceId }
         try {
-            if (webSessionManager.solve(request, interactive = true) == SolveOutcome.Solved) {
+            val outcome = webSessionManager.solve(request, interactive = true)
+            playFlow.recordUserAction(
+                currentPlayFlowEpisode, PlayFlowUserAction.SOLVE_CAPTCHA, source.mediaSourceId, outcome.toPlayFlowOutcome(),
+            )
+            if (outcome == SolveOutcome.Solved) {
                 selectorEpisodeCacheRepository.clearByRequestedSubjectAndSource(subjectId, source.mediaSourceId)
                 source.restart()
             }
@@ -679,6 +690,7 @@ class TvEpisodeViewModel(
 
     @OptIn(UnsafeEpisodeSessionApi::class)
     private fun retryPlayback(requestId: Long) = runAction {
+        playFlow.recordUserAction(currentPlayFlowEpisode, PlayFlowUserAction.RETRY_PLAYBACK)
         selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
         fetchPlayState.switchEpisode(currentEpisodeIdFlow.value)
         events.send(TvEpisodeEvent.PlaybackRetried(requestId))
