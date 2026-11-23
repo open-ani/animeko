@@ -136,6 +136,8 @@ fun TvMainShell(
     val settingsFocus = remember { FocusRequester() }
     val avatarFocus = remember { FocusRequester() }
     val logoutFocus = remember { FocusRequester() }
+    // 内容页自行打开的模态层 (删除确认/待同步弹窗) 需要屏蔽壳级快捷键, 否则菜单键会把焦点带到侧栏.
+    val pageModalOpen = remember { mutableStateOf(false) }
     // 内容页切换清除当前记忆，路由返回保留保存的身份。
     LaunchedEffect(Unit) {
         snapshotFlow { currentContent }.drop(1).collect { memory.clear() }
@@ -149,8 +151,6 @@ fun TvMainShell(
             }
     }
     var railHasFocus by remember { mutableStateOf(false) }
-    // 内容页自行打开的模态层 (删除确认/待同步弹窗) 需要屏蔽壳级快捷键, 否则菜单键会把焦点带到侧栏.
-    val pageModalOpen = remember { mutableStateOf(false) }
     val railReveal by animateFloatAsState(
         if (railHasFocus || showLogoutConfirmation || restoreAccountFocus != null) 1f else 0f,
         tween(TvNavigationRailDefaults.ExpandDurationMillis, easing = FastOutSlowInEasing),
