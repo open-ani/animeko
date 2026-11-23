@@ -42,7 +42,7 @@ fun Project.configureAniCocoapods() {
             homepage = "https://github.com/open-ani/animeko"
             name = project.name
 
-            ios.deploymentTarget = "16.0"
+            ios.deploymentTarget = "15.1"
 
             // Maps custom Xcode configuration to NativeBuildType
             xcodeConfigurationToNativeBuildType["CUSTOM_DEBUG"] = NativeBuildType.DEBUG

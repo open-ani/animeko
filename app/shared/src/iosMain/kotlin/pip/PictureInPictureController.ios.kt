@@ -96,7 +96,7 @@ private class IosPictureInPictureController(
 
     private val pipController = AVPictureInPictureController(playerLayer = layer).apply {
         this.delegate = this@IosPictureInPictureController.delegate
-        // 部署目标 iOS 16.0, 无需检查 14.2 可用性
+        // 此属性自 iOS 14.2 起可用, 低于应用的最低部署版本.
         canStartPictureInPictureAutomaticallyFromInline = true
     }
 
