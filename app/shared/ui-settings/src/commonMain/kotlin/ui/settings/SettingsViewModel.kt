@@ -36,6 +36,7 @@ import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
+import me.him188.ani.app.data.models.preference.PlayerShortcutConfig
 import me.him188.ani.app.data.models.preference.ProfileSettings
 import me.him188.ani.app.data.models.preference.ProxyMode
 import me.him188.ani.app.data.models.preference.ProxySettings
@@ -132,6 +133,9 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     val playerKernelConfig: SettingsState<PlayerKernelConfig> =
         settingsRepository.playerKernelConfig.stateInBackground(PlayerKernelConfig.Default.copy(_placeholder = -1))
+
+    val playerShortcutConfig: SettingsState<PlayerShortcutConfig> =
+        settingsRepository.playerShortcutConfig.stateInBackground(PlayerShortcutConfig.Default.copy(_placeholder = -1))
 
     val watchTogetherSettings: SettingsState<WatchTogetherSettings> =
         settingsRepository.watchTogetherSettings.stateInBackground(WatchTogetherSettings.Default)
@@ -354,6 +358,7 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
             updateSettings = settingsRepository.updateSettings.flow.first(),
             videoScaffoldConfig = settingsRepository.videoScaffoldConfig.flow.first(),
             playerKernelConfig = settingsRepository.playerKernelConfig.flow.first(),
+            playerShortcutConfig = settingsRepository.playerShortcutConfig.flow.first(),
             videoResolverSettings = settingsRepository.videoResolverSettings.flow.first(),
             anitorrentConfig = settingsRepository.anitorrentConfig.flow.first(),
             torrentPeerConfig = settingsRepository.torrentPeerConfig.flow.first(),
@@ -392,6 +397,7 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
         backup.updateSettings?.let { settingsRepository.updateSettings.set(it) }
         backup.videoScaffoldConfig?.let { settingsRepository.videoScaffoldConfig.set(it) }
         backup.playerKernelConfig?.let { settingsRepository.playerKernelConfig.set(it) }
+        backup.playerShortcutConfig?.let { settingsRepository.playerShortcutConfig.set(it) }
         backup.videoResolverSettings?.let { settingsRepository.videoResolverSettings.set(it) }
         backup.anitorrentConfig?.let { settingsRepository.anitorrentConfig.set(it) }
         backup.torrentPeerConfig?.let { settingsRepository.torrentPeerConfig.set(it) }
@@ -447,6 +453,7 @@ private data class SettingsBackup(
     val updateSettings: UpdateSettings?,
     val videoScaffoldConfig: VideoScaffoldConfig?,
     val playerKernelConfig: PlayerKernelConfig? = null,
+    val playerShortcutConfig: PlayerShortcutConfig? = null,
     val videoResolverSettings: VideoResolverSettings?,
     val anitorrentConfig: AnitorrentConfig?,
     val torrentPeerConfig: TorrentPeerConfig?,

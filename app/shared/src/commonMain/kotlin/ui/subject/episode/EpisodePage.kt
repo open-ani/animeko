@@ -1350,6 +1350,7 @@ private fun EpisodeVideo(
         contentWindowInsets = windowInsets,
         enableFoldableHoverMode = vm.videoScaffoldConfig.enableFoldableHoverMode,
         fastForwardSpeed = vm.videoScaffoldConfig.fastForwardSpeed,
+        shortcuts = vm.playerShortcutConfig,
         pictureInPictureController = pictureInPictureController,
         isInPictureInPicture = isInPictureInPicture,
     )
