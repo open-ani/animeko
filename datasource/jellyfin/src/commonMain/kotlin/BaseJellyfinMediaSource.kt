@@ -55,7 +55,18 @@ private const val PROVIDER_ID_BANGUMI_SUBJECT = "BangumiSubject"
 abstract class BaseJellyfinMediaSource(
     private val client: ScopedHttpClient,
 ) : HttpMediaSource() {
+    companion object {
+        const val PLAY_MODE_DOWNLOAD = "download"
+        const val PLAY_MODE_STREAM = "stream"
+        const val DEFAULT_TRANSCODE_BITRATE_MBPS = 20
+        private const val BITS_PER_MBPS = 1_000_000L
+    }
+
     abstract val baseUrl: String
+    protected abstract val apiKeyQueryParameterName: String
+    protected open val playMode: String get() = PLAY_MODE_DOWNLOAD
+    protected open val transcode: Boolean get() = false
+    protected open val transcodeBitrateMbps: Int get() = DEFAULT_TRANSCODE_BITRATE_MBPS
 
     protected data class Authorization(
         val userId: String,
@@ -434,7 +445,7 @@ abstract class BaseJellyfinMediaSource(
                 mediaSourceId = mediaSourceId,
                 originalUrl = "$baseUrl/Items/$Id",
                 download = ResourceLocation.HttpStreamingFile(
-                    uri = getDownloadUri(Id, accessToken),
+                    uri = getMediaUri(Id, accessToken),
                 ),
                 originalTitle = originalTitle,
                 publishedTime = 0,
@@ -448,7 +459,7 @@ abstract class BaseJellyfinMediaSource(
                     subtitleKind = SubtitleKind.EXTERNAL_PROVIDED,
                 ),
                 extraFiles = MediaExtraFiles(
-                    subtitles = getSubtitles(Id, MediaStreams),
+                    subtitles = getSubtitles(Id, MediaStreams, accessToken),
                 ),
                 episodeRange = episodeRange,
                 location = MediaSourceLocation.Lan,
@@ -462,26 +473,59 @@ abstract class BaseJellyfinMediaSource(
         )
     }
 
-    protected abstract fun getDownloadUri(itemId: String, accessToken: String): String
+    protected open fun getMediaUri(itemId: String, accessToken: String): String {
+        return when (playMode) {
+            PLAY_MODE_DOWNLOAD -> "$baseUrl/Items/$itemId/Download?$apiKeyQueryParameterName=$accessToken"
+            PLAY_MODE_STREAM -> if (transcode) {
+                val bitrateBps = transcodeBitrateMbps.coerceAtLeast(1) * BITS_PER_MBPS
+                "$baseUrl/Videos/$itemId/master.m3u8?MediaSourceId=$itemId&VideoCodec=h264&AudioCodec=aac&VideoBitrate=$bitrateBps&MaxStreamingBitrate=$bitrateBps&$apiKeyQueryParameterName=$accessToken"
+            } else {
+                "$baseUrl/Videos/$itemId/stream?static=true&MediaSourceId=$itemId&$apiKeyQueryParameterName=$accessToken"
+            }
 
-    private fun getSubtitles(itemId: String, mediaStreams: List<MediaStream>): List<Subtitle> {
+            else -> error("Unknown Jellyfin play mode: $playMode")
+        }
+    }
+
+    private fun getSubtitles(itemId: String, mediaStreams: List<MediaStream>, accessToken: String): List<Subtitle> {
         return mediaStreams
             .filter { it.Type == "Subtitle" && it.IsTextSubtitleStream && it.IsExternal && it.Codec != null }
             .map { stream ->
+                val rawCodec = stream.Codec!!.lowercase()
+                val (requestFormat, mimeType) = when (rawCodec) {
+                    "ass", "ssa" -> rawCodec to "text/x-ssa"
+                    "srt", "subrip" -> rawCodec to "application/x-subrip"
+                    // 将 vtt/webvtt 请求为 srt，避免服务端 VttWriter 附加的 region/line 定位信息导致 mpv 无法渲染
+                    "vtt", "webvtt" -> "srt" to "application/x-subrip"
+                    else -> rawCodec to "application/octet-stream"
+                }
                 Subtitle(
-                    uri = getSubtitleUri(itemId, stream.Index, stream.Codec!!),
+                    uri = getSubtitleUri(itemId, stream.Index, requestFormat, accessToken),
                     language = stream.Language,
-                    mimeType = when (stream.Codec.lowercase()) {
-                        "ass" -> "text/x-ass"
-                        else -> "application/octet-stream"
-                    },
-                    label = stream.Title,
+                    mimeType = mimeType,
+                    label = formatSubtitleLabel(stream),
                 )
             }
     }
 
-    private fun getSubtitleUri(itemId: String, index: Int, codec: String): String {
-        return "$baseUrl/Videos/$itemId/$itemId/Subtitles/$index/0/Stream.$codec"
+    private fun formatSubtitleLabel(stream: MediaStream): String? {
+        val title = stream.Title?.trim()?.takeIf {
+            it.isNotBlank() && !it.equals("Undefined", ignoreCase = true) && it != "未定义"
+        }
+        if (title != null) return title
+
+        return when (stream.Language?.trim()?.lowercase()) {
+            "chs", "sc", "zh-cn", "zh-hans" -> "简体中文"
+            "cht", "tc", "zh-tw", "zh-hk", "zh-hant" -> "繁体中文"
+            "chi", "zho", "zh" -> "中文"
+            "jpn", "ja" -> "日语"
+            "eng", "en" -> "英语"
+            else -> stream.Language?.takeIf { it.isNotBlank() } ?: stream.Codec?.uppercase()
+        }
+    }
+
+    private fun getSubtitleUri(itemId: String, index: Int, codec: String, accessToken: String): String {
+        return "$baseUrl/Videos/$itemId/$itemId/Subtitles/$index/0/Stream.$codec?$apiKeyQueryParameterName=$accessToken"
     }
 
     private data class ParsedSubjectName(
@@ -847,6 +891,7 @@ private class SearchResponse(
 @Suppress("PropertyName")
 private data class MediaStream(
     val Title: String? = null,
+    val DisplayTitle: String? = null,
     val Language: String? = null,
     val Type: String,
     val Codec: String? = null,

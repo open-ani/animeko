@@ -71,6 +71,9 @@ constructor(
     val mediaSourceId: String? = null,
     @Deprecated("Only for migration") // since 3.1.0-beta03
     val fallbackMediaSourceIds: List<String>? = null,
+    val preferredSubtitleLabel: String? = null,
+    val preferredSubtitleLanguage: String? = null,
+    val subtitleDisabled: Boolean = false,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     @OptIn(SerializationOnly::class)
