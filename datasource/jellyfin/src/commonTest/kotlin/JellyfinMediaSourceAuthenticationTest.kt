@@ -650,10 +650,10 @@ class JellyfinMediaSourceAuthenticationTest {
             download.uri,
         )
         assertEquals(
-            "$TEST_BASE_URL/Videos/episode-1/episode-1/Subtitles/2/0/Stream.vtt?api_key=emby-key",
+            "$TEST_BASE_URL/Videos/episode-1/episode-1/Subtitles/2/0/Stream.srt?api_key=emby-key",
             media.extraFiles.subtitles.single().uri,
         )
-        assertEquals("text/vtt", media.extraFiles.subtitles.single().mimeType)
+        assertEquals("application/x-subrip", media.extraFiles.subtitles.single().mimeType)
     }
 
     private fun passwordConfig() = MediaSourceConfig(

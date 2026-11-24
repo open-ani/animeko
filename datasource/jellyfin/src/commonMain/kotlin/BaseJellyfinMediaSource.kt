@@ -491,15 +491,18 @@ abstract class BaseJellyfinMediaSource(
         return mediaStreams
             .filter { it.Type == "Subtitle" && it.IsTextSubtitleStream && it.IsExternal && it.Codec != null }
             .map { stream ->
+                val rawCodec = stream.Codec!!.lowercase()
+                val (requestFormat, mimeType) = when (rawCodec) {
+                    "ass", "ssa" -> rawCodec to "text/x-ssa"
+                    "srt", "subrip" -> rawCodec to "application/x-subrip"
+                    // 将 vtt/webvtt 请求为 srt，避免服务端 VttWriter 附加的 region/line 定位信息导致 mpv 无法渲染
+                    "vtt", "webvtt" -> "srt" to "application/x-subrip"
+                    else -> rawCodec to "application/octet-stream"
+                }
                 Subtitle(
-                    uri = getSubtitleUri(itemId, stream.Index, stream.Codec!!, accessToken),
+                    uri = getSubtitleUri(itemId, stream.Index, requestFormat, accessToken),
                     language = stream.Language,
-                    mimeType = when (stream.Codec.lowercase()) {
-                        "ass", "ssa" -> "text/x-ssa"
-                        "srt", "subrip" -> "application/x-subrip"
-                        "vtt", "webvtt" -> "text/vtt"
-                        else -> "application/octet-stream"
-                    },
+                    mimeType = mimeType,
                     label = formatSubtitleLabel(stream),
                 )
             }
