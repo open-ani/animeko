@@ -23,6 +23,14 @@ class LocalFileMediaResolver : MediaResolver {
     override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> {
         when (val download = media.download) {
             is ResourceLocation.LocalFile -> {
+                val contentUri = download.originalUri?.takeIf { it.startsWith("content://", ignoreCase = true) }
+                if (contentUri != null) {
+                    return LocalFileUriMediaDataProvider(
+                        uri = contentUri,
+                        originalTitle = media.originalTitle,
+                        extraFiles = media.extraFiles.toMediampMediaExtraFiles(),
+                    )
+                }
                 return SystemFileMediaDataProvider(
                     Path(download.filePath),
                     media.extraFiles.toMediampMediaExtraFiles(),

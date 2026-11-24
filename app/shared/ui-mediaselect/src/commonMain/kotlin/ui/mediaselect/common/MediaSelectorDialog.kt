@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.VideoFile
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.Icon
@@ -47,6 +48,7 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_mode_bt
 import me.him188.ani.app.ui.lang.media_selector_mode_manual
 import me.him188.ani.app.ui.lang.media_selector_sources
+import me.him188.ani.app.ui.lang.media_selector_use_local_file
 import me.him188.ani.app.ui.lang.subject_episode_close_selector
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
 import me.him188.ani.app.domain.media.selector.SelectTrigger
@@ -165,6 +167,8 @@ fun MediaSelectorDialog(
  * @param onModeChange 容器里的模式 chip. 宿主决定新模式留在容器还是回侧边栏.
  * @param onClose X: 宿主回到侧边栏.
  * @param onPlayed 选中播放后: 宿主把容器和侧边栏都关掉.
+ * @param onRequestLocalFile 点了「使用本地视频文件」; null 时不显示按钮 (宿主没有文件选择器).
+ *   自动匹配在侧边栏, 这里的入口画在手动查找页的顶栏, 保证打开容器时也能选本地文件.
  */
 @Composable
 fun MediaSelectorDialogContent(
@@ -180,6 +184,7 @@ fun MediaSelectorDialogContent(
     onFetchRequestChange: (MediaFetchRequest) -> Unit,
     onRestartSource: (instanceId: String) -> Unit,
     manualBrowseState: ManualBrowseState,
+    onRequestLocalFile: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val closeSelectorText = stringResource(Lang.subject_episode_close_selector)
@@ -188,11 +193,25 @@ fun MediaSelectorDialogContent(
             Icon(Icons.Rounded.Close, contentDescription = closeSelectorText)
         }
     }
+    val localFileButton: @Composable () -> Unit = {
+        if (onRequestLocalFile != null) {
+            IconButton(
+                onClick = onRequestLocalFile,
+                Modifier.testTag(MediaSelectorDialogTestTags.LOCAL_FILE),
+            ) {
+                Icon(
+                    Icons.Rounded.VideoFile,
+                    contentDescription = stringResource(Lang.media_selector_use_local_file),
+                )
+            }
+        }
+    }
     val topBarTitle = stringResource(Lang.media_selector_sources)
     val topBar: @Composable () -> Unit = {
         TopAppBar(
             title = { Text(topBarTitle) },
             actions = {
+                localFileButton()
                 MediaSelectorModeChip(mode, onModeChange, showBt = sourceResults.btSources.isNotEmpty())
                 closeButton()
             },
@@ -202,6 +221,7 @@ fun MediaSelectorDialogContent(
     }
     val inlineTitle: @Composable (title: String) -> Unit = { title ->
         closeButton()
+        localFileButton()
         Text(title, style = MaterialTheme.typography.titleLarge)
     }
     when (mode) {
@@ -256,4 +276,5 @@ fun MediaSelectorDialogContent(
 object MediaSelectorDialogTestTags {
     const val SURFACE = "media_selector_dialog_surface"
     const val CLOSE = "media_selector_dialog_close"
+    const val LOCAL_FILE = "media_selector_dialog_local_file_button"
 }

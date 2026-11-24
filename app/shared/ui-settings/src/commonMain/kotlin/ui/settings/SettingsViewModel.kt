@@ -29,6 +29,7 @@ import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
 import me.him188.ani.app.data.models.preference.DebugSettings
+import me.him188.ani.app.data.models.preference.LocalVideoLibrarySettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
@@ -142,6 +143,11 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     val mediaCacheSettingsState: SettingsState<MediaCacheSettings> =
         settingsRepository.mediaCacheSettings.stateInBackground(MediaCacheSettings.Default.copy(_placeholder = -1))
 
+    val localVideoLibrarySettingsState: SettingsState<LocalVideoLibrarySettings> =
+        settingsRepository.localVideoLibrarySettings.stateInBackground(
+            LocalVideoLibrarySettings.Default.copy(_placeholder = -1),
+        )
+
     val torrentSettingsState: SettingsState<AnitorrentConfig> =
         settingsRepository.anitorrentConfig.stateInBackground(AnitorrentConfig.Default.copy(_placeholder = -1))
 
@@ -161,6 +167,7 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     val cacheDirectoryGroupState = CacheDirectoryGroupState(
         mediaCacheSettingsState,
+        localVideoLibrarySettingsState,
         permissionManager,
         onGetBackupData = {
             withContext(Dispatchers.IO_) {
@@ -348,6 +355,7 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
             profileSettings = settingsRepository.profileSettings.flow.first(),
             proxySettings = settingsRepository.proxySettings.flow.first(),
             mediaCacheSettings = settingsRepository.mediaCacheSettings.flow.first(),
+            localVideoLibrarySettings = settingsRepository.localVideoLibrarySettings.flow.first(),
             danmakuSettings = settingsRepository.danmakuSettings.flow.first(),
             uiSettings = settingsRepository.uiSettings.flow.first(),
             themeSettings = settingsRepository.themeSettings.flow.first(),
@@ -386,6 +394,7 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
         backup.profileSettings?.let { settingsRepository.profileSettings.set(it) }
         backup.proxySettings?.let { settingsRepository.proxySettings.set(it) }
         backup.mediaCacheSettings?.let { settingsRepository.mediaCacheSettings.set(it) }
+        backup.localVideoLibrarySettings?.let { settingsRepository.localVideoLibrarySettings.set(it) }
         backup.danmakuSettings?.let { settingsRepository.danmakuSettings.set(it) }
         backup.uiSettings?.let { settingsRepository.uiSettings.set(it) }
         backup.themeSettings?.let { settingsRepository.themeSettings.set(it) }
@@ -441,6 +450,7 @@ private data class SettingsBackup(
     val profileSettings: ProfileSettings?,
     val proxySettings: ProxySettings?,
     val mediaCacheSettings: MediaCacheSettings?,
+    val localVideoLibrarySettings: LocalVideoLibrarySettings? = null,
     val danmakuSettings: DanmakuSettings?,
     val uiSettings: UISettings?,
     val themeSettings: ThemeSettings?,

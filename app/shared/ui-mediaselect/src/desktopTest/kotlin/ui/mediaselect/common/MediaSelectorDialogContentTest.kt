@@ -40,6 +40,8 @@ import kotlin.test.assertEquals
 class MediaSelectorDialogContentTest {
     private var closed = 0
     private var played = 0
+    private var localFileRequested = 0
+    private var localFilePicker: (() -> Unit)? = null
     private lateinit var selectorState: MediaSelectorState
 
     private fun AniComposeUiTest.render(mode: MediaSelectorMode, compact: Boolean) {
@@ -60,6 +62,7 @@ class MediaSelectorDialogContentTest {
                         onFetchRequestChange = {},
                         onRestartSource = {},
                         manualBrowseState = rememberTestManualBrowseState(),
+                        onRequestLocalFile = localFilePicker,
                     )
                 }
             }
@@ -111,5 +114,27 @@ class MediaSelectorDialogContentTest {
         onNodeWithTag(MediaSelectorDialogTestTags.CLOSE).assertDoesNotExist()
         onNodeWithTag(BtResourcesPageTestTags.ROOT).assertDoesNotExist()
         onNodeWithTag(ManualBrowsePageTestTags.ROOT).assertDoesNotExist()
+    }
+
+    @Test
+    fun `local file button requests the picker from both manual layouts`() = runAniComposeUiTest {
+        localFilePicker = { localFileRequested++ }
+
+        for (compact in listOf(true, false)) {
+            render(MediaSelectorMode.MANUAL, compact)
+            awaitTag(ManualBrowsePageTestTags.ROOT)
+            onNodeWithTag(MediaSelectorDialogTestTags.LOCAL_FILE).assertIsDisplayed().performClick()
+        }
+        assertEquals(2, localFileRequested)
+        assertEquals(0, closed)
+        assertEquals(0, played)
+    }
+
+    @Test
+    fun `local file button is hidden without a picker`() = runAniComposeUiTest {
+        localFilePicker = null
+        render(MediaSelectorMode.MANUAL, compact = false)
+        awaitTag(ManualBrowsePageTestTags.ROOT)
+        onNodeWithTag(MediaSelectorDialogTestTags.LOCAL_FILE).assertDoesNotExist()
     }
 }

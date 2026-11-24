@@ -30,7 +30,14 @@ data class MediaShareData(
         ): MediaShareData {
             val realDownload = when (mediaData) {
                 is UriMediaData -> {
-                    ResourceLocation.HttpStreamingFile(mediaData.uri)
+                    // 流式资源是 http(s)/file URI, 直接分享该地址.
+                    // Android SAF 本地文件是 content:// 等设备私有 URI, 不能构造 HttpStreamingFile,
+                    // 回落到 media.download, 让分享菜单按本地文件处理.
+                    if (mediaData.uri.startsWithShareableStreamScheme()) {
+                        ResourceLocation.HttpStreamingFile(mediaData.uri)
+                    } else {
+                        media?.download
+                    }
                 }
 
                 is TorrentMediaData,
@@ -45,5 +52,8 @@ data class MediaShareData(
                 download = realDownload,
             )
         }
+
+        private fun String.startsWithShareableStreamScheme(): Boolean =
+            startsWith("https://") || startsWith("http://") || startsWith("file://")
     }
 }

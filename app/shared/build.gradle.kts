@@ -187,6 +187,9 @@ kotlin {
         implementation(libs.log4j.core)
         implementation(libs.log4j.slf4j.impl)
 
+        implementation(libs.filekit.dialogs)
+        implementation(libs.filekit.dialogs.compose)
+
         implementation(libs.ktor.serialization.kotlinx.json)
     }
 }

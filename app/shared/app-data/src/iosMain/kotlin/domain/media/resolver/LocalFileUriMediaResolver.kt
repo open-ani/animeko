@@ -9,12 +9,9 @@
 
 package me.him188.ani.app.domain.media.resolver
 
-import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.ResourceLocation
-import org.openani.mediamp.source.MediaExtraFiles
-import org.openani.mediamp.source.UriMediaData
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSURL
 
@@ -102,14 +99,4 @@ private fun containedVideoExtension(pathOrUri: String?): String? {
 
     val normalized = ".$extension"
     return normalized.takeIf { it in CONTAINED_VIDEO_EXTENSIONS }
-}
-
-class LocalFileUriMediaDataProvider(
-    val uri: String,
-    val originalTitle: String,
-    private val headers: Map<String, String> = emptyMap(),
-    override val extraFiles: MediaExtraFiles = MediaExtraFiles.EMPTY,
-) : MediaDataProvider<UriMediaData> {
-    override suspend fun open(scopeForCleanup: CoroutineScope): UriMediaData = UriMediaData(uri, headers, extraFiles)
-    override fun toString(): String = "LocalFileUriVideoSource(uri='$uri')"
 }
