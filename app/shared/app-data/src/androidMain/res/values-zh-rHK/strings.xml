@@ -5,4 +5,9 @@
     <string name="pikpak_cache_service_title_working">正在快取 %1$d 個資源</string>
     <string name="pikpak_cache_service_content">下載：%1$s</string>
     <string name="pikpak_cache_service_pause_all">全部暫停</string>
+    <string name="ani_torrent_service_name">Animeko BT 引擎服務</string>
+    <string name="ani_torrent_service_title_idle">BT 下載服務正在執行</string>
+    <string name="ani_torrent_service_title_working">正在下載 %1$d 個資源</string>
+    <string name="ani_torrent_service_content">下載：%1$s，上傳：%2$s</string>
+    <string name="ani_torrent_service_stop">停止</string>
 </resources>

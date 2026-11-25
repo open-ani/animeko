@@ -49,7 +49,12 @@ import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_blacklist_manage
+import me.him188.ani.app.ui.lang.settings_media_torrent_peer_filter_ip_blacklist_search
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun PeerFilterSettingsScreen(
@@ -65,7 +70,7 @@ fun PeerFilterSettingsScreen(
             listPaneTopAppBar = {
                 SearchBlockedIpTopAppBar(
                     enableSearch = !listDetailLayoutParameters.preferSinglePane,
-                    title = { AniTopAppBarDefaults.Title("Peer 过滤和屏蔽设置") },
+                    title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings_media_torrent_peer_filter)) },
                     state = state,
                     windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                     navigationIcon = {
@@ -107,7 +112,11 @@ fun PeerFilterSettingsScreen(
                 if (listDetailLayoutParameters.preferSinglePane) {
                     SearchBlockedIpTopAppBar(
                         enableSearch = true,
-                        title = { AniTopAppBarDefaults.Title("管理 IP 黑名单") },
+                        title = {
+                            AniTopAppBarDefaults.Title(
+                                stringResource(Lang.settings_media_torrent_peer_filter_ip_blacklist_manage),
+                            )
+                        },
                         state = state,
                         navigationIcon = {
                             BackNavigationIconButton(
@@ -165,7 +174,12 @@ private fun SearchBlockedIpTopAppBar(
         avatar = {
             if (enableSearch && !state.searchingBlockedIp) {
                 IconButton({ state.startSearchBlockedIp() }) {
-                    Icon(Icons.Default.Search, contentDescription = "搜索黑名单 IP 地址")
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = stringResource(
+                            Lang.settings_media_torrent_peer_filter_ip_blacklist_search,
+                        ),
+                    )
                 }
             }
         },

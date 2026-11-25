@@ -56,6 +56,24 @@ import me.him188.ani.app.ui.exploration.schedule.AiringScheduleItemPresentation
 import me.him188.ani.app.ui.exploration.schedule.ScheduleDay
 import me.him188.ani.app.ui.exploration.schedule.SchedulePagePresentation
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_schedule_episode
+import me.him188.ani.app.ui.lang.exploration_schedule_episode_ep_and_sort
+import me.him188.ani.app.ui.lang.exploration_schedule_last_weekday
+import me.him188.ani.app.ui.lang.exploration_schedule_next_weekday
+import me.him188.ani.app.ui.lang.exploration_schedule_this_weekday
+import me.him188.ani.app.ui.lang.exploration_schedule_time_unknown
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_friday
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_monday
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_saturday
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_sunday
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_thursday
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_tuesday
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_wednesday
+import me.him188.ani.app.ui.lang.tv_schedule_empty
+import me.him188.ani.app.ui.lang.tv_schedule_load_failed
+import me.him188.ani.app.ui.lang.tv_schedule_retry
+import me.him188.ani.app.ui.lang.tv_schedule_subject_cover
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
@@ -70,6 +88,7 @@ import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
+import org.jetbrains.compose.resources.stringResource
 
 /** 时间表焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private sealed interface TvScheduleFocus : TvFocusKey {
@@ -137,12 +156,12 @@ fun TvScheduleScreen(
             verticalArrangement = Arrangement.Center,
         ) {
             Text(
-                "加载失败了, 请检查网络后重试",
+                stringResource(Lang.tv_schedule_load_failed),
                 style = MaterialTheme.typography.titleMedium,
                 color = tvHeroSecondaryContentColor(),
             )
             TvHeroButton(
-                text = "重试",
+                text = stringResource(Lang.tv_schedule_retry),
                 icon = Icons.Rounded.Refresh,
                 filled = true,
                 onClick = { onIntent(TvScheduleIntent.Refresh) },
@@ -195,7 +214,7 @@ private fun TvScheduleDayColumn(
         if (items.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
-                    "这一天没有新番",
+                    stringResource(Lang.tv_schedule_empty),
                     style = MaterialTheme.typography.bodyLarge,
                     color = tvHeroSecondaryContentColor(),
                 )
@@ -316,7 +335,7 @@ private fun TvScheduleItem(
             ) {
                 AsyncImage(
                     item.imageUrl,
-                    "${item.subjectTitle} 封面",
+                    stringResource(Lang.tv_schedule_subject_cover, item.subjectTitle),
                     Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop,
                 )
@@ -418,10 +437,12 @@ private val timeFormatter = LocalTime.Format {
     minute()
 }
 
+@Composable
 private fun renderTime(time: LocalTime?): String =
-    time?.let { timeFormatter.format(it) } ?: "时间未定"
+    time?.let { timeFormatter.format(it) } ?: stringResource(Lang.exploration_schedule_time_unknown)
 
 /** 集数渲染: 手机 ScheduleItemDefaults.Episode 同语义 ("第 N 话 [名称]" / ep(sort) 特殊形). */
+@Composable
 private fun renderEpisode(
     episodeSort: EpisodeSort,
     episodeEp: EpisodeSort?,
@@ -430,11 +451,11 @@ private fun renderEpisode(
     val epText = episodeEp?.toString()?.removePrefix("0")
     val sortText = episodeSort.toString().removePrefix("0")
     val sortDisplay = if (episodeEp == null || episodeEp == episodeSort) {
-        if (episodeSort is EpisodeSort.Normal) "第 $sortText 话" else sortText
+        if (episodeSort is EpisodeSort.Normal) stringResource(Lang.exploration_schedule_episode, sortText) else sortText
     } else {
         checkNotNull(epText)
         if (episodeSort is EpisodeSort.Normal && episodeEp is EpisodeSort.Normal) {
-            "第 $epText ($sortText) 话"
+            stringResource(Lang.exploration_schedule_episode_ep_and_sort, epText, sortText)
         } else {
             "$epText ($sortText)"
         }
@@ -443,14 +464,26 @@ private fun renderEpisode(
 }
 
 /** 周几渲染 (手机 renderDayOfWeek 同语义: 上周%s / 周%s / 下周%s). */
+@Composable
 private fun renderDayOfWeek(day: ScheduleDay): String {
     val weekday = when (day.date.dayOfWeek.isoDayNumber) {
-        1 -> "一"; 2 -> "二"; 3 -> "三"; 4 -> "四"; 5 -> "五"; 6 -> "六"; else -> "日"
+        1 -> stringResource(Lang.exploration_schedule_weekday_monday)
+        2 -> stringResource(Lang.exploration_schedule_weekday_tuesday)
+        3 -> stringResource(Lang.exploration_schedule_weekday_wednesday)
+        4 -> stringResource(Lang.exploration_schedule_weekday_thursday)
+        5 -> stringResource(Lang.exploration_schedule_weekday_friday)
+        6 -> stringResource(Lang.exploration_schedule_weekday_saturday)
+        else -> stringResource(Lang.exploration_schedule_weekday_sunday)
     }
     return when (day.kind) {
-        ScheduleDay.Kind.LAST_WEEK -> "上周$weekday"
-        ScheduleDay.Kind.THIS_WEEK, ScheduleDay.Kind.TODAY -> "周$weekday"
-        ScheduleDay.Kind.NEXT_WEEK -> "下周$weekday"
+        ScheduleDay.Kind.LAST_WEEK -> stringResource(Lang.exploration_schedule_last_weekday, weekday)
+        ScheduleDay.Kind.THIS_WEEK,
+        ScheduleDay.Kind.TODAY -> stringResource(
+            Lang.exploration_schedule_this_weekday,
+            weekday,
+        )
+
+        ScheduleDay.Kind.NEXT_WEEK -> stringResource(Lang.exploration_schedule_next_weekday, weekday)
     }
 }
 

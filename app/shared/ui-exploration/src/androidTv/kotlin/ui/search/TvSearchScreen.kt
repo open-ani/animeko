@@ -37,6 +37,10 @@ import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.ui.exploration.search.SubjectPreviewItemInfo
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.tv_search_empty
+import me.him188.ani.app.ui.lang.tv_search_hint
+import me.him188.ani.app.ui.lang.tv_search_placeholder
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
@@ -45,6 +49,7 @@ import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
+import org.jetbrains.compose.resources.stringResource
 
 /** 搜索页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvSearchFocus : TvFocusKey {
@@ -89,8 +94,8 @@ fun TvSearchScreen(
         modifier = modifier.fillMaxSize().padding(navigationRailInsets),
     ) {
         when {
-            !state.hasSearched -> TvSearchCenteredHint("输入关键词, 按软键盘搜索键开始")
-            results.itemCount == 0 -> TvSearchCenteredHint("没有找到相关番剧")
+            !state.hasSearched -> TvSearchCenteredHint(stringResource(Lang.tv_search_hint))
+            results.itemCount == 0 -> TvSearchCenteredHint(stringResource(Lang.tv_search_empty))
             else -> TvSearchResultsGrid(results, { subject, position -> onIntent(TvSearchIntent.OpenSubject(subject, position)) }, focus)
         }
     }
@@ -162,7 +167,7 @@ private fun TvSearchField(
                 Box {
                     if (keywords.isEmpty()) {
                         Text(
-                            "搜索番剧…",
+                            stringResource(Lang.tv_search_placeholder),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         )

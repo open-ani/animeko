@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bt_legacy_cache_unsupported">舊 BT 引擎的快取已不被支援，請重新快取</string>
+    <string name="choose_video_player">選擇播放器</string>
+</resources>

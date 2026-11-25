@@ -30,6 +30,24 @@ private val yyyyMMdd = LocalDateTime.Format {
 }
 
 /**
+ * [TimeFormatter] 的相对时间文案. 默认值为简体中文, 便于测试和非 UI 场景使用;
+ * UI 层应通过 `stringResource` 构造本地化实例.
+ */
+data class TimeFormatterStrings(
+    val justNow: String = "刚刚",
+    val secondsAgo: String = "%1\$d 秒前",
+    val secondsLater: String = "%1\$d 秒后",
+    val minutesAgo: String = "%1\$d 分钟前",
+    val minutesLater: String = "%1\$d 分钟后",
+    val hoursAgo: String = "%1\$d 小时前",
+    val hoursLater: String = "%1\$d 小时后",
+    val daysAgo: String = "%1\$d 天前",
+    val daysLater: String = "%1\$d 天后",
+)
+
+internal fun String.withValue(value: Long): String = replace("%1\$d", value.toString())
+
+/**
  * @see formatDateTime
  */
 // TimeFormatterTest
@@ -37,6 +55,7 @@ class TimeFormatter(
     private val formatterWithTime: DateTimeFormat<LocalDateTime> = yyyyMMdd,
     private val formatterWithoutTime: DateTimeFormat<LocalDateTime> = yyyyMMdd,
     private val getTimeNow: () -> Instant = { Clock.System.now() },
+    private val strings: TimeFormatterStrings = TimeFormatterStrings(),
 ) {
     fun format(timestamp: Long, showTime: Boolean = true): String {
         return format(Instant.fromEpochMilliseconds(timestamp), showTime)
@@ -47,15 +66,15 @@ class TimeFormatter(
 
         // written by ChatGPT
         return when (val differenceInSeconds = (now - instant).inWholeSeconds) {
-            in 0..1L -> "刚刚"
-            in 0..59 -> "$differenceInSeconds 秒前"
-            in -60..0 -> "${-differenceInSeconds} 秒后"
-            in 60..<3600 -> "${differenceInSeconds / 60} 分钟前"
-            in -3600..-60 -> "${-differenceInSeconds / 60} 分钟后"
-            in 3600..<86400 -> "${differenceInSeconds / 3600} 小时前"
-            in -86400..<-3600 -> "${-differenceInSeconds / 3600} 小时后"
-            in 86400..<86400 * 2 -> "${differenceInSeconds / 86400} 天前"
-            in -86400 * 2..<-86400 -> "${-differenceInSeconds / 86400} 天后"
+            in 0..1L -> strings.justNow
+            in 0..59 -> strings.secondsAgo.withValue(differenceInSeconds)
+            in -60..0 -> strings.secondsLater.withValue(-differenceInSeconds)
+            in 60..<3600 -> strings.minutesAgo.withValue(differenceInSeconds / 60)
+            in -3600..-60 -> strings.minutesLater.withValue(-differenceInSeconds / 60)
+            in 3600..<86400 -> strings.hoursAgo.withValue(differenceInSeconds / 3600)
+            in -86400..<-3600 -> strings.hoursLater.withValue(-differenceInSeconds / 3600)
+            in 86400..<86400 * 2 -> strings.daysAgo.withValue(differenceInSeconds / 86400)
+            in -86400 * 2..<-86400 -> strings.daysLater.withValue(-differenceInSeconds / 86400)
             else -> getFormatter(showTime).format(instant.toLocalDateTime(TimeZone.currentSystemDefault()))
         }
     }
