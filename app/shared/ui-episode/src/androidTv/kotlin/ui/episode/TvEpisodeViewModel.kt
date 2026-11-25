@@ -778,7 +778,8 @@ class TvEpisodeViewModel(
     }
 
     private fun observePreview() {
-        val preview = createMediaProgressFramePreviewState(player, 384, 216, MediaData::suppliedFramePreview) ?: return
+        // 缓存覆盖更长的拖动轨迹 (~32 秒), 拖动/回扫时更容易立即命中附近的帧.
+        val preview = createMediaProgressFramePreviewState(player, 384, 216, MediaData::suppliedFramePreview, cacheSize = 16) ?: return
         backgroundScope.launch(Dispatchers.Main) {
             settingsRepository.videoScaffoldConfig.flow.map { it.enableFramePreview }.distinctUntilChanged()
                 .collectLatest { enabled ->
@@ -800,7 +801,9 @@ class TvEpisodeViewModel(
                                     catch (e: CancellationException) { throw e }
                                     catch (_: Exception) { /* 预览不可用时仍可拖动进度条。 */ }
                                 }
-                                snapshotFlow { playbackInteraction.scrubMillis }.distinctUntilChanged().collectLatest { position ->
+                                // 顺序取帧: 按住调整时位置每 200ms 更新一次, 若用 collectLatest 会不断取消
+                                // 上一次尚未完成的解码, 导致预览帧永远停在预热帧或为空.
+                                snapshotFlow { playbackInteraction.scrubMillis }.distinctUntilChanged().collect { position ->
                                     if (position == null) preview.onPreviewFinished()
                                     else try { preview.requestFrame(position) }
                                     catch (e: CancellationException) { throw e }

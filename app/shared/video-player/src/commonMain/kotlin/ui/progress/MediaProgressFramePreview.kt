@@ -25,6 +25,7 @@ import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.FramePreview
 import org.openani.mediamp.features.PreviewFrame
 import org.openani.mediamp.source.MediaData
+import kotlin.math.abs
 
 /**
  * 进度条预览帧的状态: 悬浮 (桌面) 或拖动 (触摸) 进度条时, 加载并展示目标位置的视频帧.
@@ -69,8 +70,8 @@ class MediaProgressFramePreviewState(
         if (positionGridMillis > 0) positionMillis / positionGridMillis else positionMillis
 
     /**
-     * 请求加载 [positionMillis] 处的帧. 预期在 `collectLatest` 中调用: 拖动到新位置时旧请求会被取消.
-     * 缓存命中立即显示; 加载成功前保留上一帧, 避免闪烁.
+     * 请求加载 [positionMillis] 处的帧. 拖动时调用方会连续请求不同位置.
+     * 缓存命中立即显示; 解码期间先显示缓存里离目标最近的一帧, 避免一直挂着任意旧帧.
      */
     suspend fun requestFrame(positionMillis: Long) {
         val key = gridKeyOf(positionMillis)
@@ -80,6 +81,7 @@ class MediaProgressFramePreviewState(
             frameGridKey = key
             return
         }
+        showNearestCachedFrame(targetKey = key)
         isLoading = true
         try {
             delay(debounceMillis) // debounce: 快速滑动时, 更新的位置会取消本次请求
@@ -90,6 +92,32 @@ class MediaProgressFramePreviewState(
         } finally {
             isLoading = false
         }
+    }
+
+    /**
+     * 解码精确帧之前, 先显示缓存里离目标最近的一帧.
+     *
+     * 拖动时解码需要时间, 若一直挂着上一次的帧, 画面会与指示器明显不符; 从缓存里挑最近的帧
+     * 至少让占位画面贴近目标, 精确帧解码完成后再替换. 当前帧本身更近时保持不动,
+     * 避免在两帧缓存的中间位置来回切换.
+     */
+    private fun showNearestCachedFrame(targetKey: Long) {
+        val cached = cache.snapshot()
+        if (cached.isEmpty()) return
+        var bestKey: Long? = null
+        var bestDistance = Long.MAX_VALUE
+        for (key in cached.keys) {
+            val distance = abs(key - targetKey)
+            if (distance < bestDistance) {
+                bestDistance = distance
+                bestKey = key
+            }
+        }
+        val key = bestKey ?: return
+        if (frame != null && abs(frameGridKey - targetKey) <= bestDistance) return
+        val bitmap = cached[key] ?: return
+        frame = bitmap
+        frameGridKey = key
     }
 
     /**
@@ -174,12 +202,13 @@ fun createMediaProgressFramePreviewState(
      * returns one; resolved on every request, since the media changes under the same state.
      */
     mediaFramePreview: (MediaData) -> FramePreview? = { null },
+    cacheSize: Int = 8,
 ): MediaProgressFramePreviewState? {
     val feature = player.features[FramePreview] ?: return null
     return MediaProgressFramePreviewState(fetchFrame = { position ->
         val preview = player.mediaData.value?.let(mediaFramePreview) ?: feature
         preview.getPreviewFrame(position, maxWidth, maxHeight)?.toImageBitmap()
-    })
+    }, cacheSize = cacheSize)
 }
 
 /**
