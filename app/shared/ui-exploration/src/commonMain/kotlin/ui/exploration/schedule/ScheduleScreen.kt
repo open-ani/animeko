@@ -378,11 +378,11 @@ data class ScheduleScreenColors(
 object ScheduleScreenDefaults {
     @Composable
     fun colors(
-        tabRowColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        tabRowColor: Color = MaterialTheme.colorScheme.surface,
         tabSelectedContentColor: Color = contentColorFor(tabRowColor),
         tabUnselectedContentColor: Color = contentColorFor(tabRowColor),
         itemColors: ListItemColors = ListItemDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            containerColor = MaterialTheme.colorScheme.surface,
         ),
     ): ScheduleScreenColors = ScheduleScreenColors(
         tabRowContainerColor = tabRowColor,
@@ -431,7 +431,7 @@ private fun renderDayOfWeek(day: DayOfWeek, kind: ScheduleDay.Kind): String {
 @Preview
 fun PreviewSchedulePage() {
     ProvideCompositionLocalsForPreview {
-        Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+        Surface(color = MaterialTheme.colorScheme.surface) {
             ScheduleScreen(
                 presentation = createTestSchedulePagePresentation(),
                 onRetry = {},

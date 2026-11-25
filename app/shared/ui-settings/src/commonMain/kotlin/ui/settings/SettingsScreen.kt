@@ -282,7 +282,6 @@ fun SettingsScreen(
                 { navigateToTab(SettingsTab.PROFILE) },
                 onNavigateToEmailLogin,
                 Modifier.fillMaxWidth(),
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             )
 
             Title(stringResource(Lang.settings_category_app_ui))

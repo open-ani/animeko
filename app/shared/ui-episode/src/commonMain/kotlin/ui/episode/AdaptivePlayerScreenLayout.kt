@@ -117,7 +117,7 @@ fun AdaptivePlayerScreenScaffold(
     comments: @Composable AdaptivePlayerScreenScope.() -> Unit,
     supporting: @Composable AdaptivePlayerScreenScope.() -> Unit,
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     val layoutParamsState = rememberUpdatedState(

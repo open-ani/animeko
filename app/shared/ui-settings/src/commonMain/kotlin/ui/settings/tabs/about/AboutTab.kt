@@ -279,7 +279,7 @@ val TestAboutTabInfo
 @Preview
 private fun PreviewAboutTab() {
     ProvideCompositionLocalsForPreview {
-        Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+        Surface(color = MaterialTheme.colorScheme.surface) {
             AboutTab(
                 TestAboutTabInfo, {}, {}, {}, {}, {}, {}, {}, {},
             )

@@ -435,7 +435,7 @@ data class ListDetailLayoutParameters(
                     detailPaneContentStartPadding = windowSizeClass.paneHorizontalPadding,
                     detailPaneContentEndPadding = windowSizeClass.paneHorizontalPadding,
                     detailPaneShape = RectangleShape,
-                    detailPaneColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+                    detailPaneColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     preferSinglePane = true,
                 )
             }

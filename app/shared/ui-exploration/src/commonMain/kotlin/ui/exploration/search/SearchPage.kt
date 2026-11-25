@@ -512,15 +512,15 @@ internal fun SearchPageListDetailScaffold(
                 windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                 scrollBehavior = topAppBarScrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
                 ),
             )
         },
         listPaneContent = {
             Scaffold(
                 floatingActionButton = { navigateToTopButton() },
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                containerColor = MaterialTheme.colorScheme.surface,
             ) { _ ->
                 Column(
                     modifier = Modifier
@@ -540,7 +540,7 @@ internal fun SearchPageListDetailScaffold(
             }
         },
         detailPane = detailContent,
-        modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainerLowest),
+        modifier = modifier.background(MaterialTheme.colorScheme.surface),
         useSharedTransition = false,
         scaffoldValue = if (!hasSelectedItem) {
             ThreePaneScaffoldValue(
@@ -612,7 +612,7 @@ fun PreviewSearchPageError() = ProvideCompositionLocalsForPreview {
 @Composable
 @PreviewLightDark
 fun PreviewSearchPageResultColumn() = ProvideCompositionLocalsForPreview {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+    Surface(color = MaterialTheme.colorScheme.surface) {
         val state = createTestFinishedSubjectSearchState()
         SearchResultColumn(
             items = state.collectItemsWithLifecycle(),
@@ -636,7 +636,7 @@ fun PreviewSearchPageResultColumn() = ProvideCompositionLocalsForPreview {
 @Composable
 @OptIn(TestOnly::class)
 private fun PreviewSearchPageImpl(state: SearchPageState = createTestSearchPageState()) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+    Surface(color = MaterialTheme.colorScheme.surface) {
         SearchPage(
             state = state,
             onIntent = {},

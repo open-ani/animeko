@@ -276,7 +276,7 @@ fun MainViewController(app: AniIosApplication): UIViewController {
                         LocalPlatformWindow provides platformWindow,
                     ) {
                         Box(
-                            Modifier.background(color = MaterialTheme.colorScheme.surfaceContainerLowest)
+                            Modifier.background(color = MaterialTheme.colorScheme.surface)
                                 .fillMaxSize(),
                         ) {
                             Box(Modifier.fillMaxSize()) {
