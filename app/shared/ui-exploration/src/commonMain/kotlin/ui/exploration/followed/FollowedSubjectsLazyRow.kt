@@ -267,7 +267,7 @@ object FollowedSubjectsDefaults {
 @Composable
 @PreviewLightDark
 fun PreviewFollowedSubjectsLazyRow() = ProvideCompositionLocalsForPreview {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+    Surface(color = MaterialTheme.colorScheme.surface) {
         FollowedSubjectsLazyRow(
             items = rememberTestLazyPagingItems(TestFollowedSubjectInfos),
             onClick = {},

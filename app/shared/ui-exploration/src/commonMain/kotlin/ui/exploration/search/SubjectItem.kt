@@ -158,7 +158,7 @@ object SubjectItemDefaults {
 
     @Composable
     fun colors(
-        containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        containerColor: Color = MaterialTheme.colorScheme.surface,
         selectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     ) = SubjectItemColors(containerColor, selectedContainerColor)
 }

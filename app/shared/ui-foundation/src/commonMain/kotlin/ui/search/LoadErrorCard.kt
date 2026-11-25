@@ -322,7 +322,7 @@ private fun PreviewLoadErrorCard() {
 @Composable
 private fun PreviewLoadErrorCardImpl(error: LoadError?) {
     ProvideCompositionLocalsForPreview {
-        Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+        Surface(color = MaterialTheme.colorScheme.surface) {
             LoadErrorCard(error, {}, Modifier.padding(all = 16.dp), {})
         }
     }

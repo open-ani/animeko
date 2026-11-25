@@ -340,12 +340,12 @@ private fun LazyGridItemScope.SearchResultColumnScopeImpl(
                 ListItem(
                     headlineContent = { Text(noResultsText) },
                     modifier = modifier1,
-                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
                 )
             }
 
             itemsState.value.hasFirstPage -> {
-                Surface(modifier1, color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+                Surface(modifier1, color = MaterialTheme.colorScheme.surface) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.aligned(Alignment.CenterVertically),

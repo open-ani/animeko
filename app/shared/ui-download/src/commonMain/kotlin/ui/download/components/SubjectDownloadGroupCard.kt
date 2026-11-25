@@ -70,7 +70,7 @@ fun SubjectDownloadGroupCard(
         when {
             selected -> MaterialTheme.colorScheme.secondaryContainer
             selectionMode && allEntriesSelected -> MaterialTheme.colorScheme.surfaceContainer
-            else -> MaterialTheme.colorScheme.surfaceContainerLowest
+            else -> MaterialTheme.colorScheme.surface
         },
     )
     Surface(

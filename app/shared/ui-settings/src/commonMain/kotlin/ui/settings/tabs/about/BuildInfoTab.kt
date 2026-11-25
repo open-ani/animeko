@@ -205,7 +205,7 @@ val TestBuildInfo
 @Preview
 private fun PreviewBuildInfoTab() {
     ProvideCompositionLocalsForPreview {
-        Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+        Surface(color = MaterialTheme.colorScheme.surface) {
             BuildInfoTab(TestBuildInfo)
         }
     }

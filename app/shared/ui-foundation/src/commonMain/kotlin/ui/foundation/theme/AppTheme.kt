@@ -112,13 +112,13 @@ object AniThemeDefaults {
         @Composable get() = MaterialTheme.colorScheme.surfaceContainer
 
     val pageContentBackgroundColor
-        @Composable get() = MaterialTheme.colorScheme.surfaceContainerLowest
+        @Composable get() = MaterialTheme.colorScheme.surface
 
     /**
      * 默认的 [TopAppBarColors], 期望用于 [pageContentBackgroundColor] 的容器之内
      */
     @Composable
-    fun topAppBarColors(containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest): TopAppBarColors =
+    fun topAppBarColors(containerColor: Color = pageContentBackgroundColor): TopAppBarColors =
         TopAppBarDefaults.topAppBarColors(
             containerColor = containerColor,
             scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,

@@ -85,7 +85,7 @@ fun PlayingEpisodeSummaryRow(
     onClickDownload: () -> Unit,
     collectionButton: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
 ) {
     val shareText = stringResource(Lang.episode_summary_share)
     val downloadText = stringResource(Lang.episode_summary_download)
