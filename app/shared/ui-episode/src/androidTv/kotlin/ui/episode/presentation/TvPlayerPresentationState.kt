@@ -35,6 +35,13 @@ import org.openani.mediamp.PlayerState
 
 internal data class TvPlayerOverlayState(
     val controlsVisible: Boolean = true,
+    /**
+     * 精简控制层: 只显示时间轴与画面预览, 不出现标题栏/胶囊行/图标行.
+     *
+     * 控制层隐藏时按 ←/→ 调整进度会唤出精简控制层; 展开完整控制层时清除.
+     * 收起控制层时保留原值, 让退出动画保持当前形态, 不会闪回完整控制层.
+     */
+    val timelineOnly: Boolean = false,
     val interactionGeneration: Int = 0,
     val stripExpanded: Boolean = false,
     val recommendationsVisible: Boolean = false,
@@ -119,10 +126,18 @@ internal class TvPlayerPresentationState(
     var danmakuAdjustment by mutableStateOf<TvDanmakuAdjustment?>(null)
     var matchReturnSource by mutableStateOf<DanmakuServiceId?>(null)
     var statsVisible by mutableStateOf(false)
+
+    /** 松键后的待提交目标; 空闲期 (见 [SCRUB_INPUT_IDLE_MILLIS]) 内再次按下方向键会取消它, 继续本次调整. */
+    var pendingScrubCommitMillis by mutableStateOf<Long?>(null)
+        private set
     private var episodeId: Int? = null
     private var roomIdentity: Pair<Boolean, String>? = null
     private var trackingConfirm = false
     private var firedConfirm = false
+    private var lastScrubAdvanceMillis = Long.MIN_VALUE
+    private var scrubHoldStartMillis = Long.MIN_VALUE
+    private var scrubHoldForward: Boolean? = null
+    private var lastScrubKeyEventMillis = Long.MIN_VALUE
 
     /** Correlation is opaque to the VM: only this originating surface may consume its result. */
     fun tagRequest(intent: TvEpisodeIntent): TvEpisodeIntent = when (intent) {
@@ -170,6 +185,7 @@ internal class TvPlayerPresentationState(
                 val expanded = !state.value.stripExpanded
                 state.value = state.value.copy(
                     controlsVisible = true,
+                    timelineOnly = false,
                     recommendationsVisible = false,
                     stripExpanded = expanded,
                     activePanel = null,
@@ -185,6 +201,7 @@ internal class TvPlayerPresentationState(
                 clearPreview()
                 state.value = state.value.copy(
                     controlsVisible = true,
+                    timelineOnly = false,
                     recommendationsVisible = false,
                     sourceDialogVisible = false,
                     surfaceId = state.value.surfaceId + 1,
@@ -202,6 +219,7 @@ internal class TvPlayerPresentationState(
                     sourceDialogVisible = true,
                     surfaceId = state.value.surfaceId + 1,
                     controlsVisible = true,
+                    timelineOnly = false,
                     recommendationsVisible = false,
                     stripExpanded = false,
                     activePanel = null,
@@ -217,6 +235,7 @@ internal class TvPlayerPresentationState(
                     dialog = intent.dialog,
                     surfaceId = state.value.surfaceId + 1,
                     controlsVisible = true,
+                    timelineOnly = false,
                     recommendationsVisible = false,
                     activePanel = state.value.activePanel.takeIf {
                         intent.dialog == TvPlayerDialog.DanmakuList || intent.dialog == TvPlayerDialog.DanmakuMatch
@@ -275,6 +294,7 @@ internal class TvPlayerPresentationState(
     }
 
     private fun clearPreview() {
+        cancelPendingScrubCommit()
         if (state.value.scrubMillis != null) execute(TvPlaybackCommand.PreviewSeek(null))
     }
 
@@ -290,6 +310,7 @@ internal class TvPlayerPresentationState(
         clearPreview()
         state.value = state.value.copy(
             controlsVisible = true,
+            timelineOnly = false,
             recommendationsVisible = false,
             sourceDialogVisible = false,
             dialog = null,
@@ -304,6 +325,11 @@ internal class TvPlayerPresentationState(
         if (playback().playerState.isPlaying && state.value.canAutoHide) hideControls()
     }
 
+    /** 精简时间轴是调整进度的即时反馈, 手势结束后短暂停留即收起. */
+    fun autoHideTimeline() {
+        if (state.value.timelineOnly && state.value.scrubMillis == null) hideControls()
+    }
+
     private fun bump() {
         state.value = state.value.copy(interactionGeneration = state.value.interactionGeneration + 1)
     }
@@ -311,7 +337,7 @@ internal class TvPlayerPresentationState(
     private fun showControls() {
         releaseHeldSpeed()
         clearPreview()
-        state.value = state.value.copy(controlsVisible = true, recommendationsVisible = false)
+        state.value = state.value.copy(controlsVisible = true, timelineOnly = false, recommendationsVisible = false)
         bump()
         focus.trySend(TvPlayerFocusRequest.SeekBar)
     }
@@ -342,12 +368,75 @@ internal class TvPlayerPresentationState(
         execute(TvPlaybackCommand.PreviewBy(deltaMillis))
         state.value = state.value.copy(
             controlsVisible = true,
+            // 控制层隐藏时进入调整只显示时间轴; 完整控制层内的调整保持完整.
+            timelineOnly = state.value.timelineOnly || !state.value.controlsVisible,
             recommendationsVisible = false,
             activePanel = null,
             stripExpanded = false,
         )
         bump()
         focus.trySend(TvPlayerFocusRequest.SeekBar)
+    }
+
+    /**
+     * 按住 ←/→ 期间推进预览点: 方向键事件节流到 [SCRUB_REPEAT_INTERVAL_MILLIS] 一次;
+     * 步长按按住时长加大, 单击 (首次按下) 永远是一档基础步长.
+     *
+     * 遥控器/输入链路可能把长按拆成连续的按下事件 (repeatCount 恒为 0), 因此用事件间隔
+     * 判断是否同一次按住: 间隔不超过 [SCRUB_INPUT_IDLE_MILLIS] 视为继续, 否则从基础步长重新开始.
+     * 换方向同样重置, 让过度快进后能立刻精细回退.
+     */
+    private fun moveScrubByKey(forward: Boolean, event: TvPlayerAction.RemoteKey) {
+        val now = event.eventTimeMillis
+        cancelPendingScrubCommit()
+        val continuing = forward == scrubHoldForward && now - lastScrubKeyEventMillis <= SCRUB_INPUT_IDLE_MILLIS
+        lastScrubKeyEventMillis = now
+        if (!continuing) {
+            scrubHoldForward = forward
+            scrubHoldStartMillis = now
+            advanceScrub(forward, stepForHold(heldMillis = 0), now)
+            return
+        }
+        if (now - lastScrubAdvanceMillis < SCRUB_REPEAT_INTERVAL_MILLIS) return
+        advanceScrub(forward, stepForHold(now - scrubHoldStartMillis), now)
+    }
+
+    private fun advanceScrub(forward: Boolean, stepMillis: Long, eventTimeMillis: Long) {
+        lastScrubAdvanceMillis = eventTimeMillis
+        moveScrub(if (forward) stepMillis else -stepMillis)
+    }
+
+    /** 按住时长对应的每步步长: 先精密后快速, 长片也不会失控. */
+    private fun stepForHold(heldMillis: Long): Long = when {
+        heldMillis < 1_000 -> 5_000L // 首秒保持单击步长
+        heldMillis < 3_000 -> 10_000L
+        heldMillis < 6_000 -> 30_000L
+        else -> 60_000L
+    }
+
+    /**
+     * 松开 ←/→: 记录提交目标, 等短暂空闲再真正 seek.
+     *
+     * 输入链路可能把长按拆成"按下-松开"的连续事件, 立即提交会导致连发期间不停 seek;
+     * 空闲期 (见 [SCRUB_INPUT_IDLE_MILLIS]) 内再次按下方向键会取消提交, 继续本次调整.
+     * 提交后预览点保留到界面位置追上目标 (由 VM 清除), 避免指示器与时间回跳.
+     */
+    private fun scheduleScrubCommit(event: TvPlayerAction.RemoteKey) {
+        lastScrubKeyEventMillis = event.eventTimeMillis
+        pendingScrubCommitMillis = state.value.scrubMillis ?: return
+    }
+
+    /** 空闲窗口结束: 提交松键时记录的目标位置. */
+    fun commitPendingScrub() {
+        val preview = pendingScrubCommitMillis ?: return
+        pendingScrubCommitMillis = null
+        if (state.value.scrubMillis != preview) return
+        execute(TvPlaybackCommand.SeekTo(preview))
+        bump()
+    }
+
+    private fun cancelPendingScrubCommit() {
+        pendingScrubCommitMillis = null
     }
 
     private fun togglePause() {
@@ -373,7 +462,9 @@ internal class TvPlayerPresentationState(
             }
 
             state.value.scrubMillis != null -> {
-                clearPreview(); bump()
+                clearPreview()
+                // 精简控制层随预览取消一并收起; 完整控制层保持显示.
+                if (state.value.timelineOnly) hideControls() else bump()
             }
 
             state.value.stripExpanded -> {
@@ -393,6 +484,7 @@ internal class TvPlayerPresentationState(
         clearPreview()
         state.value = state.value.copy(
             controlsVisible = true,
+            timelineOnly = false,
             recommendationsVisible = true,
             stripExpanded = false,
             activePanel = null,
@@ -456,24 +548,26 @@ internal class TvPlayerPresentationState(
             if (isDown) bump()
             return !event.sidebarFocused && key in navigationKeys
         }
+        // 画面预览: ←/→ 按住期间移动预览点, 松键后短暂空闲即提交; 返回/↑↓ 取消, 确认=播停.
         if (state.value.scrubMillis != null) {
             when (key) {
-                TvRemoteKey.Left, TvRemoteKey.Right -> if (isDown) moveScrub(if (key == TvRemoteKey.Right) 5_000 else -5_000)
-                TvRemoteKey.Confirm -> if (isNewPress) {
-                    execute(TvPlaybackCommand.SeekTo(state.value.scrubMillis!!))
-                    clearPreview()
-                    bump()
+                TvRemoteKey.Left, TvRemoteKey.Right -> if (isDown) {
+                    moveScrubByKey(forward = key == TvRemoteKey.Right, event)
+                } else {
+                    scheduleScrubCommit(event)
                 }
 
+                TvRemoteKey.Confirm -> if (isNewPress) togglePause()
                 TvRemoteKey.Up, TvRemoteKey.Down -> if (isNewPress) {
                     clearPreview()
-                    bump()
+                    if (state.value.timelineOnly) showControls() else bump()
                 }
 
                 else -> return false
             }
             return true
         }
+        // 控制层隐藏: 确认短按=播↔停/长按=倍速; ←/→ 调整进度 (只显示时间轴); ↑↓ 唤出控制层.
         if (!state.value.controlsVisible) {
             when (key) {
                 TvRemoteKey.Confirm -> {
@@ -492,8 +586,19 @@ internal class TvPlayerPresentationState(
                     }
                 }
 
-                TvRemoteKey.Left, TvRemoteKey.Right -> if (isDown) moveScrub(if (key == TvRemoteKey.Right) 5_000 else -5_000)
+                TvRemoteKey.Left, TvRemoteKey.Right -> if (isDown) moveScrubByKey(forward = key == TvRemoteKey.Right, event)
                 TvRemoteKey.Up, TvRemoteKey.Down -> if (isNewPress) showControls()
+                else -> return false
+            }
+            return true
+        }
+        // 精简时间轴: 继续调整进度, ↑↓ 展开完整控制层, 确认=播停.
+        if (state.value.timelineOnly) {
+            if (isDown) bump()
+            when (key) {
+                TvRemoteKey.Left, TvRemoteKey.Right -> if (isDown) moveScrubByKey(forward = key == TvRemoteKey.Right, event)
+                TvRemoteKey.Up, TvRemoteKey.Down -> if (isNewPress) showControls()
+                TvRemoteKey.Confirm -> if (isNewPress) togglePause()
                 else -> return false
             }
             return true
@@ -502,7 +607,7 @@ internal class TvPlayerPresentationState(
         if (event.seekBarFocused) {
             when (key) {
                 TvRemoteKey.Left, TvRemoteKey.Right -> {
-                    if (isDown) moveScrub(if (key == TvRemoteKey.Right) 5_000 else -5_000)
+                    if (isDown) moveScrubByKey(forward = key == TvRemoteKey.Right, event)
                     return true
                 }
 
@@ -574,6 +679,16 @@ internal class TvPlayerPresentationState(
 
         private val navigationKeys =
             setOf(TvRemoteKey.Left, TvRemoteKey.Right, TvRemoteKey.Up, TvRemoteKey.Down, TvRemoteKey.Confirm)
+
+        /** 按住方向键调整进度时预览点的最小推进间隔 (系统按键连发约 50ms 一次, 全量处理会让数字闪烁). */
+        private const val SCRUB_REPEAT_INTERVAL_MILLIS = 200L
+
+        /**
+         * 方向键事件间隔不超过该值视为同一次按住; 松键后空闲同样时长再提交 seek.
+         *
+         * 部分遥控器/输入链路把长按拆成连续的按下事件 (repeatCount 恒为 0), 不能依赖连发计数.
+         */
+        internal const val SCRUB_INPUT_IDLE_MILLIS = 300L
     }
 }
 
