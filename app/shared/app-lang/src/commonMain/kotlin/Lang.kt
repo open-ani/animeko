@@ -23,4 +23,5 @@ val SupportedLocales = listOf(
     Locale("zh-HK"),
     Locale("zh-TW"),
     Locale("en"),
+    Locale("fa"),
 )
