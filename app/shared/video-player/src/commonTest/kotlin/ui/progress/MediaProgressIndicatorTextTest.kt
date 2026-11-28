@@ -34,6 +34,17 @@ class MediaProgressIndicatorTextTest {
     }
 
     @Test
+    fun `unknown total formats resumed position as minutes and seconds`() {
+        assertEquals("12:13 / 00:00", renderSeconds(733, null))
+    }
+
+    @Test
+    fun `unknown total formats hour long position and reserves enough width`() {
+        assertEquals("01:01:01 / 00:00:00", renderSeconds(3661, null))
+        assertEquals("88:88:88 / 88:88:88", renderSecondsReserve(null, includeRemaining = false, currentSecs = 3661))
+    }
+
+    @Test
     fun `reserve only includes remaining time in expanded mode`() {
         assertEquals("88:88 / 88:88", renderSecondsReserve(100, includeRemaining = false))
         assertEquals("88:88 / 88:88 (-88:88)", renderSecondsReserve(100, includeRemaining = true))

@@ -39,8 +39,31 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ApiVideoMediaResolverTest {
+    @Test
+    fun `download resolution through a resolver chain requests the original video`() = runTest {
+        val source = FakeSource(
+            "json-api-1",
+            resolveDownload = { WebVideo("https://cdn.test/original.mkv", emptyMap()) },
+        ) { error("Playback resolution must not be used for downloads") }
+        val resolver = MediaResolver.from(resolverOf(source))
+        val provider = resolver.resolveForDownload(apiVideoMedia(), episode) as HttpStreamingMediaDataProvider
+        assertEquals("https://cdn.test/original.mkv", provider.uri)
+    }
+
+    @Test
+    fun `resolved provider carries the server session cleanup`() = runTest {
+        var closes = 0
+        val source = FakeSource("json-api-1") {
+            WebVideo("https://cdn.test/master.m3u8", emptyMap(), onClose = { closes++ })
+        }
+        val provider = resolverOf(source).resolve(apiVideoMedia(), episode)
+        provider.onClose!!()
+        assertEquals(1, closes)
+    }
+
     private class FakeSource(
         override val mediaSourceId: String,
+        private val resolveDownload: (suspend (Media) -> WebVideo?)? = null,
         private val resolve: suspend (Media) -> WebVideo?,
     ) : MediaSource, ApiVideoResolver {
         override val kind: MediaSourceKind get() = MediaSourceKind.WEB
@@ -48,6 +71,8 @@ class ApiVideoMediaResolverTest {
         override suspend fun checkConnection(): ConnectionStatus = ConnectionStatus.SUCCESS
         override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> = emptySizedSource()
         override suspend fun resolveApiVideo(media: Media): WebVideo? = resolve(media)
+        override suspend fun resolveApiVideoForDownload(media: Media): WebVideo? =
+            resolveDownload?.invoke(media) ?: resolve(media)
     }
 
     private fun apiVideoMedia(mediaSourceId: String = "json-api-1") = DefaultMedia(

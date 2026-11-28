@@ -10,12 +10,15 @@
 package me.him188.ani.app.domain.episode
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.IOException
 import me.him188.ani.app.data.models.preference.HlsAdFilteringMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.TestMediaList
@@ -44,10 +47,58 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class PlayerSessionHlsPlaybackPreparerTest {
+    @Test
+    fun `loading failure releases the resolved server session`() = runTest {
+        var closes = 0
+        val session = createPlayerSession(
+            mode = HlsAdFilteringMode.ALL,
+            preparer = RecordingHlsPlaybackPreparer(IOException("Failed to prepare playlist")),
+            onMediaClose = { closes++ },
+        )
+        session.loadMedia(TestMediaList.first(), episode)
+        runCurrent()
+        assertEquals(1, closes)
+        session.close()
+        runCurrent()
+        assertEquals(1, closes)
+    }
+
+    @Test
+    fun `cancelled loading releases the resolved server session`() = runTest {
+        var closes = 0
+        val session = createPlayerSession(
+            mode = HlsAdFilteringMode.ALL,
+            preparer = RecordingHlsPlaybackPreparer(CancellationException("Loading cancelled")),
+            onMediaClose = { closes++ },
+        )
+        assertFailsWith<CancellationException> { session.loadMedia(TestMediaList.first(), episode) }
+        runCurrent()
+        assertEquals(1, closes)
+    }
+
+    @Test
+    fun `releases server sessions on replacement and repeated close with proxied media`() = runTest {
+        var closes = 0
+        val session = createPlayerSession(
+            mode = HlsAdFilteringMode.ALL,
+            preparer = RecordingHlsPlaybackPreparer(),
+            onMediaClose = { closes++ },
+        )
+        session.loadMedia(TestMediaList.first(), episode)
+        session.loadMedia(TestMediaList.first(), episode)
+        runCurrent()
+        assertEquals(1, closes)
+        session.stopPlayback()
+        session.close()
+        runCurrent()
+        assertEquals(2, closes)
+    }
+
     private val episode = EpisodeMetadata(title = "EP1", ep = EpisodeSort(1), sort = EpisodeSort(1))
 
     @Test
@@ -197,6 +248,7 @@ class PlayerSessionHlsPlaybackPreparerTest {
         mode: HlsAdFilteringMode,
         preparer: HlsPlaybackPreparer,
         sourceTags: List<String> = emptyList(),
+        onMediaClose: (suspend () -> Unit)? = null,
     ): PlayerSession {
         val koin = Koin()
         koin.loadModules(
@@ -208,6 +260,7 @@ class PlayerSessionHlsPlaybackPreparerTest {
                                 "https://example.com/original.m3u8",
                                 mapOf("User-Agent" to "AnimekoTest"),
                             ),
+                            onMediaClose,
                         )
                     }
                     single<GetVideoScaffoldConfigUseCase> {
@@ -241,12 +294,14 @@ class PlayerSessionHlsPlaybackPreparerTest {
 
     private class StaticMediaResolver(
         private val data: UriMediaData,
+        private val onMediaClose: (suspend () -> Unit)?,
     ) : MediaResolver {
         override fun supports(media: Media): Boolean = true
 
         override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> {
             return object : MediaDataProvider<UriMediaData> {
                 override val extraFiles: MediaExtraFiles = MediaExtraFiles.EMPTY
+                override val onClose: (suspend () -> Unit)? = onMediaClose
 
                 override suspend fun open(scopeForCleanup: CoroutineScope): UriMediaData {
                     return data
@@ -255,7 +310,7 @@ class PlayerSessionHlsPlaybackPreparerTest {
         }
     }
 
-    private class RecordingHlsPlaybackPreparer : HlsPlaybackPreparer {
+    private class RecordingHlsPlaybackPreparer(private val failure: Throwable? = null) : HlsPlaybackPreparer {
         val sessions = mutableListOf<RecordingHlsPlaybackProxySession>()
         val options = mutableListOf<HlsPlaybackOptions>()
         val startPositionHints = mutableListOf<Long?>()
@@ -266,6 +321,7 @@ class PlayerSessionHlsPlaybackPreparerTest {
             options: HlsPlaybackOptions,
             startPositionHintMillis: Long?,
         ): HlsPlaybackPreparerResult {
+            failure?.let { throw it }
             this.options += options
             startPositionHints += startPositionHintMillis
             val session = RecordingHlsPlaybackProxySession()

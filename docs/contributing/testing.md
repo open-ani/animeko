@@ -77,6 +77,10 @@ PR 的 CI 总是会运行 instrumented test，如果 CI 报错才需要本地运
 
 ## UI 单元测试
 
+`runAniComposeUiTest` 在桌面测试、iOS 测试和 Android 设备测试中执行 UI 交互。
+Android Host 测试的 stub SDK 不提供 Activity 和绘制环境；此时使用 JUnit assumption 将 UI 用例标记为跳过，
+计算与状态测试继续执行。配置了真实 Android 运行时的设备或 Robolectric 环境可以执行 UI 用例。
+
 在 `commonTest` 中可以编写 UI 测试。UI 测试使用 Compose Multiplatform 的测试框架，可以在所有平台运行。API
 非常类似 Jetpack Compose 的测试框架。
 

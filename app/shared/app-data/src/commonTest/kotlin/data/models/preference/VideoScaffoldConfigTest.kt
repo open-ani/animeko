@@ -17,6 +17,15 @@ import kotlin.time.Duration.Companion.seconds
 
 class VideoScaffoldConfigTest {
     @Test
+    fun `subtitle size defaults to normal and survives settings serialization`() {
+        assertEquals(1f, DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}").subtitleFontScale)
+        val config = VideoScaffoldConfig.Default.copy(subtitleFontScale = 1.75f)
+        val decoded = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(),
+            DataStoreJson.encodeToString(VideoScaffoldConfig.serializer(), config))
+        assertEquals(1.75f, decoded.subtitleFontScale)
+    }
+
+    @Test
     fun `foldable hover mode defaults to enabled and survives serialization`() {
         val defaultConfig = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
         assertEquals(true, defaultConfig.enableFoldableHoverMode)

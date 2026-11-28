@@ -12,14 +12,16 @@ package me.him188.ani.datasources.jellyfin
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
+import io.ktor.client.request.request
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.MediaExtraFiles
@@ -48,6 +50,7 @@ private const val TYPE_SERIES = "Series"
 private const val TITLE_SEARCH_PAGE_SIZE = 50
 private const val TITLE_SEARCH_MAX_PAGES = 4
 private const val TITLE_SEARCH_ITEM_TYPES = "$TYPE_SERIES,$TYPE_SEASON,$TYPE_EPISODE,$TYPE_MOVIE"
+private const val MEDIA_STREAMS_BATCH_SIZE = 50
 private const val FIELD_PROVIDER_IDS = "ProviderIds"
 private const val PROVIDER_ID_BANGUMI = "Bangumi"
 private const val PROVIDER_ID_BANGUMI_SUBJECT = "BangumiSubject"
@@ -64,6 +67,15 @@ abstract class BaseJellyfinMediaSource(
     )
 
     protected abstract suspend fun getAuthorization(): Authorization
+
+    protected open fun getMediaId(itemId: String): String = itemId
+
+    protected open fun apiParameterName(name: String): String = name
+
+    protected open val searchUsingBaseTitle: Boolean = false
+
+    protected open fun getDownloadLocation(itemId: String, accessToken: String): ResourceLocation =
+        ResourceLocation.HttpStreamingFile(getDownloadUri(itemId, accessToken))
 
     /**
      * Invalidates [authorization] after the server rejects it.
@@ -89,7 +101,7 @@ abstract class BaseJellyfinMediaSource(
 
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> {
         return SinglePagePagedSource {
-            val matches = findBySubjectNames(query)
+            val matches = hydrateMediaStreams(findBySubjectNames(query))
             val authorization = getAuthorization()
             matches
                 .mapNotNull { it.toMediaMatch(query, authorization.accessToken) }
@@ -105,21 +117,25 @@ abstract class BaseJellyfinMediaSource(
      */
     private suspend fun findBySubjectNames(query: MediaFetchRequest): List<MatchedItem> {
         val fallbackMatches = linkedMapOf<String, MatchedItem>()
+        val discovery = DiscoveryCache()
+        val searches = createSubjectSearches(query.subjectNames)
 
-        for (subjectSearch in createSubjectSearches(query.subjectNames)) {
-            val searchResults = searchByTitle(subjectSearch.name)
+        for (subjectSearch in searches) {
+            val searchTerm = if (searchUsingBaseTitle) parseSubjectName(subjectSearch.name).baseName else subjectSearch.name
+            val searchResults = discovery.titles.getOrPut(searchTerm) { searchByTitle(searchTerm) }
 
             if (searchResults.isEmpty()) {
                 continue
             }
 
-            val preferredCandidates = searchResults.preferredCandidatesFor(subjectSearch.name)
+            val preferredCandidates = searchResults.preferredCandidatesFor(subjectSearch.name, searches.map { it.name })
             val preferredMatches = findRequestedItems(
                 preferredCandidates,
                 query,
                 subjectSearch.targetSeason,
                 subjectSearch.name,
                 subjectSearch.isExplicitSeasonTitle,
+                discovery,
             )
             val matches = if (preferredMatches.isNotEmpty()) {
                 preferredMatches
@@ -132,6 +148,7 @@ abstract class BaseJellyfinMediaSource(
                     subjectSearch.targetSeason,
                     subjectSearch.name,
                     subjectSearch.isExplicitSeasonTitle,
+                    discovery,
                 )
             }
 
@@ -139,7 +156,7 @@ abstract class BaseJellyfinMediaSource(
                 continue
             }
 
-            hydrateMediaStreams(matches).forEach { match ->
+            matches.forEach { match ->
                 val existing = fallbackMatches[match.item.Id]
                 if (existing == null || match.confidence > existing.confidence) {
                     fallbackMatches[match.item.Id] = match
@@ -188,8 +205,10 @@ abstract class BaseJellyfinMediaSource(
     /**
      * Prefer the narrowest exact container so a season title does not expand the whole series.
      */
-    private fun List<Item>.preferredCandidatesFor(subjectName: String): List<Item> {
-        val exactMatches = filter { it.hasExactTitle(subjectName) }
+    private fun List<Item>.preferredCandidatesFor(subjectName: String, subjectNames: List<String>): List<Item> {
+        val exactMatches = filter { it.hasExactTitle(subjectName) }.ifEmpty {
+            filter { item -> subjectNames.any { item.hasExactTitle(it) } }
+        }
         if (exactMatches.isEmpty()) return this
 
         return exactMatches.filter { it.Type == TYPE_SEASON }
@@ -198,12 +217,21 @@ abstract class BaseJellyfinMediaSource(
             .ifEmpty { exactMatches.filter { it.Type == TYPE_EPISODE } }
     }
 
+    /** One fetch shares container responses across aliases; subsequent fetches read the server again. */
+    private class DiscoveryCache {
+        val titles = mutableMapOf<String, List<Item>>()
+        val seasons = mutableMapOf<String, List<Item>>()
+        val episodes = mutableMapOf<Pair<String, Int>, List<Item>>()
+        val children = mutableMapOf<String, List<Item>>()
+    }
+
     private suspend fun findRequestedItems(
         candidates: List<Item>,
         query: MediaFetchRequest,
         targetSeason: Int?,
         searchName: String,
         isExplicitSeasonTitle: Boolean,
+        discovery: DiscoveryCache,
     ): List<MatchedItem> {
         return buildList {
             for (candidate in candidates) {
@@ -233,7 +261,9 @@ abstract class BaseJellyfinMediaSource(
 
                 val requestedItems: List<RequestedItem> = when (candidate.Type) {
                     TYPE_SERIES -> {
-                        val seasons = doGetSeasons(seriesId = candidate.Id).Items
+                        val seasons = discovery.seasons.getOrPut(candidate.Id) {
+                            doGetSeasons(seriesId = candidate.Id).Items
+                        }
                         val seriesSubjectMatch = candidate.seriesSubjectIdMatch(query)
                         val matchesExplicitSeasonTitle =
                             isExplicitSeasonTitle && candidate.hasExactContainerTitle(searchName)
@@ -273,15 +303,16 @@ abstract class BaseJellyfinMediaSource(
                             buildList {
                                 for ((season, inheritedSubjectMatch) in matchedSeasons) {
                                     val episodeItems = season.IndexNumber?.let { seasonNumber ->
-                                        doGetEpisodes(
-                                            seriesId = candidate.Id,
-                                            seasonNum = seasonNumber,
+                                        discovery.episodes.getOrPut(candidate.Id to seasonNumber) {
+                                            doGetEpisodes(seriesId = candidate.Id, seasonNum = seasonNumber).Items
+                                        }
+                                    } ?: discovery.children.getOrPut(season.Id) {
+                                        doSearch(
+                                            parentId = season.Id,
+                                            fields = FIELD_PROVIDER_IDS,
+                                            enableTotalRecordCount = false,
                                         ).Items
-                                    } ?: doSearch(
-                                        parentId = season.Id,
-                                        fields = FIELD_PROVIDER_IDS,
-                                        enableTotalRecordCount = false,
-                                    ).Items
+                                    }
                                     episodeItems
                                         .filter(Item::isPlayableSearchResult)
                                         .forEach { item ->
@@ -296,11 +327,13 @@ abstract class BaseJellyfinMediaSource(
                                 }
                             }
                         } else {
-                            doSearch(
-                                parentId = candidate.Id,
-                                fields = FIELD_PROVIDER_IDS,
-                                enableTotalRecordCount = false,
-                            ).Items
+                            discovery.children.getOrPut(candidate.Id) {
+                                doSearch(
+                                    parentId = candidate.Id,
+                                    fields = FIELD_PROVIDER_IDS,
+                                    enableTotalRecordCount = false,
+                                ).Items
+                            }
                                 .filter(Item::isPlayableSearchResult)
                                 .filter { item ->
                                     val itemSubjectMatch = item.containerSubjectIdMatch(query)
@@ -320,11 +353,13 @@ abstract class BaseJellyfinMediaSource(
                     }
 
                     TYPE_SEASON -> {
-                        doSearch(
-                            parentId = candidate.Id,
-                            fields = FIELD_PROVIDER_IDS,
-                            enableTotalRecordCount = false,
-                        ).Items
+                        discovery.children.getOrPut(candidate.Id) {
+                            doSearch(
+                                parentId = candidate.Id,
+                                fields = FIELD_PROVIDER_IDS,
+                                enableTotalRecordCount = false,
+                            ).Items
+                        }
                             .filter(Item::isPlayableSearchResult)
                             .map {
                                 RequestedItem(
@@ -364,26 +399,30 @@ abstract class BaseJellyfinMediaSource(
 
     /**
      * MediaStreams is large and unnecessary during discovery. Fetch it only for selected items.
+     * Bounded batches keep the item ids query within reverse proxy request URI limits.
      * If this optional enrichment fails, keep the playable item and continue without subtitles.
      */
     private suspend fun hydrateMediaStreams(matches: List<MatchedItem>): List<MatchedItem> {
         if (matches.isEmpty()) return emptyList()
 
-        val hydratedItems = try {
-            doSearch(
-                recursive = false,
-                itemIds = matches.joinToString(",") { it.item.Id },
-                fields = "MediaStreams",
-                limit = matches.size,
-                enableTotalRecordCount = false,
-            ).Items.associateBy { it.Id }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) {
-            logger.warn(e) {
-                "Failed to load MediaStreams for Jellyfin items; continuing without subtitle metadata"
+        val hydratedItems = buildMap {
+            for (batch in matches.distinctBy { it.item.Id }.chunked(MEDIA_STREAMS_BATCH_SIZE)) {
+                try {
+                    doSearch(
+                        recursive = false,
+                        itemIds = batch.joinToString(",") { it.item.Id },
+                        fields = "MediaStreams",
+                        limit = batch.size,
+                        enableTotalRecordCount = false,
+                    ).Items.forEach { put(it.Id, it) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    logger.warn(e) {
+                        "Failed to load MediaStreams for Jellyfin items; continuing without subtitle metadata for this batch"
+                    }
+                }
             }
-            emptyMap()
         }
 
         return matches.map { match ->
@@ -430,12 +469,10 @@ abstract class BaseJellyfinMediaSource(
 
         return MediaMatch(
             media = DefaultMedia(
-                mediaId = Id,
+                mediaId = getMediaId(Id),
                 mediaSourceId = mediaSourceId,
                 originalUrl = "$baseUrl/Items/$Id",
-                download = ResourceLocation.HttpStreamingFile(
-                    uri = getDownloadUri(Id, accessToken),
-                ),
+                download = getDownloadLocation(Id, accessToken),
                 originalTitle = originalTitle,
                 publishedTime = 0,
                 properties = MediaProperties(
@@ -537,12 +574,13 @@ abstract class BaseJellyfinMediaSource(
 
     private fun parseSubjectName(name: String): ParsedSubjectName {
         // Chinese: "无职转生 第三季 ～到了异世界就拿出真本事～" → base="无职转生", season=3
-        val chineseSeasonRegex = Regex("[第]([一二三四五六七八九十]+)季")
+        val chineseSeasonRegex = Regex("第\\s*([0-9]+|[一二三四五六七八九十]+)\\s*季")
         val chineseMatch = chineseSeasonRegex.find(name)
         if (chineseMatch != null) {
             val baseName = name.substring(0, chineseMatch.range.first).trim()
             if (baseName.isNotEmpty()) {
-                return ParsedSubjectName(baseName, chineseToNumber(chineseMatch.groupValues[1]))
+                val number = chineseMatch.groupValues[1]
+                return ParsedSubjectName(baseName, number.toIntOrNull() ?: chineseToNumber(number))
             }
         }
         // English: "Mushoku Tensei Season 2", "Mushoku Tensei S2"
@@ -557,32 +595,28 @@ abstract class BaseJellyfinMediaSource(
         return ParsedSubjectName(name, null)
     }
 
-    private fun chineseToNumber(chinese: String): Int {
-        return when (chinese) {
-            "一" -> 1
-            "二" -> 2
-            "三" -> 3
-            "四" -> 4
-            "五" -> 5
-            "六" -> 6
-            "七" -> 7
-            "八" -> 8
-            "九" -> 9
-            "十" -> 10
-            else -> chinese.toIntOrNull() ?: 1
+    private fun chineseToNumber(chinese: String): Int? {
+        val digits = "一二三四五六七八九"
+        if (chinese.length == 1 && chinese[0] in digits) {
+            return digits.indexOf(chinese[0]) + 1
         }
+        val match = Regex("([一二三四五六七八九]?)十([一二三四五六七八九]?)").matchEntire(chinese)
+            ?: return null
+        val tens = match.groupValues[1].firstOrNull()?.let { digits.indexOf(it) + 1 } ?: 1
+        val ones = match.groupValues[2].firstOrNull()?.let { digits.indexOf(it) + 1 } ?: 0
+        return tens * 10 + ones
     }
 
     private suspend fun doGetSeasons(seriesId: String): SearchResponse {
         return authorizedGet("$baseUrl/Shows/$seriesId/Seasons") {
-            parameter("fields", FIELD_PROVIDER_IDS)
+            parameter(apiParameterName("fields"), FIELD_PROVIDER_IDS)
         }
     }
 
     private suspend fun doGetEpisodes(seriesId: String, seasonNum: Int): SearchResponse {
         return authorizedGet("$baseUrl/Shows/$seriesId/Episodes") {
-            parameter("Season", seasonNum)
-            parameter("fields", FIELD_PROVIDER_IDS)
+            parameter(apiParameterName("Season"), seasonNum)
+            parameter(apiParameterName("fields"), FIELD_PROVIDER_IDS)
         }
     }
 
@@ -598,22 +632,43 @@ abstract class BaseJellyfinMediaSource(
         enableTotalRecordCount: Boolean? = null,
     ): SearchResponse {
         return authorizedGet("$baseUrl/Items") {
-            parameter("enableImages", false)
-            parameter("recursive", recursive)
-            subjectName?.let { parameter("searchTerm", it) }
-            parentId?.let { parameter("parentId", it) }
-            itemIds?.let { parameter("ids", it) }
-            fields?.let { parameter("fields", it) }
-            includeItemTypes?.let { parameter("includeItemTypes", it) }
-            startIndex?.let { parameter("startIndex", it) }
-            limit?.let { parameter("limit", it) }
-            enableTotalRecordCount?.let { parameter("enableTotalRecordCount", it) }
+            parameter(apiParameterName("enableImages"), false)
+            parameter(apiParameterName("recursive"), recursive)
+            subjectName?.let { parameter(apiParameterName("searchTerm"), it) }
+            parentId?.let { parameter(apiParameterName("parentId"), it) }
+            itemIds?.let { parameter(apiParameterName("ids"), it) }
+            fields?.let { parameter(apiParameterName("fields"), it) }
+            includeItemTypes?.let { parameter(apiParameterName("includeItemTypes"), it) }
+            startIndex?.let { parameter(apiParameterName("startIndex"), it) }
+            limit?.let { parameter(apiParameterName("limit"), it) }
+            enableTotalRecordCount?.let { parameter(apiParameterName("enableTotalRecordCount"), it) }
         }
     }
+
+    protected suspend fun authorizedGetJson(
+        url: String,
+        configure: HttpRequestBuilder.() -> Unit = {},
+    ): JsonObject = authorizedGet(url, configure)
+
+    protected suspend fun authorizedPostJson(
+        url: String,
+        configure: HttpRequestBuilder.() -> Unit,
+    ): JsonObject = authorizedRequest(url, HttpMethod.Post, configure)
+
+    protected suspend fun authorizedDelete(
+        url: String,
+        configure: HttpRequestBuilder.() -> Unit,
+    ): Unit = authorizedRequest(url, HttpMethod.Delete, configure)
 
     private suspend inline fun <reified T> authorizedGet(
         url: String,
         crossinline configure: HttpRequestBuilder.() -> Unit = {},
+    ): T = authorizedRequest(url, HttpMethod.Get, configure)
+
+    private suspend inline fun <reified T> authorizedRequest(
+        url: String,
+        method: HttpMethod,
+        crossinline configure: HttpRequestBuilder.() -> Unit,
     ): T {
         var authorization = getAuthorization()
         var hasRetried = false
@@ -621,9 +676,10 @@ abstract class BaseJellyfinMediaSource(
         while (true) {
             try {
                 return client.use {
-                    val response = get(url) {
+                    val response = request(url) {
+                        this.method = method
                         header(HttpHeaders.Authorization, authorization.headerValue)
-                        parameter("userId", authorization.userId)
+                        parameter(apiParameterName("userId"), authorization.userId)
                         configure()
                     }
                     if (response.status == HttpStatusCode.Unauthorized) {
@@ -657,6 +713,7 @@ private val Item.isPlayableSearchResult: Boolean
     get() = Type == TYPE_EPISODE || Type == TYPE_MOVIE
 
 private fun Item.matchesTargetSeason(targetSeason: Int?): Boolean {
+    if (Type == TYPE_MOVIE) return false
     if (targetSeason == null) return true
     return when (Type) {
         TYPE_SEASON -> IndexNumber == targetSeason

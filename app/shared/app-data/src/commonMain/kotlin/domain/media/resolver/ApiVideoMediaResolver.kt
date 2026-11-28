@@ -43,6 +43,13 @@ class ApiVideoMediaResolver(
         (media.download as? ResourceLocation.WebVideo)?.isResolvedByApi == true
 
     override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> {
+        return resolve(media, forDownload = false)
+    }
+
+    override suspend fun resolveForDownload(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> =
+        resolve(media, forDownload = true)
+
+    private suspend fun resolve(media: Media, forDownload: Boolean): MediaDataProvider<*> {
         if (!supports(media)) throw UnsupportedMediaException(media)
 
         val resolver = resolverLoader.loadResolver(media.mediaSourceId)
@@ -52,7 +59,7 @@ class ApiVideoMediaResolver(
             )
 
         val video = try {
-            resolver.resolveApiVideo(media)
+            if (forDownload) resolver.resolveApiVideoForDownload(media) else resolver.resolveApiVideo(media)
         } catch (e: CancellationException) {
             throw e
         } catch (e: MediaResolutionException) {
@@ -71,6 +78,7 @@ class ApiVideoMediaResolver(
             media.originalTitle,
             video.headers,
             media.extraFiles.toMediampMediaExtraFiles(),
+            onClose = video.onClose,
         )
     }
 

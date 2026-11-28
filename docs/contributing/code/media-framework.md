@@ -88,6 +88,20 @@ APP 可能会有 50 个左右的 `MediaSource` 实例。
 
 参见 [MediaSelector](media/media-selector.md)
 
+### iOS 容器兼容处理
+
+AVKit 对网络 H.264、HEVC、AV1 Matroska（至多一条音轨），以及需要兼容处理的对应 MP4，使用本地 HLS EVENT 播放列表。
+上游认证和 Range 请求由 HTTP 客户端转发，FFmpeg 仅访问会话内的回环地址；H.264 视频复制到 MPEG-TS，
+HEVC 和 AV1 复制到分片 MP4，音频编码为 AAC。分片 MP4 在交给播放器前使用设备的 AVFoundation 验证首片解码，
+AV1 等设备无法解码的资源进入文件兼容处理。分片按关键帧发布，
+起播只等待播放位置之后的缓冲，无需等待整集下载完成；可跳转范围随分片生成进度增长。
+iOS 使用 POSIX read 跟读增长文件，暂时读到文件末尾后可以继续获取追加的数据。
+内封文本字幕与视频同时提取，所选字幕随已生成内容刷新。会话关闭时终止请求与转换并清理临时文件。
+其他编码、多音轨或流式准备失败的资源使用兼容 MP4 文件处理路径。
+VP9、MPEG-4 Part 2 等不能直接作为 Apple HLS 视频码流，iOS 内置 FFmpeg 的视频编码器为 MPEG-4 Part 2，
+因此这些资源使用文件兼容处理。HEVC 使用 `hvc1`，AV1 使用 `av01`；来源已兼容的 MP4 与 HLS 直接播放。
+样片准备、集成测试与实机验证边界见 [AVKit 流式兼容验证](media/avkit-streaming.md)。
+
 ----
 
 > [!TIP]

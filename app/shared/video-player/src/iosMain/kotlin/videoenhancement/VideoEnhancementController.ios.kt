@@ -9,19 +9,19 @@
 
 package me.him188.ani.app.videoplayer.videoenhancement
 
+import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
+import me.him188.ani.app.videoplayer.player.AniAVKitMediampPlayer
 import me.him188.ani.app.videoplayer.ui.IosVideoLayerRegistry
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.avkit.AVKitMediampPlayer
-import kotlin.coroutines.CoroutineContext
 
 actual fun createVideoEnhancementController(
     player: MediampPlayer,
     playerKernelConfig: Flow<PlayerKernelConfig>,
     parentCoroutineContext: CoroutineContext,
-): VideoEnhancementController? = if (player is AVKitMediampPlayer) {
+): VideoEnhancementController? = if (player is AniAVKitMediampPlayer) {
     IosVideoEnhancementController(player, parentCoroutineContext)
 } else null
 

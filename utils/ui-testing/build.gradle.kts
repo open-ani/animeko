@@ -40,6 +40,7 @@ kotlin {
         api(compose.desktop.currentOs)
     }
     sourceSets.androidMain.dependencies {
+        implementation(libs.junit5.jupiter.api)
         runtimeOnly(libs.kotlinx.coroutines.android)
         implementation(libs.androidx.test.runner) // TvDisplayRunListener
         implementation(libs.androidx.activity.ktx) // 测试 Activity 的窗口焦点

@@ -97,5 +97,7 @@ data class WebVideo(
      * - `User-Agent`
      * - `Referer`
      */
-    val headers: Map<String, String>
+    val headers: Map<String, String>,
+    /** Releases server playback resources when the media is closed. */
+    val onClose: (suspend () -> Unit)? = null,
 )
