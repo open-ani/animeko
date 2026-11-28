@@ -11,11 +11,11 @@ package me.him188.ani.app.data.models.preference
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import me.him188.ani.utils.platform.annotations.SerializationOnly
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
 @Immutable
 @Serializable
@@ -41,6 +41,13 @@ enum class VideoEnhancementDefaultMode {
     OFF,
     PERFORMANCE,
     QUALITY,
+}
+
+@Serializable
+enum class SubtitleTextConversion {
+    ORIGINAL,
+    SIMPLIFIED,
+    TRADITIONAL,
 }
 
 /**
@@ -105,6 +112,11 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
     val enableFramePreview: Boolean = true,
     /** 进入播放器时使用的默认超分档位. */
     val videoEnhancementDefaultMode: VideoEnhancementDefaultMode = VideoEnhancementDefaultMode.OFF,
+    /** 文本字幕相对播放器高度的字号倍率，1 倍对应 720 高度下字号 38。 */
+    val subtitleFontScale: Float = 1f,
+    /** 所选文本字幕的显示文字，原始字幕内容保持完整。 */
+    val subtitleTextConversion: SubtitleTextConversion = SubtitleTextConversion.ORIGINAL,
+    val subtitleStyle: SubtitleStyle = SubtitleStyle.Default,
     /**
      * 在编辑弹幕时暂停视频.
      * @since 3.2.0-beta01

@@ -44,6 +44,7 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
@@ -63,10 +64,13 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.time.Duration
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.data.models.preference.SubtitleStyle
+import me.him188.ani.app.data.models.preference.SubtitleTextConversion
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.player.ChunkState
@@ -98,6 +102,7 @@ import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.always_on_top
+import me.him188.ani.app.ui.lang.external_subtitle_title
 import me.him188.ani.app.ui.lang.subject_episode_cache
 import me.him188.ani.app.ui.lang.subject_episode_collapse_sidebar
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_title
@@ -110,11 +115,12 @@ import me.him188.ani.app.ui.lang.subject_episode_select_media_source
 import me.him188.ani.app.ui.lang.video_player_aspect_ratio
 import me.him188.ani.app.ui.lang.video_player_stats_title_hide
 import me.him188.ani.app.ui.lang.video_player_stats_title_show
+import me.him188.ani.app.ui.lang.video_player_subtitle_settings
 import me.him188.ani.app.ui.lang.video_player_video_enhancement
 import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
-import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
+import me.him188.ani.app.ui.mediaselect.MediaSelectorMode
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.details.components.ShareEpisodeDropdown
 import me.him188.ani.app.ui.subject.episode.details.components.VideoAspectRatioDropdown
@@ -131,6 +137,12 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
+import me.him188.ani.app.videoplayer.subtitle.ExternalSubtitleController
+import me.him188.ani.app.videoplayer.subtitle.ExternalSubtitleOverlay
+import me.him188.ani.app.videoplayer.subtitle.LocalSubtitleAppearance
+import me.him188.ani.app.videoplayer.subtitle.LocalSubtitleDelayMillis
+import me.him188.ani.app.videoplayer.subtitle.LocalSubtitleTextConversion
+import me.him188.ani.app.videoplayer.subtitle.SubtitleAppearance
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.MutablePlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
@@ -167,6 +179,7 @@ import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.SpeedSwitcher
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.ProgressSliderCenteredPreviewFrame
+import me.him188.ani.app.videoplayer.ui.progress.SubtitleSettingsDialog
 import me.him188.ani.app.videoplayer.ui.progress.SubtitleSwitcher
 import me.him188.ani.app.videoplayer.ui.progress.TouchSeekState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
@@ -191,7 +204,6 @@ import org.openani.mediamp.features.subtitleTracks
 import org.openani.mediamp.isMediaLoaded
 import org.openani.mediamp.test.TestMediampPlayer
 import org.openani.mediamp.togglePlayWhenReady
-import kotlin.time.Duration
 
 internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
 
@@ -220,6 +232,14 @@ internal fun EpisodeVideoImpl(
     onClickNextEpisode: () -> Unit,
     playerControllerState: PlayerControllerState,
     opEdSkipDuration: Duration = DEFAULT_OP_ED_SKIP_DURATION,
+    subtitleTextConversion: SubtitleTextConversion = SubtitleTextConversion.ORIGINAL,
+    onSubtitleTextConversionChange: (SubtitleTextConversion) -> Unit = {},
+    subtitleFontScale: Float = 1f,
+    onSubtitleFontScaleChange: ((Float) -> Unit)? = null,
+    subtitleStyle: SubtitleStyle = SubtitleStyle.Default,
+    onSubtitleStyleChange: (SubtitleStyle) -> Unit = {},
+    externalSubtitles: ExternalSubtitleController? = null,
+    onOpenExternalSubtitles: (() -> Unit)? = null,
     onClickSkipOpEd: (currentPositionMillis: Long) -> Unit = {
         playerState.skip(opEdSkipDuration.inWholeMilliseconds)
     },
@@ -308,6 +328,14 @@ internal fun EpisodeVideoImpl(
         val topBarActions: @Composable RowScope.() -> Unit = {
             EpisodeVideoTopBarActions(
                 playerState = playerState,
+                subtitleTextConversion = subtitleTextConversion,
+                onSubtitleTextConversionChange = onSubtitleTextConversionChange,
+                subtitleFontScale = subtitleFontScale,
+                onSubtitleFontScaleChange = onSubtitleFontScaleChange,
+                subtitleStyle = subtitleStyle,
+                onSubtitleStyleChange = onSubtitleStyleChange,
+                externalSubtitles = externalSubtitles,
+                onOpenExternalSubtitles = onOpenExternalSubtitles,
                 expanded = expanded,
                 opEdSkipDuration = opEdSkipDuration,
                 onClickSkipOpEd = onClickSkipOpEd,
@@ -367,14 +395,21 @@ internal fun EpisodeVideoImpl(
                 if (LocalIsPreviewing.current) {
                     Text(previewModeText)
                 } else {
-                    VideoPlayer(
-                        playerState,
-                        Modifier
-                            .onSizeChanged {
-                                videoEnhancement?.setViewportSize(it.width, it.height)
-                            }
-                            .matchParentSize(),
-                    )
+                    CompositionLocalProvider(
+                        LocalSubtitleAppearance provides SubtitleAppearance(subtitleFontScale, subtitleStyle),
+                        LocalSubtitleDelayMillis provides (externalSubtitles?.offsetMillis?.collectAsState()?.value ?: 0L),
+                        LocalSubtitleTextConversion provides subtitleTextConversion,
+                    ) {
+                        VideoPlayer(
+                            playerState,
+                            Modifier
+                                .onSizeChanged {
+                                    videoEnhancement?.setViewportSize(it.width, it.height)
+                                }
+                                .matchParentSize(),
+                        )
+                        externalSubtitles?.let { ExternalSubtitleOverlay(it) }
+                    }
                 }
             },
             danmakuHost = {
@@ -595,7 +630,7 @@ internal fun EpisodeVideoImpl(
                                 }
                             }
 
-                            playerState.subtitleTracks?.let {
+                            (externalSubtitles?.tracks ?: playerState.subtitleTracks)?.let {
                                 PlayerControllerDefaults.SubtitleSwitcher(it)
                             }
 
@@ -681,8 +716,15 @@ private fun rememberPlayerTouchSeekState(
 }
 
 @Composable
-private fun EpisodeVideoTopBarActions(
+internal fun EpisodeVideoTopBarActions(
     playerState: MediampPlayer,
+    subtitleTextConversion: SubtitleTextConversion = SubtitleTextConversion.ORIGINAL,
+    onSubtitleTextConversionChange: (SubtitleTextConversion) -> Unit = {},
+    subtitleFontScale: Float,
+    onSubtitleFontScaleChange: ((Float) -> Unit)?,
+    subtitleStyle: SubtitleStyle = SubtitleStyle.Default,
+    onSubtitleStyleChange: (SubtitleStyle) -> Unit = {},
+    externalSubtitles: ExternalSubtitleController? = null,
     expanded: Boolean,
     opEdSkipDuration: Duration,
     onClickSkipOpEd: (currentPositionMillis: Long) -> Unit,
@@ -699,7 +741,9 @@ private fun EpisodeVideoTopBarActions(
     onTogglePlayerStats: () -> Unit,
     alwaysOnTop: Boolean = false,
     onToggleAlwaysOnTop: (() -> Unit)? = null,
+    onOpenExternalSubtitles: (() -> Unit)? = null,
 ) {
+    var showSubtitleSettings by rememberSaveable { mutableStateOf(false) }
     var showShareDropdown by rememberSaveable { mutableStateOf(false) }
     var showMoreDropdown by rememberSaveable { mutableStateOf(false) }
     var showVideoEnhancementDropdown by rememberSaveable { mutableStateOf(false) }
@@ -707,7 +751,7 @@ private fun EpisodeVideoTopBarActions(
 
     val dropdownAlwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "topBarExternalActions")
     val isExternalDropdownVisible =
-        showShareDropdown || showMoreDropdown || showVideoEnhancementDropdown || showAspectRatioDropdown
+        showShareDropdown || showMoreDropdown || showVideoEnhancementDropdown || showAspectRatioDropdown || showSubtitleSettings
     val skipDurationSeconds = opEdSkipDuration.inWholeSeconds
 
     val fastForwardSecondsText = stringResource(Lang.subject_episode_fast_forward_seconds, skipDurationSeconds)
@@ -798,7 +842,7 @@ private fun EpisodeVideoTopBarActions(
     }
 
     Box {
-        IconButton({ showMoreDropdown = true }) {
+        IconButton({ showMoreDropdown = true }, modifier = Modifier.testTag("PlayerMoreOptions")) {
             Icon(Icons.Rounded.MoreVert, contentDescription = moreOptionsText)
         }
         DropdownMenu(
@@ -844,6 +888,28 @@ private fun EpisodeVideoTopBarActions(
                     },
                     leadingIcon = { Icon(Icons.Rounded.AspectRatio, null) },
                     trailingIcon = { Text(renderAspectRatioMode(videoAspectRatioControllerState.currentMode)) },
+                )
+            }
+            if (onOpenExternalSubtitles != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Lang.external_subtitle_title)) },
+                    onClick = {
+                        showMoreDropdown = false
+                        onOpenExternalSubtitles()
+                    },
+                    leadingIcon = { Icon(AniIcons.SubtitleGear, null) },
+                    modifier = Modifier.testTag("ExternalSubtitlesMenuItem"),
+                )
+            }
+            if (onSubtitleFontScaleChange != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Lang.video_player_subtitle_settings)) },
+                    onClick = {
+                        showMoreDropdown = false
+                        showSubtitleSettings = true
+                    },
+                    leadingIcon = { Icon(AniIcons.SubtitleGear, null) },
+                    modifier = Modifier.testTag("SubtitleSettingsMenuItem"),
                 )
             }
             DropdownMenuItem(
@@ -900,6 +966,19 @@ private fun EpisodeVideoTopBarActions(
                 onDismissRequest = { showAspectRatioDropdown = false },
             )
         }
+    }
+
+    if (showSubtitleSettings && onSubtitleFontScaleChange != null) {
+        SubtitleSettingsDialog(
+            subtitleFontScale, onSubtitleFontScaleChange,
+            onDismissRequest = { showSubtitleSettings = false },
+            textConversion = subtitleTextConversion,
+            onTextConversionChange = onSubtitleTextConversionChange,
+            style = subtitleStyle,
+            onStyleChange = onSubtitleStyleChange,
+            delayMillis = externalSubtitles?.offsetMillis?.collectAsState()?.value ?: 0L,
+            onDelayChange = externalSubtitles?.let { controller -> { controller.offsetMillis.value = it } },
+        )
     }
 
     if (expanded && LocalPlatform.current.isDesktop()) {

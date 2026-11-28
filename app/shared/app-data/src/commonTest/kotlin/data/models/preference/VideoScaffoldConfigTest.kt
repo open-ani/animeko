@@ -9,13 +9,45 @@
 
 package me.him188.ani.app.data.models.preference
 
-import me.him188.ani.app.data.persistent.DataStoreJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.time.Duration.Companion.seconds
+import me.him188.ani.app.data.persistent.DataStoreJson
 
 class VideoScaffoldConfigTest {
+    @Test
+    fun `subtitle appearance defaults and all controls survive serialization`() {
+        assertEquals(SubtitleStyle.Default, DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}").subtitleStyle)
+        val config = VideoScaffoldConfig.Default.copy(subtitleStyle = SubtitleStyle(
+            verticalPosition = 0.25f, textColor = 0xFFFFFF00, outlineColor = 0xFF123456, outlineWidth = 4f,
+            backgroundEnabled = true, backgroundColor = 0xFF654321, backgroundOpacity = 0.8f, overrideEmbeddedStyle = true,
+        ))
+        assertEquals(config, DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), DataStoreJson.encodeToString(VideoScaffoldConfig.serializer(), config)))
+        assertEquals(SubtitleStyle.Default, SubtitleStyle(verticalPosition = Float.NaN, outlineWidth = Float.NaN, backgroundOpacity = Float.NaN).normalized())
+        val bounded = SubtitleStyle(verticalPosition = -1f, outlineWidth = 99f, backgroundOpacity = 99f, textColor = 0x123456).normalized()
+        assertEquals(0f, bounded.verticalPosition)
+        assertEquals(8f, bounded.outlineWidth)
+        assertEquals(1f, bounded.backgroundOpacity)
+        assertEquals(0xFF123456, bounded.textColor)
+    }
+
+    @Test
+    fun `subtitle conversion defaults to original and persists independently of font size`() {
+        assertEquals(SubtitleTextConversion.ORIGINAL, DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}").subtitleTextConversion)
+        val config = VideoScaffoldConfig.Default.copy(subtitleTextConversion = SubtitleTextConversion.TRADITIONAL, subtitleFontScale = 0.5f)
+        assertEquals(config, DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), DataStoreJson.encodeToString(VideoScaffoldConfig.serializer(), config)))
+    }
+
+    @Test
+    fun `subtitle size defaults to normal and survives settings serialization`() {
+        assertEquals(1f, DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}").subtitleFontScale)
+        val config = VideoScaffoldConfig.Default.copy(subtitleFontScale = 1.75f)
+        val decoded = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(),
+            DataStoreJson.encodeToString(VideoScaffoldConfig.serializer(), config))
+        assertEquals(1.75f, decoded.subtitleFontScale)
+    }
+
     @Test
     fun `foldable hover mode defaults to enabled and survives serialization`() {
         val defaultConfig = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")

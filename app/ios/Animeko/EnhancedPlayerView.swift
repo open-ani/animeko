@@ -7,6 +7,8 @@ final class EnhancedPlayerView: UIView {
     override class var layerClass: AnyClass { AVPlayerLayer.self }
     private var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
     private let player: AVPlayer
+    private var subtitleCapture: PlayerSubtitleCapture?
+
     private var itemObservation: NSKeyValueObservation?
     private var notifications: [NSObjectProtocol] = []
     private var item: AVPlayerItem?
@@ -50,6 +52,16 @@ final class EnhancedPlayerView: UIView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    func setSubtitleCapture(_ enabled: Bool, onText: @escaping (String) -> Void) {
+        guard !closed else { return }
+        if subtitleCapture == nil { subtitleCapture = PlayerSubtitleCapture(player: player) }
+        subtitleCapture?.update(enabled: enabled, onText: onText)
+    }
+
+    func setSubtitleDelay(_ delay: Double) {
+        subtitleCapture?.setDelay(delay)
+    }
 
     override func layoutSubviews() {
         super.layoutSubviews()
@@ -210,6 +222,8 @@ final class EnhancedPlayerView: UIView {
     func close() {
         guard !closed else { return }
         closed = true
+        subtitleCapture?.close()
+        subtitleCapture = nil
         request += 1
         itemObservation?.invalidate()
         itemObservation = nil
@@ -221,4 +235,115 @@ final class EnhancedPlayerView: UIView {
     }
 
     deinit { close() }
+}
+
+/// Captures decoded text while the player's media selection remains authoritative.
+private final class PlayerSubtitleCapture: NSObject, AVPlayerItemLegibleOutputPushDelegate {
+    private let player: AVPlayer
+    private var observation: NSKeyValueObservation?
+    private var selectionObserver: NSObjectProtocol?
+    private var item: AVPlayerItem?
+    private var output: AVPlayerItemLegibleOutput?
+    private var onText: ((String) -> Void)?
+    private var text = ""
+    private var enabled = false
+    private var hasTextSamples = false
+    private var delaySeconds = 0.0
+    private var samples: [(time: Double, text: String)] = []
+    private var timeObserver: Any?
+
+    init(player: AVPlayer) {
+        self.player = player
+        super.init()
+        timeObserver = player.addPeriodicTimeObserver(forInterval: CMTime(seconds: 0.03, preferredTimescale: 1000), queue: .main) { [weak self] _ in
+            self?.displayCurrentText()
+        }
+        observation = player.observe(\.currentItem, options: [.initial, .new]) { [weak self] _, _ in
+            self?.attach()
+        }
+        selectionObserver = NotificationCenter.default.addObserver(
+            forName: AVPlayerItem.mediaSelectionDidChangeNotification, object: nil, queue: .main
+        ) { [weak self] notification in
+            guard let self, let changed = notification.object as? AVPlayerItem, changed === self.item else { return }
+            self.text = ""
+            self.samples.removeAll()
+            self.hasTextSamples = false
+            self.output?.suppressesPlayerRendering = false
+            self.onText?("")
+        }
+    }
+
+    func update(enabled: Bool, onText: @escaping (String) -> Void) {
+        self.onText = onText
+        self.enabled = enabled
+        output?.suppressesPlayerRendering = enabled && hasTextSamples
+        displayCurrentText()
+    }
+
+    func setDelay(_ delay: Double) {
+        guard delay != delaySeconds else { return }
+        delaySeconds = delay
+        output?.advanceIntervalForDelegateInvocation = max(0, -delay) + 1
+        displayCurrentText()
+    }
+
+    private func displayCurrentText() {
+        let position = player.currentTime().seconds - delaySeconds
+        text = samples.last(where: { $0.time <= position })?.text ?? ""
+        onText?(enabled ? text : "")
+    }
+
+    private func attach() {
+        if let item, let output { item.remove(output) }
+        text = ""
+        samples.removeAll()
+        hasTextSamples = false
+        onText?("")
+        item = player.currentItem
+        output = nil
+        guard let item else { return }
+        let output = AVPlayerItemLegibleOutput(mediaSubtypesForNativeRepresentation: [])
+        output.setDelegate(self, queue: .main)
+        output.advanceIntervalForDelegateInvocation = max(0, -delaySeconds) + 1
+        output.suppressesPlayerRendering = false
+        item.add(output)
+        self.output = output
+    }
+
+    func legibleOutput(_ output: AVPlayerItemLegibleOutput,
+                       didOutputAttributedStrings strings: [NSAttributedString],
+                       nativeSampleBuffers nativeSamples: [Any], forItemTime itemTime: CMTime) {
+        guard output === self.output else { return }
+        let sampleText = strings.map(\.string).joined(separator: "\n")
+        let timestamp = itemTime.seconds
+        guard timestamp.isFinite else { return }
+        samples.removeAll { $0.time == timestamp || $0.time < player.currentTime().seconds - 605 }
+        samples.append((timestamp, sampleText))
+        samples.sort { $0.time < $1.time }
+        if !sampleText.isEmpty { hasTextSamples = true }
+        output.suppressesPlayerRendering = enabled && hasTextSamples
+        displayCurrentText()
+    }
+
+    func outputSequenceWasFlushed(_ output: AVPlayerItemOutput) {
+        guard output === self.output else { return }
+        text = ""
+        samples.removeAll()
+        onText?("")
+    }
+
+    func close() {
+        if let timeObserver { player.removeTimeObserver(timeObserver) }
+        timeObserver = nil
+        observation?.invalidate()
+        observation = nil
+        if let selectionObserver { NotificationCenter.default.removeObserver(selectionObserver) }
+        selectionObserver = nil
+        output?.suppressesPlayerRendering = false
+        if let item, let output { item.remove(output) }
+        output?.setDelegate(nil, queue: nil)
+        output = nil
+        item = nil
+        onText = nil
+    }
 }

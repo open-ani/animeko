@@ -32,6 +32,9 @@ import io.github.peerless2012.ass.media.AssHandler
 import io.github.peerless2012.ass.media.AssHandlerConfig
 import io.github.peerless2012.ass.media.parser.AssSubtitleParserFactory
 import io.github.peerless2012.ass.media.type.AssRenderType
+import kotlin.coroutines.CoroutineContext
+import kotlin.reflect.KClass
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -58,9 +61,6 @@ import org.openani.mediamp.io.SeekableInput
 import org.openani.mediamp.source.MediaData
 import org.openani.mediamp.source.SeekableInputMediaData
 import org.openani.mediamp.source.UriMediaData
-import kotlin.coroutines.CoroutineContext
-import kotlin.reflect.KClass
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Adds libass parsing and rendering to MediaMP's ExoPlayer backend.
@@ -120,11 +120,18 @@ class LibassExoPlayerMediampPlayer private constructor(
             configurePlayerBuilder = { builder ->
                 builder.setDetachSurfaceTimeoutMs(DETACH_SURFACE_TIMEOUT_MILLIS)
                 configurePlayerBuilder?.invoke(builder)
+                builder.setRenderersFactory(subtitleDelayRenderersFactory(context, audioTimeStretch) { pipeline.subtitleDelayMillis })
             },
         ),
     )
 
     internal val assHandler: AssHandler get() = pipeline.assHandler
+
+    internal fun setSubtitleDelay(delayMillis: Long) {
+        if (pipeline.subtitleDelayMillis == delayMillis) return
+        pipeline.subtitleDelayMillis = delayMillis
+        exoPlayer.seekTo(exoPlayer.currentPosition)
+    }
 
     private val exoPlayer: ExoPlayer get() = exoMediampPlayer.impl
     private val backgroundScope = CoroutineScope(
@@ -176,7 +183,7 @@ class LibassExoPlayerMediampPlayer private constructor(
             while (isActive) {
                 // AssRenderer normally supplies this timestamp. MediaMP owns the ExoPlayer
                 // builder, so drive the overlay from the same playback clock here instead.
-                assHandler.videoTime = exoPlayer.currentPosition * 1_000
+                assHandler.videoTime = (exoPlayer.currentPosition - pipeline.subtitleDelayMillis) * 1_000
                 delay(16.milliseconds)
             }
         }
@@ -235,7 +242,7 @@ class LibassExoPlayerMediampPlayer private constructor(
         exoMediampPlayer.seekTo(positionMillis)
         // ExoPlayer applies a seek asynchronously. Update libass immediately as well so the
         // paused overlay does not retain the subtitle from the previous playback position.
-        val positionUs = positionMillis * 1_000
+        val positionUs = (positionMillis - pipeline.subtitleDelayMillis) * 1_000
         assHandler.videoTime = positionUs
         // AssHandler throttles clock callbacks while video is playing. A paused seek only
         // produces one distinct timestamp, so request that frame explicitly as well.
@@ -294,6 +301,8 @@ internal fun Throwable.isVideoOutputDetachTimeout(): Boolean =
 private class LibassMediaSourcePipeline(
     private val context: Context,
 ) {
+    @Volatile
+    var subtitleDelayMillis: Long = 0
     val assHandler = AssHandler(
         renderType = AssRenderType.OVERLAY_OPEN_GL,
         config = AssHandlerConfig(maxRenderPixels = 1920 * 1080),

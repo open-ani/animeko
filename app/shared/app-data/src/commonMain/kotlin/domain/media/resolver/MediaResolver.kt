@@ -60,6 +60,9 @@ interface MediaResolver {
     @Throws(MediaResolutionException::class, CancellationException::class)
     suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<MediaData>
 
+    /** Resolves the original media for persistent downloads. */
+    suspend fun resolveForDownload(media: Media, episode: EpisodeMetadata): MediaDataProvider<MediaData> = resolve(media, episode)
+
     companion object {
         fun from(vararg resolvers: MediaResolver): MediaResolver {
             return ChainedMediaResolver(resolvers.toList())
@@ -150,6 +153,11 @@ private class ChainedMediaResolver(
 
     override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> {
         return resolverFor(media)?.resolve(media, episode)
+            ?: throw UnsupportedMediaException(media)
+    }
+
+    override suspend fun resolveForDownload(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> {
+        return resolverFor(media)?.resolveForDownload(media, episode)
             ?: throw UnsupportedMediaException(media)
     }
 }

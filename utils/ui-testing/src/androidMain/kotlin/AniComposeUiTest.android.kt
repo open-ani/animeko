@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.framework
 
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.test.AndroidComposeUiTest
@@ -23,6 +24,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.resetMain
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.minutes
 
@@ -48,6 +50,10 @@ actual fun SemanticsNodeInteraction.assertScreenshot(expectedResource: String) {
  */
 @OptIn(DelicateCoroutinesApi::class)
 actual fun runAniComposeUiTest(effectContext: CoroutineContext, testBody: AniComposeUiTest.() -> Unit) {
+    assumeTrue(
+        !Build.FINGERPRINT.isNullOrEmpty(),
+        "Compose UI tests require an Android device or a configured Robolectric runtime",
+    )
     // 一定要调用这个, 否则在跟其他协程测试一起跑的时候, lifecycle 的一个地方会一直 block
     // androidx.lifecycle.MainDispatcherChecker.updateMainDispatcherThread
     Dispatchers.resetMain()

@@ -61,6 +61,7 @@ import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.nameOrNameCn
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.player.playProgressByEpisodeId
+import me.him188.ani.app.data.models.preference.SubtitleTextConversion
 import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.preference.parseMpvOptions
@@ -70,6 +71,9 @@ import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.models.subject.nameOrNameCn
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AutoSkipRepository
+import me.him188.ani.app.data.network.OpenSubtitleFile
+import me.him188.ani.app.data.network.OpenSubtitlePage
+import me.him188.ani.app.data.network.OpenSubtitlesClient
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
@@ -102,7 +106,10 @@ import me.him188.ani.app.domain.episode.infoLoadErrorFlow
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.featureflag.FeatureFlag
 import me.him188.ani.app.domain.featureflag.FeatureFlagManager
+import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
+import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.DroppedFileMedia
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.download.MediaDownloadManager
@@ -138,6 +145,8 @@ import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowManualBrowseListen
 import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowMediaSelectorListener
 import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowUserAction
 import me.him188.ani.app.ui.subject.episode.analytics.recordUserAction
+import me.him188.ani.app.videoplayer.subtitle.ExternalSubtitleController
+import me.him188.ani.app.videoplayer.subtitle.SubtitleAppearance
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeEnter
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
@@ -244,6 +253,7 @@ import org.openani.mediamp.metadata.Chapter
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import me.him188.ani.app.data.models.preference.SubtitleStyle
 
 
 private const val OP_ED_AUTO_SKIP_BASE_SAMPLE_INTERVAL_MILLIS = 1_000L
@@ -450,6 +460,21 @@ open class EpisodeViewModel(
 
     val mediaResolver: MediaResolver get() = fetchPlayState.playerSession.mediaResolver
 
+    val externalSubtitles = ExternalSubtitleController(player, backgroundScope)
+    val openSubtitlesSettings = settingsRepository.openSubtitlesSettings.flow
+
+    suspend fun searchOpenSubtitles(query: String, episode: Int?, season: Int?, page: Int): OpenSubtitlePage =
+        withOpenSubtitlesClient { search(query, episode, season, page) }
+
+    suspend fun downloadOpenSubtitle(file: OpenSubtitleFile): ByteArray = withOpenSubtitlesClient { download(file) }
+
+    private suspend fun <T> withOpenSubtitlesClient(block: suspend OpenSubtitlesClient.() -> T): T {
+        val settings = settingsRepository.openSubtitlesSettings.flow.first()
+        return koin.get<HttpClientProvider>().get(userAgent = ScopedHttpClientUserAgent.NONE).use {
+            OpenSubtitlesClient(this, settings).block()
+        }
+    }
+
     /**
      * 选择器模式, 会话内保持; null = 尚未锁存, 宿主用 `vm.mediaSelectorMode ?: page.initialMediaSelectorMode`.
      * 锁存: 宿主打开选择器时 `if (vm.mediaSelectorMode == null && !page.isLoading) vm.mediaSelectorMode = page.initialMediaSelectorMode`,
@@ -563,6 +588,25 @@ open class EpisodeViewModel(
 
     val videoScaffoldConfig: VideoScaffoldConfig by settingsRepository.videoScaffoldConfig
         .flow.produceState(VideoScaffoldConfig.Default)
+
+    fun setSubtitleFontScale(scale: Float) {
+        if (!scale.isFinite()) return
+        launchInBackground {
+            settingsRepository.videoScaffoldConfig.update { copy(subtitleFontScale = SubtitleAppearance(scale).effectiveFontScale) }
+        }
+    }
+
+    fun setSubtitleStyle(style: SubtitleStyle) {
+        launchInBackground {
+            settingsRepository.videoScaffoldConfig.update { copy(subtitleStyle = style.normalized()) }
+        }
+    }
+
+    fun setSubtitleTextConversion(target: SubtitleTextConversion) {
+        launchInBackground {
+            settingsRepository.videoScaffoldConfig.update { copy(subtitleTextConversion = target) }
+        }
+    }
 
     /** 当前生效的用户倍速范围. */
     val playbackSpeedRange: ClosedFloatingPointRange<Float>

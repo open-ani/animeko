@@ -22,7 +22,6 @@ import me.him188.ani.app.domain.media.cache.storage.TestMediaCacheStorage
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolver
-import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
@@ -182,7 +181,9 @@ class HttpDownloadIdentityTest {
     private fun engine(downloader: FakeDownloader) = HttpMediaCacheEngine(
         downloader,
         Path("/unused-test-downloads"),
-        object : MediaResolver by TestUniversalMediaResolver {
+        object : MediaResolver {
+            override fun supports(media: Media): Boolean = true
+
             override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> =
                 object : MediaDataProvider<UriMediaData> {
                     override val extraFiles = MediaExtraFiles.EMPTY

@@ -30,6 +30,9 @@ interface ApiVideoResolver {
      * @throws kotlin.coroutines.cancellation.CancellationException
      */
     suspend fun resolveApiVideo(media: Media): WebVideo?
+
+    /** Resolves a persistent download without allocating a player-specific transcoding session. */
+    suspend fun resolveApiVideoForDownload(media: Media): WebVideo? = resolveApiVideo(media)
 }
 
 /**

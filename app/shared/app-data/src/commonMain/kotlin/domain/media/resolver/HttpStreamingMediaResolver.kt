@@ -37,6 +37,7 @@ class HttpStreamingMediaDataProvider(
     val originalTitle: String,
     private val headers: Map<String, String> = emptyMap(),
     override val extraFiles: MediaExtraFiles = MediaExtraFiles.EMPTY,
+    override val onClose: (suspend () -> Unit)? = null,
 ) : MediaDataProvider<UriMediaData> {
     override suspend fun open(scopeForCleanup: CoroutineScope): UriMediaData = UriMediaData(uri, headers, extraFiles)
     override fun toString(): String = "HttpStreamingVideoSource(uri='$uri')"

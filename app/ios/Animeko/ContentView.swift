@@ -86,6 +86,14 @@ class SwiftBridgeImpl : ISwiftBridge {
         (view as? EnhancedPlayerView)?.close()
     }
 
+    func setPlayerSubtitleCapture(view: UIView, capture: Bool, onText: @escaping (String) -> Void) {
+        (view as? EnhancedPlayerView)?.setSubtitleCapture(capture, onText: onText)
+    }
+
+    func setPlayerSubtitleDelay(view: UIView, delayMillis: Int64) {
+        (view as? EnhancedPlayerView)?.setSubtitleDelay(Double(delayMillis) / 1000)
+    }
+
 	func navigationController(_ receiver: UIViewController) -> UINavigationController? {
 		return receiver.navigationController
 	}

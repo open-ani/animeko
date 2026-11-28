@@ -32,6 +32,7 @@ import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
+import me.him188.ani.app.data.models.preference.OpenSubtitlesSettings
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.app.data.models.preference.ProfileSettings
@@ -94,6 +95,7 @@ interface SettingsRepository {
     val playerKernelConfig: Settings<PlayerKernelConfig>
 
     val videoResolverSettings: Settings<VideoResolverSettings>
+    val openSubtitlesSettings: Settings<OpenSubtitlesSettings>
     val anitorrentConfig: Settings<AnitorrentConfig>
     val pikpakConfig: Settings<PikPakConfig>
     val torrentPeerConfig: Settings<TorrentPeerConfig>
@@ -246,6 +248,11 @@ class PreferencesRepositoryImpl(
         "playerKernelConfig",
         PlayerKernelConfig.serializer(),
         default = { PlayerKernelConfig.Default },
+    )
+    override val openSubtitlesSettings: Settings<OpenSubtitlesSettings> = SerializablePreference(
+        "openSubtitlesSettings",
+        OpenSubtitlesSettings.serializer(),
+        default = { OpenSubtitlesSettings.Default },
     )
     override val videoResolverSettings: Settings<VideoResolverSettings> = SerializablePreference(
         "videoResolverSettings",

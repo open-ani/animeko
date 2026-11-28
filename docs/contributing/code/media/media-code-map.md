@@ -44,6 +44,8 @@
   通用 HTML/CSS-selector 网页数据源。
 - `JsonApiMediaSource`（`app/shared/app-data/.../domain/mediasource/jsonapi/JsonApiMediaSource.kt`）：
   通用 JSON 接口数据源，`JsonApiMediaSourceEngine` 负责按模板构造请求与 JSONPath 解析。
+- `EmbyMediaSource`（`datasource/jellyfin`）：支持自定义服务器名称、API Key 和用户名密码认证，
+  与 Jellyfin 共用 `JellyfinPasswordAuthenticator` 的会话缓存及令牌失效处理。
 - `RssMediaSource`（`app/shared/app-data/.../domain/mediasource/rss/RssMediaSource.kt`）：
   通用 RSS BitTorrent 数据源。
 - 本地缓存以数据源形式暴露：`MediaCacheStorageSource`
@@ -193,6 +195,24 @@
     - `domain/media/selector/BrowseEpisodeIndex.kt`：线路里按位置换算剧集下标（回放与下载弹窗共用），
       以及手动查找打开线路时的默认预选。
 
+## 外挂文本字幕
+
+播放器右上角菜单的“外挂字幕”提供本地导入与 OpenSubtitles 搜索。`ExternalSubtitlesDialog` 使用系统文件选择器读取
+SRT、WebVTT、ASS/SSA，支持 UTF-8 和带 BOM 的 UTF-16，文件大小限制为 16 MiB。
+`ExternalSubtitleController` 将文本对白绑定到当前 `MediaData`，按播放位置和用户设置的时间偏移查询对白；
+切集、换源或停止播放时清空，异步导入结果只对发起时的媒体有效。控制器的 `tracks` 合并内封轨道与已导入字幕，
+由播放器字幕菜单统一选择与关闭；关闭和切换轨道保留本次媒体的导入列表，重新开启不读取文件或消耗下载配额。
+内封字幕与外挂字幕互斥显示。ASS/SSA 以文本对白显示，不应用脚本的样式、定位或绘图效果。
+`ExternalSubtitleOverlay` 在视频层显示对白，避开系统安全区和播放器控制栏。
+
+OpenSubtitles 的设备本地配置位于“设置 → 数据源与播放 → 播放器 → OpenSubtitles”。API Key 默认空，
+应用不携带内置 Key。配置支持启用开关、可选账号密码与搜索语言。
+未填写 Key 时，通过 OpenSubtitles 官方 `https://mcp.opensubtitles.com/mcp` 服务匿名搜索，
+以账号密码使用用户额度下载；搜索请求不发送账号密码。用户自填 Key 时直接使用 REST API，账号令牌仅用于当次下载。
+官方服务的认证、搜索及下载协议见 [OpenSubtitles MCP 文档](https://github.com/opensubtitles/mcp.opensubtitles.com/blob/master/README.md)。
+`OpenSubtitlesClient` 按片名、可选季集与语言分页搜索，只有用户选择结果后才申请下载链接并消耗配额。
+下载统一请求 SRT 格式，临时文件请求不携带 API 凭据。
+
 ## Android 内封文本字幕
 
 `LibassExoPlayerMediampPlayer`（`app/shared/video-player/src/androidMain/.../media/`）
@@ -212,6 +232,41 @@
     - Android：`AndroidWebMediaResolver`
     - Desktop：`DesktopWebMediaResolver`
     - Apple/iOS：`IosWebMediaResolver`
+
+### iOS 媒体播放兼容
+
+`PlayerSession` 在调用播放器前通过 `preparePlatformMediaPlayback` 准备平台支持的媒体。
+iOS 的 `AvkitPlaybackPreparer` 处理 Matroska、WebM、AVI、WMV、MPEG-TS、RealMedia 等文件容器。
+扩展名不能确定格式时，使用有界 Range 请求检查 EBML 和 MP4 标记。MP4 按 box 长度跳过视频数据，
+在最多 4 MiB 的 moov 元数据中读取 sample entry；兼容的 MP4 与 HLS 使用原地址播放。
+`EmbyMediaSource` 在 iOS 上向服务器提交 AVKit 设备能力，优先使用服务器为不兼容媒体签发的 HLS。
+服务器未提供兼容流时才进入本地容器兼容处理。API 视频携带的服务端会话释放回调由
+`HttpStreamingMediaDataProvider` 交给 `PlayerSession`，在换源、停止、加载失败和取消时释放，
+其生命周期不受 HLS 代理替换播放器输入的影响。
+
+需要兼容处理的媒体按块复制到临时目录，然后通过已打包的 FFmpeg 生成 MP4。Matroska 直接读取 Tracks；
+其他文件容器先复制码流到 Matroska，以获取统一的编码和字幕元数据。H.264、HEVC 和 MPEG-4 Part 2
+优先保留视频码流；HEVC 使用 `hvc1` sample entry。AAC、AC-3、E-AC-3 和 ALAC 保留音轨，
+其他音频转码为双声道 AAC。不兼容的视频转码为 8-bit YUV420 MPEG-4 Part 2，尺寸限制为 1920×1080。
+输出文件通过 AVAssetImageGenerator 解码首帧；复制码流后仍无法解码时，使用视频与音频转码回退。
+播放器读取完整 MP4，因此支持时长和任意位置 seek。此路径需要等待完整下载与转封装，并占用源文件和输出文件的磁盘空间；
+FFmpeg 运行库需包含源媒体的 demuxer 和 decoder；加密、损坏或无法解码的媒体报告准备失败。
+播放停止、换源、加载失败和取消时释放临时文件。JVM 平台使用原媒体。
+
+`readMediaContainerTrackInfo` 有界读取 Matroska Tracks 中的视频和音频编码、字幕语言和轨道名称。
+FFmpeg 将 SRT、ASS/SSA、WebVTT 内封字幕编码为单轨 S_TEXT/UTF8 Matroska，
+`exportMatroskaSubtitleAsSrt` 读取 BlockGroup 时间和对白，生成独立 SRT。此流程使用 Apple 运行库包含的
+Matroska muxer；位图字幕不进入文本字幕列表。字幕提取失败时保留可播放的视频。
+提取结果随 `extraFiles` 交给播放器，生命周期与临时 MP4 一致。
+`AniAVKitMediampPlayer` 将原生 AVKit 字幕与提取的文本字幕接入 `MediaMetadata.subtitleTracks`，共用已有字幕菜单与“关闭”选项。
+SRT/WebVTT 文本根据播放器当前位置显示，seek、切换和关闭字幕时同步更新，异步读取结果受媒体会话与当前选择约束。
+字幕选择通过 `AVPlayerItem` 的原生对象相等性验证当前媒体会话；Objective-C 对象可以由不同的 Kotlin 包装对象引用。
+
+iOS 播放器右上角菜单的“字幕设置”提供 75% 至 200% 字号倍率、双行预览及恢复默认，倍率保存到
+`VideoScaffoldConfig.subtitleFontScale`。`IosSubtitleOverlay` 使用单个 UILabel 排版当前对白，去除重复重叠文本，
+按视口、系统安全区和播放器控制栏计算显示区域。区域最多占视频高度的 35%，长文本先缩小到可读字号，
+仍超出时限制最多六行并截断，避免覆盖控件或越过画面边缘。`IosNativeSubtitleStyle` 将相同字号和底部避让位置
+应用到 AVKit 原生文本轨道。
 
 ### Web 播放的重要细节
 

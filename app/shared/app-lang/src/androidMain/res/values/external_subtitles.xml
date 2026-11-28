@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="external_subtitle_title">External subtitles</string>
+    <string name="external_subtitle_import">Import local subtitles</string>
+    <string name="external_subtitle_formats">SRT / WebVTT / ASS / SSA, UTF-8 or UTF-16 text</string>
+    <string name="external_subtitle_off">Turn off external subtitles</string>
+    <string name="external_subtitle_earlier">Earlier 0.1s</string>
+    <string name="external_subtitle_later">Later 0.1s</string>
+    <string name="external_subtitle_setup">Search works anonymously. To download, enter an account or API key in Settings → Data sources and playback → Player → OpenSubtitles.</string>
+    <string name="external_subtitle_query">Title</string>
+    <string name="external_subtitle_season">Season (optional)</string>
+    <string name="external_subtitle_episode">Episode (optional)</string>
+    <string name="external_subtitle_search">Search subtitles</string>
+    <string name="external_subtitle_auth_error">OpenSubtitles authentication failed. Check the API key and account settings.</string>
+    <string name="external_subtitle_quota_error">OpenSubtitles download quota exhausted.</string>
+    <string name="external_subtitle_rate_error">Too many OpenSubtitles requests. Try again later.</string>
+    <string name="external_subtitle_read_error">Unable to read subtitles. Check the network, settings, and subtitle format.</string>
+    <string name="external_subtitle_empty">No subtitles found. Try adjusting the title, season, or episode.</string>
+    <string name="external_subtitle_previous">Previous</string>
+    <string name="external_subtitle_next">Next</string>
+    <string name="external_subtitle_done">Done</string>
+    <string name="opensubtitles_enabled">Online subtitles</string>
+    <string name="opensubtitles_description">Search anonymously. Download with an account or your own API key. The app does not include an API key.</string>
+    <string name="opensubtitles_not_configured">Not configured</string>
+    <string name="opensubtitles_key_description">Optional: your OpenSubtitles.com API key. Without a key, search anonymously and sign in with an account to download.</string>
+    <string name="opensubtitles_username">Username (optional)</string>
+    <string name="opensubtitles_anonymous">Not signed in (anonymous search available)</string>
+    <string name="opensubtitles_password">Password (optional)</string>
+    <string name="opensubtitles_languages">Search languages</string>
+    <string name="opensubtitles_languages_description">Comma-separated language codes, e.g. zh-cn,zh-tw,en,ja. Leave blank for all languages.</string>
+    <string name="external_subtitle_offset">Offset: %1$ss</string>
+    <string name="external_subtitle_disabled">OpenSubtitles is disabled in Settings.</string>
+    <string name="video_player_subtitle_font_size_input">Font size</string>
+    <string name="video_player_subtitle_font_size_hint">12–114; scales with the video</string>
+    <string name="video_player_subtitle_conversion">Text conversion</string>
+    <string name="video_player_subtitle_original">Keep original</string>
+    <string name="video_player_subtitle_simplified">Simplified Chinese</string>
+    <string name="video_player_subtitle_traditional">Traditional Chinese</string>
+    <string name="video_player_subtitle_conversion_description">Applies to the selected text subtitle. Image subtitles keep their original appearance.</string>
+</resources>

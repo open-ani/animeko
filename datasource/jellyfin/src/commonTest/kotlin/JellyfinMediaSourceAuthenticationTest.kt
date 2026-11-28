@@ -27,6 +27,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -125,14 +127,14 @@ class JellyfinMediaSourceAuthenticationTest {
 
     @Test
     fun `concurrent requests share one login session`() = runTest {
-        var loginCount = 0
-        var itemsCount = 0
+        val loginCount = MutableStateFlow(0)
+        val itemsCount = MutableStateFlow(0)
         val source = JellyfinMediaSource(
             config = passwordConfig(),
             client = mockClient { request ->
                 when (request.url.encodedPath) {
                     "/Users/AuthenticateByName" -> {
-                        loginCount++
+                        loginCount.update { it + 1 }
                         respondJson(
                             """
                             {
@@ -144,7 +146,7 @@ class JellyfinMediaSourceAuthenticationTest {
                     }
 
                     "/Items" -> {
-                        itemsCount++
+                        itemsCount.update { it + 1 }
                         respondJson("""{"Items":[]}""")
                     }
 
@@ -161,8 +163,8 @@ class JellyfinMediaSourceAuthenticationTest {
             }
         }
 
-        assertEquals(1, loginCount)
-        assertEquals(8, itemsCount)
+        assertEquals(1, loginCount.value)
+        assertEquals(8, itemsCount.value)
     }
 
     @Test
@@ -344,7 +346,7 @@ class JellyfinMediaSourceAuthenticationTest {
             client = mockClient { request ->
                 assertEquals("/Items", request.url.encodedPath)
                 itemsCount++
-                assertEquals("emby-user-id", request.url.parameters["userId"])
+                assertEquals("emby-user-id", request.url.parameters["UserId"])
                 assertEquals(
                     """MediaBrowser Token="emby-api-key"""",
                     request.headers[HttpHeaders.Authorization],

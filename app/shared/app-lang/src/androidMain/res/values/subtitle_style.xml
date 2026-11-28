@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="subtitle_style_delay">Subtitle delay (seconds)</string>
+    <string name="subtitle_style_delay_hint">Positive delays, negative advances. Applies to this video and subtitle only.</string>
+    <string name="subtitle_style_position">Vertical position</string>
+    <string name="subtitle_style_text_color">Text color</string>
+    <string name="subtitle_style_outline_color">Outline color</string>
+    <string name="subtitle_style_outline">Subtitle outline</string>
+    <string name="subtitle_style_outline_width">Outline width</string>
+    <string name="subtitle_style_background">Subtitle background</string>
+    <string name="subtitle_style_background_color">Background color</string>
+    <string name="subtitle_style_opacity">Background opacity</string>
+    <string name="subtitle_style_color_hint">Custom color (#RRGGBB)</string>
+    <string name="subtitle_style_reset">Reset</string>
+    <string name="subtitle_style_limits">Appearance controls apply to text subtitles. Available controls for image subtitles depend on the player. Subtitles burned into the picture cannot be adjusted.</string>
+    <string name="subtitle_style_reset_all">Reset all</string>
+</resources>

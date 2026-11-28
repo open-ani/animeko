@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="external_subtitle_title">外挂字幕</string>
+    <string name="external_subtitle_import">导入本地字幕</string>
+    <string name="external_subtitle_formats">SRT / WebVTT / ASS / SSA，UTF-8 或 UTF-16 文本</string>
+    <string name="external_subtitle_off">关闭外挂字幕</string>
+    <string name="external_subtitle_earlier">提前 0.1s</string>
+    <string name="external_subtitle_later">延后 0.1s</string>
+    <string name="external_subtitle_setup">搜索无需登录。下载请在 设置 → 数据源与播放 → 播放器 → OpenSubtitles 中填写账号密码或 API Key</string>
+    <string name="external_subtitle_query">片名</string>
+    <string name="external_subtitle_season">季（可选）</string>
+    <string name="external_subtitle_episode">集（可选）</string>
+    <string name="external_subtitle_search">搜索字幕</string>
+    <string name="external_subtitle_auth_error">OpenSubtitles 认证失败，请检查 API Key 和账号设置</string>
+    <string name="external_subtitle_quota_error">OpenSubtitles 下载配额已用尽</string>
+    <string name="external_subtitle_rate_error">OpenSubtitles 请求过于频繁，请稍后重试</string>
+    <string name="external_subtitle_read_error">无法读取字幕，请检查网络、配置及字幕文件格式</string>
+    <string name="external_subtitle_empty">没有找到字幕，可调整片名、季或集后重试</string>
+    <string name="external_subtitle_previous">上一页</string>
+    <string name="external_subtitle_next">下一页</string>
+    <string name="external_subtitle_done">完成</string>
+    <string name="opensubtitles_enabled">在线字幕</string>
+    <string name="opensubtitles_description">可匿名搜索；下载使用账号密码或自填 API Key，应用不内置密钥</string>
+    <string name="opensubtitles_not_configured">未配置</string>
+    <string name="opensubtitles_key_description">可选：填写 OpenSubtitles.com 的 API Key。不填时可匿名搜索，也可使用账号密码下载</string>
+    <string name="opensubtitles_username">用户名（可选）</string>
+    <string name="opensubtitles_anonymous">未登录（可匿名搜索）</string>
+    <string name="opensubtitles_password">密码（可选）</string>
+    <string name="opensubtitles_languages">搜索语言</string>
+    <string name="opensubtitles_languages_description">使用逗号分隔语言代码，例如 zh-cn,zh-tw,en,ja；留空搜索所有语言</string>
+    <string name="external_subtitle_offset">偏移：%1$ss</string>
+    <string name="external_subtitle_disabled">OpenSubtitles 已在设置中关闭</string>
+    <string name="video_player_subtitle_font_size_input">字号</string>
+    <string name="video_player_subtitle_font_size_hint">12–114，随画面大小缩放</string>
+    <string name="video_player_subtitle_conversion">简繁转换</string>
+    <string name="video_player_subtitle_original">保留原样</string>
+    <string name="video_player_subtitle_simplified">转为简体</string>
+    <string name="video_player_subtitle_traditional">转为繁体</string>
+    <string name="video_player_subtitle_conversion_description">对当前选择的文本字幕生效，图片字幕保持原样。</string>
+</resources>

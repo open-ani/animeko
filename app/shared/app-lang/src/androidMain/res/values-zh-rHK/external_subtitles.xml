@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="video_player_subtitle_font_size_input">字號</string>
+    <string name="video_player_subtitle_font_size_hint">12–114，隨畫面大小縮放</string>
+    <string name="video_player_subtitle_conversion">簡繁轉換</string>
+    <string name="video_player_subtitle_original">保留原樣</string>
+    <string name="video_player_subtitle_simplified">轉為簡體</string>
+    <string name="video_player_subtitle_traditional">轉為繁體</string>
+    <string name="video_player_subtitle_conversion_description">套用至目前選擇的文字字幕，圖片字幕維持原樣。</string>
+</resources>

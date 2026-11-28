@@ -241,6 +241,7 @@ class DanmakuCacheTest {
     private class TestSettingsRepository(
         initialStrategy: DanmakuCacheStrategy,
     ) : SettingsRepository {
+        override val openSubtitlesSettings get() = error("not used")
         private val mediaCacheState = MutableStateFlow(MediaCacheSettings(danmakuCacheStrategy = initialStrategy))
 
         override val mediaCacheSettings: Settings<MediaCacheSettings> = object : Settings<MediaCacheSettings> {

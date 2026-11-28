@@ -30,6 +30,7 @@ dependencies {
     commonMainApi(projects.datasource.datasourceApi)
     commonMainImplementation(projects.utils.serialization)
     commonMainImplementation(projects.utils.logging)
+    commonMainImplementation(projects.utils.platform)
 
     commonMainApi(libs.kotlinx.coroutines.core)
     commonMainImplementation(libs.ktor.client.logging)
