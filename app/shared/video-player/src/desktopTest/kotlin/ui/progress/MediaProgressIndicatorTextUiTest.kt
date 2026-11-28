@@ -25,6 +25,24 @@ import kotlin.test.assertTrue
 
 class MediaProgressIndicatorTextUiTest {
     @Test
+    fun `resumed position is formatted while duration is loading`() = runAniComposeUiTest {
+        val durationMillis = mutableLongStateOf(0L)
+        val state = PlayerProgressSliderState(
+            currentPositionMillis = { 733_000L },
+            totalDurationMillis = { durationMillis.longValue },
+            chapters = { emptyList() },
+            onPreview = {},
+            onPreviewFinished = {},
+        )
+        setContent { MediaProgressIndicatorText(state) }
+        onNodeWithTag(TAG_MEDIA_PROGRESS_INDICATOR_TEXT)
+            .assertTextEquals("12:13 / 00:00")
+        runOnIdle { durationMillis.longValue = 1_314_830L }
+        onNodeWithTag(TAG_MEDIA_PROGRESS_INDICATOR_TEXT)
+            .assertTextEquals("12:13 / 21:54")
+    }
+
+    @Test
     fun `switching back to one times speed restores compact layout width`() = runAniComposeUiTest {
         val progressState = PlayerProgressSliderState(
             currentPositionMillis = { 0L },

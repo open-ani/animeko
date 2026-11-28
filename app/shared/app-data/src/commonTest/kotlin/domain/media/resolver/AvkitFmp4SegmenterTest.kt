@@ -25,7 +25,7 @@ class AvkitFmp4SegmenterTest {
         val segmenter = AvkitFmp4Segmenter({ initialization = it }, segments::add)
         val ftyp = box("ftyp", "iso6".encodeToByteArray())
         val moov = movie()
-        val moof = box("moof", box("traf", box("tfhd", ints(0x020008, 1, 1000)) + box("trun", ints(0, 2))))
+        val moof = box("moof", box("traf", box("tfhd", ints(0x020018, 1, 1000, 1)) + box("trun", ints(1, 2, 68))))
         val mdat = box("mdat", byteArrayOf(1, 2, 3))
         segmenter.box(ftyp)
         segmenter.box(moov)
@@ -46,7 +46,7 @@ class AvkitFmp4SegmenterTest {
     fun `incomplete media fragments are rejected`() {
         val segmenter = AvkitFmp4Segmenter({}, {})
         segmenter.box(movie())
-        segmenter.box(box("moof", box("traf", box("tfhd", ints(0x020008, 1, 1000)) + box("trun", ints(0, 2)))))
+        segmenter.box(box("moof", box("traf", box("tfhd", ints(0x020018, 1, 1000, 1)) + box("trun", ints(1, 2, 68)))))
         assertFailsWith<IllegalArgumentException> { segmenter.finish() }
     }
 

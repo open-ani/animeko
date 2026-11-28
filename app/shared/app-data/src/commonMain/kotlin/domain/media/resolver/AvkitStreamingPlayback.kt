@@ -49,6 +49,7 @@ import me.him188.ani.utils.logging.logger
 import org.openani.mediamp.source.MediaExtraFiles
 import org.openani.mediamp.source.Subtitle
 import org.openani.mediamp.source.UriMediaData
+import kotlin.math.ceil
 
 /** 转封装与起播并行；认证仅由上游 HTTP 客户端持有，原生任务只访问会话本地地址。 */
 internal class AvkitStreamingPlayback(
@@ -84,6 +85,7 @@ internal class AvkitStreamingPlayback(
         val extension = if (fragmentedMp4) "m4s" else "ts"
         val source = directory.resolve(if (fragmentedMp4) "stream.mp4" else "stream.ts")
         val durations = MutableStateFlow<List<Double>>(emptyList())
+        val peakBitrates = MutableStateFlow(0L to 0L)
         val complete = MutableStateFlow(false)
         val closed = atomic(false)
         val conversion = scope.async {
@@ -97,6 +99,10 @@ internal class AvkitStreamingPlayback(
             avkitGrowingFileSource(source).buffered().use { input ->
                 val publish: (AvkitStreamSegment) -> Unit = { segment ->
                     SystemFileSystem.sink(directory.resolve("segment-${segment.index}.$extension").path).buffered().use { it.write(segment.bytes) }
+                    val iframe = segment.iframeBytes ?: avkitTsIframe(segment.bytes)
+                    SystemFileSystem.sink(directory.resolve("iframe-${segment.index}.$extension").path).buffered().use { it.write(iframe) }
+                    peakBitrates.value = maxOf(peakBitrates.value.first, ceil(segment.bytes.size * 8 / segment.durationSeconds).toLong()) to
+                            maxOf(peakBitrates.value.second, ceil(iframe.size * 8 / segment.durationSeconds).toLong())
                     durations.value = durations.value + segment.durationSeconds
                 }
                 if (fragmentedMp4) {
@@ -149,13 +155,17 @@ internal class AvkitStreamingPlayback(
                 respond(sink, 404, "text/plain", byteArrayOf())
             } else when (val name = request.path.removePrefix(prefix)) {
                 "source" -> relay(data, request, sink)
-                "playlist.m3u8" -> {
+                "master.m3u8" -> {
+                    val (bandwidth, iframeBandwidth) = peakBitrates.value
+                    respond(sink, 200, "application/vnd.apple.mpegurl", AvkitTsSegmenter.masterPlaylist(bandwidth, iframeBandwidth).encodeToByteArray())
+                }
+                "playlist.m3u8", "iframes.m3u8" -> {
                     if (indexing.isCancelled) respond(sink, 503, "text/plain", byteArrayOf()) else
-                        respond(sink, 200, "application/vnd.apple.mpegurl", AvkitTsSegmenter.playlist(durations.value, complete.value, fragmentedMp4).encodeToByteArray())
+                        respond(sink, 200, "application/vnd.apple.mpegurl", AvkitTsSegmenter.playlist(durations.value, complete.value, fragmentedMp4, iframes = name == "iframes.m3u8").encodeToByteArray())
                 }
                 else -> {
                     val subtitle = Regex("subtitle-(\\d+)\\.live\\.srt").matchEntire(name)?.groupValues?.get(1)?.toIntOrNull()
-                    val segment = Regex("segment-(\\d+)\\.$extension").matchEntire(name)?.groupValues?.get(1)?.toIntOrNull()
+                    val segment = Regex("(?:segment|iframe)-(\\d+)\\.$extension").matchEntire(name)?.groupValues?.get(1)?.toIntOrNull()
                     when {
                         name == "init.mp4" && fragmentedMp4 && durations.value.isNotEmpty() -> {
                             val bytes = SystemFileSystem.source(directory.resolve(name).path).buffered().use { it.readByteArray() }
@@ -208,7 +218,7 @@ internal class AvkitStreamingPlayback(
             logger.info { "Streaming AVKit media ready: ${durations.value.sum()} seconds buffered; conversionComplete=${complete.value}" }
             PlatformMediaPlayback(
                 UriMediaData(
-                    base + "playlist.m3u8",
+                    base + "master.m3u8",
                     extraFiles = MediaExtraFiles(data.extraFiles.subtitles + subtitles),
                     options = data.options,
                 ),

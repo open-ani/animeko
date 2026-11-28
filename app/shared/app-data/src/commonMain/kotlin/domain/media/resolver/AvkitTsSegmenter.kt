@@ -11,7 +11,12 @@ import kotlinx.io.readByteArray
 import me.him188.ani.app.domain.media.hls.TsPacketReader
 import kotlin.math.ceil
 
-internal data class AvkitStreamSegment(val index: Int, val durationSeconds: Double, val bytes: ByteArray)
+internal data class AvkitStreamSegment(
+    val index: Int,
+    val durationSeconds: Double,
+    val bytes: ByteArray,
+    val iframeBytes: ByteArray? = null,
+)
 
 /** 在视频随机访问点切分连续 TS；每片携带 PAT/PMT，时间戳保持原时间轴。 */
 internal class AvkitTsSegmenter(private val emit: (AvkitStreamSegment) -> Unit) {
@@ -59,13 +64,43 @@ internal class AvkitTsSegmenter(private val emit: (AvkitStreamSegment) -> Unit) 
     companion object {
         const val TargetDuration = 10
 
-        fun playlist(durations: List<Double>, complete: Boolean, fragmentedMp4: Boolean = false): String = buildString {
-            append("#EXTM3U\n#EXT-X-VERSION:${if (fragmentedMp4) 7 else 3}\n#EXT-X-TARGETDURATION:${maxOf(TargetDuration, ceil(durations.maxOrNull() ?: 0.0).toInt())}\n")
+        fun masterPlaylist(bandwidth: Long, iframeBandwidth: Long): String = """
+            #EXTM3U
+            #EXT-X-VERSION:7
+            #EXT-X-INDEPENDENT-SEGMENTS
+            #EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=${iframeBandwidth.coerceAtLeast(64_000)},URI="iframes.m3u8"
+            #EXT-X-STREAM-INF:BANDWIDTH=${bandwidth.coerceAtLeast(64_000)}
+            playlist.m3u8
+        """.trimIndent() + "\n"
+
+        fun playlist(durations: List<Double>, complete: Boolean, fragmentedMp4: Boolean = false, iframes: Boolean = false): String = buildString {
+            append("#EXTM3U\n#EXT-X-VERSION:${if (fragmentedMp4) 7 else if (iframes) 4 else 3}\n#EXT-X-TARGETDURATION:${maxOf(TargetDuration, ceil(durations.maxOrNull() ?: 0.0).toInt())}\n")
             append("#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-PLAYLIST-TYPE:EVENT\n#EXT-X-START:TIME-OFFSET=0\n")
+            if (iframes) append("#EXT-X-I-FRAMES-ONLY\n")
             if (fragmentedMp4) append("#EXT-X-MAP:URI=\"init.mp4\"\n")
             val extension = if (fragmentedMp4) "m4s" else "ts"
-            durations.forEachIndexed { index, duration -> append("#EXTINF:$duration,\nsegment-$index.$extension\n") }
+            val prefix = if (iframes) "iframe" else "segment"
+            durations.forEachIndexed { index, duration -> append("#EXTINF:$duration,\n$prefix-$index.$extension\n") }
             if (complete) append("#EXT-X-ENDLIST\n")
         }
     }
+}
+
+/** 每片以视频随机访问点开始；提取首个视频 PES，保留其前面的节目表。 */
+internal fun avkitTsIframe(bytes: ByteArray): ByteArray {
+    val output = Buffer()
+    var started = false
+    for (offset in bytes.indices step 188) {
+        require(offset + 188 <= bytes.size && bytes[offset] == 0x47.toByte()) { "Invalid I-frame transport packet" }
+        val pid = ((bytes[offset + 1].toInt() and 31) shl 8) or (bytes[offset + 2].toInt() and 255)
+        if (pid == 256) {
+            if (bytes[offset + 1].toInt() and 0x40 != 0) {
+                if (started) break
+                started = true
+            }
+            output.write(bytes, offset, offset + 188)
+        } else if (!started) output.write(bytes, offset, offset + 188)
+    }
+    require(started) { "Missing I-frame video packet" }
+    return output.readByteArray()
 }

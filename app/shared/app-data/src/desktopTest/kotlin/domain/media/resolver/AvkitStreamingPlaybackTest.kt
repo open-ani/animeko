@@ -25,6 +25,10 @@ import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.readByteArray
 import kotlinx.io.readString
 import kotlinx.io.writeString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import me.him188.ani.app.domain.media.hls.KtorNetworkHlsProxyServer
 import me.him188.ani.app.domain.media.hls.httpGet
 import me.him188.ani.utils.io.SystemPaths
@@ -82,13 +86,22 @@ class AvkitStreamingPlaybackTest {
             headerSeen.await()
             assertFalse(finish.isCompleted)
             val url = (playback.data as UriMediaData).uri
-            val playlist = withContext(Dispatchers.IO) { httpGet(url) }.body.decodeToString()
+            val master = withContext(Dispatchers.IO) { httpGet(url) }.body.decodeToString()
+            assertTrue("#EXT-X-I-FRAME-STREAM-INF:" in master, "AVKit requires a trick-play rendition for rates above 2x")
+            val playlistUrl = url.replace("master.m3u8", "playlist.m3u8")
+            val playlist = withContext(Dispatchers.IO) { httpGet(playlistUrl) }.body.decodeToString()
             assertTrue("#EXTINF:" in playlist)
             assertFalse("#EXT-X-ENDLIST" in playlist)
-            val segment = withContext(Dispatchers.IO) { httpGet(url.replace("playlist.m3u8", "segment-0.ts")) }
+            val segment = withContext(Dispatchers.IO) { httpGet(playlistUrl.replace("playlist.m3u8", "segment-0.ts")) }
             assertEquals(200, segment.status)
             assertEquals(0x47, segment.body[0].toInt())
             assertEquals(0, segment.body.size % 188)
+            val iframePlaylist = withContext(Dispatchers.IO) { httpGet(url.replace("master.m3u8", "iframes.m3u8")) }
+                .body.decodeToString()
+            assertTrue("#EXT-X-I-FRAMES-ONLY" in iframePlaylist)
+            val iframe = withContext(Dispatchers.IO) { httpGet(url.replace("master.m3u8", "iframe-0.ts")) }
+            assertEquals(200, iframe.status)
+            assertSingleKeyframe(iframe.body)
             val decoder = ProcessBuilder("ffmpeg", "-v", "error", "-xerror", "-i", "pipe:0", "-frames:v", "1", "-f", "null", "-")
                 .redirectErrorStream(true).start()
             try {
@@ -98,7 +111,7 @@ class AvkitStreamingPlaybackTest {
             } finally { decoder.destroyForcibly() }
             finish.complete(Unit)
             withTimeout(5000) {
-                while (!withContext(Dispatchers.IO) { httpGet(url) }.body.decodeToString().contains("#EXT-X-ENDLIST")) delay(50)
+                while (!withContext(Dispatchers.IO) { httpGet(playlistUrl) }.body.decodeToString().contains("#EXT-X-ENDLIST")) delay(50)
             }
             assertFalse(directory.resolve("stream.ts").exists())
         } finally {
@@ -173,6 +186,22 @@ class AvkitStreamingPlaybackTest {
         }
     }
 
+    private fun assertSingleKeyframe(bytes: ByteArray) {
+        val process = ProcessBuilder("ffprobe", "-v", "error", "-select_streams", "v:0", "-show_frames",
+            "-show_entries", "frame=key_frame", "-of", "json", "-i", "pipe:0").redirectErrorStream(true).start()
+        try {
+            process.outputStream.use { it.write(bytes) }
+            val output = process.inputStream.bufferedReader().readText()
+            assertTrue(process.waitFor(15, TimeUnit.SECONDS))
+            assertEquals(0, process.exitValue(), output)
+            val frames = Json.parseToJsonElement(output).jsonObject.getValue("frames").jsonArray
+            assertEquals(1, frames.size, output)
+            assertEquals("1", frames.single().jsonObject.getValue("key_frame").jsonPrimitive.content)
+        } finally {
+            process.destroyForcibly()
+        }
+    }
+
     @Test
     @EnabledIfEnvironmentVariable(named = "ANI_STREAM_MEDIA_DIR", matches = ".+")
     fun `HEVC and AV1 samples retain video frames audio and subtitles in independent fragments`() = runBlocking {
@@ -207,6 +236,7 @@ class AvkitStreamingPlaybackTest {
                     val independent = directory.resolve("independent.mp4")
                     SystemFileSystem.sink(independent.path).buffered().use { it.write(initialization); it.write(segment.bytes) }
                     runFfmpeg(listOf("-v", "error", "-i", independent.absolutePath, "-frames:v", "1", "-f", "null", "-"))
+                    assertSingleKeyframe(initialization + checkNotNull(segment.iframeBytes))
                 }
                 val exported = Buffer()
                 SystemFileSystem.source(directory.resolve("subtitle-0.mks").path).buffered().use { exportMatroskaSubtitleAsSrt(it, exported) }
@@ -260,7 +290,9 @@ class AvkitStreamingPlaybackTest {
         }
         try {
             assertFalse(stopped.isCompleted, "Playback must become available while native remux is running")
-            val url = (playback.data as UriMediaData).uri
+            val masterUrl = (playback.data as UriMediaData).uri
+            assertTrue("#EXT-X-I-FRAME-STREAM-INF:" in withContext(Dispatchers.IO) { httpGet(masterUrl) }.body.decodeToString())
+            val url = masterUrl.replace("master.m3u8", "playlist.m3u8")
             val playlist = withContext(Dispatchers.IO) { httpGet(url) }.body.decodeToString()
             assertTrue("#EXT-X-MAP:" in playlist)
             assertFalse("#EXT-X-ENDLIST" in playlist)

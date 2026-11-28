@@ -19,6 +19,8 @@ internal class AvkitFmp4Segmenter(
     private var videoTrack = 0L
     private var timescale = 0L
     private var defaultDuration = 0L
+    private var defaultSize = 0L
+    private var fragmentHeader: Mp4Box? = null
     private var duration = 0.0
     private var index = 0
 
@@ -36,11 +38,14 @@ internal class AvkitFmp4Segmenter(
                 duration = fragmentDuration(box)
                 require(duration > 0 && duration <= AvkitTsSegmenter.TargetDuration) { "Unsupported MP4 fragment duration" }
                 fragment.write(bytes)
+                fragmentHeader = box
             }
             "mdat" -> {
                 require(fragment.size > 0) { "MP4 media requires a fragment header" }
                 fragment.write(bytes)
-                emit(AvkitStreamSegment(index++, duration, fragment.readByteArray()))
+                val iframe = iframeFragment(checkNotNull(fragmentHeader), bytes)
+                emit(AvkitStreamSegment(index++, duration, fragment.readByteArray(), iframe))
+                fragmentHeader = null
             }
         }
     }
@@ -64,7 +69,52 @@ internal class AvkitFmp4Segmenter(
         val extends = movie.children().firstOrNull { it.type == "mvex" }
         extends?.children()?.firstOrNull { it.type == "trex" && it.uint(4) == videoTrack }?.let {
             defaultDuration = it.uint(12)
+            defaultSize = it.uint(16)
         }
+    }
+
+    /** 快进分片只包含首个视频 sample；重建 moof 后更新指向 mdat 的相对偏移。 */
+    private fun iframeFragment(movieFragment: Mp4Box, media: ByteArray): ByteArray {
+        val track = movieFragment.children().first { it.type == "traf" && it.children().first { child -> child.type == "tfhd" }.uint(4) == videoTrack }
+        val header = track.children().first { it.type == "tfhd" }
+        val flags = header.uint(0).toInt() and 0xffffff
+        require(flags and 0x020000 != 0 && flags and 1 == 0) { "I-frame extraction requires moof-relative sample offsets" }
+        var cursor = 8
+        if (flags and 2 != 0) cursor += 4
+        if (flags and 8 != 0) cursor += 4
+        var sampleSize = if (flags and 16 != 0) header.uint(cursor) else defaultSize
+        val run = track.children().first { it.type == "trun" }
+        val runFlags = run.uint(0).toInt() and 0xffffff
+        require(run.uint(4) > 0 && runFlags and 1 != 0) { "I-frame extraction requires an explicit sample offset" }
+        val sampleOffset = run.uint(8) - movieFragment.encoded().size
+        cursor = 12
+        if (runFlags and 4 != 0) cursor += 4
+        if (runFlags and 0x100 != 0) cursor += 4
+        if (runFlags and 0x200 != 0) {
+            sampleSize = run.uint(cursor)
+            cursor += 4
+        }
+        if (runFlags and 0x400 != 0) cursor += 4
+        if (runFlags and 0x800 != 0) cursor += 4
+        require(sampleSize > 0 && sampleOffset >= 8 && sampleOffset + sampleSize <= media.size) { "Truncated I-frame sample" }
+        val firstSampleRun = run.encoded().copyOf(8 + cursor)
+        writeUInt(firstSampleRun, 0, firstSampleRun.size)
+        writeUInt(firstSampleRun, 12, 1)
+        val sequence = movieFragment.children().firstOrNull { it.type == "mfhd" }?.encoded() ?: byteArrayOf()
+        val decodeTime = track.children().firstOrNull { it.type == "tfdt" }?.encoded() ?: byteArrayOf()
+        fun moof() = boxBytes("moof", sequence + boxBytes("traf", header.encoded() + decodeTime + firstSampleRun))
+        writeUInt(firstSampleRun, 16, moof().size + 8)
+        return moof() + boxBytes("mdat", media.copyOfRange(sampleOffset.toInt(), (sampleOffset + sampleSize).toInt()))
+    }
+
+    private fun boxBytes(type: String, payload: ByteArray): ByteArray = Buffer().apply {
+        writeInt(payload.size + 8)
+        write(type.encodeToByteArray())
+        write(payload)
+    }.readByteArray()
+
+    private fun writeUInt(bytes: ByteArray, offset: Int, value: Int) {
+        for (index in 0..3) bytes[offset + index] = (value ushr (24 - index * 8)).toByte()
     }
 
     private fun fragmentDuration(movieFragment: Mp4Box): Double {
@@ -104,6 +154,7 @@ internal class AvkitFmp4Segmenter(
         val type = bytes.decodeToString(start + 4, start + 8)
         val payloadSize get() = end - start - headerSize
         val version get() = bytes[start + headerSize].toInt() and 255
+        fun encoded(): ByteArray = bytes.copyOfRange(start, end)
 
         fun uint(offset: Int): Long {
             require(offset >= 0 && offset + 4 <= payloadSize) { "Truncated MP4 field" }

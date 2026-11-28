@@ -61,7 +61,11 @@ fun MediaProgressIndicatorText(
             }
             RenderedProgressText(
                 text = renderSeconds(currentPositionMillis / 1000, totalSecs, remainingSecs),
-                reserve = renderSecondsReserve(totalSecs, includeRemaining = remainingSecs != null),
+                reserve = renderSecondsReserve(
+                    totalSecs,
+                    includeRemaining = remainingSecs != null,
+                    currentSecs = currentPositionMillis / 1000,
+                ),
             )
         }
     }
@@ -97,9 +101,10 @@ private data class RenderedProgressText(
 internal fun renderSecondsReserve(
     totalSecs: Long?,
     includeRemaining: Boolean,
+    currentSecs: Long = 0,
 ): String {
     // 8 is usually the visually widest character
-    val (base, remaining) = if (totalSecs != null && totalSecs >= 3600) {
+    val (base, remaining) = if ((totalSecs ?: 0) >= 3600 || currentSecs >= 3600) {
         "88:88:88 / 88:88:88" to " (-88:88:88)"
     } else {
         "88:88 / 88:88" to " (-88:88)"
@@ -116,7 +121,7 @@ internal fun renderSecondsReserve(
 @Stable
 internal fun renderSeconds(current: Long, total: Long?, remainingSecs: Long? = null): String {
     if (total == null) {
-        return "00:${current.fixToString(2)} / 00:00"
+        return renderSeconds(current, 0)
     }
     val base = if (current < 60 && total < 60) {
         "00:${current.fixToString(2)} / 00:${total.fixToString(2)}"

@@ -37,6 +37,20 @@ class AvkitTsSegmenterTest {
     }
 
     @Test
+    fun `master exposes an I frame rendition with the same event timeline`() {
+        val master = AvkitTsSegmenter.masterPlaylist(800_000, 40_000)
+        assertTrue("#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=64000,URI=\"iframes.m3u8\"" in master)
+        assertTrue("#EXT-X-STREAM-INF:BANDWIDTH=800000\nplaylist.m3u8" in master)
+        val durations = listOf(4.004, 2.002)
+        val normal = AvkitTsSegmenter.playlist(durations, false)
+        val iframes = AvkitTsSegmenter.playlist(durations, false, iframes = true)
+        assertTrue("#EXT-X-I-FRAMES-ONLY" in iframes)
+        assertFalse("#EXT-X-ENDLIST" in iframes)
+        assertEquals(normal.lines().filter { it.startsWith("#EXTINF:") }, iframes.lines().filter { it.startsWith("#EXTINF:") })
+        assertTrue("iframe-0.ts" in iframes)
+    }
+
+    @Test
     fun `unsupported keyframe gaps fail instead of generating an invalid target duration`() {
         val segmenter = AvkitTsSegmenter {}
         segmenter.packet(pat()); segmenter.packet(video(0)); segmenter.packet(pat())
