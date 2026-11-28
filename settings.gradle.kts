@@ -155,6 +155,7 @@ includeProject(":datasource:mikan", "datasource/bt/mikan") // https://mikanani.m
 //   Web 数据源
 includeProject(":datasource:web-base", "datasource/web/web-base") // web 基础
 includeProject(":datasource:jellyfin", "datasource/jellyfin")
+includeProject(":datasource:webdav", "datasource/webdav")
 includeProject(":datasource:ikaros", "datasource/ikaros") // https://ikaros.run/
 
 // danmaku
