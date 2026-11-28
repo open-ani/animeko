@@ -82,6 +82,10 @@ fun CommentOverlayCleanupEffect(items: LazyPagingItems<UIComment>, onRefreshComp
  * @param pullToRefreshEnabled 是否启用下拉刷新. 当此列表位于会优先消费向下滚动的容器中时
  * (例如 [me.him188.ani.app.ui.foundation.layout.NestedScrollableColumn] 的 header 未完全展开),
  * 应传 `false`, 否则下拉刷新会先于容器消费掉下拉手势.
+ * @param header 列表最前面的一项 (例如 thread 页的根评论与分组标题). 有表头时列表为空只在表头下方显示 [emptyPlaceholder], 表头保留.
+ * @param emptyPlaceholder 没有任何评论时显示的内容.
+ * @param isRefreshing 下拉刷新指示器是否转动. 默认跟随 [items] 的首屏加载 / 刷新; 调用方有别的加载 (例如表头) 时可以合并进来.
+ * @param onRefresh 下拉刷新时调用, 默认刷新 [items].
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -93,6 +97,10 @@ fun CommentColumn(
     connectedScrollState: ConnectedScrollState? = null,
     state: LazyGridState = rememberLazyGridState(),
     pullToRefreshEnabled: Boolean = true,
+    header: (@Composable () -> Unit)? = null,
+    emptyPlaceholder: @Composable () -> Unit = { CommentDefaults.EmptyPlaceholder() },
+    isRefreshing: Boolean = items.isLoadingFirstPageOrRefreshing,
+    onRefresh: () -> Unit = { items.refresh() },
     commentItem: @Composable LazyGridItemScope.(index: Int, item: UIComment) -> Unit
 ) {
     val emptyContentModifier = Modifier
@@ -110,21 +118,21 @@ fun CommentColumn(
         )
 
     PullToRefreshBox(
-        isRefreshing = items.isLoadingFirstPageOrRefreshing,
-        onRefresh = { items.refresh() },
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
         modifier = modifier,
         enabled = pullToRefreshEnabled,
         touchOnly = true,
         contentAlignment = Alignment.TopCenter,
     ) {
-        if (items.isFinishedAndEmpty) {
+        if (header == null && items.isFinishedAndEmpty) {
             Box(
                 modifier = emptyContentModifier
                     .fillMaxSize()
                     .padding(contentPadding),
                 contentAlignment = Alignment.TopCenter,
             ) {
-                CommentDefaults.EmptyPlaceholder()
+                emptyPlaceholder()
             }
             return@PullToRefreshBox
         }
@@ -144,7 +152,15 @@ fun CommentColumn(
             showLoadingIndicatorInFirstPage = false, // Use PTR instead
             state = state,
         ) {
-            item("spacer header") { Spacer(Modifier.height(1.dp)) }
+            if (header != null) {
+                item("header", contentType = "header") { header() }
+            } else {
+                item("spacer header") { Spacer(Modifier.height(1.dp)) }
+            }
+
+            if (header != null && items.isFinishedAndEmpty) {
+                item("empty placeholder", contentType = "empty") { emptyPlaceholder() }
+            }
 
             items(
                 items.itemCount,

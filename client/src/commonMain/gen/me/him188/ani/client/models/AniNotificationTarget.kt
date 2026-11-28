@@ -29,6 +29,8 @@ import kotlinx.serialization.encoding.*
  * @param personId 人物
  * @param characterId 角色
  * @param url http(s) 链接, 在浏览器中打开. 优先级最低: 有其他位置时客户端前往其他位置
+ * @param commentId 根评论的稳定 id (`ani:<uuid>` / `bangumi:<id>`), 评论所在的剧集或人物/角色由同一对象的其他字段给出. 有值时客户端打开这条评论的详情 (评论 thread)
+ * @param replyId `commentId` 这楼里要定位到的回复的稳定 id, 没有时停在根评论
  */
 @Serializable
 
@@ -47,7 +49,13 @@ data class AniNotificationTarget (
     @SerialName(value = "characterId") val characterId: kotlin.Long? = null,
 
     /* http(s) 链接, 在浏览器中打开. 优先级最低: 有其他位置时客户端前往其他位置 */
-    @SerialName(value = "url") val url: kotlin.String? = null
+    @SerialName(value = "url") val url: kotlin.String? = null,
+
+    /* 根评论的稳定 id (`ani:<uuid>` / `bangumi:<id>`), 评论所在的剧集或人物/角色由同一对象的其他字段给出. 有值时客户端打开这条评论的详情 (评论 thread) */
+    @SerialName(value = "commentId") val commentId: kotlin.String? = null,
+
+    /* `commentId` 这楼里要定位到的回复的稳定 id, 没有时停在根评论 */
+    @SerialName(value = "replyId") val replyId: kotlin.String? = null
 
 ) {
 

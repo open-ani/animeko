@@ -319,6 +319,7 @@ private fun TvExplorationContent(
         TvExplorationPageLayout(
             viewportHeight = maxHeight, columnState = columnState, focus = focus,
             navigationRailInsets = navigationRailInsets,
+            captureBackdrop = expandProgress > 0f && !(expanded && detailsFocused),
             anchoredAtHero = { currentArea == TvExplorationArea.Featured || currentArea == TvExplorationArea.ContinueWatching },
             focusedRow = { currentRows.firstOrNull { it.area == currentArea && it.indexOfSubject(currentSubjectId) >= 0 } },
             measuredHeroHeight = { measuredHeroHeight },
@@ -427,6 +428,7 @@ private fun TvExplorationPageLayout(
     columnState: LazyListState,
     focus: TvFocusScope,
     navigationRailInsets: PaddingValues,
+    captureBackdrop: Boolean,
     anchoredAtHero: () -> Boolean,
     focusedRow: () -> TvExplorationRow?,
     measuredHeroHeight: () -> Int,
@@ -447,8 +449,12 @@ private fun TvExplorationPageLayout(
             .background(TvExplorationDefaults.Background).tvFocusNavSignal(focus),
     ) {
         val actionBackdrop = rememberHazeState()
-        backdrop(Modifier.fillMaxSize().hazeSource(actionBackdrop))
-        CompositionLocalProvider(LocalBringIntoViewSpec provides scrollSpec, LocalTvDetailsActionBackdrop provides actionBackdrop) {
+        // Only a visible, non-opaque hero action needs to sample the backdrop.
+        backdrop(Modifier.fillMaxSize().then(if (captureBackdrop) Modifier.hazeSource(actionBackdrop) else Modifier))
+        CompositionLocalProvider(
+            LocalBringIntoViewSpec provides scrollSpec,
+            LocalTvDetailsActionBackdrop provides actionBackdrop.takeIf { captureBackdrop },
+        ) {
             LazyColumn(
                 Modifier.fillMaxSize().padding(navigationRailInsets).testTag("tv-exploration-scroll"),
                 state = columnState, contentPadding = PaddingValues(bottom = viewportHeight),

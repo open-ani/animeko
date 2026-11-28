@@ -16,6 +16,11 @@ import me.him188.ani.app.data.models.subject.PersonPosition
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
 
 /**
+ * 条目与制作人员的关系, 一行是一个人在一个条目里的一个职位.
+ *
+ * 主键必须包含 [position]: 同一个人在同一条目里常兼多个职位 (导演往往同时是分镜、演出、原画),
+ * 只按 (subjectId, personId) 去重会把其余职位丢掉.
+ *
  * @since 4.0.0-alpha04
  */
 @Entity(
@@ -23,7 +28,7 @@ import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
     indices = [
         Index(value = ["personId"], orders = [Index.Order.ASC]),
     ],
-    primaryKeys = ["subjectId", "personId"],
+    primaryKeys = ["subjectId", "personId", "position"],
     foreignKeys = [
         ForeignKey(
             SubjectCollectionEntity::class,

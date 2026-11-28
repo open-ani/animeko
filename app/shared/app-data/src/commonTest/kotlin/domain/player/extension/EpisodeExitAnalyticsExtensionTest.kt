@@ -115,7 +115,7 @@ class EpisodeExitAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
                 "buffering_count" to 1L,
                 "buffering_ms" to 2_000L,
                 "had_error" to 0L,
-                "media_source_id" to "a",
+                "source" to "a",
                 "is_cached" to 0L,
                 "source_switch_count" to 0L,
             ),
@@ -176,7 +176,7 @@ class EpisodeExitAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals(2_000L, event["watched_ms"])
         assertEquals(0L, event["buffering_count"])
         assertEquals(0L, event["buffering_ms"])
-        assertEquals("b", event["media_source_id"])
+        assertEquals("b", event["source"])
         assertEquals(1L, event["is_cached"])
         assertEquals(1L, event["source_switch_count"])
         case.scope.cancel()
@@ -262,7 +262,7 @@ class EpisodeExitAnalyticsExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals("close", events[1]["exit_reason"])
         assertEquals(0L, events[1]["reached_playing"])
         assertEquals(0L, events[1]["watched_ms"])
-        assertEquals(null, events[1]["media_source_id"])
+        assertEquals(null, events[1]["source"])
         case.scope.cancel()
     }
 }

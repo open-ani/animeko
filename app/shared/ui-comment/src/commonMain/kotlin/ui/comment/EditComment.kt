@@ -74,8 +74,11 @@ import me.him188.ani.app.ui.foundation.interaction.isImeVisible
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.transformTextOnWrite
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.comment_reply_to_name
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isMobile
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 评论编辑.
@@ -147,7 +150,13 @@ fun EditComment(
         previewing = state.previewing,
         modifier = modifier,
         title = {
-            state.panelTitle?.let { EditCommentDefaults.Title(it) }
+            val replyToName = state.replyToName
+            val title = if (replyToName != null) {
+                stringResource(Lang.comment_reply_to_name, replyToName)
+            } else {
+                state.panelTitle
+            }
+            title?.let { EditCommentDefaults.Title(it) }
         },
         actionRow = {
             EditCommentDefaults.ActionRow(

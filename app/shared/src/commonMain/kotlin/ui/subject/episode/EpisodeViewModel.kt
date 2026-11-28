@@ -129,6 +129,11 @@ import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
 import me.him188.ani.app.domain.player.extension.WatchTogetherPlayerExtension
+import me.him188.ani.app.navigation.CommentThreadTarget
+import me.him188.ani.app.ui.comment.UIComment
+import me.him188.ani.app.ui.comment.thread.CommentThreadHost
+import me.him188.ani.app.ui.comment.thread.CommentThreadKey
+import me.him188.ani.app.ui.comment.thread.episodeCommentThreadState
 import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowManualBrowseListener
 import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowMediaSelectorListener
 import me.him188.ani.app.ui.subject.episode.analytics.PlayFlowUserAction
@@ -976,6 +981,39 @@ open class EpisodeViewModel(
         onCheckImageStatus = { getCommentImageStatusUseCase(it) },
         backgroundScope = backgroundScope,
     )
+
+    /**
+     * 评论 tab 里原地打开的评论 thread. 状态放在这里, 旋转屏幕不丢; 切集时由页面关掉.
+     */
+    val commentThreadHost: CommentThreadHost = CommentThreadHost { key, snapshot ->
+        episodeCommentThreadState(
+            key = key,
+            target = key.target as CommentThreadTarget.Episode,
+            snapshot = snapshot,
+            repository = episodeCommentRepository,
+            backgroundScope = backgroundScope,
+        )
+    }
+
+    /**
+     * 从评论列表打开 [comment] 的 thread, 列表里已有的这条评论作为快照先显示.
+     */
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    suspend fun openCommentThread(comment: UIComment) {
+        val episodeId = comment.episodeId?.toInt() ?: fetchPlayState.getCurrentEpisodeId()
+        commentThreadHost.open(
+            CommentThreadKey(CommentThreadTarget.Episode(subjectId, episodeId), comment.stableId),
+            snapshot = comment,
+        )
+    }
+
+    /**
+     * 评论或回复发送成功后刷新评论列表; 打开着 thread 时 thread 也一并刷新, 让新内容立刻出现.
+     */
+    fun refreshComments() {
+        commentStateRestarter.restart()
+        commentThreadHost.current?.onReplySent()
+    }
 
     // Combine original chapters with AutoSkip rules fetched from server
     @OptIn(UnsafeEpisodeSessionApi::class, InternalMediampApi::class)

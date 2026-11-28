@@ -81,3 +81,24 @@ PR 的 CI 总是会运行 instrumented test，如果 CI 报错才需要本地运
 非常类似 Jetpack Compose 的测试框架。
 
 示例：[me.him188.ani.app.ui.foundation.layout.CarouselAutoAdvanceEffectTest](https://github.com/open-ani/animeko/blob/e87c190fbe7078cfe461ae4176017174608e64bf/app/shared/ui-foundation/src/commonTest/kotlin/ui/foundation/layout/CarouselAutoAdvanceEffectTest.kt#L45)
+
+### 弹幕渲染回归
+
+运行弹幕模块的桌面测试：
+
+```shell
+./gradlew :danmaku:danmaku-ui:desktopTest
+```
+
+`DanmakuRendererTest` 将有界透明合成与全屏合成逐像素比较，
+覆盖重叠、非整数位置、描边与阴影边距、空场景及合成范围的扩展和收缩。
+合成范围使用缓存位图的实际边界，而不是文本逻辑高度或配置的显示区域；
+顶部、底部和滚动弹幕共享一个透明合成组，避免改变重叠处的颜色。
+Android 的图层透明度转换与 Skiko 不同，桌面测试不能代替真机像素验证。
+
+比较 Android 绘制性能时，应使用相同文字、位图、位置、透明度和窗口尺寸，
+在同一进程中交替运行 baseline 与候选实现，并先预热两种实现和各场景。
+分别记录 UI 绘制、命令提交、GPU 时间和进程 CPU；
+固定刷新率下 FPS 相同不代表绘制成本相同。
+原生 Canvas 微基准不能代替真实 Compose 绘制路径的验证，
+弹幕合成基准也不能直接推导包含解码和网络的播放器整体收益。

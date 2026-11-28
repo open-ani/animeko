@@ -10,10 +10,12 @@ package me.him188.ani.tv.ui.exploration
 
 import android.os.LocaleList
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -22,6 +24,8 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.MotionDurationScale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalDensity
@@ -34,6 +38,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertWidthIsEqualTo
@@ -173,6 +178,7 @@ class TvExplorationUiTest {
         poster: Boolean = true,
         shellPadding: PaddingValues = PaddingValues(start = 48.dp),
         navigationRailInsets: PaddingValues = PaddingValues(0.dp),
+        externalFocusRequester: FocusRequester? = null,
     ) {
         mainClock.autoAdvance = false
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -223,6 +229,12 @@ class TvExplorationUiTest {
                                     navigationRailInsets = navigationRailInsets,
                                 )
                             }
+                        }
+                        externalFocusRequester?.let { requester ->
+                            Box(
+                                Modifier.size(1.dp).testTag("tv-exploration-external-focus")
+                                    .focusRequester(requester).focusable(),
+                            )
                         }
                     }
                 }
@@ -511,6 +523,57 @@ class TvExplorationUiTest {
         onNodeWithTag("tv-exploration-preview-metadata").assert(hasAnyDescendant(hasText("–")))
         onNodeWithTag("tv-exploration-preview-metadata").assert(hasAnyDescendant(hasText("动画")))
         onNodeWithTag("tv-exploration-preview-airing").assert(hasAnyDescendant(hasText("连载", substring = true)))
+    }
+
+    @Test
+    fun expandedHeroKeepsItsActionThroughFocusChangesAndRapidCarousel() = runAniComposeUiTest {
+        val externalFocus = FocusRequester()
+        val intents = mutableListOf<TvExplorationIntent>()
+        mount(onIntent = { intents += it }, externalFocusRequester = externalFocus)
+        val focusTarget = onNodeWithTag("tv-exploration-details").fetchSemanticsNode()
+        val expandedHero = bounds("tv-exploration-hero")
+        fun assertExpandedWithoutFocus() {
+            onNodeWithTag("tv-exploration-external-focus").assertIsFocused()
+            onNodeWithTag("tv-exploration-details").assertIsNotFocused()
+            onNodeWithTag("tv-exploration").assert(
+                SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Featured"),
+            )
+            assertEquals(expandedHero, bounds("tv-exploration-hero"))
+        }
+        fun restoreDetailsFocus() {
+            onNodeWithTag("tv-exploration-details").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+            awaitFocus("tv-exploration-details")
+            settle(200)
+            assertEquals(focusTarget.id, onNodeWithTag("tv-exploration-details").fetchSemanticsNode().id)
+            assertEquals(focusTarget.boundsInRoot, bounds("tv-exploration-details"))
+        }
+
+        runOnIdle { externalFocus.requestFocus() }
+        settle(200)
+        assertExpandedWithoutFocus()
+        restoreDetailsFocus()
+
+        key(Key.DirectionRight)
+        settle(80)
+        key(Key.DirectionRight)
+        settle(80)
+        key(Key.DirectionLeft)
+        settle(100)
+        onNodeWithTag("tv-exploration-details").assertIsFocused()
+        onNodeWithTag("tv-exploration-dot-1").assertIsSelected()
+        settle(550)
+        onNodeWithTag("tv-exploration-featured-title").assertTextContains(titles[1])
+        assertEquals(focusTarget.id, onNodeWithTag("tv-exploration-details").fetchSemanticsNode().id)
+        assertEquals(focusTarget.boundsInRoot, bounds("tv-exploration-details"))
+        key(Key.DirectionCenter)
+        val opened = intents.filterIsInstance<TvExplorationIntent.OpenSubject>().single()
+        assertEquals(2, opened.subject.subjectId)
+        assertEquals(TvExplorationArea.Featured, opened.area)
+
+        runOnIdle { externalFocus.requestFocus() }
+        settle(200)
+        assertExpandedWithoutFocus()
+        restoreDetailsFocus()
     }
 
     @Test
