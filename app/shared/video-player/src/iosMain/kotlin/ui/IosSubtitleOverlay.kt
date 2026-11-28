@@ -21,7 +21,6 @@ import platform.UIKit.UIColor
 import platform.UIKit.UIFont
 import platform.UIKit.UILabel
 import platform.UIKit.UIView
-import platform.UIKit.setFrame
 import kotlin.math.floor
 
 /** 单个多行文本层统一排版所有当前对白，尺寸受可见视频和控制栏边界约束。 */

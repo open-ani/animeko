@@ -221,6 +221,10 @@
 iOS 的 `AvkitPlaybackPreparer` 处理 Matroska、WebM、AVI、WMV、MPEG-TS、RealMedia 等文件容器。
 扩展名不能确定格式时，使用有界 Range 请求检查 EBML 和 MP4 标记。MP4 按 box 长度跳过视频数据，
 在最多 4 MiB 的 moov 元数据中读取 sample entry；兼容的 MP4 与 HLS 使用原地址播放。
+`EmbyMediaSource` 在 iOS 上向服务器提交 AVKit 设备能力，优先使用服务器为不兼容媒体签发的 HLS。
+服务器未提供兼容流时才进入本地容器兼容处理。API 视频携带的服务端会话释放回调由
+`HttpStreamingMediaDataProvider` 交给 `PlayerSession`，在换源、停止、加载失败和取消时释放，
+其生命周期不受 HLS 代理替换播放器输入的影响。
 
 需要兼容处理的媒体按块复制到临时目录，然后通过已打包的 FFmpeg 生成 MP4。Matroska 直接读取 Tracks；
 其他文件容器先复制码流到 Matroska，以获取统一的编码和字幕元数据。H.264、HEVC 和 MPEG-4 Part 2

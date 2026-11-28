@@ -32,6 +32,44 @@ import kotlin.test.assertIs
 
 class EmbyMediaSourceStreamingTest {
     @Test
+    fun `season aliases search base titles once and select the requested season`() = runTest {
+        val searches = mutableListOf<String>()
+        val client = HttpClient(MockEngine { request ->
+            val body = when {
+                request.url.parameters["SearchTerm"] != null -> {
+                    searches += request.url.parameters["SearchTerm"]!!
+                    """{"Items":[{"Name":"辛普森一家","Id":"series","Type":"Series"}]}"""
+                }
+                request.url.encodedPath.endsWith("Seasons") ->
+                    """{"Items":[{"Name":"第37季","Id":"season","Type":"Season","IndexNumber":37}]}"""
+                request.url.encodedPath.endsWith("Episodes") -> {
+                    assertEquals("37", request.url.parameters["Season"])
+                    """{"Items":[{"Name":"Episode four","Id":"s37e04","Type":"Episode","IndexNumber":4}]}"""
+                }
+                else -> """{"Items":[]}"""
+            }
+            respond(body, headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()))
+        }) {
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+        try {
+            val source = EmbyMediaSource(
+                MediaSourceConfig(arguments = mapOf("baseUrl" to "https://emby.test", "userId" to "user", "apikey" to "key")),
+                client.asScopedHttpClient(),
+            )
+            val result = source.fetch(MediaFetchRequest(
+                subjectId = "1", episodeId = "2", subjectNameCN = "辛普森一家 第37季",
+                subjectNames = listOf("辛普森一家 第37季", "The Simpsons Season 37"),
+                episodeSort = EpisodeSort(4), episodeName = "Episode four",
+            )).results.toList()
+            assertEquals(listOf("辛普森一家", "The Simpsons"), searches)
+            assertEquals(listOf("emby.s37e04"), result.map { it.media.mediaId })
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test
     fun `playback uses static video streaming with an encoded token and server prefix`() = runTest {
         val token = "api+key&value=1"
         val client = HttpClient(MockEngine {

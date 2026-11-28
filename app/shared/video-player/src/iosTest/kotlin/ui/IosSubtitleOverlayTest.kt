@@ -20,7 +20,6 @@ import platform.AVFoundation.AVPlayerItem
 import platform.AVFoundation.textStyleRules
 import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSURL
-import platform.UIKit.setFrame
 
 class IosSubtitleOverlayTest {
     @Test

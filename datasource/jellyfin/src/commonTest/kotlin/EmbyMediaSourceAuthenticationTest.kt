@@ -40,6 +40,114 @@ import kotlin.test.assertTrue
 
 class EmbyMediaSourceAuthenticationTest {
     @Test
+    fun `AVKit downloads resolve original media without a transcoding session`() = runTest {
+        mockClient { request ->
+            assertEquals("GET", request.method.value)
+            if (request.url.encodedPath.endsWith("PlaybackInfo")) {
+                jsonResponse("""{"MediaSources":[{"DirectStreamUrl":"/videos/123/original.mkv"}]}""")
+            } else {
+                jsonResponse("""{"Items":[{"Name":"Movie","Id":"123","Type":"Movie"}]}""")
+            }
+        }.use { client ->
+            val source = EmbyMediaSource(apiKeyConfig(), client.asScopedHttpClient(), avkitPlayback = true)
+            val media = source.fetch(movieRequest()).results.toList().single().media
+            val video = source.resolveApiVideoForDownload(media)!!
+            assertEquals("/videos/123/original.mkv", Url(video.m3u8Url).encodedPath)
+            assertEquals(null, video.onClose)
+        }
+    }
+
+    @Test
+    fun `AVKit negotiates HLS for incompatible media instead of downloading the original file`() = runTest {
+        var stopped = false
+        mockClient { request ->
+            if (request.url.encodedPath.endsWith("ActiveEncodings")) {
+                assertEquals("DELETE", request.method.value)
+                assertEquals("session", request.url.parameters["PlaySessionId"])
+                assertEquals("animeko-emby", request.url.parameters["DeviceId"])
+                stopped = true
+                jsonResponse("", HttpStatusCode.NoContent)
+            } else if (request.url.encodedPath.endsWith("PlaybackInfo")) {
+                assertEquals("POST", request.method.value)
+                val body = Json.parseToJsonElement((request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString()).jsonObject
+                assertTrue(body.containsKey("DeviceProfile"))
+                jsonResponse("""{"PlaySessionId":"session","MediaSources":[{"SupportsDirectPlay":false,"SupportsTranscoding":true,
+                    "DirectStreamUrl":"/Videos/123/stream?static=true","TranscodingUrl":"/Videos/123/master.m3u8?api_key=key"}]}""")
+            } else {
+                jsonResponse("""{"Items":[{"Name":"Movie","Id":"123","Type":"Movie"}]}""")
+            }
+        }.use { client ->
+            val source = EmbyMediaSource(apiKeyConfig(), client.asScopedHttpClient(), avkitPlayback = true)
+            val media = source.fetch(movieRequest()).results.toList().single().media
+            val video = source.resolveApiVideo(media)!!
+            assertEquals("/Videos/123/master.m3u8", Url(video.m3u8Url).encodedPath)
+            assertFalse(stopped)
+            video.onClose!!()
+            assertTrue(stopped)
+        }
+    }
+
+    @Test
+    fun `AVKit falls back to GET playback information when device profiles are unsupported`() = runTest {
+        val methods = mutableListOf<String>()
+        mockClient { request ->
+            if (request.url.encodedPath.endsWith("PlaybackInfo")) {
+                methods += request.method.value
+                if (request.method.value == "POST") jsonResponse("{}", HttpStatusCode.MethodNotAllowed)
+                else jsonResponse("""{"MediaSources":[{"DirectStreamUrl":"/videos/123/original.mkv"}]}""")
+            } else {
+                jsonResponse("""{"Items":[{"Name":"Movie","Id":"123","Type":"Movie"}]}""")
+            }
+        }.use { client ->
+            val source = EmbyMediaSource(apiKeyConfig(), client.asScopedHttpClient(), avkitPlayback = true)
+            val media = source.fetch(movieRequest()).results.toList().single().media
+            assertEquals("/videos/123/original.mkv", Url(source.resolveApiVideo(media)!!.m3u8Url).encodedPath)
+            assertEquals(listOf("POST", "GET"), methods)
+        }
+    }
+
+    @Test
+    fun `remote direct play uses the media path with only its required headers`() = runTest {
+        mockClient { request ->
+            if (request.url.encodedPath.endsWith("PlaybackInfo")) {
+                jsonResponse("""{"MediaSources":[{"Protocol":"Http","IsRemote":true,"SupportsDirectPlay":true,
+                    "Path":"https://cdn.test/视频.mkv?signature=abc","DirectStreamUrl":"/Videos/123/stream?static=true",
+                    "RequiredHttpHeaders":{"User-Agent":"VideoClient"},"AddApiKeyToDirectStreamUrl":true}]}""")
+            } else {
+                jsonResponse("""{"Items":[{"Name":"Movie","Id":"123","Type":"Movie"}]}""")
+            }
+        }.use { client ->
+            val source = EmbyMediaSource(apiKeyConfig(), client.asScopedHttpClient())
+            val media = source.fetch(movieRequest()).results.toList().single().media
+            val video = source.resolveApiVideo(media)!!
+            val url = Url(video.m3u8Url)
+            assertEquals("cdn.test", url.host)
+            assertEquals("/视频.mkv", url.segments.joinToString("/", prefix = "/"))
+            assertEquals("abc", url.parameters["signature"])
+            assertFalse(url.parameters.contains("api_key"))
+            assertEquals(mapOf(HttpHeaders.UserAgent to "VideoClient"), video.headers)
+        }
+    }
+
+    @Test
+    fun `local paths and unsupported remote paths use the server stream`() = runTest {
+        for (path in listOf("/library/video.mkv", "file:///library/video.mkv", "ftp://cdn.test/video.mkv")) {
+            mockClient { request ->
+                if (request.url.encodedPath.endsWith("PlaybackInfo")) {
+                    jsonResponse("""{"MediaSources":[{"Protocol":"File","Path":"$path","SupportsDirectPlay":true,
+                        "DirectStreamUrl":"/Videos/123/stream?static=true"}]}""")
+                } else {
+                    jsonResponse("""{"Items":[{"Name":"Movie","Id":"123","Type":"Movie"}]}""")
+                }
+            }.use { client ->
+                val source = EmbyMediaSource(apiKeyConfig(), client.asScopedHttpClient())
+                val media = source.fetch(movieRequest()).results.toList().single().media
+                assertEquals("example.test", Url(source.resolveApiVideo(media)!!.m3u8Url).host)
+            }
+        }
+    }
+
+    @Test
     fun `password playback authenticates with a token header without login metadata`() = runTest {
         mockClient { request ->
             when {

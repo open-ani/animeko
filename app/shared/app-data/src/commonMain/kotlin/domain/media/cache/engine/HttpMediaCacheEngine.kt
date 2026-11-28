@@ -155,7 +155,7 @@ class HttpMediaCacheEngine(
     ): MediaCache {
         if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
 
-        val mediaDataProvider = mediaResolver.resolve(origin, episodeMetadata)
+        val mediaDataProvider = mediaResolver.resolveForDownload(origin, episodeMetadata)
         when (val mediaData = mediaDataProvider.open(CoroutineScope(parentContext))) {
             is SeekableInputMediaData -> {
                 // This should not happen.

@@ -96,7 +96,7 @@ class ManualBrowsePageTest {
                     {"Name":"辛普森一家大电影","Id":"movie","Type":"Movie","ProductionYear":2007},
                     {"Name":"辛普森一家","Id":"series","Type":"Series","ProductionYear":1989}
                 ]}"""
-                request.url.encodedPath.endsWith("/Items") && request.url.parameters["Ids"] == "series" ->
+                request.url.parameters["Ids"] == "series" ->
                     """{"Items":[{"Name":"辛普森一家","Id":"series","Type":"Series"}]}"""
                 request.url.encodedPath.endsWith("Seasons") -> """{"Items":[
                     {"Name":"第 1 季","Id":"s1","Type":"Season"},

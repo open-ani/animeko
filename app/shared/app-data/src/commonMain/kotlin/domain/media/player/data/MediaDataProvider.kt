@@ -40,6 +40,9 @@ import kotlin.coroutines.cancellation.CancellationException
 interface MediaDataProvider<out S : MediaData> {
     val extraFiles: MediaExtraFiles
 
+    /** Releases the resolved server session after playback stops or loading fails. */
+    val onClose: (suspend () -> Unit)? get() = null
+
     /**
      * Opens the underlying video data.
      *

@@ -10,11 +10,16 @@
 package me.him188.ani.datasources.jellyfin
 
 import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.request.parameter
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLBuilder
 import io.ktor.http.Url
 import io.ktor.http.appendPathSegments
+import io.ktor.http.contentType
 import io.ktor.http.takeFrom
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -22,7 +27,9 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.put
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
@@ -47,11 +54,15 @@ import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.logging.warn
+import me.him188.ani.utils.platform.currentPlatform
+import me.him188.ani.utils.platform.isIos
 
 class EmbyMediaSource(
     config: MediaSourceConfig,
     client: ScopedHttpClient,
     instanceId: String = ID,
+    private val avkitPlayback: Boolean = false,
 ) : BaseJellyfinMediaSource(client), ApiVideoResolver {
     companion object {
         const val ID = "emby"
@@ -59,6 +70,20 @@ class EmbyMediaSource(
         const val AUTH_MODE_USERNAME_PASSWORD = "usernamePassword"
         private const val BROWSE_PAGE_SIZE = 100
         private val playbackJson = Json { ignoreUnknownKeys = true }
+        private val avkitProfile = playbackJson.parseToJsonElement(
+            """{
+                "Name":"Animeko AVKit",
+                "MaxStreamingBitrate":120000000,
+                "DirectPlayProfiles":[{"Type":"Video","Container":"mp4,m4v,mov",
+                    "VideoCodec":"h264,hevc","AudioCodec":"aac,ac3,eac3,alac"}],
+                "TranscodingProfiles":[{"Type":"Video","Container":"ts","Protocol":"hls",
+                    "VideoCodec":"h264","AudioCodec":"aac","Context":"Streaming",
+                    "MaxAudioChannels":"2","MinSegments":1,"SegmentLength":3}],
+                "CodecProfiles":[{"Type":"Video","Codec":"h264","Conditions":[
+                    {"Condition":"LessThanEqual","Property":"VideoBitDepth","Value":"8","IsRequired":true}
+                ]}]
+            }""",
+        )
         val INFO = MediaSourceInfo(
             displayName = "Emby",
             description = "Emby Media Server",
@@ -120,7 +145,9 @@ class EmbyMediaSource(
             mediaSourceId: String,
             config: MediaSourceConfig,
             client: ScopedHttpClient
-        ): MediaSource = EmbyMediaSource(config, client, instanceId = mediaSourceId)
+        ): MediaSource = EmbyMediaSource(
+            config, client, instanceId = mediaSourceId, avkitPlayback = currentPlatform().isIos(),
+        )
     }
 
     override val kind: MediaSourceKind get() = MediaSourceKind.WEB
@@ -184,6 +211,9 @@ class EmbyMediaSource(
     override fun getMediaId(itemId: String): String = "$mediaSourceId.$itemId"
 
     override fun apiParameterName(name: String): String = name.replaceFirstChar { it.uppercaseChar() }
+
+    // Emby keyword matching can treat a generic season suffix as a separate search term.
+    override val searchUsingBaseTitle: Boolean = true
 
     override fun getDownloadLocation(itemId: String, accessToken: String): ResourceLocation =
         ResourceLocation.WebVideo(
@@ -308,19 +338,55 @@ class EmbyMediaSource(
     }
 
     override suspend fun resolveApiVideo(media: Media): WebVideo? {
+        return resolveVideo(media, avkitPlayback)
+    }
+
+    override suspend fun resolveApiVideoForDownload(media: Media): WebVideo? = resolveVideo(media, avkitPlayback = false)
+
+    private suspend fun resolveVideo(media: Media, avkitPlayback: Boolean): WebVideo? {
         if (media.mediaSourceId != mediaSourceId) return null
         val location = media.download as? ResourceLocation.WebVideo ?: return null
         val itemId = location.apiParameters?.get("itemId")?.takeIf { it.isNotBlank() } ?: return null
         val endpoint = URLBuilder(baseUrl).apply { appendPathSegments("Items", itemId, "PlaybackInfo") }.buildString()
         val playback = try {
-            playbackJson.decodeFromJsonElement<EmbyPlaybackInfo>(authorizedGetJson(endpoint))
+            val info = if (avkitPlayback) {
+                try {
+                    authorizedPostJson(endpoint) {
+                        parameter("DeviceId", "animeko-$mediaSourceId")
+                        contentType(ContentType.Application.Json)
+                        setBody(buildJsonObject {
+                            put("UserId", this@authorizedPostJson.url.parameters["UserId"])
+                            put("DeviceProfile", avkitProfile)
+                            put("MaxStreamingBitrate", 120000000)
+                            put("EnableDirectPlay", true)
+                            put("EnableDirectStream", true)
+                            put("EnableTranscoding", true)
+                            put("IsPlayback", true)
+                        })
+                    }
+                } catch (e: ClientRequestException) {
+                    if (e.response.status !in listOf(
+                            HttpStatusCode.BadRequest, HttpStatusCode.NotFound,
+                            HttpStatusCode.MethodNotAllowed, HttpStatusCode.UnsupportedMediaType,
+                        )
+                    ) throw e
+                    authorizedGetJson(endpoint)
+                }
+            } else authorizedGetJson(endpoint)
+            playbackJson.decodeFromJsonElement<EmbyPlaybackInfo>(info)
         } catch (e: ClientRequestException) {
             if (e.response.status != HttpStatusCode.NotFound && e.response.status != HttpStatusCode.MethodNotAllowed) throw e
             EmbyPlaybackInfo()
         }
-        val source = playback.MediaSources.firstOrNull { !it.DirectStreamUrl.isNullOrBlank() }
+        val hlsSource = playback.MediaSources.firstOrNull {
+            avkitPlayback && !it.SupportsDirectPlay && it.SupportsTranscoding && !it.TranscodingUrl.isNullOrBlank()
+        }
+        val source = hlsSource ?: playback.MediaSources.firstOrNull { it.directPlayUrl != null }
+            ?: playback.MediaSources.firstOrNull { !it.DirectStreamUrl.isNullOrBlank() }
+            ?: playback.MediaSources.firstOrNull()
         val authorization = getAuthorization()
-        val target = source?.DirectStreamUrl ?: getDownloadUri(itemId, authorization.accessToken)
+        val target = hlsSource?.TranscodingUrl ?: source?.directPlayUrl ?: source?.DirectStreamUrl
+            ?: getDownloadUri(itemId, authorization.accessToken)
         val url = URLBuilder("$baseUrl/").apply { takeFrom(target) }.build()
         require(url.protocol.name == "http" || url.protocol.name == "https") { "Emby playback URL must use HTTP or HTTPS" }
         require(url.user.isNullOrEmpty() && url.password.isNullOrEmpty()) { "Emby playback URL must not contain credentials" }
@@ -336,21 +402,51 @@ class EmbyMediaSource(
                 }
             }
         }.buildString()
-        return WebVideo(resolvedUrl, headers)
+        val playSessionId = playback.PlaySessionId
+        return WebVideo(
+            resolvedUrl, headers,
+            onClose = if (hlsSource != null && !playSessionId.isNullOrBlank()) {
+                suspend {
+                    try {
+                        authorizedDelete(endpoint("Videos", "ActiveEncodings")) {
+                            parameter("DeviceId", "animeko-$mediaSourceId")
+                            parameter("PlaySessionId", playSessionId)
+                        }
+                    } catch (failure: Exception) {
+                        if (failure is CancellationException) throw failure
+                        logger.warn(failure) { "Failed to stop Emby transcoding session" }
+                    }
+                }
+            } else null,
+        )
     }
 }
 
 @Serializable
 @Suppress("PropertyName")
-private data class EmbyPlaybackInfo(val MediaSources: List<EmbyPlaybackSource> = emptyList())
+private data class EmbyPlaybackInfo(
+    val MediaSources: List<EmbyPlaybackSource> = emptyList(),
+    val PlaySessionId: String? = null,
+)
 
 @Serializable
 @Suppress("PropertyName")
 private data class EmbyPlaybackSource(
+    val Protocol: String? = null,
+    val Path: String? = null,
+    val SupportsDirectPlay: Boolean = false,
+    val SupportsTranscoding: Boolean = false,
     val DirectStreamUrl: String? = null,
+    val TranscodingUrl: String? = null,
     val RequiredHttpHeaders: Map<String, String> = emptyMap(),
     val AddApiKeyToDirectStreamUrl: Boolean = false,
-)
+) {
+    val directPlayUrl: String?
+        get() = Path?.takeIf { path ->
+            SupportsDirectPlay && Protocol.equals("Http", ignoreCase = true) &&
+                    (path.startsWith("https://", ignoreCase = true) || path.startsWith("http://", ignoreCase = true))
+        }
+}
 
 @Serializable
 @Suppress("PropertyName")

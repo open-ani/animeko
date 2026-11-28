@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -189,18 +190,24 @@ internal class IosSubtitleTracks(
         val expectedGeneration = generation
         loadJob = scope.launch {
             try {
-                val parsed = withContext(Dispatchers.IO_) {
-                    val source = if (file.uri.startsWith("file:")) {
-                        val path = checkNotNull(NSURL.URLWithString(file.uri)?.path)
-                        SystemFileSystem.source(Path(path)).buffered().use { it.readString() }
-                    } else {
-                        createDefaultHttpClient().use { it.get(file.uri).bodyAsText() }
-                    }
-                    SubtitleCueTimeline(parseSubtitleCues(source))
-                }
-                if (generation == expectedGeneration && selected.value?.id == track.id) {
-                    cues.value = parsed
-                    text.value = parsed.textAt(position())
+                val live = file.uri.startsWith("http://127.0.0.1:") && file.uri.endsWith(".live.srt")
+                createDefaultHttpClient().use { client ->
+                    do {
+                        val (parsed, complete) = withContext(Dispatchers.IO_) {
+                            if (file.uri.startsWith("file:")) {
+                                val path = checkNotNull(NSURL.URLWithString(file.uri)?.path)
+                                SubtitleCueTimeline(parseSubtitleCues(SystemFileSystem.source(Path(path)).buffered().use { it.readString() })) to true
+                            } else {
+                                val response = client.get(file.uri)
+                                SubtitleCueTimeline(parseSubtitleCues(response.bodyAsText())) to (!live || response.headers["X-Ani-Complete"] == "1")
+                            }
+                        }
+                        if (generation != expectedGeneration || selected.value?.id != track.id) break
+                        cues.value = parsed
+                        text.value = parsed.textAt(position())
+                        if (complete) break
+                        delay(1000)
+                    } while (true)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled

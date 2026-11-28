@@ -32,6 +32,56 @@ import org.openani.mediamp.source.UriMediaData
 
 class AvkitPlaybackPreparerTest {
     @Test
+    fun `network Matroska uses streaming after a bounded header read without a full download`() = runTest {
+        for (codec in listOf("V_MPEG4/ISO/AVC", "V_MPEGH/ISO/HEVC", "V_AV1")) {
+            val requests = mutableListOf<String?>()
+            val client = HttpClient(MockEngine { request ->
+                requests += request.headers[HttpHeaders.Range]
+                checkNotNull(request.headers[HttpHeaders.Range]) { "Full download must not precede streaming" }
+                respond(matroskaFixture(codec))
+            })
+            val streamed = PlatformMediaPlayback(UriMediaData("http://127.0.0.1:12345/playlist.m3u8"))
+            try {
+                val result = AvkitPlaybackPreparer(client, { it }, { _, _, _ -> error("Full remux is unexpected") },
+                    streaming = { _, tracks -> assertEquals(codec, tracks.videoCodecId); streamed })
+                    .prepare(UriMediaData("https://test/video.mkv"))
+                assertSame(streamed, result)
+                assertEquals(listOf<String?>("bytes=0-1048575"), requests)
+            } finally { client.close() }
+        }
+    }
+
+    @Test
+    fun `hev1 MP4 can stream using only metadata range reads`() = runTest {
+        val bytes = mp4Fixture("hev1")
+        val client = HttpClient(MockEngine { request ->
+            val range = checkNotNull(request.headers[HttpHeaders.Range]) { "Full download must not precede streaming" }
+            val (start, end) = range.removePrefix("bytes=").split('-').map { it.toInt() }
+            respond(bytes.copyOfRange(start, minOf(end + 1, bytes.size)), HttpStatusCode.PartialContent)
+        })
+        val streamed = PlatformMediaPlayback(UriMediaData("http://127.0.0.1:12345/playlist.m3u8"))
+        try {
+            val result = AvkitPlaybackPreparer(client, { it }, { _, _, _ -> error("Full remux is unexpected") },
+                streaming = { _, tracks -> assertEquals("V_MPEGH/ISO/HEVC", tracks.videoCodecId); streamed })
+                .prepare(UriMediaData("https://test/video.mp4"))
+            assertSame(streamed, result)
+        } finally { client.close() }
+    }
+
+    @Test
+    fun `stream startup failure falls back to the compatible file path`() = runTest {
+        val client = HttpClient(MockEngine { respond(matroskaFixture("V_MPEG4/ISO/AVC")) })
+        var fallback = false
+        try {
+            AvkitPlaybackPreparer(client, { it }, { _, output, _ ->
+                fallback = true
+                Path(output).inSystem.writeBytes(byteArrayOf(1))
+            }, streaming = { _, _ -> error("Device cannot decode the streaming fragment") })
+                .prepare(UriMediaData("https://test/video.mkv")).use { assertTrue(fallback) }
+        } finally { client.close() }
+    }
+
+    @Test
     fun `mkv is downloaded with playback headers and temporary files follow playback lifetime`() = runTest {
         val bytes = matroskaFixture()
         val directory = SystemPaths.createTempDirectory("matroska-test-")
@@ -203,7 +253,7 @@ class AvkitPlaybackPreparerTest {
         return box("ftyp", "isom".encodeToByteArray()) + content
     }
 
-    private fun matroskaFixture(): ByteArray {
+    private fun matroskaFixture(videoCodec: String = "V_MPEGH/ISO/HEVC"): ByteArray {
         fun id(value: Long): ByteArray {
             val size = (value.toString(16).length + 1) / 2
             return ByteArray(size) { index -> (value shr ((size - index - 1) * 8)).toByte() }
@@ -230,7 +280,7 @@ class AvkitPlaybackPreparerTest {
 
         val ebmlHeader = element(0x1a45dfa3, string(0x4282, "matroska"))
         val segment = id(0x18538067) + byteArrayOf(1, -1, -1, -1, -1, -1, -1, -1)
-        val entries = track(1, "V_MPEGH/ISO/HEVC", 1) +
+        val entries = track(1, videoCodec, 1) +
                 track(2, "A_OPUS", 2) +
                 track(17, "S_HDMV/PGS", 3, "chi") +
                 track(17, "S_TEXT/ASS", 4, "chi", "简体") +

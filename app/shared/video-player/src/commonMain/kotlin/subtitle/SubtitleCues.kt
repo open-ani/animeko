@@ -29,7 +29,7 @@ internal fun parseSubtitleCues(text: String): List<SubtitleCue> {
             val end = time(bounds[1].trim().substringBefore(' ')) ?: return@mapNotNull null
             if (end <= start) return@mapNotNull null
             val content = lines.drop(timing + 1).joinToString("\n")
-                .replace(Regex("<[^>]*>|\\{[^}]*}"), "")
+                .replace(Regex("<[^>]*>|\\{[^}]*\\}"), "")
                 .replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ").replace("&amp;", "&")
             SubtitleCue(start, end, content)
         }.sortedBy { it.startMillis }

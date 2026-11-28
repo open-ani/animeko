@@ -16,4 +16,4 @@ internal class PlatformMediaPlayback(
     override fun close() = cleanup()
 }
 
-internal expect suspend fun preparePlatformMediaPlayback(data: MediaData): PlatformMediaPlayback
+internal expect suspend fun preparePlatformMediaPlayback(data: MediaData, startPositionMillis: Long = 0): PlatformMediaPlayback

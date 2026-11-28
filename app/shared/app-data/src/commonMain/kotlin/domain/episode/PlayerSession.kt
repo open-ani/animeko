@@ -9,9 +9,11 @@
 
 package me.him188.ani.app.domain.episode
 
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -146,6 +148,7 @@ class PlayerSession(
 
         var preparedPlatformPlayback: PlatformMediaPlayback? = null
         var preparedHlsPlaybackProxySession: HlsPlaybackProxySession? = null
+        var pendingMediaCleanup: (() -> Unit)? = null
         try {
             _videoLoadingStateFlow.value = VideoLoadingState.ResolvingSource
             listener.onResolveStart(mediaResolver.resolverFor(media)?.let { it::class.simpleName })
@@ -153,6 +156,14 @@ class PlayerSession(
                 media,
                 episodeInfo,
             )
+            source.onClose?.let { close ->
+                val closed = atomic(false)
+                pendingMediaCleanup = {
+                    if (closed.compareAndSet(false, true)) {
+                        backgroundScope.launch(NonCancellable) { close() }
+                    }
+                }
+            }
             val resolvedEngineKey = (source as? TorrentBackedMediaDataProvider)?.engineKey
             _videoLoadingStateFlow.compareAndSet(
                 VideoLoadingState.ResolvingSource,
@@ -167,7 +178,18 @@ class PlayerSession(
             val openedEngineKey = (data as? TorrentMediaData)?.engineKey ?: resolvedEngineKey
             listener.onOpened(openedEngineKey, start.elapsedNow())
 
-            preparedPlatformPlayback = preparePlatformMediaPlayback(data)
+            val platformPlayback = preparePlatformMediaPlayback(data, startPositionMillis)
+            val mediaCleanup = pendingMediaCleanup
+            preparedPlatformPlayback = if (mediaCleanup == null) platformPlayback else {
+                PlatformMediaPlayback(platformPlayback.data) {
+                    try {
+                        platformPlayback.close()
+                    } finally {
+                        mediaCleanup()
+                    }
+                }
+            }
+            pendingMediaCleanup = null
             val preparedData = prepareHlsPlaybackIfEnabled(
                 preparedPlatformPlayback.data,
                 media,
@@ -238,6 +260,7 @@ class PlayerSession(
         } finally {
             preparedHlsPlaybackProxySession?.close()
             preparedPlatformPlayback?.close()
+            pendingMediaCleanup?.invoke()
         }
     }
 

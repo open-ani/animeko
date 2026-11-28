@@ -26,13 +26,20 @@ import platform.CoreGraphics.CGImageRelease
 import platform.CoreMedia.CMTimeMakeWithSeconds
 import platform.Foundation.NSURL
 
-/** AVKit 使用兼容的 MP4；视频帧解码验证失败时使用软件转码，文本字幕通过 extraFiles 传递。 */
+/** AVKit 使用可解码的 Matroska 流式转封装或兼容 MP4；文件解码验证失败时软件转码，文本字幕通过 extraFiles 传递。 */
 @OptIn(ExperimentalForeignApi::class)
-internal actual suspend fun preparePlatformMediaPlayback(data: MediaData): PlatformMediaPlayback {
+internal actual suspend fun preparePlatformMediaPlayback(data: MediaData, startPositionMillis: Long): PlatformMediaPlayback {
     if (data !is UriMediaData || !(data.uri.startsWith("http") || data.uri.startsWith("file:"))) return PlatformMediaPlayback(data)
     return createDefaultHttpClient().use { client ->
         AvkitPlaybackPreparer(
             client = client,
+            streaming = { source, tracks ->
+                AvkitStreamingPlayback(
+                    createDefaultHttpClient(),
+                    { arguments -> FFmpegKit().execute(arguments).isSuccess },
+                    validateFragment = { avkitCanDecodeFrame(it.absolutePath) },
+                ).prepare(source, tracks, startPositionMillis)
+            },
             fileUri = { NSURL.fileURLWithPath(it).absoluteString!! },
             remux = { input, output, tracks ->
                 var result = FFmpegKit().execute(avkitConversionArguments(input, output, tracks))

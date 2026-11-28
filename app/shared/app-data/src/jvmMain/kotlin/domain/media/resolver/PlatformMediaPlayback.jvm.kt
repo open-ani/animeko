@@ -8,5 +8,5 @@ package me.him188.ani.app.domain.media.resolver
 
 import org.openani.mediamp.source.MediaData
 
-internal actual suspend fun preparePlatformMediaPlayback(data: MediaData): PlatformMediaPlayback =
+internal actual suspend fun preparePlatformMediaPlayback(data: MediaData, startPositionMillis: Long): PlatformMediaPlayback =
     PlatformMediaPlayback(data)

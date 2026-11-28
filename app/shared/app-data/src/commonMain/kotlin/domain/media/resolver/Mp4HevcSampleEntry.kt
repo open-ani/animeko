@@ -73,6 +73,7 @@ internal fun mp4CompatibilityTracks(entries: List<String>): MediaContainerTrackI
             "hev1", "hvc1" -> "V_MPEGH/ISO/HEVC"
             "avc1", "avc3" -> "V_MPEG4/ISO/AVC"
             "mp4v" -> "V_MPEG4/ISO/ASP"
+            "av01" -> "V_AV1"
             else -> video
         },
         subtitles = emptyList(),

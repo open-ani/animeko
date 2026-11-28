@@ -15,6 +15,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.Url
 import io.ktor.utils.io.readAvailable
 import kotlin.coroutines.coroutineContext
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -38,8 +39,8 @@ import org.openani.mediamp.source.Subtitle
 import org.openani.mediamp.source.UriMediaData
 
 /**
- * 将 AVKit 需要兼容处理的媒体准备为可 seek 的 MP4，文本字幕通过 extraFiles 传递。
- * 下载按块落盘，起播需要等待下载和封装或转码完成；会话结束、加载失败和取消时删除临时文件。
+ * AVKit 的网络 H.264、HEVC 和 AV1 Matroska 优先通过 [streaming] 准备流式播放，文本字幕通过 extraFiles 传递。
+ * 其他兼容处理按块下载到临时文件并准备可 seek 的 MP4；会话结束、加载失败和取消时删除临时文件。
  */
 internal class AvkitPlaybackPreparer(
     private val client: HttpClient,
@@ -49,6 +50,7 @@ internal class AvkitPlaybackPreparer(
     private val extractSubtitles: suspend (input: String, directory: SystemPath, tracks: MediaContainerTrackInfo) -> List<Subtitle> = { _, _, _ -> emptyList() },
     private val normalizeContainer: suspend (input: String, output: String) -> Unit = { _, _ -> error("Container normalization is unavailable") },
     private val localPath: (String) -> String? = { null },
+    private val streaming: (suspend (UriMediaData, MediaContainerTrackInfo) -> PlatformMediaPlayback?)? = null,
 ) {
     suspend fun prepare(data: UriMediaData): PlatformMediaPlayback {
         val extension = Url(data.uri).encodedPath.substringAfterLast('/').substringAfterLast('.', "").lowercase()
@@ -59,8 +61,19 @@ internal class AvkitPlaybackPreparer(
                     it[2] == 0xdf.toByte() && it[3] == 0xa3.toByte()
         } == true
         val mp4 = extension in MP4_EXTENSIONS || prefix?.let { it.size >= 8 && it.decodeToString(4, 8) == "ftyp" } == true
+        if (matroska && data.uri.startsWith("http") && streaming != null) {
+            try {
+                val tracks = readMediaContainerTrackInfo(Buffer().apply { write(readRange(data, 0, 1024 * 1024)) })
+                tryStreaming(data, tracks)?.let { return it }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                logger.warn { "Streaming preparation unavailable (${failure::class.simpleName}); preparing a compatible file" }
+            }
+        }
         val mp4Tracks = if (mp4) mp4CompatibilityTracks(readMp4SampleEntries { offset, size -> readRange(data, offset, size) }) else null
         if (mp4 && mp4Tracks == null) return PlatformMediaPlayback(data)
+        if (mp4Tracks != null) tryStreaming(data, mp4Tracks)?.let { return it }
         if (!mp4 && !matroska && extension !in COMPATIBILITY_EXTENSIONS) return PlatformMediaPlayback(data)
         var temporaryDirectory: SystemPath? = null
         return try {
@@ -156,6 +169,19 @@ internal class AvkitPlaybackPreparer(
                 size += count
             }
             bytes.copyOf(size)
+        }
+    }
+
+    private suspend fun tryStreaming(data: UriMediaData, tracks: MediaContainerTrackInfo): PlatformMediaPlayback? {
+        if (!data.uri.startsWith("http") || streaming == null || tracks.audioCodecIds.size > 1 ||
+            tracks.videoCodecId !in setOf("V_MPEG4/ISO/AVC", "V_MPEGH/ISO/HEVC", "V_AV1")) return null
+        return try {
+            streaming.invoke(data, tracks)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            logger.warn { "Streaming preparation unavailable (${failure::class.simpleName}); preparing a compatible file" }
+            null
         }
     }
 
