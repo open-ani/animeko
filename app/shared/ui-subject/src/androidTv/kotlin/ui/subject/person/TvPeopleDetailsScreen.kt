@@ -166,7 +166,7 @@ internal fun TvPeopleDetailsScreen(
             add(peopleSection("works", stringResource(Lang.person_details_works), it,
                 placeholder = { TvDetailsLandscapePlaceholder(it) },
                 key = { record -> record.subject.subjectId.toString() }) { record, itemModifier ->
-                TvPeopleWorkCard(record.subject, record.positions.mapNotNull { position -> position.nameCn }.distinct().joinToString(" · "), itemModifier) {
+                TvPeopleWorkCard(record.subject, record.roleNames.joinToString(" · "), itemModifier) {
                     navigate(TvPeopleIntent.OpenSubject(record.subject))
                 }
             })

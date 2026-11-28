@@ -159,7 +159,7 @@ class AutoSelectExtension(
                     put("outcome", "selected")
                     put("method", outcome.reason.toMethod())
                     put("reason", replayMiss)
-                    put("media_source_id", outcome.media.mediaSourceId)
+                    put("source", context.playFlow.sourceName(outcome.media.mediaSourceId))
                     put("kind", outcome.media.toPlayFlowKind())
                     put("match", outcome.matchKind?.toPlayFlowMatch())
                     put("tier", outcome.tier?.value?.toLong())
@@ -170,7 +170,7 @@ class AutoSelectExtension(
                     put("outcome", "preempted_by_user")
                     put("method", outcome.reason.toMethod())
                     put("reason", replayMiss)
-                    put("media_source_id", outcome.media.mediaSourceId)
+                    put("source", context.playFlow.sourceName(outcome.media.mediaSourceId))
                 }
 
                 is MediaAutoSelectOutcome.Exhausted -> record {
@@ -189,7 +189,7 @@ class AutoSelectExtension(
             record {
                 put("outcome", "selected")
                 put("method", "browse_memory")
-                put("media_source_id", media?.mediaSourceId)
+                put("source", media?.let { context.playFlow.sourceName(it.mediaSourceId) })
                 put("kind", media?.toPlayFlowKind())
                 put("sel_no", media?.let { episode.selectionNoOf(it.mediaId) })
             }
@@ -209,7 +209,8 @@ class AutoSelectExtension(
             if (recorded) return
             recorded = true
             context.playFlow.record(PlayFlowStep.AUTO_SELECT_DONE, episode) {
-                build()
+                // 不带参数的 build() 会调到接收者 PlayFlowProps 自己的 build(), 参数里的 lambda 不会执行
+                build(this)
                 put("duration_ms", start.elapsedNow())
             }
         }

@@ -123,7 +123,7 @@ class PlayFlowRecorderTest {
         val episode = recorder.nextEpisodeAttempt(1)
         assertFailsWith<IllegalStateException> {
             recorder.record(PlayFlowStep.ENTER, episode) {
-                repeat(PlayFlowRecorder.MAX_PROPERTIES) { put("p$it", it) }
+                repeat(recorder.maxProperties) { put("p$it", it) }
             }
         }
     }

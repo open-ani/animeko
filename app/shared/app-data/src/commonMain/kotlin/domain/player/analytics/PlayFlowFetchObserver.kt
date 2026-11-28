@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.player.analytics
 
+import io.ktor.client.plugins.ResponseException
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CoroutineName
@@ -16,11 +17,19 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.io.IOException
+import me.him188.ani.app.data.repository.RepositoryAuthorizationException
+import me.him188.ani.app.data.repository.RepositoryNetworkException
+import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.data.repository.RepositoryRequestError
+import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
+import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.isDisabled
 import me.him188.ani.app.domain.media.fetch.isFinal
+import me.him188.ani.app.domain.mediasource.web.BlockReason
 import me.him188.ani.app.domain.mediasource.web.BlockedException
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import kotlin.time.Duration
@@ -29,7 +38,7 @@ import kotlin.time.TimeMark
 
 /**
  * 观察播放页的条目级查询会话: 一轮查询结束 (所有源到达终态, 或用户提前离开) 时, 先把这一轮里失败、限流、需要验证码,
- * 或成功但耗时达到 [slowThreshold] 的源汇总成一条 `source_failed` (每个源一个 `域名=结果` 记号), 再记录一条 `search_done`;
+ * 或成功但耗时达到 [slowThreshold] 的源汇总成一条 `source_failed` (每个源一个 `源=结果` 记号, 源见 [PlayFlowRecorder.sourceName]), 再记录一条 `search_done`;
  * 正常完成的源只计入 `search_done` 的 `count`, `media_count` 与 `cached_count`.
  *
  * 查询会话跨集共享, 因此本观察者是页级的, 事件归到记录时的当前剧集尝试 ([PlayFlowRecorder.currentEpisode]).
@@ -45,10 +54,14 @@ class PlayFlowFetchObserver(
     private val lock = SynchronizedObject()
     private val sessions = HashMap<MediaFetchSession, SessionTrack>()
 
+    /** 一条 `source_failed` 最多装这么多段 `sources_N`, 更多时分成多条. */
+    val maxSourceChunks: Int = maxSourceChunks(recorder.maxProperties)
+
     /**
-     * 新会话创建. 开始观察它; 它替换掉的会话停止观察, 还没结束的查询记为 `search_done outcome=incomplete`.
+     * 新会话创建. 登记参与的源的网址, 开始观察它; 它替换掉的会话停止观察, 还没结束的查询记为 `search_done outcome=incomplete`.
      */
     fun onSessionCreated(session: MediaFetchSession) {
+        for (result in session.mediaSourceResults) recorder.registerSource(result.mediaSourceId, result.sourceInfo.websiteUrl)
         val track = SessionTrack(session, recorder.markNow())
         val replaced = synchronized(lock) {
             sessions.values.toList().also {
@@ -156,7 +169,7 @@ class PlayFlowFetchObserver(
             source.reportedGeneration = source.generation
             round.sourceCount++
             if (source.result.searchStats.value?.isCacheOnly == true) round.cachedCount++
-            source.problem(slowThreshold)?.let { round.problems += it }
+            source.problem(slowThreshold)?.let { round.problems += SourceProblem(recorder.sourceName(source.result.mediaSourceId), it) }
         }
         if (round.closed || !track.sources.all { it.state.isFinal }) return null
         round.closed = true
@@ -178,7 +191,7 @@ class PlayFlowFetchObserver(
         // 失败类在前, 慢源在后
         val problems = round.problems.sortedBy { it.outcome == SLOW_OUTCOME }
         return {
-            packPlayFlowTokens(problems.map { it.token }).chunked(MAX_SOURCE_CHUNKS).forEachIndexed { partIndex, chunks ->
+            packPlayFlowTokens(problems.map { it.token }).chunked(maxSourceChunks).forEachIndexed { partIndex, chunks ->
                 recorder.record(PlayFlowStep.SOURCE_FAILED, episode) {
                     put("round", number)
                     put("count", problems.size)
@@ -274,35 +287,24 @@ class PlayFlowFetchObserver(
         }
 
         /**
-         * 这一代出的问题: 失败 (结果为异常简名或阻断原因)、限流、需要验证码, 或成功但耗时达到 [slowThreshold] (结果为 [SLOW_OUTCOME]).
+         * 这一代出的问题的结果: 失败 (见 [reasonName])、限流、需要验证码, 或成功但耗时达到 [slowThreshold] ([SLOW_OUTCOME]).
          * 没有问题, 或被取消 (不是源本身的问题) 时为 `null`.
          */
-        fun problem(slowThreshold: Duration): SourceProblem? {
-            val state = state
-            val outcome = when (state) {
-                is MediaSourceFetchState.Succeed -> if (duration?.let { it >= slowThreshold } == true) SLOW_OUTCOME else return null
-                is MediaSourceFetchState.Failed -> state.cause.reasonName()
-                is MediaSourceFetchState.CaptchaRequired -> "captcha_required"
-                is MediaSourceFetchState.RateLimited -> "rate_limited"
-                is MediaSourceFetchState.Abandoned, MediaSourceFetchState.Idle, MediaSourceFetchState.Working, MediaSourceFetchState.Disabled -> return null
-            }
-            // 源的标识: 网址的主机名, 没有网址时是 mediaSourceId
-            val host = playFlowHost(result.sourceInfo.websiteUrl) ?: result.mediaSourceId
-            return SourceProblem(host, outcome)
-        }
-
-        private fun Throwable.reasonName(): String = when (this) {
-            is BlockedException -> reason::class.simpleName ?: "blocked"
-            else -> this::class.simpleName ?: "unknown"
+        fun problem(slowThreshold: Duration): String? = when (val state = state) {
+            is MediaSourceFetchState.Succeed -> if (duration?.let { it >= slowThreshold } == true) SLOW_OUTCOME else null
+            is MediaSourceFetchState.Failed -> state.cause.reasonName()
+            is MediaSourceFetchState.CaptchaRequired -> "captcha_required"
+            is MediaSourceFetchState.RateLimited -> "rate_limited"
+            is MediaSourceFetchState.Abandoned, MediaSourceFetchState.Idle, MediaSourceFetchState.Working, MediaSourceFetchState.Disabled -> null
         }
     }
 
     private class SourceProblem(
-        val host: String,
+        val source: String,
         val outcome: String,
     ) {
         /** `source_failed.sources_*` 里的记号. */
-        val token: String get() = "$host=$outcome"
+        val token: String get() = "$source=$outcome"
     }
 
     companion object {
@@ -313,8 +315,45 @@ class PlayFlowFetchObserver(
         const val SLOW_OUTCOME = "slow"
 
         /**
-         * 一条 `source_failed` 最多装这么多段 `sources_N`: GA4 的属性上限减去公共属性与 `round` / `count` / `part`. 更多时分成多条.
+         * 一条事件最多 [maxProperties] 个属性 ([PlayFlowRecorder.maxProperties]) 时, 一条 `source_failed` 能装的 `sources_N` 段数:
+         * 减去公共属性与 `round` / `count` / `part`.
          */
-        val MAX_SOURCE_CHUNKS: Int = PlayFlowRecorder.MAX_PROPERTIES - PlayFlowRecorder.COMMON_KEYS.size - 3
+        fun maxSourceChunks(maxProperties: Int): Int = maxProperties - PlayFlowRecorder.COMMON_KEYS.size - 3
+
+        /**
+         * 失败的源在记号里的结果. 记号越短, 一条 `source_failed` 装得下的源越多, 所以常见异常按类别归并而不记类名:
+         * 数据层异常按类别, IO 异常分超时 / DNS / TLS / 其他, HTTP 错误记状态码; 其余异常 (多半是代码问题) 取简单类名.
+         */
+        private fun Throwable.reasonName(): String = when (this) {
+            is BlockedException -> when (val reason = reason) {
+                is BlockReason.Captcha -> "captcha_required"
+                is BlockReason.RateLimited -> "rate_limited"
+                BlockReason.NotFound -> "not_found"
+                is BlockReason.Forbidden -> "forbidden"
+            }
+
+            is RepositoryAuthorizationException -> "forbidden"
+            is RepositoryServiceUnavailableException -> "unavailable"
+            is RepositoryRateLimitedException -> "rate_limited"
+            is RepositoryRequestError -> "request_error"
+            is RepositoryNetworkException -> cause?.ioReasonName() ?: "network"
+            is RepositoryUnknownException -> cause?.reasonName() ?: "unknown"
+            is ResponseException -> "http_${response.status.value}"
+            is IOException -> ioReasonName()
+            else -> this::class.simpleName ?: "unknown"
+        }
+
+        /**
+         * IO 异常的类别. 平台特有的类 (java.net, javax.net.ssl 等) 在 common 代码里按类名识别.
+         */
+        private fun Throwable.ioReasonName(): String {
+            val name = this::class.simpleName ?: return "network"
+            return when {
+                name.endsWith("TimeoutException") -> "timeout"
+                name == "UnknownHostException" -> "dns"
+                name.startsWith("SSL") -> "tls"
+                else -> "network"
+            }
+        }
     }
 }

@@ -55,7 +55,7 @@ fun PlayFlowRecorder.recordUserAction(
 ) {
     record(PlayFlowStep.USER_ACTION, episode) {
         put("action", action.value)
-        put("media_source_id", mediaSourceId)
+        put("source", mediaSourceId?.let { sourceName(it) })
         put("outcome", outcome)
     }
 }
@@ -133,7 +133,7 @@ class PlayFlowManualBrowseListener(
         recorder.record(PlayFlowStep.MANUAL_SEARCH, currentEpisode()) {
             put("stage", stage)
             put("outcome", outcome)
-            put("media_source_id", mediaSourceId)
+            put("source", recorder.sourceName(mediaSourceId))
             put("count", count)
             put("remember", remember)
             put("duration_ms", elapsed)
