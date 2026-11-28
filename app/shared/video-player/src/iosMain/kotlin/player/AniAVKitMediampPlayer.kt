@@ -73,6 +73,7 @@ class AniAVKitMediampPlayer(
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob(parentCoroutineContext[Job]))
     private val subtitles = IosSubtitleTracks(scope, impl) { currentPositionMillis.value }
     val subtitleText get() = subtitles.text
+    val subtitleDelayMillis = MutableStateFlow(0L)
 
     override val features = buildPlayerFeatures {
         delegate.features[Buffering]?.let { add(Buffering, it) }
@@ -89,7 +90,7 @@ class AniAVKitMediampPlayer(
 
     init {
         scope.launch {
-            combine(currentPositionMillis, subtitles.cues) { position, cues -> cues.textAt(position) }
+            combine(currentPositionMillis, subtitles.cues, subtitleDelayMillis) { position, cues, offset -> cues.textAt(position - offset) }
                 .collect { subtitles.text.value = it }
         }
     }

@@ -36,6 +36,7 @@ class SubtitleSettingsMenuTest {
     @Test
     fun `three dot menu opens subtitle settings and retains the chosen size when reopened`() = runAniComposeUiTest {
         var scale by mutableFloatStateOf(1f)
+        var externalMenuOpens = 0
         var close = ""
         setContent {
             ProvideCompositionLocalsForPreview {
@@ -49,6 +50,7 @@ class SubtitleSettingsMenuTest {
                         playerState = player,
                         subtitleFontScale = scale,
                         onSubtitleFontScaleChange = { scale = it },
+                        onOpenExternalSubtitles = { externalMenuOpens++ },
                         expanded = true,
                         opEdSkipDuration = 85.seconds,
                         onClickSkipOpEd = {},
@@ -77,5 +79,9 @@ class SubtitleSettingsMenuTest {
         onNodeWithTag("SubtitleSettingsMenuItem").performClick()
         onNodeWithTag("ResetSubtitleSize").performClick()
         runOnIdle { assertEquals(1f, scale) }
+        onNodeWithText(close).performClick()
+        onNodeWithTag("PlayerMoreOptions").performClick()
+        onNodeWithTag("ExternalSubtitlesMenuItem").performClick()
+        runOnIdle { assertEquals(1, externalMenuOpens) }
     }
 }

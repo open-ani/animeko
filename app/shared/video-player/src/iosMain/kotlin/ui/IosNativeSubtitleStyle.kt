@@ -38,7 +38,7 @@ internal class IosNativeSubtitleStyle(private val player: AVPlayer) {
         val current = player.currentItem ?: return
         val scale = appearance.effectiveFontScale
         val linePosition = if (videoHeight > 0) {
-            ((videoHeight - maxOf(24.0, safeArea.bottom + 12.0) - 22 * scale) / videoHeight * 100).coerceIn(10.0, 90.0)
+            ((videoHeight - maxOf(24.0, safeArea.bottom + 12.0) - videoHeight * SubtitleAppearance.DefaultFontSize / 720 * scale) / videoHeight * 100).coerceIn(10.0, 90.0)
         } else 90.0
         if (current == item && scale == fontScale && linePosition == position) return
         current.textStyleRules = listOf(AVTextStyleRule(textMarkupAttributes = mapOf(

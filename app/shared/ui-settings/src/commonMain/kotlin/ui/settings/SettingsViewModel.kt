@@ -34,6 +34,7 @@ import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.NotificationSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
+import me.him188.ani.app.data.models.preference.OpenSubtitlesSettings
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.app.data.models.preference.ProfileSettings
@@ -138,6 +139,8 @@ open class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     val videoResolverSettingsState: SettingsState<VideoResolverSettings> =
         settingsRepository.videoResolverSettings.stateInBackground(VideoResolverSettings.Default.copy(_placeholder = -1))
+
+    val openSubtitlesSettingsState = settingsRepository.openSubtitlesSettings.stateInBackground(OpenSubtitlesSettings.Default)
 
     val mediaCacheSettingsState: SettingsState<MediaCacheSettings> =
         settingsRepository.mediaCacheSettings.stateInBackground(MediaCacheSettings.Default.copy(_placeholder = -1))

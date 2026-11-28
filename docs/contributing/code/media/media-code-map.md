@@ -195,6 +195,24 @@
     - `domain/media/selector/BrowseEpisodeIndex.kt`：线路里按位置换算剧集下标（回放与下载弹窗共用），
       以及手动查找打开线路时的默认预选。
 
+## 外挂文本字幕
+
+播放器右上角菜单的“外挂字幕”提供本地导入与 OpenSubtitles 搜索。`ExternalSubtitlesDialog` 使用系统文件选择器读取
+SRT、WebVTT、ASS/SSA，支持 UTF-8 和带 BOM 的 UTF-16，文件大小限制为 16 MiB。
+`ExternalSubtitleController` 将文本对白绑定到当前 `MediaData`，按播放位置和用户设置的时间偏移查询对白；
+切集、换源或停止播放时清空，异步导入结果只对发起时的媒体有效。控制器的 `tracks` 合并内封轨道与已导入字幕，
+由播放器字幕菜单统一选择与关闭；关闭和切换轨道保留本次媒体的导入列表，重新开启不读取文件或消耗下载配额。
+内封字幕与外挂字幕互斥显示。ASS/SSA 以文本对白显示，不应用脚本的样式、定位或绘图效果。
+`ExternalSubtitleOverlay` 在视频层显示对白，避开系统安全区和播放器控制栏。
+
+OpenSubtitles 的设备本地配置位于“设置 → 数据源与播放 → 播放器 → OpenSubtitles”。API Key 默认空，
+应用不携带内置 Key。配置支持启用开关、可选账号密码与搜索语言。
+未填写 Key 时，通过 OpenSubtitles 官方 `https://mcp.opensubtitles.com/mcp` 服务匿名搜索，
+以账号密码使用用户额度下载；搜索请求不发送账号密码。用户自填 Key 时直接使用 REST API，账号令牌仅用于当次下载。
+官方服务的认证、搜索及下载协议见 [OpenSubtitles MCP 文档](https://github.com/opensubtitles/mcp.opensubtitles.com/blob/master/README.md)。
+`OpenSubtitlesClient` 按片名、可选季集与语言分页搜索，只有用户选择结果后才申请下载链接并消耗配额。
+下载统一请求 SRT 格式，临时文件请求不携带 API 凭据。
+
 ## Android 内封文本字幕
 
 `LibassExoPlayerMediampPlayer`（`app/shared/video-player/src/androidMain/.../media/`）

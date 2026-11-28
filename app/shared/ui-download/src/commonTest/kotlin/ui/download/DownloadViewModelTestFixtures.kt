@@ -283,6 +283,7 @@ internal class FakeEpisodePlayHistoryRepository : EpisodePlayHistoryRepository {
  * 只提供选源设置, 其余设置访问即报错.
  */
 internal class FakeSettingsRepository : SettingsRepository {
+    override val openSubtitlesSettings get() = error("Not used")
     override val mediaSelectorSettings: Settings<MediaSelectorSettings> = object : Settings<MediaSelectorSettings> {
         private val state = MutableStateFlow(MediaSelectorSettings.Default)
         override val flow: Flow<MediaSelectorSettings> = state

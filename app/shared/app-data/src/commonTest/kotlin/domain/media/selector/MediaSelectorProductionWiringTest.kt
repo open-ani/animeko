@@ -152,6 +152,7 @@ class MediaSelectorProductionWiringTest {
                 override suspend fun removeInstance(instanceId: String) = error("not used")
             }
             val fakeSettings = object : SettingsRepository {
+                override val openSubtitlesSettings get() = error("not used")
                 override val mediaSelectorSettings = staticSettings(MediaSelectorSettings.Default)
                 override val defaultMediaPreference = staticSettings(MediaPreference.Empty)
 

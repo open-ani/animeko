@@ -6,10 +6,10 @@
 
 package me.him188.ani.app.videoplayer.subtitle
 
-internal data class SubtitleCue(val startMillis: Long, val endMillis: Long, val text: String)
+data class SubtitleCue(val startMillis: Long, val endMillis: Long, val text: String)
 
 /** SRT 与 WebVTT 文本字幕；结束时间不包含在对白区间内。 */
-internal fun parseSubtitleCues(text: String): List<SubtitleCue> {
+fun parseSubtitleCues(text: String): List<SubtitleCue> {
     fun time(value: String): Long? {
         val parts = value.replace(',', '.').split(':')
         if (parts.size !in 2..3) return null
@@ -36,7 +36,7 @@ internal fun parseSubtitleCues(text: String): List<SubtitleCue> {
 }
 
 /** 二分定位当前对白，前缀结束时间支持重叠对白与任意方向 seek。 */
-internal class SubtitleCueTimeline(cues: List<SubtitleCue>) {
+class SubtitleCueTimeline(cues: List<SubtitleCue>) {
     private val cues = cues.sortedBy { it.startMillis }
     private val latestEnd = LongArray(cues.size).also { ends ->
         this.cues.forEachIndexed { index, cue ->

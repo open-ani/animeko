@@ -84,6 +84,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.data.models.preference.OpenSubtitlesSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.comment.CommentContext
 import me.him188.ani.app.domain.media.player.data.suppliedFramePreview
@@ -1137,6 +1138,30 @@ private fun EpisodeVideo(
     val isInPictureInPicture by pictureInPictureController.isInPictureInPicture.collectAsStateWithLifecycle()
     PictureInPicturePolicyEffect(vm, pictureInPictureController)
 
+    var showExternalSubtitles by remember { mutableStateOf(false) }
+    val externalSubtitleAlwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "externalSubtitles")
+    LaunchedEffect(showExternalSubtitles) {
+        if (showExternalSubtitles) externalSubtitleAlwaysOnRequester.request() else externalSubtitleAlwaysOnRequester.cancelRequest()
+    }
+    DisposableEffect(externalSubtitleAlwaysOnRequester) {
+        onDispose { externalSubtitleAlwaysOnRequester.cancelRequest() }
+    }
+    if (showExternalSubtitles) {
+        val subtitleSettings by vm.openSubtitlesSettings.collectAsStateWithLifecycle(
+            OpenSubtitlesSettings.Default,
+        )
+        ExternalSubtitlesDialog(
+            player = vm.player,
+            controller = vm.externalSubtitles,
+            settings = subtitleSettings,
+            initialQuery = page.subjectPresentation.originalTitle,
+            initialEpisode = page.episodePresentation.ep,
+            search = vm::searchOpenSubtitles,
+            download = vm::downloadOpenSubtitle,
+            onDismissRequest = { showExternalSubtitles = false },
+        )
+    }
+
     EpisodeVideoImpl(
         vm.player,
         expanded = expanded,
@@ -1144,8 +1169,14 @@ private fun EpisodeVideo(
         onClickNextEpisode = { vm.episodeSelectorState.selectNext() },
         playerControllerState = playerControllerState,
         opEdSkipDuration = vm.videoScaffoldConfig.opEdSkipDuration,
+        subtitleTextConversion = vm.videoScaffoldConfig.subtitleTextConversion,
+        onSubtitleTextConversionChange = vm::setSubtitleTextConversion,
         subtitleFontScale = vm.videoScaffoldConfig.subtitleFontScale,
-        onSubtitleFontScaleChange = if (LocalPlatform.current.isIos()) vm::setSubtitleFontScale else null,
+        onSubtitleFontScaleChange = vm::setSubtitleFontScale,
+        subtitleStyle = vm.videoScaffoldConfig.subtitleStyle,
+        onSubtitleStyleChange = vm::setSubtitleStyle,
+        externalSubtitles = vm.externalSubtitles,
+        onOpenExternalSubtitles = { showExternalSubtitles = true },
         onClickSkipOpEd = { vm.onClickSkipOpEd(it) },
         title = {
             val episode = page.episodePresentation

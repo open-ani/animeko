@@ -50,6 +50,8 @@ kotlin {
     }
 
     sourceSets.commonMain.dependencies {
+        implementation(libs.filekit.dialogs)
+        implementation(libs.filekit.dialogs.compose)
         api(projects.utils.platform)
         api(projects.utils.intellijAnnotations)
         api(libs.kotlinx.coroutines.core)

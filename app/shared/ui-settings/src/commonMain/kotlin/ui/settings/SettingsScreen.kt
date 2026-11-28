@@ -173,6 +173,7 @@ import me.him188.ani.app.ui.settings.tabs.log.LogTab
 import me.him188.ani.app.ui.settings.tabs.media.BackupSettings
 import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroup
 import me.him188.ani.app.ui.settings.tabs.media.MediaSelectionGroup
+import me.him188.ani.app.ui.settings.tabs.media.OpenSubtitlesGroup
 import me.him188.ani.app.ui.settings.tabs.media.PikPakAcceleratorGroup
 import me.him188.ani.app.ui.settings.tabs.media.TorrentEngineGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSelectionActions
@@ -388,6 +389,7 @@ fun SettingsScreen(
                                     vm.isInDebugMode,
                                 )
                                 WatchTogetherGroup(vm.watchTogetherSettings)
+                                OpenSubtitlesGroup(vm.openSubtitlesSettingsState)
                             }
 
                             SettingsTab.MEDIA_SOURCE -> MediaSourceTab(

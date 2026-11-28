@@ -183,6 +183,7 @@ class UserCollectionsViewModelTest {
      * 只提供 ViewModel 构造时读取的 [uiSettings], 其余访问即报错.
      */
     private class FakeSettingsRepository : SettingsRepository {
+        override val openSubtitlesSettings get() = error("not implemented")
         override val uiSettings: Settings<UISettings> = object : Settings<UISettings> {
             private val state = MutableStateFlow(UISettings.Default)
             override val flow: Flow<UISettings> = state

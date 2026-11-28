@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="subtitle_style_delay">字幕延迟（秒）</string>
+    <string name="subtitle_style_delay_hint">正数延后，负数提前。只作用于当前视频的这条字幕。</string>
+    <string name="subtitle_style_position">字幕位置</string>
+    <string name="subtitle_style_text_color">文字颜色</string>
+    <string name="subtitle_style_outline_color">描边颜色</string>
+    <string name="subtitle_style_outline">字幕描边</string>
+    <string name="subtitle_style_outline_width">描边粗细</string>
+    <string name="subtitle_style_background">字幕背景</string>
+    <string name="subtitle_style_background_color">背景颜色</string>
+    <string name="subtitle_style_opacity">背景不透明度</string>
+    <string name="subtitle_style_color_hint">自定义颜色（#RRGGBB）</string>
+    <string name="subtitle_style_reset">恢复默认</string>
+    <string name="subtitle_style_limits">外观设置适用于文本字幕。图片字幕的可用设置取决于播放器。画面中的硬字幕无法调整。</string>
+    <string name="subtitle_style_reset_all">恢复全部默认</string>
+</resources>

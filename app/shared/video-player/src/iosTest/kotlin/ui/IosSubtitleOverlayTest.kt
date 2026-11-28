@@ -13,6 +13,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
+import me.him188.ani.app.data.models.preference.SubtitleStyle
 import me.him188.ani.app.videoplayer.subtitle.SubtitleAppearance
 import me.him188.ani.app.videoplayer.subtitle.SubtitleSafeArea
 import platform.AVFoundation.AVPlayer
@@ -22,6 +23,20 @@ import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSURL
 
 class IosSubtitleOverlayTest {
+    @Test
+    fun `custom subtitle style changes position and supplies an attributed outline`() {
+        val overlay = IosSubtitleOverlay().apply { setFrame(CGRectMake(0.0, 0.0, 1000.0, 600.0)) }
+        overlay.update("Caption", SubtitleAppearance(), SubtitleSafeArea())
+        overlay.layoutIfNeeded()
+        val bottom = overlay.label.frame.useContents { origin.y }
+        overlay.update("Caption", SubtitleAppearance(style = SubtitleStyle(verticalPosition = 0f,
+            textColor = 0xFFFFFF00, outlineColor = 0xFFFF0000, outlineWidth = 4f, backgroundEnabled = true)), SubtitleSafeArea())
+        overlay.layoutIfNeeded()
+        assertTrue(overlay.label.frame.useContents { origin.y } < bottom)
+        assertEquals("Caption", overlay.label.attributedText?.string)
+        assertEquals(0f, overlay.label.layer.shadowOpacity)
+    }
+
     @Test
     fun `native subtitle tracks receive the selected size and safe line position`() {
         val item = AVPlayerItem(uRL = NSURL.fileURLWithPath("/missing-native-style-test.mp4"))
@@ -40,8 +55,8 @@ class IosSubtitleOverlayTest {
         val small = overlay.label.font.pointSize
         overlay.update("第一行\nSecond line", SubtitleAppearance(2f), SubtitleSafeArea())
         overlay.layoutIfNeeded()
-        assertEquals(16.5, small)
-        assertEquals(44.0, overlay.label.font.pointSize)
+        assertEquals(23.75, small, 0.01)
+        assertEquals(600.0 * 38 / 720 * 2, overlay.label.font.pointSize, 0.01)
         assertEquals("第一行\nSecond line", overlay.label.text)
     }
 

@@ -30,6 +30,7 @@ kotlin {
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
+        implementation(libs.mediamp.test)
     }
     sourceSets.androidMain.dependencies {
         implementation(libs.compose.material3.adaptive.core)
@@ -39,6 +40,7 @@ kotlin {
         implementation(libs.androidx.media3.exoplayer.dash)
         implementation(libs.androidx.media3.exoplayer.hls)
         implementation(libs.libass.media)
+        implementation(libs.libass.kt)
         implementation(libs.androidx.core.ktx)
         api(libs.mediamp.exoplayer)
     }
