@@ -37,6 +37,47 @@ import kotlin.test.assertTrue
 
 class BaseJellyfinMediaSourceTest {
     @Test
+    fun `hydrates long series in bounded batches and retains metadata from successful batches`() = runTest {
+        val batches = mutableListOf<List<String>>()
+        val source = createSource { request ->
+            val ids = request.url.parameters["ids"]?.split(",")
+            if (ids == null) {
+                val start = request.url.parameters["startIndex"]!!.toInt()
+                val name = request.url.parameters["searchTerm"]!!
+                val items = (start until minOf(start + 50, 101)).joinToString(",") {
+                    """{"Name":"$name","Id":"movie-$it","Type":"Movie"}"""
+                }
+                respondJson("""{"Items":[$items]}""")
+            } else {
+                batches += ids
+                if (ids.size > 50) {
+                    respond("Request URI too large", HttpStatusCode.RequestURITooLong)
+                } else if (ids.first() == "movie-50") {
+                    respond("Temporarily unavailable", HttpStatusCode.ServiceUnavailable)
+                } else {
+                    val items = ids.joinToString(",") { id ->
+                        """{"Name":"Movie","Id":"$id","Type":"Movie","MediaStreams":[
+                            {"Type":"Subtitle","Codec":"ass","Index":2,"IsExternal":true,"IsTextSubtitleStream":true}
+                        ]}"""
+                    }
+                    respondJson("""{"Items":[$items]}""")
+                }
+            }
+        }
+
+        val media = source.fetch(request(subjectNames = listOf("Movie", "Movie alias"))).results.toList()
+            .associate { it.media.mediaId to it.media }
+
+        assertEquals(listOf(50, 50, 1), batches.map { it.size })
+        assertEquals(101, media.size)
+        assertEquals(1, media.getValue("movie-0").extraFiles.subtitles.size)
+        assertEquals(1, media.getValue("movie-49").extraFiles.subtitles.size)
+        assertEquals(0, media.getValue("movie-50").extraFiles.subtitles.size)
+        assertEquals(0, media.getValue("movie-99").extraFiles.subtitles.size)
+        assertEquals(1, media.getValue("movie-100").extraFiles.subtitles.size)
+    }
+
+    @Test
     fun `queries aliases until an exact season yields the requested episode`() = runTest {
         val requests = mutableListOf<HttpRequestData>()
         val source = createSource { request ->
